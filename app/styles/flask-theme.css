@@ -28,11 +28,17 @@
   --color-flask-teal: #54d3da;
   --color-flask-teal-soft: #caf1f4;
   --color-flask-teal-ink: #269aa1;
+  --color-flask-teal-pill: #31b6bd;
   --color-flask-green: #00c896;
   --color-flask-green-ink: #16a34a;
   --color-flask-red: #ff6b6b;
   --color-flask-red-soft: #fff0f0;
   --color-flask-submitted: #ebeef2;
+  /* the report badges (components/report_draft_header_badge.html) */
+  --color-flask-badge-draft-ink: #546881;
+  --color-flask-badge-published-bg: #e6f2ff;
+  --color-flask-badge-published-ink: #007bff;
+  --color-flask-red-600: #dc2626;
   --color-flask-header: #474747;
   --color-flask-menu: #656565;
   --color-flask-avatar-bg: #ffe6b1;
@@ -91,4 +97,42 @@
     width: 1024px;
     margin: 0 auto;
   }
+}
+
+/* Flask's radios: Tailwind's forms plugin (`w-4 h-4 text-[#54D3DA] border-gray-300
+   focus:ring-[#54D3DA]`) - a grey-ringed white circle, filled teal with a white dot when checked. */
+.flask-radio {
+  appearance: none;
+  padding: 0;
+  display: inline-block;
+  vertical-align: middle;
+  background-origin: border-box;
+  user-select: none;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-flask-teal);
+  background-color: var(--color-flask-white);
+  border: 1px solid var(--color-flask-gray-300);
+  border-radius: 100%;
+}
+.flask-radio.flask-radio-grey {
+  background-color: var(--color-flask-gray-100);
+}
+.flask-radio:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--color-flask-white), 0 0 0 4px var(--color-flask-teal);
+}
+.flask-radio:checked {
+  border-color: transparent;
+  background-color: currentColor;
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e");
+}
+.flask-radio:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }

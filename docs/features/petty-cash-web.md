@@ -115,7 +115,26 @@ Not ported yet:
 - **The subscription notice.**
 - **The "Congratulations!" modal**, which comes with the settings page.
 
+### Report wizard, Opening: `/entity/<shortid>/<name>/petty-cash/reports/new/opening?transaction_date=`
+
+This is Flask's `report/opening.html`, at Flask's own address for it. It is built from `components/report/OpeningStep.tsx` and `ReportChrome.tsx` (the report header badge and the "Saving..." overlay), and reads and saves through `GET`/`PUT /reports/opening`.
+
+What it keeps from Flask:
+- **The report header:** the "14 OCT" date pill, the initials and the Draft badge.
+- **The stepper.** The page is the current step; links follow the draft, and unsaved changes hold them back with Flask's toast.
+- **The balances:** the illustration, then Starting Cash Balance, Cash Till Balance and Safebox.
+- **"Addition to Cash Drawer".** `lib/currencyInput.ts` is Flask's `currency.js`: the value is cleaned while you type, then grouped and padded when you leave the field.
+- **"Withdrawal from:"** with Flask's forms-plugin radios (`.flask-radio`).
+- **The live Opening Cash Balance.**
+- **Save & Next and Save & Exit.**
+- **"Fix Negative Balance"**, which cannot be dismissed.
+
+Where the app differs:
+- **The opening balance is the server's.** Flask took it from a hidden form field.
+- **A refused day lands on the dashboard with its message.** `lib/flash.ts` carries Flask's flash there, so the message still shows.
+- **Ported steps open in this app.** The dashboard's Start, the deposit check and the stepper all go through `lib/wizardPages.ts`, which sends the ported steps here and the rest to Flask. Sales onwards is still Flask's.
+
 ## Not here yet
 
-- **The other pages.** The report wizard, history, the report summary, settings and Xero publish are next, in that order.
+- **The other pages.** The rest of the report wizard (Sales, Expenses, Bank Deposit, Cash Count, Ending, Submitted), history, the report summary, settings and Xero publish are next, in that order.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

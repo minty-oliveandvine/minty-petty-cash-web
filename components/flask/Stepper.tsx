@@ -1,6 +1,8 @@
 "use client";
 
-import { stepStates, type Home } from "@/lib/dashboard";
+import type { MouseEvent } from "react";
+
+import { stepStates, type Progress } from "@/lib/dashboard";
 import type { WizardStep } from "@/lib/flaskPages";
 
 const TICK = (
@@ -21,8 +23,20 @@ const CHEVRON = (
  * their labels, 7.6px on a phone as Flask draws them. A step that opens goes to that step of the
  * wizard for the draft's date.
  */
-export function Stepper({ draft, stepHref }: { draft: NonNullable<Home["draft"]>; stepHref: (step: WizardStep) => string }) {
-  const steps = stepStates(draft);
+export function Stepper({
+  draft,
+  page,
+  stepHref,
+  onStepClick,
+}: {
+  draft: Progress;
+  /** The wizard page this stepper sits on; omitted on the dashboard. */
+  page?: WizardStep;
+  stepHref: (step: WizardStep) => string;
+  /** Asked before a step's link is followed; `preventDefault` it to stay (unsaved changes). */
+  onStepClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+}) {
+  const steps = stepStates(draft, page);
   return (
     <div className="relative flex-shrink-0 px-4 py-2 sm:px-6 sm:py-2">
       <ol className="relative mx-auto flex max-w-2xl items-center justify-between" aria-label="Report steps">
@@ -56,7 +70,12 @@ export function Stepper({ draft, stepHref }: { draft: NonNullable<Home["draft"]>
           return (
             <li key={step.key} className="relative z-10 flex flex-1 flex-col items-center gap-2 transition-transform duration-200 hover:scale-105">
               {step.open ? (
-                <a href={stepHref(step.key)} className="flex flex-col items-center gap-2" aria-label={`${step.label}, ${state}`}>
+                <a
+                  href={stepHref(step.key)}
+                  onClick={onStepClick}
+                  className="flex flex-col items-center gap-2"
+                  aria-label={`${step.label}, ${state}`}
+                >
                   {pill}
                   {label}
                 </a>

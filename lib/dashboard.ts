@@ -153,14 +153,22 @@ export const STEPS: { key: WizardStep; label: string }[] = [
 
 export type StepState = "current" | "completed" | "next" | "locked";
 
-/** Each step's state and whether it opens - Flask's `stepper.html`. */
-export function stepStates(draft: NonNullable<Home["draft"]>): { key: WizardStep; label: string; state: StepState; open: boolean }[] {
-  const done = new Set(draft.completed_sections);
+/** A report's progress, as a draft carries it (a new report: no section, nothing completed). */
+export type Progress = { current_section: string | null; completed_sections: string[] };
+
+/**
+ * Each step's state and whether it opens - Flask's `stepper.html`. On the dashboard the current
+ * step is the draft's own; on a wizard page it is that page (`page`), while what opens still
+ * follows the draft (the first step opens once done, or while the draft is on it).
+ */
+export function stepStates(progress: Progress, page?: WizardStep): { key: WizardStep; label: string; state: StepState; open: boolean }[] {
+  const done = new Set(progress.completed_sections);
+  const current = page ?? progress.current_section;
   return STEPS.map((step, i) => {
     const previousDone = i > 0 && done.has(STEPS[i - 1].key);
     const state: StepState =
-      step.key === draft.current_section ? "current" : done.has(step.key) ? "completed" : previousDone ? "next" : "locked";
-    const open = i === 0 ? done.has("opening") || draft.current_section === "opening" : previousDone;
+      step.key === current ? "current" : done.has(step.key) ? "completed" : previousDone ? "next" : "locked";
+    const open = i === 0 ? done.has("opening") || progress.current_section === "opening" : previousDone;
     return { ...step, state, open };
   });
 }

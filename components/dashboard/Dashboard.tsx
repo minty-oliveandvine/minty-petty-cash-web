@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { BeforeYouStartModal, DepositModal, SetupRequiredModal, type Confirmation } from "@/components/dashboard/Modals";
 import { ReportCalendar } from "@/components/dashboard/ReportCalendar";
-import { Stepper } from "@/components/dashboard/Stepper";
+import { Stepper } from "@/components/flask/Stepper";
 import { PhoneCard } from "@/components/flask/PhoneCard";
 import { useToast } from "@/components/flask/Toasts";
 import { entityAcronym } from "@/lib/acronym";
@@ -21,10 +21,12 @@ import {
   type Home,
 } from "@/lib/dashboard";
 import { formatDay, formatDayWithWeekday } from "@/lib/dates";
-import { historyUrl, reportSummaryUrl, resumeUrl, settingsUrl, wizardStepUrl } from "@/lib/flaskPages";
+import { historyUrl, reportSummaryUrl, resumeUrl, settingsUrl } from "@/lib/flaskPages";
+import { takeFlash } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
 import { formatMoney } from "@/lib/money";
 import { useAuth } from "@/lib/useAuth";
+import { stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const READ_ONLY = "Read-only access";
@@ -44,6 +46,12 @@ export function Dashboard() {
   const toast = useToast();
   const auth = useAuth();
   const [load, setLoad] = useState<Load>({ kind: "loading" });
+
+  useEffect(() => {
+    // A step that refused a day sends the person here with why (Flask's flash).
+    const flash = takeFlash();
+    if (flash) toast(flash.message, flash.kind);
+  }, [toast]);
 
   useEffect(() => {
     let live = true;
@@ -72,10 +80,10 @@ export function Dashboard() {
       </PhoneCard>
     );
   }
-  return <DashboardBody home={load.home} entityId={auth?.entityId ?? ""} acronym={acronym} />;
+  return <DashboardBody home={load.home} entityId={auth?.entityId ?? ""} entityName={auth?.entityName ?? ""} acronym={acronym} />;
 }
 
-function DashboardBody({ home, entityId, acronym }: { home: Home; entityId: string; acronym: string }) {
+function DashboardBody({ home, entityId, entityName, acronym }: { home: Home; entityId: string; entityName: string; acronym: string }) {
   const toast = useToast();
   const [selected, setSelected] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<{ day: string; deposit: number; submitter: string | null } | null>(null);
@@ -94,7 +102,7 @@ function DashboardBody({ home, entityId, acronym }: { home: Home; entityId: stri
   const todaySubmitted = !draft && home.today_is_latest_report && !(selected && !selectedReport);
 
   function open(day: string) {
-    leaveTo(wizardStepUrl(entityId, "opening", day));
+    leaveTo(stepHref(entityId, entityName, "opening", day));
   }
 
   function pick(day: string) {
@@ -127,7 +135,7 @@ function DashboardBody({ home, entityId, acronym }: { home: Home; entityId: stri
         json: { kind, date: confirming.day, amount },
       });
       if (answer.status === "warning" && answer.message) toast(answer.message, "error");
-      leaveTo(wizardStepUrl(entityId, "opening", answer.next_transaction_date));
+      leaveTo(stepHref(entityId, entityName, "opening", answer.next_transaction_date));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
       toast(err instanceof ApiError ? err.message : "I couldn't save that deposit correction. Mind trying again?", "error");
@@ -248,7 +256,7 @@ function DashboardBody({ home, entityId, acronym }: { home: Home; entityId: stri
               </div>
               <p className="mb-4 text-sm text-flask-gray-600">{home.draft_date ? formatDayWithWeekday(home.draft_date) : "Today"}</p>
               <div className="mb-4">
-                <Stepper draft={draft} stepHref={(key) => wizardStepUrl(entityId, key, home.draft_date ?? home.server_today)} />
+                <Stepper draft={draft} stepHref={(key) => stepHref(entityId, entityName, key, home.draft_date ?? home.server_today)} />
               </div>
               <button
                 type="button"

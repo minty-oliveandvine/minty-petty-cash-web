@@ -144,20 +144,34 @@ describe("Last edit … ago", () => {
 
 describe("the progress steps", () => {
   it("marks current, completed, next and locked, and opens what Flask opened", () => {
-    const steps = stepStates({ id: "d", current_section: "expenses", completed_sections: ["opening", "sales"], last_edit_seconds: 0 });
+    const steps = stepStates({ current_section: "expenses", completed_sections: ["opening", "sales"] });
     expect(steps.map((s) => s.state)).toEqual(["completed", "completed", "current", "locked", "locked", "locked"]);
     expect(steps.map((s) => s.open)).toEqual([true, true, true, false, false, false]);
     expect(steps.map((s) => s.label)).toEqual(["Opening", "Sales", "Expenses", "Bank Deposit", "Cash Count", "Ending"]);
   });
 
   it("opens the first step of a draft that is still on it", () => {
-    const [first, second] = stepStates({ id: "d", current_section: "opening", completed_sections: [], last_edit_seconds: 0 });
+    const [first, second] = stepStates({ current_section: "opening", completed_sections: [] });
     expect(first).toMatchObject({ state: "current", open: true });
     expect(second).toMatchObject({ state: "locked", open: false });
   });
 
   it("shows the next step after a completed one", () => {
-    const steps = stepStates({ id: "d", current_section: null, completed_sections: ["opening"], last_edit_seconds: 0 });
+    const steps = stepStates({ current_section: null, completed_sections: ["opening"] });
     expect(steps[1]).toMatchObject({ state: "next", open: true });
+  });
+});
+
+describe("the progress steps on a wizard page", () => {
+  it("make the page current and still open what the draft has done", () => {
+    const steps = stepStates({ current_section: "expenses", completed_sections: ["opening", "sales"] }, "opening");
+    expect(steps.map((s) => s.state)).toEqual(["current", "completed", "next", "locked", "locked", "locked"]);
+    expect(steps.map((s) => s.open)).toEqual([true, true, true, false, false, false]);
+  });
+
+  it("on a new report, the first step is current and opens", () => {
+    const [first, second] = stepStates({ current_section: null, completed_sections: [] }, "opening");
+    expect(first).toMatchObject({ state: "current", open: false });
+    expect(second).toMatchObject({ state: "locked", open: false });
   });
 });

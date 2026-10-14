@@ -52,8 +52,32 @@ function HeaderButtons() {
  * grey, with a large shadow - whose content scrolls inside it. Its header: the back chevron to the
  * company list, the company's initials in the middle, the person's initials (My Profile) and the
  * menu. `overlays` (Flask's modals) sit inside the card, over everything in it.
+ *
+ * A report step's header (`report/*.html`) adds the day's date pill before the initials and the
+ * report's status badge after them, sets the initials a weight lighter, and carries the stepper
+ * under the header (`stepper`), outside the scrolling content.
  */
-export function PhoneCard({ acronym, children, overlays }: { acronym: string; children: ReactNode; overlays?: ReactNode }) {
+export function PhoneCard({
+  acronym,
+  children,
+  overlays,
+  datePill,
+  badge,
+  stepper,
+  backHref,
+}: {
+  acronym: string;
+  children: ReactNode;
+  overlays?: ReactNode;
+  /** A report step: "01 SEP". */
+  datePill?: string;
+  /** A report step: its Draft / Submitted / Published badge. */
+  badge?: ReactNode;
+  stepper?: ReactNode;
+  /** Where the chevron goes; the company list by default (the dashboard's). */
+  backHref?: string;
+}) {
+  const report = datePill !== undefined;
   // The two header links read the cookie and the page's origin, which the server does not have:
   // drawn without an address until the browser has taken over, so both renders agree.
   const mounted = useMounted();
@@ -62,18 +86,33 @@ export function PhoneCard({ acronym, children, overlays }: { acronym: string; ch
       <div className="relative flex h-screen w-full flex-col overflow-hidden bg-flask-gray-50 shadow-flask-xl">
         <div className="relative flex flex-shrink-0 items-center justify-between bg-flask-gray-50 px-4 py-3">
           <div className="flex min-w-0 flex-1 justify-start">
-            <a href={mounted ? sidebarHost.links.entities() : undefined} className="text-flask-header transition-colors" aria-label="Back to your companies">
+            <a
+              href={backHref ?? (mounted ? sidebarHost.links.entities() : undefined)}
+              className="text-flask-header transition-colors"
+              aria-label={backHref ? "Back" : "Back to your companies"}
+            >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 19l-7-7 7-7" />
               </svg>
             </a>
           </div>
-          <h1 className="absolute left-1/2 -translate-x-1/2 text-lg font-semibold text-flask-header">{acronym}</h1>
+          {report ? (
+            <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-3">
+              {datePill ? (
+                <span className="rounded-full bg-flask-teal-soft/50 px-3 py-1 text-xs font-medium text-flask-teal-pill">{datePill}</span>
+              ) : null}
+              <h1 className="text-lg font-medium text-flask-header">{acronym}</h1>
+              {badge}
+            </div>
+          ) : (
+            <h1 className="absolute left-1/2 -translate-x-1/2 text-lg font-semibold text-flask-header">{acronym}</h1>
+          )}
           <div className="flex flex-1 justify-end">
             <HeaderButtons />
           </div>
         </div>
-        <div className="relative flex-1 overflow-y-auto bg-flask-gray-50 p-6 pb-40">{children}</div>
+        {stepper ? <div className="relative flex-shrink-0 bg-flask-gray-50 px-4 py-2 sm:px-6 sm:py-2">{stepper}</div> : null}
+        <div className="relative flex-1 overflow-y-auto overflow-x-hidden bg-flask-gray-50 p-6 pb-40">{children}</div>
         {overlays}
       </div>
     </div>

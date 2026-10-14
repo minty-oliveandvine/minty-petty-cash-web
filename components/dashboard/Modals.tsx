@@ -128,7 +128,7 @@ export function BeforeYouStartModal({
         checked={choice === value}
         disabled={disabled}
         onChange={() => setChoice(value)}
-        className="h-4 w-4 accent-flask-teal disabled:cursor-not-allowed disabled:opacity-50"
+        className="flask-radio flask-radio-grey"
       />
       <label htmlFor={`confirm-${value}`} className={`ml-2 text-sm ${disabled ? "text-flask-gray-400" : "text-flask-gray-700"}`}>
         {label}

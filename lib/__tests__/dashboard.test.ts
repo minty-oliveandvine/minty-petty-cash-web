@@ -1,16 +1,17 @@
-// The dashboard's rules (../dashboard.ts), ported from Flask's entity_dashboard_v2.html.
+// The launch page's rules (../dashboard.ts): the start rules ported from Flask's
+// entity_dashboard_v2.html, and the Part 15.6a states built on them.
 
 import { describe, expect, it } from "vitest";
 
 import {
-  balanceFor,
-  dayState,
   depositToConfirm,
-  isClickable,
-  lastEditText,
+  firstName,
+  gateDay,
+  greetingFor,
+  launchState,
   PREVIOUS_DAY_FIRST,
+  recentReports,
   startProblem,
-  stepStates,
   type Home,
 } from "@/lib/dashboard";
 
@@ -19,6 +20,7 @@ const TODAY = "2026-10-14";
 function home(over: Partial<Home> = {}): Home {
   return {
     server_today: TODAY,
+    user_count: 1,
     currency_code: "HKD",
     latest: {
       date: null,
@@ -44,34 +46,6 @@ function home(over: Partial<Home> = {}): Home {
 function day(closing = 100, deposit = 0) {
   return { id: "r", closing_balance: closing, bank_deposit: deposit, xero_integrated: false, submitter_first_name: "Olive" };
 }
-
-describe("the calendar", () => {
-  const withReports = home({ published: { "2026-10-10": day(80), "2026-10-11": day(90) } });
-
-  it("draws today, submitted days, missing days, the next day and the rest", () => {
-    expect(dayState(withReports, TODAY)).toBe("today");
-    expect(dayState(withReports, "2026-10-10")).toBe("submitted");
-    expect(dayState(withReports, "2026-10-13")).toBe("missing");
-    expect(dayState(withReports, "2026-10-12")).toBe("missing"); // missing wins over clickable
-    expect(dayState(withReports, "2026-10-09")).toBe("idle"); // before the first report
-    expect(dayState(withReports, "2026-10-20")).toBe("idle");
-  });
-
-  it("opens only today, submitted days and the day after the last report", () => {
-    expect(isClickable(withReports, TODAY)).toBe(true);
-    expect(isClickable(withReports, "2026-10-11")).toBe(true);
-    expect(isClickable(withReports, "2026-10-12")).toBe(true);
-    expect(isClickable(withReports, "2026-10-13")).toBe(false);
-  });
-
-  it("before any report, opens the future and the past from the onboarding floor", () => {
-    const fresh = home({ draft_date: "2026-10-01" });
-    expect(isClickable(fresh, "2026-11-02")).toBe(true);
-    expect(isClickable(fresh, "2026-10-01")).toBe(true);
-    expect(isClickable(fresh, "2026-09-30")).toBe(false);
-    expect(isClickable(home(), "2020-01-01")).toBe(true); // no floor at all
-  });
-});
 
 describe("starting a report", () => {
   it("must be the day after the last submitted report", () => {
@@ -116,47 +90,82 @@ describe("Before You Start", () => {
   });
 });
 
-describe("the balance shown for a day", () => {
-  const h = home({ published: { "2026-10-10": day(80), "2026-10-12": day(120) } });
-  it("is the day's own, else the last before it, else 0", () => {
-    expect(balanceFor(h, "2026-10-10")).toBe(80);
-    expect(balanceFor(h, "2026-10-11")).toBe(80);
-    expect(balanceFor(h, TODAY)).toBe(120);
-    expect(balanceFor(h, "2026-10-01")).toBe(0);
+const DRAFT = { id: "d", current_section: "sales", completed_sections: ["opening"], last_edit_seconds: 60 };
+
+describe("the launch card's state", () => {
+  it("is first use with nothing submitted and nothing open", () => {
+    expect(launchState(home())).toEqual({ kind: "first-use", day: TODAY });
+  });
+
+  it("is in progress whenever a report is open, on the open report's day", () => {
+    expect(launchState(home({ draft: DRAFT, draft_date: TODAY }))).toEqual({ kind: "in-progress", day: TODAY, draft: DRAFT });
+    expect(launchState(home({ draft: DRAFT, draft_date: "2026-10-12", published: { "2026-10-11": day() } }))).toMatchObject({
+      kind: "in-progress",
+      day: "2026-10-12",
+    });
+    // a first draft (onboarding) is in progress, not first use
+    expect(launchState(home({ draft: DRAFT, draft_date: null }))).toMatchObject({ kind: "in-progress", day: TODAY });
+  });
+
+  it("is done when today is submitted - the server's today, not the device's", () => {
+    expect(launchState(home({ published: { [TODAY]: day() } }))).toEqual({ kind: "done", day: TODAY });
+  });
+
+  it("is not started otherwise", () => {
+    expect(launchState(home({ published: { "2026-10-13": day() } }))).toEqual({ kind: "not-started", day: TODAY });
   });
 });
 
-describe("Last edit … ago", () => {
+describe("the gate", () => {
+  it("names the day after the last submitted report when yesterday is unfinished", () => {
+    expect(gateDay(home({ published: { "2026-10-12": day() } }))).toBe("2026-10-13");
+    expect(gateDay(home({ published: { "2026-10-01": day(), "2026-10-10": day() } }))).toBe("2026-10-11");
+  });
+
+  it("is open when yesterday is submitted, when nothing is, and when today is", () => {
+    expect(gateDay(home({ published: { "2026-10-13": day() } }))).toBeNull();
+    expect(gateDay(home({ published: { "2026-10-10": day(), "2026-10-13": day() } }))).toBeNull(); // a hole further back
+    expect(gateDay(home())).toBeNull();
+    expect(gateDay(home({ published: { "2026-10-11": day(), [TODAY]: day() } }))).toBeNull();
+  });
+
+  it("names exactly the day the start rules accept", () => {
+    const h = home({ published: { "2026-10-11": day() } });
+    const gate = gateDay(h)!;
+    expect(startProblem(h, gate)).toBeNull();
+    expect(startProblem(h, TODAY)).not.toBeNull();
+  });
+});
+
+describe("recent reports", () => {
+  it("are the newest three submitted days, newest first", () => {
+    const h = home({ published: { "2026-10-09": day(1), "2026-10-13": day(4), "2026-10-10": day(2), "2026-10-12": day(3) } });
+    expect(recentReports(h).map((r) => [r.day, r.report.closing_balance])).toEqual([
+      ["2026-10-13", 4],
+      ["2026-10-12", 3],
+      ["2026-10-10", 2],
+    ]);
+    expect(recentReports(home())).toEqual([]);
+  });
+});
+
+describe("the greeting", () => {
   it.each([
-    [1, "1 sec"],
-    [59, "59 secs"],
-    [60, "1 min"],
-    [3599, "59 mins"],
-    [3600, "1 hour"],
-    [86399, "23 hours"],
-    [86400, "1 day"],
-    [172800, "2 days"],
-  ])("%i seconds reads %s", (seconds, text) => {
-    expect(lastEditText(seconds)).toBe(text);
-  });
-});
-
-describe("the progress steps", () => {
-  it("marks current, completed, next and locked, and opens what Flask opened", () => {
-    const steps = stepStates({ id: "d", current_section: "expenses", completed_sections: ["opening", "sales"], last_edit_seconds: 0 });
-    expect(steps.map((s) => s.state)).toEqual(["completed", "completed", "current", "locked", "locked", "locked"]);
-    expect(steps.map((s) => s.open)).toEqual([true, true, true, false, false, false]);
-    expect(steps.map((s) => s.label)).toEqual(["Opening", "Sales", "Expenses", "Bank Deposit", "Cash Count", "Ending"]);
+    [0, "Good morning"],
+    [11, "Good morning"],
+    [12, "Good afternoon"],
+    [17, "Good afternoon"],
+    [18, "Good evening"],
+    [23, "Good evening"],
+  ])("at %i o'clock says %s", (hour, text) => {
+    expect(greetingFor(hour)).toBe(text);
   });
 
-  it("opens the first step of a draft that is still on it", () => {
-    const [first, second] = stepStates({ id: "d", current_section: "opening", completed_sections: [], last_edit_seconds: 0 });
-    expect(first).toMatchObject({ state: "current", open: true });
-    expect(second).toMatchObject({ state: "locked", open: false });
-  });
-
-  it("shows the next step after a completed one", () => {
-    const steps = stepStates({ id: "d", current_section: null, completed_sections: ["opening"], last_edit_seconds: 0 });
-    expect(steps[1]).toMatchObject({ state: "next", open: true });
+  it("uses the first word of the name, or nothing", () => {
+    expect(firstName("Olive Tan")).toBe("Olive");
+    expect(firstName("  Tess  ")).toBe("Tess");
+    expect(firstName("")).toBeNull();
+    expect(firstName(null)).toBeNull();
+    expect(firstName(undefined)).toBeNull();
   });
 });

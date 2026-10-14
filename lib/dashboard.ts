@@ -1,17 +1,15 @@
 /**
- * The Petty Cash dashboard's rules - a faithful port of Flask's `entity_dashboard_v2.html`
- * (its inline JS), as pure functions over what `GET /home` answers (Minty
- * `blueprints/petty_cash_api/routes/home.py`). The page component only draws what these say.
+ * The Petty Cash launch page's rules (Part 15.6a Action Dashboard), as pure functions over what
+ * `GET /home` answers (Minty `blueprints/petty_cash_api/routes/home.py`). The page component
+ * only draws what these say; the five stages are lib/dailyClosing.ts.
  *
- * Kept from Flask: which days are clickable, the red "missing" days, the start-date rules and
- * their wording, the "Before You Start" deposit check, the six-step progress.
+ * Kept from Flask's `entity_dashboard_v2.html` (its inline JS): the start-date rules and their
+ * wording, and the "Before You Start" deposit check.
  * Changed on purpose: "today" is always the server's (Hong Kong) date - Flask mixed the
- * browser's, UTC's and Hong Kong's - and starting a report always runs the date rules (Flask
- * skipped them after a calendar click).
+ * browser's, UTC's and Hong Kong's - and starting a report always runs the date rules.
  */
 
 import { addDays } from "@/lib/dates";
-import type { WizardStep } from "@/lib/flaskPages";
 
 export type PublishedDay = {
   id: string;
@@ -23,6 +21,8 @@ export type PublishedDay = {
 
 export type Home = {
   server_today: string;
+  /** The company's approved members (unused by the launch page). */
+  user_count: number;
   currency_code: string | null;
   latest: {
     date: string | null;
@@ -52,36 +52,6 @@ export type Home = {
 export function reportSpan(home: Home): { earliest: string; latest: string } | null {
   const days = Object.keys(home.published).sort();
   return days.length ? { earliest: days[0], latest: days[days.length - 1] } : null;
-}
-
-/** A day between the first report and today with no submitted report: red on the calendar. */
-export function isMissing(home: Home, day: string): boolean {
-  const span = reportSpan(home);
-  return !!span && span.earliest <= day && day < home.server_today && !home.published[day];
-}
-
-/**
- * Whether a calendar day does anything when tapped (Flask's `isClickable`):
- * today; a submitted day; the day after the last submitted report; and, before any report,
- * a future day or a past day on or after the onboarding floor (the earliest draft).
- */
-export function isClickable(home: Home, day: string): boolean {
-  if (day === home.server_today) return true;
-  if (home.published[day]) return true;
-  const span = reportSpan(home);
-  if (span) return day === addDays(span.latest, 1);
-  if (day > home.server_today) return true;
-  return !home.draft_date || day >= home.draft_date;
-}
-
-export type DayState = "today" | "submitted" | "missing" | "open" | "idle";
-
-/** A day's look, first match wins - Flask's order: today, submitted, missing, clickable, the rest. */
-export function dayState(home: Home, day: string): DayState {
-  if (day === home.server_today) return "today";
-  if (home.published[day]) return "submitted";
-  if (isMissing(home, day)) return "missing";
-  return isClickable(home, day) ? "open" : "idle";
 }
 
 /** Yesterday has no report although earlier days do: today's must wait. */
@@ -121,44 +91,58 @@ export function depositToConfirm(home: Home, day: string): { day: string; report
   return report && report.bank_deposit > 0 ? { day: before, report } : null;
 }
 
-/** "Current balance" for a day: its own closing balance, else the last one before it, else 0. */
-export function balanceFor(home: Home, day: string): number {
-  if (home.published[day]) return home.published[day].closing_balance;
-  const before = Object.keys(home.published)
-    .filter((d) => d < day)
-    .sort();
-  return before.length ? home.published[before[before.length - 1]].closing_balance : 0;
+/**
+ * What the launch page's one primary card is about (Part 15.6 states):
+ * - `first-use`: nothing submitted and nothing open - the first-use empty state (15.11a);
+ * - `in-progress`: an open report (the newest draft) - its day is `draft_date`, the day Flask's
+ *   own Continue used;
+ * - `done`: today is submitted;
+ * - `not-started`: today, not begun.
+ */
+export type Launch =
+  | { kind: "first-use"; day: string }
+  | { kind: "in-progress"; day: string; draft: NonNullable<Home["draft"]> }
+  | { kind: "done"; day: string }
+  | { kind: "not-started"; day: string };
+
+export function launchState(home: Home): Launch {
+  const today = home.server_today;
+  if (home.draft) return { kind: "in-progress", day: home.draft_date ?? today, draft: home.draft };
+  if (home.published[today]) return { kind: "done", day: today };
+  if (!reportSpan(home)) return { kind: "first-use", day: today };
+  return { kind: "not-started", day: today };
 }
 
-/** "5 mins" - the draft card's "Last edit … ago" (integer division, singular only for 1). */
-export function lastEditText(seconds: number): string {
-  const unit = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-  if (seconds < 60) return unit(seconds, "sec");
-  if (seconds < 3600) return unit(Math.floor(seconds / 60), "min");
-  if (seconds < 86400) return unit(Math.floor(seconds / 3600), "hour");
-  return unit(Math.floor(seconds / 86400), "day");
+/**
+ * The business-rule gate (Part 15.9e, 15.15h): yesterday has no submitted report although earlier
+ * days do, so today's closing waits. Answers the day to finish first - the day after the last
+ * submitted report, the only day `startProblem` lets a report start on - or null.
+ */
+export function gateDay(home: Home): string | null {
+  const span = reportSpan(home);
+  if (!span || !previousDayUnfinished(home)) return null;
+  const expected = addDays(span.latest, 1);
+  return expected < home.server_today ? expected : null;
 }
 
-/** The six steps of a daily report, in order, as the progress card labels them. */
-export const STEPS: { key: WizardStep; label: string }[] = [
-  { key: "opening", label: "Opening" },
-  { key: "sales", label: "Sales" },
-  { key: "expenses", label: "Expenses" },
-  { key: "deposit", label: "Bank Deposit" },
-  { key: "cash_count", label: "Cash Count" },
-  { key: "ending", label: "Ending" },
-];
+/** The newest submitted reports, newest first - the launch page's "Recent reports". */
+export function recentReports(home: Home, count = 3): { day: string; report: PublishedDay }[] {
+  return Object.keys(home.published)
+    .sort()
+    .reverse()
+    .slice(0, count)
+    .map((day) => ({ day, report: home.published[day] }));
+}
 
-export type StepState = "current" | "completed" | "next" | "locked";
+/** The home greeting's opening by the device's hour (0-23). */
+export function greetingFor(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
 
-/** Each step's state and whether it opens - Flask's `stepper.html`. */
-export function stepStates(draft: NonNullable<Home["draft"]>): { key: WizardStep; label: string; state: StepState; open: boolean }[] {
-  const done = new Set(draft.completed_sections);
-  return STEPS.map((step, i) => {
-    const previousDone = i > 0 && done.has(STEPS[i - 1].key);
-    const state: StepState =
-      step.key === draft.current_section ? "current" : done.has(step.key) ? "completed" : previousDone ? "next" : "locked";
-    const open = i === 0 ? done.has("opening") || draft.current_section === "opening" : previousDone;
-    return { ...step, state, open };
-  });
+/** The first word of a person's name, for the greeting - null when there is none. */
+export function firstName(name: string | null | undefined): string | null {
+  const first = (name ?? "").trim().split(/\s+/)[0];
+  return first || null;
 }

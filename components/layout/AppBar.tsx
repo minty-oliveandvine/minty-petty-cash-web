@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Icon } from "@minty/shared/ui";
 
 import { NavMenu, ViewerBadge } from "@/components/ui/NavMenu";
+import { useMounted } from "@/components/ui/Sidebar";
 import { sidebarHost } from "@/components/ui/sidebarHost";
 
 /**
@@ -16,11 +17,14 @@ import { sidebarHost } from "@/components/ui/sidebarHost";
  * The way back is Flask's dashboard chevron: to the company list.
  */
 export function AppBar({ companyName, title = "Petty Cash" }: { companyName: string; title?: string }) {
+  // The way back reads the cookie and the page's origin, which the server does not have: it gets
+  // its address once the browser has taken over, so the server's HTML and the first render agree.
+  const mounted = useMounted();
   return (
     <header className="border-b border-border-subtle bg-surface-card pt-[env(safe-area-inset-top,0px)]">
       <div className="mx-auto flex h-14 w-full max-w-[1920px] items-center gap-2 px-4 sm:h-15 sm:gap-3 sm:px-6 lg:px-8">
         <a
-          href={sidebarHost.links.entities()}
+          href={mounted ? sidebarHost.links.entities() : undefined}
           className="-ml-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-text-link hover:bg-state-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
           aria-label="Back to your companies"
         >

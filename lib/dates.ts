@@ -7,20 +7,6 @@
  */
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const MONTHS_LONG = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function parts(iso: string): [number, number, number] {
@@ -49,41 +35,34 @@ export function formatDay(iso: string): string {
   return `${String(d).padStart(2, "0")} ${MONTHS_SHORT[m - 1]} ${y}`;
 }
 
-/** "14 Oct 2026 Wed" - Flask's `%d %b %Y %a`. */
-export function formatDayWithWeekday(iso: string): string {
-  return `${formatDay(iso)} ${WEEKDAYS_SHORT[utc(iso).getUTCDay()]}`;
+/** "Wed 14 Oct 2026" - Part 14's D MMM YYYY (D14-12) with its weekday, as Part 15 writes a day. */
+export function formatWeekdayDay(iso: string): string {
+  return `${formatWeekdayShort(iso)} ${parts(iso)[0]}`;
 }
 
-/** "October 2026". */
-export function formatMonth(year: number, month: number): string {
-  return `${MONTHS_LONG[month]} ${year}`;
+/** "Sun 4 Oct" - a day near enough to need no year (the gate banner's "Finish Sun 4 Oct first"). */
+export function formatWeekdayShort(iso: string): string {
+  const [, m, d] = parts(iso);
+  return `${WEEKDAYS_SHORT[utc(iso).getUTCDay()]} ${d} ${MONTHS_SHORT[m - 1]}`;
 }
 
-export const WEEKDAY_HEADINGS = WEEKDAYS_SHORT;
-
-/** `{year, month}` (month 0-11) of a date. */
-export function monthOf(iso: string): { year: number; month: number } {
-  const [y, m] = parts(iso);
-  return { year: y, month: m - 1 };
-}
-
-export function shiftMonth(year: number, month: number, by: number): { year: number; month: number } {
-  const date = new Date(Date.UTC(year, month + by, 1));
-  return { year: date.getUTCFullYear(), month: date.getUTCMonth() };
+/** "6:02 pm" - a moment's time on the device's clock. */
+export function clockTime(moment: Date): string {
+  const hour = moment.getHours();
+  return `${hour % 12 || 12}:${String(moment.getMinutes()).padStart(2, "0")} ${hour < 12 ? "am" : "pm"}`;
 }
 
 /**
- * The 42 days (six weeks, Sunday first) a month's calendar shows, as `{iso, inMonth}` - the
- * Flask calendar's grid: the leading and trailing days of the neighbouring months are shown and
- * do nothing.
+ * When an open report was last saved, from GET /home's `last_edit_seconds` and the device's
+ * clock (Part 14 Saving status, "Saved 6:02 pm"): the time alone on the same day, else
+ * "Sun 4 Oct, 6:02 pm" (and the year when it differs).
  */
-export function monthGrid(year: number, month: number): { iso: string; inMonth: boolean }[] {
-  const first = new Date(Date.UTC(year, month, 1));
-  const start = new Date(first);
-  start.setUTCDate(1 - first.getUTCDay());
-  return Array.from({ length: 42 }, (_, i) => {
-    const day = new Date(start);
-    day.setUTCDate(start.getUTCDate() + i);
-    return { iso: toIso(day), inMonth: day.getUTCMonth() === month };
-  });
+export function savedText(lastEditSeconds: number, now: Date): string {
+  const saved = new Date(now.getTime() - Math.max(0, lastEditSeconds) * 1000);
+  const time = clockTime(saved);
+  const sameDay =
+    saved.getFullYear() === now.getFullYear() && saved.getMonth() === now.getMonth() && saved.getDate() === now.getDate();
+  if (sameDay) return `Saved ${time}`;
+  const day = `${WEEKDAYS_SHORT[saved.getDay()]} ${saved.getDate()} ${MONTHS_SHORT[saved.getMonth()]}`;
+  return `Saved ${day}${saved.getFullYear() === now.getFullYear() ? "" : ` ${saved.getFullYear()}`}, ${time}`;
 }

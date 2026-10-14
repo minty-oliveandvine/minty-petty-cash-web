@@ -9,6 +9,10 @@ Playwright, against a stack that is **already up** - nothing is started here:
 Every spec runs twice: the `desktop` project and the 360 px `phone` project (Petty Cash is used on a
 phone more than 95% of the time).
 
+`E2E_BASE_URL` points the specs at another dev server, e.g. a second worktree's on 3012:
+`E2E_BASE_URL=http://localhost:3012 npx playwright test e2e/02_dashboard.spec.ts`. The stubbed
+spec runs anywhere; `01_handoff` needs an origin Flask's CORS allows (3010 by default).
+
 ```
 E2E_JWT_SECRET=<Minty's SECRET_KEY>  \
 E2E_MINTY_USER=<a user id>           \
@@ -31,5 +35,5 @@ the package.
 
 | Spec | What it proves |
 |---|---|
-| `01_handoff` | Flask's hand-off lands on the company's dashboard, which reads `GET /home` from the API. A page with no token goes back to the hand-off for the company in its address. Runs against the real stack. |
-| `02_dashboard` | Every dashboard state against a **stubbed** API: the deposit check (as stated, changed with the amount limit, none, refused, blocked), a date out of sequence, a draft and its Continue, a submitted day, Setup Required that can't be dismissed, read-only access. Needs only `npm run dev`; Flask's pages are caught, not opened. |
+| `01_handoff` | Flask's hand-off lands on the company's launch page, which reads `GET /home` from the API (its Start, Continue or View report appears). A page with no token goes back to the hand-off for the company in its address. Runs against the real stack. |
+| `02_dashboard` | The launch page (Part 15.6a) against a **stubbed** API: no console error after a reload; not started (greeting, five stages, no calendar); in progress (3 of 5 done, Next, "Saved 6:02 pm" on a fixed Hong Kong clock, stage links, Continue to Flask's resume); the gate banner; done (View report); first use; recent reports and See all; Setup Required that can't be dismissed; read-only access. Start still passes through the deposit check (as stated, changed with the amount limit, none, refused, blocked). Needs only `npm run dev`; Flask's wizard, summary and history pages are caught, not opened. |

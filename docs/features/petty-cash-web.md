@@ -68,7 +68,42 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
 
+## Ported so far (`development`)
+
+`development` is a **faithful port** of Flask's Petty Cash pages: the same sections, steps, wording, rules and destinations, drawn with minty-payment-request-web's design (Part 13 tokens, `@minty/shared/ui`, its App bar). The Part 15 redesign (five-stage Daily Closing, Action Dashboard) comes afterwards, on its own branch.
+
+The port order is dashboard, then the report wizard, then history, then settings, then Xero publish. Pages not ported yet are Flask's, linked from `lib/flaskPages.ts`. The person is already signed in to Flask, because this app's token came from Flask's login-gated hand-off.
+
+### Dashboard: `/entity/<shortid>/<name>/petty-cash`
+
+This replaces Flask's `entity/entity_dashboard_v2.html`. It is built from `components/dashboard/`, with its rules in `lib/dashboard.ts` and one read, `GET /home`.
+
+It carries over:
+- **The opening states.** The "previous reports" warning banner, "Today's report is submitted", and the Report in Progress / Current balance row.
+- **The draft card.** "Pick up where you left off" with its six steps, "n/6 Complete", Continue Report and "Last edit … ago".
+- **Start New Report / View Report.**
+- **Quick Actions.** View History and Entity Settings, both Flask's pages for now.
+- **The Report Calendar.** Today, submitted, not-submitted and pickable days; the same clickable-day rules; the onboarding floor.
+- **The deposit check.** "Before You Start" (yes, changed, or none), "Deposit to Bank", and the correction through `POST /deposit-correction`.
+- **The non-dismissable "Setup Required".**
+- **Read-only access** for a superuser outside the company.
+
+What is deliberately different, as fixes rather than redesign:
+- **One "today".** It is always the server's Hong Kong date (`server_today`). Flask mixed the browser's date, UTC and Hong Kong time.
+- **The date rules always run.** Starting a report checks them every time. Flask skipped them after a calendar click.
+- **The right day is corrected.** The deposit correction targets the day shown in the dialog. Flask always posted the latest report's date, which is the same day in the normal path.
+- **Warnings stay on the page.** They show next to the button that raised them, not as a toast (Part 14: errors are never toasts). The deposit amount is checked as it is typed.
+- **Removed:**
+  - the always-hidden Xero bank-account dropdown, and the live Xero read behind it;
+  - the "1 user" count, which never counted;
+  - the heading overwrite that happened in draft mode.
+- **Phone layout of the steps.** They are two rows of three on a phone, so labels are never clipped and never under 12 px. Flask shrank them to 7.6 px.
+
+Not ported yet:
+- **The subscription notice** (Flask claims it once per Flask session).
+- **The "Congratulations!" modal** (`?success=true`), which belongs to the settings save and comes with the settings page.
+
 ## Not here yet
 
-- **The screens.** Launch page, Daily Closing, Daily Report, history and settings come on `development`, in waves (Part 15.15, 15.6a, 15.7, 15.20b).
+- **The other pages.** The report wizard, history, the report summary, settings and Xero publish are next, in that order.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

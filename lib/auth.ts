@@ -102,6 +102,22 @@ export function clearAuth() {
   document.cookie = `${ENTITY_NAME_KEY}=;${expire}`;
 }
 
+let jarAtParse: string | null = null;
+let parsed: AuthInfo | null = null;
+
+/**
+ * `getAuth()`, referentially stable while the cookies are unchanged - React compares
+ * `useSyncExternalStore` snapshots by identity, and `getAuth()` builds a fresh object per call.
+ */
+export function getAuthSnapshot(): AuthInfo | null {
+  if (typeof document === "undefined") return null;
+  if (document.cookie !== jarAtParse) {
+    jarAtParse = document.cookie;
+    parsed = getAuth();
+  }
+  return parsed;
+}
+
 /** The token's module claims - which modules the company has. Both on when unknown: never hide nav on a guess. */
 export function moduleClaims(): { pettyCash: boolean; billing: boolean } {
   const claims = decodeJwtPayload(getAuth()?.token ?? "") ?? {};

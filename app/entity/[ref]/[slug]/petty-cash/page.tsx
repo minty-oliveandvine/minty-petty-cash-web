@@ -1,10 +1,9 @@
-import { PettyCashHome } from "./PettyCashHome";
+import { Dashboard } from "@/components/dashboard/Dashboard";
 
 /**
- * A company's Petty Cash: `/entity/<shortid>/<name>/petty-cash`. The scaffold's one page - it
- * proves the hand-off, the token and the Petty Cash API end to end, and sends the person to
- * Minty's Petty Cash for the work itself until the redesigned screens land on `development`.
+ * A company's Petty Cash dashboard: `/entity/<shortid>/<name>/petty-cash` - Flask's
+ * `/entity/<id>/petty-cash`, ported exactly (components/dashboard/Dashboard.tsx).
  */
 export default function Page() {
-  return <PettyCashHome />;
+  return <Dashboard />;
 }

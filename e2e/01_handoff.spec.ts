@@ -1,22 +1,24 @@
 // The way in: Flask's hand-off lands on /landing with a token, the app stores it and goes on to the
-// company's Petty Cash, and that page reads the company through the Petty Cash API - the whole
-// chain the scaffold exists to prove. Runs on the computer and the 360px phone projects.
+// company's Petty Cash dashboard, which reads GET /home from the Petty Cash API - against the
+// real stack (local Flask). Runs on the computer and the 360px phone projects.
 
 import { expect, test } from "@playwright/test";
 
 import { credentials, enter, expectNoHorizontalScroll } from "./helpers";
 import { companyRef } from "./companyRef";
 
-test("the hand-off lands on the company's Petty Cash, which reads the company from the API", async ({ page }) => {
+test("the hand-off lands on the company's Petty Cash dashboard, read from the API", async ({ page }) => {
   const creds = credentials();
   const home = `/entity/${companyRef(creds.entityId, creds.entityName)}/petty-cash`;
 
   await enter(page, creds, home);
 
   await expect(page).toHaveURL(new RegExp(`${home}$`));
-  await expect(page.getByRole("heading", { level: 1, name: "Petty Cash" })).toBeVisible();
-  // the company's name as the API answered it, not the cookie's copy
-  await expect(page.getByText(`The new Petty Cash for ${creds.entityName} is on its way`)).toBeVisible();
+  // Flask's header: the company's initials are the page's h1
+  const initials = creds.entityName.split(/\s+/).map((w) => w[0].toUpperCase()).join("");
+  await expect(page.getByRole("heading", { level: 1, name: initials })).toBeVisible();
+  // the dashboard drew from GET /home (the calendar appears only once it answered)
+  await expect(page.getByRole("heading", { name: "Report Calendar" })).toBeVisible();
   await expectNoHorizontalScroll(page);
 });
 

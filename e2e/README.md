@@ -31,4 +31,5 @@ the package.
 
 | Spec | What it proves |
 |---|---|
-| `01_handoff` | Flask's hand-off lands on the company's Petty Cash, which reads the company from the API. A page with no token goes back to the hand-off for the company in its address. |
+| `01_handoff` | Flask's hand-off lands on the company's dashboard, which reads `GET /home` from the API. A page with no token goes back to the hand-off for the company in its address. Runs against the real stack. |
+| `02_dashboard` | Every dashboard state against a **stubbed** API, asserting Flask's look and behaviour: the header; the deposit check (as stated, changed, too high, none, refused, blocked); a date out of sequence (toast); a draft and its Continue; a submitted day; Setup Required that can't be dismissed; read-only access. Needs only `npm run dev`; Flask's pages are caught, not opened. |

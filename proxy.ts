@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { previewSetSlug } from "@minty/shared/previewSibling";
+import { previewSetSlug } from "@/lib/previewSibling";
 
 import { AUTH_COOKIE_NAME, ENTITY_ID_COOKIE_NAME, ENTITY_NAME_COOKIE_NAME, decodeJwtPayload } from "@/lib/auth";
 import { companyRefFromPath, pettyCashHome } from "@/lib/companyPages";

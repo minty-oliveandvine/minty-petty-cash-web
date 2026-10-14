@@ -46,6 +46,13 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 ## The sidebar
 
+**On `development`, `@minty/shared` is pinned at `v0.1`** (the user, 2026-10-14). That is the sidebar from before its Part 13 restyle, the menu Flask's pages show, so it matches the pixel-faithful port. The cost:
+- v0.1 has no `previewSibling`, so `lib/previewSibling.ts` is a copy of v0.3's (minty-web keeps one the same way). Change the package first, then the copy.
+- v0.1 has no Part 13 `tokens.css`, so the colours the sidebar reads (`--avatar-bg`, `--avatar-fg`, `--primary`) are declared in `app/globals.css`.
+
+`port/prw-look` pins `v0.3`.
+
+
 `@minty/shared/sidebar`, with this app's host in `components/ui/sidebarHost.ts`. That file is the only app-specific part.
 - **This app's own pages:** Dashboard, Reports and Settings.
 - **minty-web's pages, through Flask's hand-offs:** the entity list, Subscriptions and My Profile.
@@ -68,7 +75,47 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
 
+## Ported so far (`development`)
+
+`development` is a **pixel-faithful port** of Flask's Petty Cash pages (the user, 2026-10-14):
+- Flask's look, kept exactly: its phone card, colours, type, spacing, buttons, modals and toasts.
+- The same sections, steps, wording, rules and destinations.
+
+The same pages drawn in minty-payment-request-web's design are on the **`port/prw-look`** branch. The Part 15 redesign comes later, on its own branch.
+
+**How the look is kept exact.** Flask draws with Tailwind v3 (from a CDN) and hex values. This app uses Tailwind v4 and `@minty/shared`'s Part 13 tokens, where the scales differ: `rounded-lg` is 12px, the greys are oklch, and the shadows were renamed. So every value Flask uses is declared once, as `flask-*` theme tokens, in `app/styles/flask-theme.css`, and the ported pages draw only with those. No hex appears in a class, so `__tests__/no_raw_colours.test.ts` still holds. The phone card's widths are Flask's: full width, then 640, 768 and 1024 px.
+
+**Order.** Dashboard, then the report wizard, history, settings and Xero publish. Pages not ported yet are Flask's, linked from `lib/flaskPages.ts`. The person is already signed in to Flask, because this app's token came from Flask's login-gated hand-off.
+
+### Dashboard: `/entity/<shortid>/<name>/petty-cash`
+
+This is Flask's `entity/entity_dashboard_v2.html`, built from `components/dashboard/` and `components/flask/`. Its rules live in `lib/dashboard.ts`, and it makes one read, `GET /home`.
+
+The page is the same in every element:
+- Flask's header: the back chevron, the company's initials, the person's initials and the ≡. The two buttons open the shared sidebar.
+- The warning banner, "Today's report is submitted", and Report in Progress / Current balance.
+- "Pick up where you left off" with Flask's six-pill stepper. Its labels are 7.6px on a phone, as Flask draws them, which is below the workspace's 12px minimum, deliberately.
+- Start New Report / View Report.
+- Quick Actions.
+- The Report Calendar and its legend.
+- "Before You Start", "Deposit to Bank" and the non-dismissable "Setup Required".
+- The top-right toasts.
+
+Behaviour is Flask's, minus its bugs:
+- **One "today".** It is always the server's Hong Kong date. Flask mixed the browser's date, UTC and Hong Kong time.
+- **The date rules always run.** Starting a report checks them every time; Flask skipped them after a calendar click.
+- **The right day is corrected.** The deposit correction targets the day shown in the dialog.
+- **The amount field accepts small amounts.** "0.50" can be typed; Flask turned a zero into "-".
+- **Removed:**
+  - Flask's always-hidden bank and date fields, and the live Xero read behind them;
+  - the "1 user" count, which never counted;
+  - the heading overwrite that happened in draft mode.
+
+Not ported yet:
+- **The subscription notice.**
+- **The "Congratulations!" modal**, which comes with the settings page.
+
 ## Not here yet
 
-- **The screens.** Launch page, Daily Closing, Daily Report, history and settings come on `development`, in waves (Part 15.15, 15.6a, 15.7, 15.20b).
+- **The other pages.** The report wizard, history, the report summary, settings and Xero publish are next, in that order.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

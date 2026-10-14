@@ -1,0 +1,94 @@
+/* Flask's Petty Cash look, exactly (the user, 2026-10-14: development is a pixel-faithful port of
+   Minty's Jinja pages; the payments-app look lives on the port/prw-look branch).
+
+   Flask draws with Tailwind v3 from the CDN plus hex values in its templates. This app runs
+   Tailwind v4 with @minty/shared's Part 13 tokens, where the scales differ: rounded-lg is 12px
+   there (8px in v3), v4's grey is oklch, v4 renamed the shadows. So every value Flask uses is
+   declared here ONCE, under `flask-*`, and the ported pages draw only with these - never with a
+   raw hex in a class (__tests__/no_raw_colours.test.ts still holds). Values: Tailwind v3.4's
+   defaults and the hexes in templates/entity/entity_dashboard_v2.html. */
+
+@theme {
+  /* Tailwind v3 grey + red-500 (Flask's gray-*, red-500) */
+  --color-flask-gray-50: #f9fafb;
+  --color-flask-gray-100: #f3f4f6;
+  --color-flask-gray-200: #e5e7eb;
+  --color-flask-gray-300: #d1d5db;
+  --color-flask-gray-400: #9ca3af;
+  --color-flask-gray-500: #6b7280;
+  --color-flask-gray-600: #4b5563;
+  --color-flask-gray-700: #374151;
+  --color-flask-gray-900: #111827;
+  --color-flask-red-500: #ef4444;
+  --color-flask-black: #000000;
+  --color-flask-white: #ffffff;
+  --color-flask-ink: #171717;
+
+  /* the brand and its states */
+  --color-flask-teal: #54d3da;
+  --color-flask-teal-soft: #caf1f4;
+  --color-flask-teal-ink: #269aa1;
+  --color-flask-green: #00c896;
+  --color-flask-green-ink: #16a34a;
+  --color-flask-red: #ff6b6b;
+  --color-flask-red-soft: #fff0f0;
+  --color-flask-submitted: #ebeef2;
+  --color-flask-header: #474747;
+  --color-flask-menu: #656565;
+  --color-flask-avatar-bg: #ffe6b1;
+  --color-flask-avatar-ink: #6b3a12;
+
+  /* notes and warnings */
+  --color-flask-amber-bg: #fff3d4;
+  --color-flask-amber: #fbbf24;
+  --color-flask-amber-edge: #fea81d;
+  --color-flask-amber-ink: #92400e;
+  --color-flask-danger-bg: #fef2f2;
+  --color-flask-danger-edge: #fee2e2;
+  --color-flask-danger: #ef4444;
+  --color-flask-danger-ink: #b91c1c;
+  --color-flask-success-bg: #f0fdf4;
+  --color-flask-success-ink: #166534;
+
+  /* Quick Actions icons */
+  --color-flask-purple-bg: #f3e8ff;
+  --color-flask-purple: #9333ea;
+  --color-flask-orange-bg: #ffedd5;
+  --color-flask-orange: #ea580c;
+
+  /* Tailwind v3 radii and shadows */
+  --radius-flask: 0.25rem;
+  --radius-flask-md: 0.375rem;
+  --radius-flask-lg: 0.5rem;
+  --radius-flask-xl: 0.75rem;
+  --radius-flask-2xl: 1rem;
+  --shadow-flask-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-flask: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-flask-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-flask-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-flask-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* The phone card's width (Flask's .main-container media queries): full width on a phone, then
+   640, 768 and 1024 px, centred. */
+.flask-main-container {
+  width: 100%;
+}
+@media (min-width: 640px) and (max-width: 1024px) {
+  .flask-main-container {
+    width: 640px;
+    margin: 0 auto;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1200px) {
+  .flask-main-container {
+    width: 768px;
+    margin: 0 auto;
+  }
+}
+@media (min-width: 1200px) {
+  .flask-main-container {
+    width: 1024px;
+    margin: 0 auto;
+  }
+}

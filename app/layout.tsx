@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 
+import { ToastProvider } from "@/components/flask/Toasts";
 import { SidebarProvider } from "@/components/ui/Sidebar";
 
 import "./globals.css";
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
       <body className="m-0 min-w-0 overflow-x-clip antialiased">
-        <SidebarProvider>{children}</SidebarProvider>
+        <ToastProvider>
+          <SidebarProvider>{children}</SidebarProvider>
+        </ToastProvider>
       </body>
     </html>
   );

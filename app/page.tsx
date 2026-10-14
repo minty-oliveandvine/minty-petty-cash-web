@@ -6,7 +6,7 @@
 export default function Root() {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4">
-      <p className="text-body-m text-text-secondary">Open Petty Cash from your company in Minty.</p>
+      <p className="text-sm text-flask-gray-500">Open Petty Cash from your company in Minty.</p>
     </main>
   );
 }

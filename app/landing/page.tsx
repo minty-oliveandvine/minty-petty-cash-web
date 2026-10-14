@@ -33,7 +33,7 @@ function LandingContent() {
 
   return (
     <main className="flex min-h-dvh items-center justify-center">
-      <p className="text-body-m text-text-secondary" role="status">
+      <p className="text-sm text-flask-gray-500" role="status">
         Loading…
       </p>
     </main>

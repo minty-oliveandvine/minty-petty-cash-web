@@ -11,14 +11,15 @@
 import { usePathname } from "next/navigation";
 
 import { guardLeave } from "@minty/shared/leaveGuard";
-import { siblingUrl } from "@minty/shared/previewSibling";
 import { setSidebarHost, type SidebarHost, type Viewer } from "@minty/shared/sidebar";
 
 import { mintyFetch } from "@/lib/apiClient";
 import { clearAuth, getAuth, moduleClaims } from "@/lib/auth";
 import { pettyCashHome } from "@/lib/companyPages";
 import { env } from "@/lib/env";
+import { historyUrl, settingsUrl } from "@/lib/flaskPages";
 import { leaveTo, withReturnOrigin } from "@/lib/handoff";
+import { siblingUrl } from "@/lib/previewSibling";
 
 /** This app's settings page: `/entity/<shortid>/<name>/petty-cash/settings`. */
 const SETTINGS_PAGE = /^\/entity\/[^/]+\/[^/]+\/petty-cash\/settings\/?$/;
@@ -47,7 +48,8 @@ export const sidebarHost: SidebarHost = {
   moduleAccess: () => moduleClaims(),
 
   /**
-   * Petty Cash is this app's own pages. The entity list, Subscriptions and My Profile are
+   * Petty Cash's dashboard is this app's own page; Reports and Settings are still Flask's
+   * (lib/flaskPages.ts) until they are ported. The entity list, Subscriptions and My Profile are
    * minty-web's, reached through Flask's hand-offs; Bills is the payments app, through Flask's
    * `/entity/<id>/payment-request` (which hands over with that app's own token).
    */
@@ -55,14 +57,14 @@ export const sidebarHost: SidebarHost = {
     entities: () => hub("/entities"),
     subscriptions: () => hub("/subscription"),
     pettyCashDashboard: () => home(),
-    pettyCashReports: () => `${home()}/reports`,
+    pettyCashReports: (id) => historyUrl(id || getAuth()?.entityId || ""),
     bills: () => {
       const id = getAuth()?.entityId;
       if (id) return accounts(`/entity/${encodeURIComponent(id)}/payment-request`);
       // In a branch preview set, the same set's payments app.
       return `${siblingUrl(env.PAYMENT_REQUEST_WEB_URL, "payment-request", typeof window === "undefined" ? null : window.location.host)}/`;
     },
-    settings: () => `${home()}/settings`,
+    settings: () => settingsUrl(getAuth()?.entityId ?? ""),
     profile: () => {
       const id = getAuth()?.entityId;
       return accounts(id ? `/profile?${new URLSearchParams({ entity_id: id }).toString()}` : "/profile");

@@ -1,0 +1,20 @@
+# Types, lint, the unit tests and a production build. The workflow body is shared:
+# minty-oliveandvine/.github -> .github/workflows/next-web.yml
+#
+# Browser tests (npm run test:e2e) need Flask and run locally for now (e2e/README.md).
+name: ci
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+
+jobs:
+  check:
+    uses: minty-oliveandvine/.github/.github/workflows/next-web.yml@v1
+    with:
+      build-env: |
+        ACCOUNTS_API_URL=http://localhost:8000
+        PETTY_CASH_API_URL=http://localhost:8010
+        SUBSCRIPTION_API_URL=http://localhost:8001
+        PAYMENT_REQUEST_WEB_URL=http://localhost:3020

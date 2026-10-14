@@ -1,0 +1,38 @@
+@import "tailwindcss";
+/* The faces, shared: @minty/shared/theme.css (--font-sans, --font-brand). Plain CSS resolved by
+   the bundler, like the icon font below - misspell it and the build fails.
+   NOTE this app loads no Plus Jakarta Sans (it draws no lockup as text - its mark is an image),
+   so --font-brand falls through to Inter here. Adding a text lockup means adding the next/font
+   call in app/layout.tsx too, not just a class. */
+@import "@minty/shared/theme.css";
+/* The Part 13 design tokens (Minty/docs/design/part-13-visual-design-system.md): semantic colour
+   roles, the radius scale, type styles, elevation. Screens bind to these and nothing else
+   (__tests__/no_raw_colours.test.ts). */
+@import "@minty/shared/tokens.css";
+/* Part 13 D-20: Material Symbols ROUNDED. */
+@import "material-symbols/rounded.css";
+/* Tailwind v4 NEVER scans node_modules, so without this every utility class inside a packaged
+   component (the sidebar, the primitives) is dropped from the generated CSS - unstyled, with no
+   error anywhere. Relative to this file, not the package name: Tailwind reads it as a path.
+   Guarded by app/__tests__/packagedStyles.test.ts - do not delete either. */
+@source "../node_modules/@minty/shared/src";
+
+/* No prefers-color-scheme block: Light is the theme at launch (Part 13 D-24). The dark values
+   live in @minty/shared/tokens.css under [data-theme="dark"], and nothing switches them on yet. */
+
+html {
+  background: var(--color-surface-page);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-surface-page);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-optical-sizing: auto;
+}

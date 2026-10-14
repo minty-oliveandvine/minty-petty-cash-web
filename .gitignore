@@ -1,0 +1,49 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+# ...but do commit example env files so new devs have safe local defaults.
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Next 16.3+ writes these when it detects an AI agent's environment; the workspace keeps one
+# CLAUDE.md at C:\Github's root instead.
+AGENTS.md
+CLAUDE.md
+
+# Claude Code per-checkout scratch (settings.local.json holds one machine's permission rules)
+.claude/

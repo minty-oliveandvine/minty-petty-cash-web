@@ -95,7 +95,19 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock }: Enter 
       },
     }),
   );
-  // Flask's wizard, summary and history pages: caught, so the spec can read where the app went.
+  // This app's own Daily Report (e2e/08_daily_report.spec.ts covers it): a quiet stub too.
+  await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/reports\/r-[^/?]+$/, (route) =>
+    route.fulfill({
+      json: {
+        report_id: "r", transaction_date: "2026-10-13", currency_code: "HKD", company_name: NAME, status: "submitted", status_label: "Submitted", status_tone: "info",
+        is_latest: true, submitted_at: null, submitted_by: null, published_at: null, publishing_status: "unpublished", xero_integrated: false, was_published: false,
+        kpis: { total_sales: 0, total_expenses: 0, cash_position: 0 }, sales: { methods: [], cash: 0, total: 0 }, expenses: { lines: [], total: 0 },
+        cash: { opening_balance: 0, cash_addition: 0, cash_addition_type: null, cash_sales: 0, expenses: 0, bank_deposit: 0, expected: 0, counted: 0, safe_box: 0, difference: { amount: 0, kind: "none", reason: "" } },
+        closing_balance: 0, permissions: { edit: false, delete: false, publish: false, share: false },
+      },
+    }),
+  );
+  // Flask's wizard and history pages: caught, so the spec can read where the app went.
   await page.route(/\/entity\/[^/]+\/petty-cash\/reports(?:[/?]|$)/, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );
@@ -295,8 +307,10 @@ test("done: today's report is submitted, and View report opens it", async ({ pag
   await expect(c).toContainText("Today's report is submitted");
   await expect(c).toContainText("5 of 5 done");
   await expect(page.getByRole("button", { name: /Start|Continue/ })).toHaveCount(0);
-  await c.getByRole("button", { name: "View report" }).click();
-  await expect(page).toHaveURL(/\/petty-cash\/reports\/summary\?transaction_date=2026-10-14/);
+  // today's Daily Report, this app's own (by the report's id)
+  await c.getByRole("link", { name: "View report" }).click();
+  await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports/r-1320/summary$`));
+  await expect(page.getByRole("heading", { level: 1, name: "Daily Report" })).toBeVisible();
 });
 
 test("first use: Minty's empty state starts the first Daily Closing", async ({ page }) => {
@@ -325,7 +339,8 @@ test("recent reports: the newest three, Submitted, each opening its report, and 
   await expect(recent).not.toContainText("10 Oct");
   await expect(recent.getByRole("link", { name: "See all" })).toHaveAttribute("href", /\/petty-cash\/reports$/);
   await rows.nth(1).getByRole("link").click();
-  await expect(page).toHaveURL(/\/petty-cash\/reports\/summary\?transaction_date=2026-10-12/);
+  await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports/r-1000/summary$`));
+  await expect(page.getByRole("heading", { level: 1, name: "Daily Report" })).toBeVisible();
   await page.goBack();
   await page.getByRole("link", { name: "See all" }).click();
   await expect(page).toHaveURL(/\/petty-cash\/reports$/);

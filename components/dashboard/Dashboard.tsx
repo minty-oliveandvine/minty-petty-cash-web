@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button, buttonClass, EmptyState, Icon, InlineAlert, PageBanner, Skeleton, StatusPill } from "@minty/shared/ui";
@@ -32,12 +33,12 @@ import {
   type Launch,
 } from "@/lib/dashboard";
 import { formatWeekdayDay, formatWeekdayShort, savedText } from "@/lib/dates";
-import { historyUrl, reportSummaryUrl, resumeUrl, settingsUrl } from "@/lib/flaskPages";
+import { historyUrl, resumeUrl, settingsUrl } from "@/lib/flaskPages";
 import { takeFlash, type FlashKind } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
 import { formatMoney } from "@/lib/money";
 import { takeStartRequest } from "@/lib/outcome";
-import { isPorted, stepHref } from "@/lib/wizardPages";
+import { isPorted, reportHref, stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const READ_ONLY = "Read-only access";
@@ -55,7 +56,8 @@ const FLASH_TONE = { error: "danger", warning: "warning", success: "success", in
  * (today's Daily Closing over its five stages, Part 15.15), the business-rule gate when an earlier
  * day is unfinished, and the recent reports. No calendar, no Quick Actions, no KPIs (15.6).
  * Its rules live in lib/dashboard.ts and lib/dailyClosing.ts; what it reads is `GET /home`. The
- * wizard, history and report pages it opens are still Flask's (lib/flaskPages.ts).
+ * stages and the Daily Report it opens are this app's; history and settings are still Flask's
+ * (lib/flaskPages.ts).
  */
 export function Dashboard() {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -241,7 +243,7 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
               </PageBanner>
             ) : null}
           </div>
-          <RecentReports home={home} entityId={entityId} />
+          <RecentReports home={home} entityId={entityId} entityName={entityName} />
         </div>
       )}
 
@@ -350,9 +352,10 @@ function ClosingCard({
   const reason = readOnly ? READ_ONLY : blockedBy ? `Finish ${formatWeekdayShort(blockedBy)} first.` : null;
   const action =
     launch.kind === "done" ? (
-      <Button kind="primary" className="w-full sm:w-auto" onClick={() => leaveTo(reportSummaryUrl(entityId, launch.day))}>
+      // The day's Daily Report, this app's own (15.7).
+      <Link href={reportHref(entityId, entityName, launch.reportId)} className={`${buttonClass("primary")} w-full sm:w-auto`}>
         View report
-      </Button>
+      </Link>
     ) : launch.kind === "in-progress" ? (
       <Button kind="primary" className="w-full sm:w-auto" disabled={readOnly} onClick={() => leaveTo(resumeHref(launch.draft, launch.day))}>
         Continue Daily Closing
@@ -403,8 +406,8 @@ function ClosingCard({
   );
 }
 
-/** "Recent reports": the newest 2-3 submitted days as Record rows, and the way to all of them. */
-function RecentReports({ home, entityId }: { home: Home; entityId: string }) {
+/** "Recent reports": the newest 2-3 submitted days as Record rows, each opening its Daily Report, and the way to all of them. */
+function RecentReports({ home, entityId, entityName }: { home: Home; entityId: string; entityName: string }) {
   const rows = recentReports(home);
   return (
     <section aria-labelledby="recent-title" className="flex min-w-0 flex-col gap-3">
@@ -420,8 +423,8 @@ function RecentReports({ home, entityId }: { home: Home; entityId: string }) {
         <ul className="flex flex-col gap-2">
           {rows.map(({ day, report }) => (
             <li key={day}>
-              <a
-                href={reportSummaryUrl(entityId, day)}
+              <Link
+                href={reportHref(entityId, entityName, report.id)}
                 className="flex min-h-11 min-w-0 items-center gap-3 rounded-lg border border-border-subtle bg-surface-card p-3 hover:bg-state-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
               >
                 <span className="min-w-0 flex-1">
@@ -434,7 +437,7 @@ function RecentReports({ home, entityId }: { home: Home; entityId: string }) {
                   </span>
                   <StatusPill label="Submitted" tone="info" />
                 </span>
-              </a>
+              </Link>
             </li>
           ))}
         </ul>

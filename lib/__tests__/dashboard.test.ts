@@ -107,8 +107,8 @@ describe("the launch card's state", () => {
     expect(launchState(home({ draft: DRAFT, draft_date: null }))).toMatchObject({ kind: "in-progress", day: TODAY });
   });
 
-  it("is done when today is submitted - the server's today, not the device's", () => {
-    expect(launchState(home({ published: { [TODAY]: day() } }))).toEqual({ kind: "done", day: TODAY });
+  it("is done when today is submitted - the server's today, not the device's - with its report to open", () => {
+    expect(launchState(home({ published: { [TODAY]: day() } }))).toEqual({ kind: "done", day: TODAY, reportId: "r" });
   });
 
   it("is not started otherwise", () => {

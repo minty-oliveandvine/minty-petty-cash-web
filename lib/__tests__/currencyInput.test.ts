@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
-import { isPorted, outcomeHref, stepHref } from "@/lib/wizardPages";
+import { isPorted, outcomeHref, reportHref, stepHref } from "@/lib/wizardPages";
 
 describe("money inputs (Flask's currency.js)", () => {
   it.each([
@@ -60,6 +60,13 @@ describe("step addresses", () => {
       "/entity/360812e1/olive-and-vine/petty-cash/reports/5d6e7f80-0000-4000-8000-000000000001/submitted",
     );
     expect(outcomeHref(ID, "Olive & Vine", "a/b")).toBe("/entity/360812e1/olive-and-vine/petty-cash/reports/a%2Fb/submitted");
+  });
+
+  it("open a report's Daily Report at Flask's id address for its summary", () => {
+    expect(reportHref(ID, "Olive & Vine", "5d6e7f80-0000-4000-8000-000000000001")).toBe(
+      "/entity/360812e1/olive-and-vine/petty-cash/reports/5d6e7f80-0000-4000-8000-000000000001/summary",
+    );
+    expect(reportHref(ID, "Olive & Vine", "a/b")).toBe("/entity/360812e1/olive-and-vine/petty-cash/reports/a%2Fb/summary");
   });
 
   it("know which steps are this app's own - and that a key that is no step is not", () => {

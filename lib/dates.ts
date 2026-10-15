@@ -52,6 +52,12 @@ export function clockTime(moment: Date): string {
   return `${hour % 12 || 12}:${String(moment.getMinutes()).padStart(2, "0")} ${hour < 12 ? "am" : "pm"}`;
 }
 
+/** "Tue 13 Oct 2026, 6:12 pm" - a moment (an audit fact) on the device's clock, in full. */
+export function momentText(moment: Date): string {
+  const day = `${WEEKDAYS_SHORT[moment.getDay()]} ${moment.getDate()} ${MONTHS_SHORT[moment.getMonth()]} ${moment.getFullYear()}`;
+  return `${day}, ${clockTime(moment)}`;
+}
+
 /**
  * When an open report was last saved, from GET /home's `last_edit_seconds` and the device's
  * clock (Part 14 Saving status, "Saved 6:02 pm"): the time alone on the same day, else

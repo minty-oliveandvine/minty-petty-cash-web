@@ -63,7 +63,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the Daily Report's facts and warnings, the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -116,7 +116,7 @@ The page, top to bottom (`components/dashboard/Dashboard.tsx`):
 2. **The greeting** (P15-01): "Good evening, Olive · Wed 14 Oct 2026" with a small Minty. Not a heading. The first name is the first word of `useViewer()`'s name, the time of day is the device's clock, the date is `server_today`. No name, no greeting. On first use the empty state carries Minty, so the greeting goes without.
 3. **One primary work card.** "Today's Daily Closing", or "Daily Closing · Tue 13 Oct" when the open report is an earlier day's. It holds the Step progress, "3 of 5 done · Next: Cash Count", "Saved 6:02 pm" and one action.
 4. **The business-rule gate** (15.9e): a warning Page banner, "Finish Tue 13 Oct first", with "Start Daily Closing for Tue 13 Oct". The banner has no action when the open report is already that day's (the card's Continue is the action), and none for read-only access.
-5. **"Recent reports"**: the newest three submitted days as Record rows (the day, "Closing balance", the amount as plain text, a Submitted pill in Info), each opening Flask's report summary, plus "See all" to Flask's history.
+5. **"Recent reports"**: the newest three submitted days as Record rows (the day, "Closing balance", the amount as plain text, a Submitted pill in Info), each opening the day's report - Flask's report summary in Wave 1, this app's Daily Report since Wave 2f - plus "See all" to Flask's history.
 
 Layout (15.6 Responsive, with this app's Tailwind breakpoints): one column on a phone; at most 640 wide on a tablet; from `lg` (1024) the card and the recent reports sit side by side (2:1), centred, at most 1200.
 
@@ -126,7 +126,7 @@ The states (`launchState` and `gateDay`, `lib/dashboard.ts`):
 |---|---|---|
 | First use | nothing submitted and no open report | 15.11a empty state with Minty, "Your first Daily Closing", **Start today's Daily Closing** |
 | In progress | an open report (the newest draft; its day is `draft_date`, as Flask's Continue used it) | its stages, **Continue Daily Closing** to this app's own stage the report is on (every stage since Wave 2e; Flask's resume only for a section this app does not know) |
-| Done | `published[server_today]` exists | all five done, "Today's report is submitted", **View report** to Flask's summary |
+| Done | `published[server_today]` exists | all five done, "Today's report is submitted", **View report** to the day's report (this app's Daily Report since Wave 2f, by `published[server_today].id`) |
 | Not started | otherwise | five stages ahead, **Start today's Daily Closing** |
 | Gate | yesterday has no submitted report although earlier days do | the Start is disabled with "Finish Tue 13 Oct first." beside it, and the banner starts that day |
 | Loading | until `/home` answers | a skeleton card |
@@ -351,7 +351,7 @@ The rules:
 
 **The outcome page** (`components/closing/ReportOutcome.tsx`, rules in `lib/outcome.ts`): a Part 14 Outcome state (Kind = Completion), a centred 440 column. Minty (decorative), the outcome sentence as the h1 - "Today's report is submitted" when the report is the server's today, else "The report is submitted" - which takes the focus (15.12); "Tue 13 Oct 2026 · E2E Petty Cash Shop"; three facts from the server: **Cash counted** (drawer + safebox), **Difference** ("HKD20.00 short · note added", "HKD0.01 over", "None"), **Sent to Xero** ("Yes · 6:12 pm" on the device's clock, "Pending", "Not yet: it failed", "Not yet"). While Xero is working on it, an Info inline alert says so (15.12 partial success). Then **View report** (Primary, full width) and, centred under it, **Back to home** and **Start the next day**. A report that is not submitted (a reopened draft) says "This report isn't submitted yet" with **Go to Close**. An id the API doesn't know (another company's, or none) shows the API's sentence and Back to home.
 
-- **View report** is Flask's report summary for the day (`reportSummaryUrl`) until the Daily Report (15.7) is built here.
+- **View report** opens the report's Daily Report, this app's own since Wave 2f (`reportHref`; it was Flask's report summary for the day).
 - **Start the next day** goes to the **launch page**, which starts `next_day` itself (`requestStart` / `takeStartRequest`, Flask's `autoStartNextDay`): the same rules as its Start button - the date rules, **Before You Start** when the submitted day banked cash, the deposit correction - then Addition to Drawer. It starts only when that day is the one the launch page would start (today with nothing open, or the gate's day), not for read-only access and not under Setup Required; otherwise the page just opens. It is offered only for an earlier day's report: today's next day is tomorrow, which no rule lets start.
 
 Addresses: `ending` is a ported step (`lib/wizardPages.ts`'s `PORTED`, to `reports/new/ending`), and `outcomeHref` is the outcome page. So Cash Count's Save & Next, the launch page's Continue on a report in `ending`, and its Close step link open Close in the app.
@@ -367,13 +367,59 @@ Wave 1 and 2a-2d files touched for this wave:
 Against Flask's pages, deliberately: Close's alerts are a gate with one action (the drawer below zero) and a section issue (the difference), with Submit disabled and its reason beside it - Flask only disabled Submit for the drawer; any rule the API reports now gates on arrival, not only after a refused submit; "Receipts" counts entries with a receipt, not receipt files (the same with the API's one-receipt rule); Close's Save & Exit is a link, as Flask's was.
 
 Known gaps of Wave 2e:
-- **Publish to Xero is left out** of the outcome page (the Xero API is not ported to the Petty Cash API). View report opens Flask's report page, which still publishes, with its confirmation. Part 15.12e names only View report and Back to home.
+- **Publish to Xero is left out** of the outcome page (the Xero API is not ported to the Petty Cash API). The Daily Report (Wave 2f) links to Flask's page for it. Part 15.12e names only View report and Back to home.
 - **No polling while Xero publishes**: "Pending" and the Info line stay until the page is reloaded (Flask's page polled its own publishing-status endpoint).
 - **Minty is the 2D cat** (`/cat-hole.png`), not the 3D happy pose 15.12e asks for, as everywhere.
 - **The no-draft sentence is the API's** ("...let's start with the opening entry."), as Waves 2b-2d.
 - **The gate's sentence is the API's** for every rule but the drawer below zero, and the API's below-zero sentence ("Hmm, it looks like your cash balance is negative...") is what a refused submit shows if the figures change between the read and the submit.
 
+### Wave 2f: the Daily Report (Part 15.7 / 15.15f)
+
+`/entity/<shortid>/<name>/petty-cash/reports/<report id>/summary` replaces Flask's report summary on this branch, at Flask's id address for it. It reads and acts through the Petty Cash API's report routes (Minty `petty_cash_api/routes/report.py`), unchanged: `GET /reports/<id>`, `POST /reports/<id>/reopen`, `DELETE /reports/<id>` and `POST /reports/<id>/share-link`; receipts through Expenses' `GET /expense-lines/<id>/receipts/<receipt id>`. Its order is Flask's redesigned Jinja page's (`report/ending.html`).
+
+The page, top to bottom (`components/closing/DailyReport.tsx`, rules in `lib/report.ts`, a centred 720 column - 15.D: reports are read, not compared):
+1. **The Report header** (15.1 Report): "‹ Petty Cash" back to the launch page; "Daily Report" (the h1) with the API's Status pill (`status_label` / `status_tone`: Submitted and Publishing to Xero are Info, Published to Xero Success, Publish failed Danger, Draft Neutral; a tone outside Part 13's five is logged as an error and drawn Neutral); the day; then the actions, each only while `permissions.*` says so (15.1: hidden, not disabled): **Share** (Secondary), **Publish to Xero** (Primary, while the report is not in Xero) and **More** (Part 14 Menu: "Publish to Xero again" once it is in Xero, **Edit report**, then **Delete report** last in Danger - D15-14). `[Share] [Publish to Xero] [More]` at the right from 768; on a phone the Primary is first and full width, Share and More share the row under it, and More opens as a bottom sheet.
+2. **Three KPIs** (15.7: exactly these): Total sales, Total expenses ("2 expenses"), Cash position ("Counted, with the safe box") - stacked on a phone, in a row from 640; amounts wrap before they are ever clipped.
+3. **The difference as a fact** (15.7; any cent counts): a Warning inline alert, "Cash was HKD20.00 short" / "Note: Change given twice" (or "No reason was given.").
+4. **The breakdowns**, collapsed native disclosures: **Sales by method** (the Sales stage's methods in Settings order, Deliveroo left out, Cash, Total sales), **Expenses (n)** (Record rows: the account, the amount, "ParknShop · Account 429", the description; Total expenses), **Receipts (n)** (a File card per receipt, "General Expenses · HKD120.50", opening it **full screen** in the app's one viewer, `ReceiptViewer.tsx` - never a new tab), **Cash** (starting cash, added, where it came from, cash sales, expenses, deposit, expected, counted, safe box, the difference in words).
+5. **Closing balance**, the server's figure on a sunk surface.
+6. **The audit facts** (Part 14 Audit meta, on the device's clock): "Submitted by Olive Tan · Tue 13 Oct 2026, 6:12 pm", then "Sent to Xero · Tue 13 Oct 2026, 6:15 pm", "Publishing to Xero", "Xero publish failed" or "Not in Xero yet".
+
+Every figure is the API's; nothing is added up in the browser. Amounts are plain text, never coloured.
+
+The actions:
+- **Edit report** asks first, as Flask's page does (a Part 14 Confirmation modal, Cancel focused): "Edit this report?" / "It goes back to a draft so every stage can be changed, then you submit it again." A report that has been to Xero (`was_published`) adds a Warning: "It is already in Xero" / "Publishing it again adds new entries in Xero. The ones there now are not removed: void them in Xero by hand." **Edit report** sends `POST reopen` once (a ref guards it) and opens the first stage, Addition to Drawer, for the day (`openStep`, a client-side move).
+- **Delete report** is a Destructive Confirmation modal: "Delete this report?" / "**The Daily Report for Tue 13 Oct 2026 is deleted with its expenses and receipts.** This can't be undone.", Cancel focused, **Delete report** in Danger. **The owner's rule (2026-10-15):** a report that has been to Xero MAY be deleted, but the modal warns first: "It is in Xero" / "Deleting it here does not remove its entries in Xero, and publishing this day again adds a second copy. To change the report, use Edit report instead." After `DELETE`, the launch page opens **in place of** the report (`router.replace`) and says "The Daily Report for Tue 13 Oct 2026 is deleted." as a Success Page banner, read once (`lib/flash.ts`).
+- **Share** (Flask's "Share this report"): a modal - "Anyone with the link can read the Daily Report for Tue 13 Oct 2026, without signing in, until it expires." - makes the link with `POST share-link` and shows it read-only; **Copy link** copies it, closes the modal and confirms with a **toast**, "The link to the Daily Report for Tue 13 Oct 2026 is copied." (`components/ui/Toast.tsx`, minty-payment-request-web's Part 14 look: one raised card, "Success", bottom-left on a computer and bottom-centre on a phone, 5 s, paused on hover or focus - the branch's first toast). A copy the browser refuses says so (Warning) and leaves the link to copy by hand.
+- **Publish to Xero is not ported.** While `permissions.publish` is true the page links, full page, to Flask's page for it - its outcome page, `/entity/<id>/petty-cash/reports/<report id>/submitted`, through `ACCOUNTS_API_URL` (`publishUrl`, `lib/flaskPages.ts`) - which publishes with its own confirmation and polls the status.
+
+Refusals are the API's sentence as an inline alert where the action was taken - never a false success and never a toast. A refused reopen or delete (400 not the latest, 403, 409 while Xero is publishing, 409 already a draft) shows inside its modal, which stays open with its action back; a refused share link (409 for a draft) inside the Share modal, with Copy link disabled. An id the API doesn't know (404, another company's included) shows the sentence and **Back to home**, as the outcome page does. **A reopened report** (still a draft) shows its Draft pill and an Info Page banner, "This report isn't submitted yet" / "Check the day in Close, then submit it." with **Go to Close**, and no actions (Flask's page offered only Continue).
+
+The ways in, now this app's (`reportHref`, `lib/wizardPages.ts`; `reportSummaryUrl` is gone): the outcome page's **View report**, the launch page's **Recent reports** rows (by `published[day].id`), and its Done state's **View report** (`launchState` now carries `reportId`) - all client-side.
+
+Wave 1 and 2a-2e files touched for this wave:
+- `components/closing/ReportOutcome.tsx`, `components/dashboard/Dashboard.tsx`: View report and the Recent reports rows open this page (`Link`); comments.
+- `lib/dashboard.ts`: the Done state carries the report's id. `lib/close.ts`: `salesRows` takes any `{sales: {methods}}` (Close's and the Daily Report's). `lib/dates.ts`: `momentText`. `lib/flaskPages.ts`: `publishUrl` in place of `reportSummaryUrl`. `lib/wizardPages.ts`: `reportHref`.
+- `app/.../reports/[reportId]/submitted/page.tsx`: the id is read by `reportIdFromSegment` (`lib/report.ts`), shared with this page.
+- New in `components/ui/`: `MoreMenu.tsx` (Part 14 Menu) and `Toast.tsx` (Part 14 Toast) - `@minty/shared/ui` has neither yet.
+- `e2e/02_dashboard.spec.ts`, `e2e/07_close.spec.ts`: View report and Recent reports land on this page. `lib/__tests__/dashboard.test.ts`, `lib/__tests__/currencyInput.test.ts`, `lib/__tests__/dates.test.ts`: the Done state's id, the page's address, `momentText`.
+
+Against Flask's page, deliberately: the back link is the launch page ("Petty Cash"), not history (history is still Flask's); Publish to Xero is on the report (Flask's redesign keeps it on the outcome page only); Share confirms with a toast instead of a line inside the modal; Delete lands on the launch page with a banner; a draft shows its figures with the way back to Close.
+
+Not yet (no API):
+- **Per-field edits on a submitted report**: the difference reason, the withdrawal (where the cash came from), an expense line's supplier, account or receipt (Flask's "Edit details" on an earlier report). Only Edit report (back to a draft, latest report only) exists.
+- **Download PDF** (15.7's header names it) and **revoking a share link** (15.7: "read-only and revocable").
+- **The shared (public) variant**: a share link still opens Flask's page.
+- **"Edited after submission"** (15.7's Info banner "Edited by … · see history"): the read carries no edit history.
+- **Charts** (15.7: optional) with their table alternative.
+
+Known gaps of Wave 2f:
+- **No polling while Xero publishes**: "Publishing to Xero" stays until the page is reloaded, as on the outcome page.
+- **The audit facts are on the device's clock**, as the outcome page's "Sent to Xero" time.
+- **The toast and the More menu live in this app** until `@minty/shared/ui` has them.
+- **Recent reports still say Submitted** for a day already in Xero (`published[day].xero_integrated` is not read there yet); the Daily Report itself says Published to Xero.
+
 ## Not here yet
 
-- **The other pages.** History, the report summary (the Daily Report, 15.7), settings and Xero publish are next, in that order; the Daily Closing's five stages and its outcome page are this app's since Wave 2e.
+- **The other pages.** History, settings and Xero publish are next, in that order; the Daily Closing's five stages and its outcome page are this app's since Wave 2e, the Daily Report since Wave 2f.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

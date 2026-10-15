@@ -74,8 +74,11 @@ export function differenceOf(amount: number): Difference {
   return amount < 0 ? { amount: -cents / 100, kind: "short" } : { amount: cents / 100, kind: "over" };
 }
 
-/** The sales rows: every method the Sales stage shows (Deliveroo left out, as there), in Settings order. */
-export function salesRows(page: ClosePage): { key: string; label: string; amount: number }[] {
+/**
+ * The sales rows: every method the Sales stage shows (Deliveroo left out, as there), in Settings
+ * order - Close's and the Daily Report's (lib/report.ts).
+ */
+export function salesRows(page: { sales: { methods: ClosePage["sales"]["methods"] } }): { key: string; label: string; amount: number }[] {
   return shownMethods(page.sales.methods).map((m) => ({ key: m.value_name, label: m.name, amount: m.amount ?? 0 }));
 }
 

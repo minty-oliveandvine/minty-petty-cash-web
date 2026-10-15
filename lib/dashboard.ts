@@ -96,19 +96,19 @@ export function depositToConfirm(home: Home, day: string): { day: string; report
  * - `first-use`: nothing submitted and nothing open - the first-use empty state (15.11a);
  * - `in-progress`: an open report (the newest draft) - its day is `draft_date`, the day Flask's
  *   own Continue used;
- * - `done`: today is submitted;
+ * - `done`: today is submitted (`reportId` opens its Daily Report);
  * - `not-started`: today, not begun.
  */
 export type Launch =
   | { kind: "first-use"; day: string }
   | { kind: "in-progress"; day: string; draft: NonNullable<Home["draft"]> }
-  | { kind: "done"; day: string }
+  | { kind: "done"; day: string; reportId: string }
   | { kind: "not-started"; day: string };
 
 export function launchState(home: Home): Launch {
   const today = home.server_today;
   if (home.draft) return { kind: "in-progress", day: home.draft_date ?? today, draft: home.draft };
-  if (home.published[today]) return { kind: "done", day: today };
+  if (home.published[today]) return { kind: "done", day: today, reportId: home.published[today].id };
   if (!reportSpan(home)) return { kind: "first-use", day: today };
   return { kind: "not-started", day: today };
 }

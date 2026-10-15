@@ -6,7 +6,8 @@
  * at Flask's own paths (`reports/new/opening`, `reports/new/sale`, `reports/new/expense`,
  * `reports/new/cash-count`, `reports/new/ending`), so a link into one app works in the other.
  * Flask's `reports/new/deposit` redirects to `reports/new/cash-count` here (its page.tsx). The
- * outcome page after Submit is `reports/<report id>/submitted`, Flask's address too.
+ * outcome page after Submit is `reports/<report id>/submitted`, and the Daily Report
+ * `reports/<report id>/summary` - Flask's addresses too.
  */
 
 import { companyRef } from "@minty/shared/companyRef";
@@ -37,4 +38,9 @@ export function stepHref(entityId: string, entityName: string, step: WizardStep,
 /** The outcome page of a submitted report (`/entity/<ref>/petty-cash/reports/<report id>/submitted`). */
 export function outcomeHref(entityId: string, entityName: string, reportId: string): string {
   return `/entity/${companyRef(entityId, entityName)}/petty-cash/reports/${encodeURIComponent(reportId)}/submitted`;
+}
+
+/** A report's Daily Report (15.7) - `/entity/<ref>/petty-cash/reports/<report id>/summary`, Flask's id address for its summary. */
+export function reportHref(entityId: string, entityName: string, reportId: string): string {
+  return `/entity/${companyRef(entityId, entityName)}/petty-cash/reports/${encodeURIComponent(reportId)}/summary`;
 }

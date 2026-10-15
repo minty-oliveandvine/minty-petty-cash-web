@@ -35,9 +35,12 @@ export function resumeUrl(entityId: string, day: string): string {
   return `${company(entityId)}/petty-cash/reports/resume?${new URLSearchParams({ transaction_date: day })}`;
 }
 
-/** A submitted day's report (Flask `report.entity_ending`). */
-export function reportSummaryUrl(entityId: string, day: string): string {
-  return `${company(entityId)}/petty-cash/reports/summary?${new URLSearchParams({ transaction_date: day })}`;
+/**
+ * Where a submitted report is published to Xero (Flask `report.report_submitted`, its outcome
+ * page): the Xero publish is not ported, so the Daily Report links here while the person may publish.
+ */
+export function publishUrl(entityId: string, reportId: string): string {
+  return `${company(entityId)}/petty-cash/reports/${encodeURIComponent(reportId)}/submitted`;
 }
 
 /** Report history (Flask `report.entity_report_history`). */

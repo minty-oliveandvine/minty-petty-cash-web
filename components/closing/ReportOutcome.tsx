@@ -11,10 +11,9 @@ import { AppBar } from "@/components/layout/AppBar";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
 import { formatWeekdayDay } from "@/lib/dates";
-import { reportSummaryUrl } from "@/lib/flaskPages";
 import { countedFact, differenceFact, offersNextDay, outcomeTitle, requestStart, xeroFact, type Outcome } from "@/lib/outcome";
 import { useAuth } from "@/lib/useAuth";
-import { stepHref } from "@/lib/wizardPages";
+import { reportHref, stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 
@@ -27,8 +26,8 @@ type Load = { kind: "loading" } | { kind: "ready"; outcome: Outcome } | { kind: 
  * action - View report - and Back to home / Start the next day. The focus moves to the title.
  *
  * Reads `GET /reports/<report id>/outcome` (Minty `petty_cash_api/routes/close.py`); its rules are
- * lib/outcome.ts. Publish to Xero is not here yet: the Xero API is not ported, and Flask's report
- * page (View report) still publishes.
+ * lib/outcome.ts. Publish to Xero is not here yet: the Xero API is not ported; View report opens
+ * this app's Daily Report (DailyReport.tsx), which links to Flask's page for it.
  */
 export function ReportOutcome({ reportId }: { reportId: string }) {
   const auth = useAuth();
@@ -133,9 +132,9 @@ function Done({ outcome, entityId, entityName, home }: { outcome: Outcome; entit
               The report is submitted. Check back in a few minutes; it shows here once Xero has it.
             </InlineAlert>
           ) : null}
-          <a href={reportSummaryUrl(entityId, day)} className={buttonClass("primary", { full: true })}>
+          <Link href={reportHref(entityId, entityName, outcome.report_id)} className={buttonClass("primary", { full: true })}>
             View report
-          </a>
+          </Link>
         </>
       ) : (
         <>

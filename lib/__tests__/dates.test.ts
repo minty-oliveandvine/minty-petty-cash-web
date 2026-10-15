@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { addDays, clockTime, formatDay, formatWeekdayDay, formatWeekdayShort, savedText } from "@/lib/dates";
+import { addDays, clockTime, formatDay, formatWeekdayDay, formatWeekdayShort, momentText, savedText } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 
 describe("report days", () => {
@@ -30,6 +30,11 @@ describe("moments on the device's clock", () => {
     expect(clockTime(at(2026, 10, 14, 0, 5))).toBe("12:05 am");
     expect(clockTime(at(2026, 10, 14, 12, 0))).toBe("12:00 pm");
     expect(clockTime(at(2026, 10, 14, 9, 30))).toBe("9:30 am");
+  });
+
+  it("write an audit fact's moment in full", () => {
+    expect(momentText(at(2026, 10, 13, 18, 12))).toBe("Tue 13 Oct 2026, 6:12 pm");
+    expect(momentText(at(2027, 1, 4, 9, 5))).toBe("Mon 4 Jan 2027, 9:05 am");
   });
 
   it("say when an open report was saved", () => {

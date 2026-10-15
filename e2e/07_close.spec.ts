@@ -1,8 +1,8 @@
 // The Daily Closing's Close stage (components/closing/Close.tsx, Part 15.9g / 15.15e) and the
 // outcome page after Submit Daily Report (components/closing/ReportOutcome.tsx, Part 15.12e),
 // against a STUBBED Petty Cash API. Needs only `npm run dev`. The other stages are this app's own
-// (stubbed quietly); Flask's pages (the report summary, by the company's full id) are caught, so
-// nothing leaves the app. Refusals are inline alerts or Page banners, never toasts.
+// (stubbed quietly); Flask's pages (by the company's full id) are caught, so nothing leaves the
+// app. Refusals are inline alerts or Page banners, never toasts.
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
@@ -149,7 +149,7 @@ async function stub(page: Page, answer: Json, { read, onSubmit, outcome, home }:
   });
   await page.route(`${api}/home`, (route) => route.fulfill({ json: home ?? homeAnswer() }));
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's pages (the report summary, by the company's full id): caught.
+  // Flask's pages (by the company's full id): caught.
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports(?:[/?]|$)/, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );
@@ -277,7 +277,8 @@ test("Submit opens the outcome page with the server's facts - and a double click
   await expect(value(page, "Cash counted")).toHaveText("HKD760.00");
   await expect(value(page, "Difference")).toHaveText("HKD20.00 short · note added");
   await expect(value(page, "Sent to Xero")).toHaveText("Not yet");
-  await expect(page.getByRole("link", { name: "View report" })).toHaveAttribute("href", new RegExp(`/entity/${ENTITY}/petty-cash/reports/summary\\?transaction_date=${DAY}$`));
+  // this app's own Daily Report (e2e/08_daily_report.spec.ts)
+  await expect(page.getByRole("link", { name: "View report" })).toHaveAttribute("href", `${BASE}/reports/${REPORT}/summary`);
   await expect(page.getByRole("button", { name: /Publish/ })).toHaveCount(0);
   expect(submits).toEqual([{ transaction_date: DAY }]);
 });

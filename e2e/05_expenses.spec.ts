@@ -1,6 +1,6 @@
 // The report wizard's Expenses step (components/report/ExpensesStep.tsx and AddExpenseCard.tsx,
 // Flask's look exactly), against a STUBBED Petty Cash API. Needs only `npm run dev`. Flask's pages
-// (Bank Deposit onwards) are caught, so nothing leaves the app.
+// (Ending onwards) are caught, so nothing leaves the app.
 
 import { expect, test, type Page, type Request, type Route } from "@playwright/test";
 
@@ -111,9 +111,15 @@ async function stub(page: Page, answer: Json, h: Handlers = {}) {
     else await route.fulfill({ status: 201, json: { id: "s-new", name: (route.request().postDataJSON() as Json).name } });
   });
   await page.route(`${API}/reports/opening**`, (route) => route.fulfill({ json: OPENING }));
+  // This app's own Bank Deposit step (e2e/06_deposit.spec.ts covers it): a quiet stub.
+  await page.route(`${API}/reports/deposit**`, (route) =>
+    route.fulfill({
+      json: { transaction_date: DAY, currency_code: "HKD", draft: DRAFT, opening_balance: 0, cash_addition: 0, cash_sales: 0, expenses: 0, bank_deposit: 0, cash_on_hand: 0, expected_cash: 0 },
+    }),
+  );
   await page.route(`${API}/home`, (route) => route.fulfill({ json: HOME }));
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's pages (the Bank Deposit step onwards): caught.
+  // Flask's pages (Ending onwards): caught.
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\//, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );
@@ -358,7 +364,7 @@ test("an open add card holds the stepper back with Flask's warning", async ({ pa
   await expect(page.getByRole("heading", { name: "Add New Expense" })).toBeVisible();
 });
 
-test("Save & Next goes on to Flask's Bank Deposit", async ({ page }) => {
+test("Save & Next goes on to Bank Deposit in this app", async ({ page }) => {
   let sent: Json | null = null;
   await openWith(page, expensesAnswer(), {
     onSave: async (body, route) => {
@@ -367,7 +373,8 @@ test("Save & Next goes on to Flask's Bank Deposit", async ({ page }) => {
     },
   });
   await page.getByRole("button", { name: "Save & Next" }).click();
-  await expect(page).toHaveURL(new RegExp(`/entity/${ENTITY}/petty-cash/reports/new/deposit\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/deposit\\?transaction_date=${DAY}$`));
+  await expect(page.getByRole("heading", { name: "Deposit to Bank" })).toBeVisible();
   expect(sent).toEqual({ transaction_date: DAY, action: "next" });
 });
 

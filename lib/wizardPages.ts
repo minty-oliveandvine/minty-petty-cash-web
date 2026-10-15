@@ -1,13 +1,19 @@
 /**
  * Where each report step lives: this app's own page once it is ported, Flask's until then
- * (lib/flaskPages.ts). Ported so far: Opening, Sales and Expenses.
+ * (lib/flaskPages.ts). Ported so far: Opening, Sales, Expenses, Bank Deposit and Cash Count.
  */
 
 import { companyRef } from "@minty/shared/companyRef";
 
 import { wizardStepUrl, type WizardStep } from "@/lib/flaskPages";
 
-const PORTED: Partial<Record<WizardStep, string>> = { opening: "opening", sales: "sale", expenses: "expense" };
+const PORTED: Partial<Record<WizardStep, string>> = {
+  opening: "opening",
+  sales: "sale",
+  expenses: "expense",
+  deposit: "deposit",
+  cash_count: "cash-count",
+};
 
 /** Whether `step` is this app's own page (so going there is a client-side navigation). */
 export function isPorted(step: WizardStep): boolean {

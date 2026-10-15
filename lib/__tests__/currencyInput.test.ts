@@ -44,7 +44,13 @@ describe("step addresses", () => {
       "/entity/360812e1/olive-and-vine/petty-cash/reports/new/expense?transaction_date=2026-10-14",
     );
     expect(stepHref(ID, "Olive & Vine", "deposit", "2026-10-14")).toBe(
-      `http://localhost:8000/entity/${ID}/petty-cash/reports/new/deposit?transaction_date=2026-10-14`,
+      "/entity/360812e1/olive-and-vine/petty-cash/reports/new/deposit?transaction_date=2026-10-14",
+    );
+    expect(stepHref(ID, "Olive & Vine", "cash_count", "2026-10-14")).toBe(
+      "/entity/360812e1/olive-and-vine/petty-cash/reports/new/cash-count?transaction_date=2026-10-14",
+    );
+    expect(stepHref(ID, "Olive & Vine", "ending", "2026-10-14")).toBe(
+      `http://localhost:8000/entity/${ID}/petty-cash/reports/new/ending?transaction_date=2026-10-14`,
     );
   });
 });

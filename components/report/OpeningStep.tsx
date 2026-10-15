@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { PhoneCard } from "@/components/flask/PhoneCard";
 import { Stepper } from "@/components/flask/Stepper";
 import { useToast } from "@/components/flask/Toasts";
-import { LoadingOverlay, ReportBadge } from "@/components/report/ReportChrome";
+import { FixNegativeBalanceModal, FixStepButton, LoadingOverlay, ReportBadge } from "@/components/report/ReportChrome";
 import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
@@ -130,7 +130,7 @@ function OpeningForm({ page, entityId, entityName, acronym }: { page: OpeningPag
     <>
       {saving ? <LoadingOverlay /> : null}
       {negative ? (
-        <FixNegativeBalanceModal
+        <OpeningNegativeModal
           balance={page.yesterday_closing_balance}
           currencyCode={code}
           onDashboard={() => {
@@ -298,43 +298,23 @@ function OpeningForm({ page, entityId, entityName, acronym }: { page: OpeningPag
 }
 
 /**
- * Flask's #fixNegativeBalanceModal: yesterday ended below zero, or this opening would. It cannot be
- * dismissed - the one way on is the dashboard.
+ * Flask's #fixNegativeBalanceModal on Opening: yesterday ended below zero, or this opening would.
+ * It cannot be dismissed - the one way on is the dashboard.
  */
-function FixNegativeBalanceModal({ balance, currencyCode, onDashboard }: { balance: number; currencyCode: string | null; onDashboard: () => void }) {
+function OpeningNegativeModal({ balance, currencyCode, onDashboard }: { balance: number; currencyCode: string | null; onDashboard: () => void }) {
   const code = currencyCode || "$";
-  const shown = balance < 0 ? `(${formatMoney(Math.abs(balance), currencyCode)})` : formatMoney(balance, currencyCode);
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-flask-black/50 p-4">
-      <div role="alertdialog" aria-modal="true" aria-labelledby="fix-negative-title" className="mx-auto w-full max-w-sm rounded-flask-lg bg-flask-white p-6">
-        <div className="mb-6">
-          <h2 id="fix-negative-title" className="mb-2 text-xl font-bold text-flask-gray-900">
-            Fix Negative Balance
-          </h2>
-          <p className="mb-1 text-sm text-flask-gray-600">Current Balance</p>
-          <p className={`mb-4 text-center text-3xl font-semibold ${balance < 0 ? "text-flask-red-600" : "text-flask-gray-900"}`}>{shown}</p>
-          <p className="text-sm text-flask-gray-600">
-            Starting cash balance is negative. The deposit amount may exceed available cash. Please go back and adjust.
-          </p>
-        </div>
-        <div className="space-y-3">
-          <button
-            type="button"
-            onClick={onDashboard}
-            className="group flex w-full items-center justify-between rounded-flask-xl border border-flask-teal-soft bg-flask-white px-4 py-3 text-left text-flask-gray-700 transition-colors hover:bg-flask-gray-50"
-          >
-            <span className="flex items-center">
-              Dashboard
-              <span className="ml-2 text-flask-red">
-                (Balance: {code} {balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
-              </span>
-            </span>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4 text-flask-gray-900 transition-transform group-hover:translate-x-1" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
+    <FixNegativeBalanceModal
+      balance={balance}
+      currencyCode={currencyCode}
+      message="Starting cash balance is negative. The deposit amount may exceed available cash. Please go back and adjust."
+    >
+      <FixStepButton
+        label="Dashboard"
+        note={`(Balance: ${code} ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
+        noteClass="text-flask-red"
+        onClick={onDashboard}
+      />
+    </FixNegativeBalanceModal>
   );
 }

@@ -9,9 +9,9 @@ import { useToast } from "@/components/flask/Toasts";
 import { AddExpenseCard } from "@/components/report/AddExpenseCard";
 import { ReceiptViewer, useReceiptUrls, type ShownReceipt } from "@/components/report/ReceiptViewer";
 import { LoadingOverlay, ReportBadge } from "@/components/report/ReportChrome";
+import { sentenceOf, toOpening, useBackToOpening } from "@/components/report/stepErrors";
 import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
-import { getAuth } from "@/lib/auth";
 import { pettyCashHome } from "@/lib/companyPages";
 import { detailRows, receiptKind, type ExpenseLine, type ExpensesPage, type Supplier } from "@/lib/expenses";
 import { leaveTo } from "@/lib/handoff";
@@ -26,32 +26,6 @@ const SAVE_FAILED = "I couldn't save that expense. Mind trying again?";
 const DELETE_FAILED = "I couldn't delete that expense. Mind trying again?";
 
 type SaveAnswer = { next: "deposit" | "dashboard"; transaction_date: string };
-
-/** The sentence a refusal carried, or null when the API gave none. */
-function sentenceOf(err: unknown): string | null {
-  if (!(err instanceof ApiError)) return null;
-  const body = err.body as { error?: unknown } | null;
-  return body && typeof body.error === "string" ? body.error : null;
-}
-
-/** Whether the API sent this step back to Opening (no draft for the day). */
-function toOpening(err: unknown): boolean {
-  return err instanceof ApiError && (err.body as { to?: string } | null)?.to === "opening";
-}
-
-/** Back to this app's Opening for `day`, saying why there (Flask's redirect and flash). */
-function useBackToOpening() {
-  const router = useRouter();
-  const toast = useToast();
-  return useCallback(
-    (sentence: string, day: string) => {
-      const auth = getAuth();
-      toast(sentence, "error");
-      if (auth) router.push(stepHref(auth.entityId, auth.entityName, "opening", day));
-    },
-    [router, toast],
-  );
-}
 
 /**
  * The report wizard's Expenses step - a pixel-faithful port of Flask's `report/expense.html`: the

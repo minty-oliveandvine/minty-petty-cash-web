@@ -132,7 +132,7 @@ What it keeps from Flask:
 Where the app differs:
 - **The opening balance is the server's.** Flask took it from a hidden form field.
 - **A refused day lands on the dashboard with its message.** `lib/flash.ts` carries Flask's flash there, so the message still shows.
-- **Ported steps open in this app.** The dashboard's Start, the deposit check and the stepper all go through `lib/wizardPages.ts`, which sends the ported steps here and the rest to Flask. Bank Deposit onwards is still Flask's.
+- **Ported steps open in this app.** The dashboard's Start, the deposit check and the stepper all go through `lib/wizardPages.ts`, which sends the ported steps here and the rest to Flask. Ending onwards is still Flask's.
 
 ### Report wizard, Sales: `/entity/<shortid>/<name>/petty-cash/reports/new/sale?transaction_date=`
 
@@ -171,7 +171,7 @@ What it keeps from Flask:
   - Flask's file sentences: "I can take PDF, JPEG, or PNG files.", "Files need to be under 10MB." and, on a drop, "Only one file is allowed per expense." A drop names the file, as Flask's does.
 - **Expense Details** (a tap on a line): the receipt first, "Amount Paid", Contact Name, Description and Account (`<code> <account>`), and Close.
 - **Delete Expense** (the bin): Flask's warning, Cancel / Delete, "Deleting Expense...".
-- **Flask's toasts and overlays**, word for word, and **Save & Next** (to Flask's Bank Deposit) / **Save & Exit**.
+- **Flask's toasts and overlays**, word for word, and **Save & Next** (to Bank Deposit, in this app) / **Save & Exit**.
 
 Where the app differs:
 - **The server's sentence is shown.** A refused add, delete or new supplier shows what the API says; Flask's own fallbacks are used only when it says nothing.
@@ -187,7 +187,49 @@ Where the app differs:
 - **Left out:** editing a saved line (Flask's page has no way into it), the dead "submit all" path, the receipt reader (`expense_ai.js`, behind a flag), and the read-only view of a submitted report.
 - **Known, as in Flask:** Save & Next or Save & Exit with the add card still open leaves the typed expense unsaved, without a warning. Typing does not clear an open toast, which Flask does.
 
+### Report wizard, Bank Deposit: `/entity/<shortid>/<name>/petty-cash/reports/new/deposit?transaction_date=`
+
+This is Flask's `report/deposit.html`, at Flask's own address for it. It is built from `components/report/DepositStep.tsx`, with the arithmetic and the rules in `lib/cash.ts`, and reads and saves through `GET`/`PUT /reports/deposit` (Minty `petty_cash_api/routes/cash.py`, over the service the Jinja page shares, `report/services/cash.py`).
+
+What it keeps from Flask:
+- **The report header and the stepper**, with the same unsaved-changes hold and toast.
+- **"Deposit to Bank"**, then one card: the illustration, "Current Balance:" (the cash on hand before the deposit) and "Deposit Amount" (the currency code inside, "0.00", the money field of `lib/currencyInput.ts`). A saved deposit comes back grouped.
+- **Save & Next** (to Cash Count, in this app) and **Save & Exit**.
+- **"Fix Negative Balance"** when the cash on hand is already below zero: Flask's sentence, the figure in brackets (shrunk to one line, as Flask's `fitBalanceText` does) and Opening / Sales / Expenses with their cash in or out. It cannot be dismissed, and like Flask's it covers the whole window. Its frame is shared with Opening's (`ReportChrome.tsx`).
+
+Where the app differs:
+- **The limit is the owner's rule (2026-10-15).** A deposit above the cash on hand is said under the field as it is typed: "The deposit can't be more than the cash on hand. Enter HKD155.00 or less." Save does nothing until it is fixed, and the API refuses it anyway (422 on `bank_deposit`, whose sentence shows on the field). Flask accepted it and only stopped at Cash Count.
+- **The cash on hand is the server's.** Flask read it from a hidden field.
+- **The steps behind the modal open in this app**, with Flask's "Redirecting..." overlay.
+- **Not yet:** the read-only view of a submitted report, with its Close button.
+
+### Report wizard, Cash Count: `/entity/<shortid>/<name>/petty-cash/reports/new/cash-count?transaction_date=`
+
+This is Flask's `report/cash_count.html`, at Flask's own address for it. It is built from `components/report/CashCountStep.tsx` (the page, the calculator and the alert), with `lib/cash.ts`, and reads and saves through `GET`/`PUT /reports/cash-count`.
+
+What it keeps from Flask:
+- **The report header and the stepper**, with the unsaved-changes hold (a count, the safebox or the reason).
+- **"Cash Count"** and the grey **"Expected Cash Count Balance"** pill (the cash on hand less the deposit).
+- **One card:** the cash register, **"Cash Box Balance"** (read-only "Actual Cash Balance", filled from the calculator) with the calculator button, the safebox, **"Safebox Cash Balance"** ("Please enter Balance of the safebox", the money field) and the **"Total Cash Count"** bar (till + safebox).
+- **"Discrepancy Details":** the red "Cash Shortage: HKD…" or green "Cash Surplus: HKD…" alert with "Please review your entries or provide a reason for the discrepancy below.", and the Description box, locked with "No discrepancy — description not required" when there is none. A reason for a difference that is then resolved is dropped, as Flask does.
+- **"Use Calculator":** a row per denomination in the company's order (its label, "X", the count, the row's total), "Total Cash Till Balance" and Save, which copies the counts in. Its backdrop covers the whole window and an outside click closes it.
+- **Save & Next** (to Flask's Ending) and **Save & Exit**; Flask's toasts ("Please enter description", the unsaved-changes one).
+- **"Fix Negative Balance"** when the expected cash is below zero, with Flask's own sentence for this page ("Cash balance cannot be negative, let's go back to") and Opening / Sales / Expenses / Deposit.
+
+Where the app differs (Flask's bugs, and the owner's rules of 2026-10-15):
+- **Any difference counts, one cent included.** Flask's page needed more than 0.01; the difference is rounded to the cent as the service rounds it.
+- **The difference shown is the one saved.** It is worked out from the counts the calculator applied, plus the safebox. Flask's alert read the calculator's rows while they were still being typed, its Total Cash Count read the applied total, and the server saved a third figure.
+- **The calculator's total works.** Flask's Save stripped only "$", so with "HKD" the cash box showed HKD0.00.
+- **Coins under 1 are labelled by their value** ("HKD0.50", "HKD0.20", "HKD0.10"); Flask showed all three as "HKD0". Notes keep Flask's whole-number label ("HKD1000").
+- **Counts are whole numbers.** The field takes digits only (a text field with the numeric keypad, not Flask's number field, which took "1.5" and "e"); a count above 1,000,000, the API's limit, is said in its row and Save does not apply it.
+- **Escape closes the calculator** (Flask's didn't), and the X is a 44px target.
+- **A reason is needed on Save & Next, not on Save & Exit** - now also refused by the API (422 on `discrepancy_reason`). Besides Flask's toast and red box, the sentence under the box says how much and what to do ("The count is HKD0.01 short. Add the reason to continue."), and "Discrepancy Details" carries the red `*` while a reason is needed. A reason over 300 characters is said as it is typed.
+- **A balanced count saves no reason**, so a stale one never reaches the PDF or Xero.
+- **The API's 422 shows on its field:** the reason, the safebox, or a count (under Cash Box Balance).
+- **Layout, at a phone's width:** the expected-cash pill wraps its figure onto a second line rather than run off the card, and each calculator row puts its total under the count. Flask's 96 / 128px total box overlapped its "HKD" with any amount over 999; here the code sits beside the amount, and the box is 160px from 640px up.
+- **Left out:** Flask's "Set cash count before proceeding…" toast (it could not be reached once a difference needs a reason), the read-only view of a submitted report and its edit-mode "Save changes".
+
 ## Not here yet
 
-- **The other pages.** The rest of the report wizard (Bank Deposit, Cash Count, Ending, Submitted), history, the report summary, settings and Xero publish are next, in that order.
+- **The other pages.** The rest of the report wizard (Ending, Submitted), history, the report summary, settings and Xero publish are next, in that order.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

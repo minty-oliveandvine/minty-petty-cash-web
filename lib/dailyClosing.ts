@@ -75,6 +75,23 @@ export function stageProgress(draft: NonNullable<Home["draft"]>): StageProgress 
   };
 }
 
+/** The section a stage opens at: the one the report is in when it is inside this stage, else the stage's first. */
+export function stageSection(stage: Stage, currentSection: string | null): WizardStep {
+  return currentSection && stageOf(currentSection) === stage ? (currentSection as WizardStep) : stage.sections[0];
+}
+
+/**
+ * The Step progress on a stage's own page (Part 15.9c): that stage is current, whether done or
+ * not; any other is done when its `doneWhen` section is, else upcoming.
+ */
+export function stagesOnPage(completedSections: readonly string[], here: StageKey): { stage: Stage; state: StageState }[] {
+  const completed = new Set(completedSections);
+  return STAGES.map((stage) => ({
+    stage,
+    state: stage.key === here ? "current" : completed.has(stage.doneWhen) ? "done" : "upcoming",
+  }));
+}
+
 /** No report yet: every stage ahead. */
 export function notStartedProgress(): StageProgress {
   return { stages: STAGES.map((stage) => ({ stage, state: "upcoming" })), done: 0, next: STAGES[0] };

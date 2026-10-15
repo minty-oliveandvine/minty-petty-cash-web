@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { notStartedProgress, STAGES, stageOf, stageProgress, submittedProgress } from "@/lib/dailyClosing";
+import { notStartedProgress, STAGES, stageOf, stageProgress, stageSection, stagesOnPage, submittedProgress } from "@/lib/dailyClosing";
 import type { Home } from "@/lib/dashboard";
 
 function draft(current_section: string | null, completed_sections: string[]): NonNullable<Home["draft"]> {
@@ -90,5 +90,23 @@ describe("a day with no open report", () => {
     expect(p.done).toBe(5);
     expect(p.next).toBeNull();
     expect(new Set(p.stages.map((s) => s.state))).toEqual(new Set(["done"]));
+  });
+});
+
+describe("a stage's own page", () => {
+  const byKey = (key: string) => STAGES.find((s) => s.key === key)!;
+
+  it("draws its stage as current, done or not, and the others by what is done", () => {
+    const here = (completed: string[]) => stagesOnPage(completed, "drawer").map((s) => s.state);
+    expect(here([])).toEqual(["current", "upcoming", "upcoming", "upcoming", "upcoming"]);
+    expect(here(["opening", "sales", "deposit"])).toEqual(["current", "done", "upcoming", "upcoming", "upcoming"]);
+    expect(here(["opening", "sales", "expenses", "cash_count"])).toEqual(["current", "done", "done", "done", "upcoming"]);
+  });
+
+  it("opens another stage where the report is inside it, else at the stage's first section", () => {
+    expect(stageSection(byKey("cash_count"), "cash_count")).toBe("cash_count");
+    expect(stageSection(byKey("cash_count"), "sales")).toBe("deposit");
+    expect(stageSection(byKey("sales"), null)).toBe("sales");
+    expect(stageSection(byKey("drawer"), "opening")).toBe("opening");
   });
 });

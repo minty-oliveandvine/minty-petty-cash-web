@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button, buttonClass, EmptyState, Icon, InlineAlert, PageBanner, Skeleton, StatusPill } from "@minty/shared/ui";
 import { useViewer } from "@minty/shared/viewer";
@@ -14,8 +14,8 @@ import { useAuth } from "@/lib/useAuth";
 import {
   notStartedProgress,
   STAGES,
-  stageOf,
   stageProgress,
+  stageSection,
   submittedProgress,
   type StageProgress,
 } from "@/lib/dailyClosing";
@@ -32,9 +32,11 @@ import {
   type Launch,
 } from "@/lib/dashboard";
 import { formatWeekdayDay, formatWeekdayShort, savedText } from "@/lib/dates";
-import { historyUrl, reportSummaryUrl, resumeUrl, settingsUrl, wizardStepUrl, type WizardStep } from "@/lib/flaskPages";
+import { historyUrl, reportSummaryUrl, resumeUrl, settingsUrl } from "@/lib/flaskPages";
+import { takeFlash, type FlashKind } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
 import { formatMoney } from "@/lib/money";
+import { isPorted, stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const READ_ONLY = "Read-only access";
@@ -42,6 +44,10 @@ const READ_ONLY = "Read-only access";
 // `now` is the device's clock when /home answered: the greeting and "Saved 6:02 pm" read it, so
 // rendering stays pure and the server's HTML (which never has the data) cannot disagree with it.
 type Load = { kind: "loading" } | { kind: "ready"; home: Home; now: Date } | { kind: "failed"; message: string };
+type Flash = { message: string; kind: FlashKind } | null;
+
+/** A flash's tone as a Page banner - an error is Danger, and never a toast (Part 14, 15.10). */
+const FLASH_TONE = { error: "danger", warning: "warning", success: "success", info: "info" } as const;
 
 /**
  * The Petty Cash launch page - Part 15.6a "Action Dashboard": the greeting, ONE primary work card
@@ -52,14 +58,25 @@ type Load = { kind: "loading" } | { kind: "ready"; home: Home; now: Date } | { k
  */
 export function Dashboard() {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
+  // A stage that refused its day sends the person here with why (lib/flash.ts, Flask's flash).
+  // Taken once - in a ref, so a development re-run of the effect does not lose it - and shown
+  // once the page has data, under the h1 (15.1: a page-wide state goes under the header).
+  const flash = useRef<Flash | undefined>(undefined);
+  const [shownFlash, setShownFlash] = useState<Flash>(null);
 
   useEffect(() => {
     let live = true;
+    if (flash.current === undefined) flash.current = takeFlash();
     pettyCashFetch<Home>("/home")
-      .then((home) => live && setLoad({ kind: "ready", home, now: new Date() }))
+      .then((home) => {
+        if (!live) return;
+        setShownFlash(flash.current ?? null);
+        setLoad({ kind: "ready", home, now: new Date() });
+      })
       .catch((err: unknown) => {
         // A 401 has already gone back through the hand-off.
         if (!live || (err instanceof ApiError && err.status === 401)) return;
+        setShownFlash(flash.current ?? null);
         setLoad({ kind: "failed", message: err instanceof ApiError ? err.message : UNREACHABLE });
       });
     return () => {
@@ -78,6 +95,7 @@ export function Dashboard() {
       <main className="mx-auto flex w-full max-w-[640px] flex-col gap-5 px-4 pb-16 pt-6 sm:px-6 lg:max-w-[1200px] lg:px-8 lg:pt-8">
         {/* The App bar names the module for screen readers only, so the page keeps its own h1. */}
         <h1 className="text-display-m text-text-primary">Petty Cash</h1>
+        {shownFlash ? <PageBanner tone={FLASH_TONE[shownFlash.kind]}>{shownFlash.message}</PageBanner> : null}
         {load.kind === "loading" ? (
           <div className="flex flex-col gap-4 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6" role="status" aria-busy="true" aria-label="Loading">
             <Skeleton className="h-6 w-1/2" />
@@ -88,7 +106,7 @@ export function Dashboard() {
         ) : load.kind === "failed" ? (
           <InlineAlert tone="danger">{load.message}</InlineAlert>
         ) : (
-          <LaunchBody home={load.home} now={load.now} entityId={auth?.entityId ?? ""} />
+          <LaunchBody home={load.home} now={load.now} entityId={auth?.entityId ?? ""} entityName={companyName} />
         )}
       </main>
     </>
@@ -97,7 +115,7 @@ export function Dashboard() {
 
 type Confirming = { startDay: string; day: string; deposit: number; submitter: string | null };
 
-function LaunchBody({ home, now, entityId }: { home: Home; now: Date; entityId: string }) {
+function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date; entityId: string; entityName: string }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [step, setStep] = useState<"confirm" | "amount">("confirm");
@@ -110,7 +128,7 @@ function LaunchBody({ home, now, entityId }: { home: Home; now: Date; entityId: 
   const gate = gateDay(home);
 
   function open(day: string) {
-    leaveTo(wizardStepUrl(entityId, "opening", day));
+    leaveTo(stepHref(entityId, entityName, "opening", day));
   }
 
   /** Starting a day's closing: the date rules, then "Before You Start" when the day before banked cash. */
@@ -138,7 +156,7 @@ function LaunchBody({ home, now, entityId }: { home: Home; now: Date; entityId: 
         method: "POST",
         json: { kind, date: confirming.day, amount },
       });
-      leaveTo(wizardStepUrl(entityId, "opening", answer.next_transaction_date));
+      leaveTo(stepHref(entityId, entityName, "opening", answer.next_transaction_date));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
       setCorrectionProblem(err instanceof ApiError ? err.message : UNREACHABLE);
@@ -187,6 +205,7 @@ function LaunchBody({ home, now, entityId }: { home: Home; now: Date; entityId: 
               today={home.server_today}
               now={now}
               entityId={entityId}
+              entityName={entityName}
               readOnly={readOnly}
               blockedBy={launch.kind === "not-started" ? gate : null}
               onStart={start}
@@ -279,6 +298,7 @@ function ClosingCard({
   today,
   now,
   entityId,
+  entityName,
   readOnly,
   blockedBy,
   onStart,
@@ -288,6 +308,7 @@ function ClosingCard({
   today: string;
   now: Date;
   entityId: string;
+  entityName: string;
   readOnly: boolean;
   /** The earlier day that must be finished before this one can start. */
   blockedBy: string | null;
@@ -298,14 +319,17 @@ function ClosingCard({
     launch.kind === "in-progress" ? stageProgress(launch.draft) : launch.kind === "done" ? submittedProgress() : notStartedProgress();
   const title = launch.day === today ? "Today's Daily Closing" : `Daily Closing · ${formatWeekdayShort(launch.day)}`;
 
-  // Done and current stages open in the wizard (Part 14: free navigation); never for read-only.
+  // Done and current stages open where they were left (Part 14: free navigation) - this app's
+  // own stage page once it is redesigned, Flask's wizard until then; never for read-only.
   const stageHref = (index: number): string | undefined => {
     if (readOnly || launch.kind !== "in-progress") return undefined;
-    const stage = STAGES[index];
-    const current = launch.draft.current_section;
-    const section: WizardStep =
-      current && stageOf(current) === stage ? (current as WizardStep) : stage.sections[0];
-    return wizardStepUrl(entityId, section, launch.day);
+    return stepHref(entityId, entityName, stageSection(STAGES[index], launch.draft.current_section), launch.day);
+  };
+  // Continue: Flask's resume opens the report's section, or `opening` when it has none - this
+  // app's own stage page when that section is redesigned (Addition to Drawer, Sales, Expenses).
+  const resumeHref = (draft: NonNullable<Home["draft"]>, day: string): string => {
+    const section = draft.current_section ?? "opening";
+    return isPorted(section) ? stepHref(entityId, entityName, section, day) : resumeUrl(entityId, day);
   };
   const steps: StepProgressStep[] = progress.stages.map(({ stage, state }, i) => ({ label: stage.short, state, href: stageHref(i) }));
 
@@ -316,7 +340,7 @@ function ClosingCard({
         View report
       </Button>
     ) : launch.kind === "in-progress" ? (
-      <Button kind="primary" className="w-full sm:w-auto" disabled={readOnly} onClick={() => leaveTo(resumeUrl(entityId, launch.day))}>
+      <Button kind="primary" className="w-full sm:w-auto" disabled={readOnly} onClick={() => leaveTo(resumeHref(launch.draft, launch.day))}>
         Continue Daily Closing
       </Button>
     ) : (

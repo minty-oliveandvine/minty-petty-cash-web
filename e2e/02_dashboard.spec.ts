@@ -65,6 +65,17 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock }: Enter 
       await onCorrection(route.request().postDataJSON() as Json, route);
     });
   }
+  // This app's own Addition to Drawer stage (e2e/03_addition.spec.ts covers it): a quiet stub, so
+  // following Start reads nothing real.
+  await page.route("**/api/petty-cash/v1/companies/*/reports/opening**", (route) =>
+    route.fulfill({
+      json: { transaction_date: TODAY, currency_code: "HKD", draft: null, starting_cash_balance: 0, yesterday_closing_balance: 0, safebox_balance: 0, cash_addition: null, withdrawal: "personal" },
+    }),
+  );
+  // This app's own Sales stage (e2e/04_sales.spec.ts covers it): a quiet stub too.
+  await page.route("**/api/petty-cash/v1/companies/*/reports/sales**", (route) =>
+    route.fulfill({ json: { transaction_date: TODAY, currency_code: "HKD", draft: null, methods: [], cash_sales: null } }),
+  );
   // Flask's wizard, summary and history pages: caught, so the spec can read where the app went.
   await page.route(/\/entity\/[^/]+\/petty-cash\/reports(?:[/?]|$)/, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
@@ -83,6 +94,9 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock }: Enter 
 }
 
 const card = (page: Page) => page.getByRole("region", { name: /Daily Closing/ });
+
+/** This app's own Addition to Drawer stage for `day`, in the company's address. */
+const addition = (day: string) => new RegExp(`${HOME_PATH}/reports/new/opening\\?transaction_date=${day}$`);
 
 test("the page loads with no console error - a hydration mismatch included", async ({ page }) => {
   const errors: string[] = [];
@@ -150,7 +164,7 @@ test("Start passes through Before You Start, and a changed deposit is sent", asy
   await expect(field).toHaveValue("250.55");
   await amount.getByRole("button", { name: "Proceed" }).click();
 
-  await expect(page).toHaveURL(/\/petty-cash\/reports\/new\/opening\?transaction_date=2026-10-14/);
+  await expect(page).toHaveURL(addition(TODAY));
   expect(sent).toEqual({ kind: "change", date: "2026-10-13", amount: 250.55 });
 });
 
@@ -180,7 +194,7 @@ test("a deposit the company cannot correct offers only 'as stated'", async ({ pa
   await expect(dialog.getByRole("radio", { name: "No, there was no deposit" })).toBeDisabled();
   await dialog.getByText("Yes, amount deposited as stated").click();
   await dialog.getByRole("button", { name: "Proceed" }).click();
-  await expect(page).toHaveURL(/new\/opening\?transaction_date=2026-10-14/);
+  await expect(page).toHaveURL(addition(TODAY));
 });
 
 test("in progress: 3 of 5 done, the next stage, when it was saved, and Continue resumes in Flask", async ({ page }) => {
@@ -204,9 +218,22 @@ test("in progress: 3 of 5 done, the next stage, when it was saved, and Continue 
   await expect(stages.getByRole("link", { name: /Sales, done/ })).toHaveAttribute("href", /\/reports\/new\/sale\?transaction_date=2026-10-14/);
   await expect(stages.getByRole("link", { name: /Cash Count, current step/ })).toHaveAttribute("href", /\/reports\/new\/deposit\?/);
   await expect(stages.getByRole("link", { name: /Close/ })).toHaveCount(0);
+  // Addition to Drawer is this app's own stage page
+  await expect(stages.getByRole("link", { name: /Drawer, done/ })).toHaveAttribute("href", addition(TODAY));
   await expect(page.getByRole("button", { name: "Start today's Daily Closing" })).toHaveCount(0);
   await c.getByRole("button", { name: "Continue Daily Closing" }).click();
   await expect(page).toHaveURL(/\/petty-cash\/reports\/resume\?transaction_date=2026-10-14/);
+});
+
+test("in progress on Addition to Drawer: Continue opens this app's own stage", async ({ page }) => {
+  await enterWith(
+    page,
+    homeAnswer({ draft: { id: "d", current_section: "opening", completed_sections: [], last_edit_seconds: 60 }, draft_date: TODAY }),
+  );
+  const c = card(page);
+  await expect(c).toContainText("Next: Addition to Drawer");
+  await c.getByRole("button", { name: "Continue Daily Closing" }).click();
+  await expect(page).toHaveURL(addition(TODAY));
 });
 
 test("yesterday unfinished: the gate banner holds today and starts the day it names", async ({ page }) => {
@@ -219,7 +246,7 @@ test("yesterday unfinished: the gate banner holds today and starts the day it na
   await expect(c).toContainText("Finish Tue 13 Oct first.");
   // the 12th banked nothing, so no Before You Start: straight into the 13th's report
   await banner.getByRole("button", { name: "Start Daily Closing for Tue 13 Oct" }).click();
-  await expect(page).toHaveURL(/\/petty-cash\/reports\/new\/opening\?transaction_date=2026-10-13/);
+  await expect(page).toHaveURL(addition("2026-10-13"));
 });
 
 test("done: today's report is submitted, and View report opens it", async ({ page }) => {
@@ -237,7 +264,8 @@ test("first use: Minty's empty state starts the first Daily Closing", async ({ p
   await expect(page.getByText("Your first Daily Closing")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recent reports" })).toHaveCount(0);
   await page.getByRole("button", { name: "Start today's Daily Closing" }).click();
-  await expect(page).toHaveURL(/\/petty-cash\/reports\/new\/opening\?transaction_date=2026-10-14/);
+  await expect(page).toHaveURL(addition(TODAY));
+  await expect(page.getByRole("heading", { level: 1, name: "Addition to Drawer" })).toBeVisible();
 });
 
 test("recent reports: the newest three, Submitted, each opening its report, and See all", async ({ page }) => {

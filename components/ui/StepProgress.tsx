@@ -1,3 +1,5 @@
+import type { MouseEvent } from "react";
+
 import { Icon } from "@minty/shared/ui";
 
 export type StepProgressStep = {
@@ -15,8 +17,18 @@ export type StepProgressStep = {
  * sign), upcoming = sunk + border. Indicators are 28 tall and fill the width; the list sits in a
  * 70px frame so a label that wraps to two lines on a phone never overlaps what follows, and never
  * drops under 12px.
+ *
+ * `onStepClick` sees a step link's click first - a stage page holds it while changes are unsaved.
  */
-export function StepProgress({ steps, label }: { steps: StepProgressStep[]; label: string }) {
+export function StepProgress({
+  steps,
+  label,
+  onStepClick,
+}: {
+  steps: StepProgressStep[];
+  label: string;
+  onStepClick?: (event: MouseEvent<HTMLAnchorElement>, step: StepProgressStep) => void;
+}) {
   return (
     <ol className="grid min-h-[70px] gap-1 sm:gap-2" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} aria-label={label}>
       {steps.map((step, i) => {
@@ -50,6 +62,7 @@ export function StepProgress({ steps, label }: { steps: StepProgressStep[]; labe
             {clickable ? (
               <a
                 href={step.href}
+                onClick={onStepClick ? (event) => onStepClick(event, step) : undefined}
                 className="block min-h-11 rounded-md hover:bg-state-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
               >
                 {body}

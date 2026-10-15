@@ -35,6 +35,11 @@ export function resumeUrl(entityId: string, day: string): string {
   return `${company(entityId)}/petty-cash/reports/resume?${new URLSearchParams({ transaction_date: day })}`;
 }
 
+/** The page after a day is submitted (Flask `report.report_submitted`, by the report's id). */
+export function submittedUrl(entityId: string, reportId: string): string {
+  return `${company(entityId)}/petty-cash/reports/${encodeURIComponent(reportId)}/submitted`;
+}
+
 /** A submitted day's report (Flask `report.entity_ending`). */
 export function reportSummaryUrl(entityId: string, day: string): string {
   return `${company(entityId)}/petty-cash/reports/summary?${new URLSearchParams({ transaction_date: day })}`;

@@ -132,7 +132,7 @@ What it keeps from Flask:
 Where the app differs:
 - **The opening balance is the server's.** Flask took it from a hidden form field.
 - **A refused day lands on the dashboard with its message.** `lib/flash.ts` carries Flask's flash there, so the message still shows.
-- **Ported steps open in this app.** The dashboard's Start, the deposit check and the stepper all go through `lib/wizardPages.ts`, which sends the ported steps here and the rest to Flask. Ending onwards is still Flask's.
+- **Ported steps open in this app.** The dashboard's Start, the deposit check and the stepper all go through `lib/wizardPages.ts`, which sends every step of the wizard here; the Submitted page after it is still Flask's.
 
 ### Report wizard, Sales: `/entity/<shortid>/<name>/petty-cash/reports/new/sale?transaction_date=`
 
@@ -213,7 +213,7 @@ What it keeps from Flask:
 - **One card:** the cash register, **"Cash Box Balance"** (read-only "Actual Cash Balance", filled from the calculator) with the calculator button, the safebox, **"Safebox Cash Balance"** ("Please enter Balance of the safebox", the money field) and the **"Total Cash Count"** bar (till + safebox).
 - **"Discrepancy Details":** the red "Cash Shortage: HKD…" or green "Cash Surplus: HKD…" alert with "Please review your entries or provide a reason for the discrepancy below.", and the Description box, locked with "No discrepancy — description not required" when there is none. A reason for a difference that is then resolved is dropped, as Flask does.
 - **"Use Calculator":** a row per denomination in the company's order (its label, "X", the count, the row's total), "Total Cash Till Balance" and Save, which copies the counts in. Its backdrop covers the whole window and an outside click closes it.
-- **Save & Next** (to Flask's Ending) and **Save & Exit**; Flask's toasts ("Please enter description", the unsaved-changes one).
+- **Save & Next** (to Ending, in this app) and **Save & Exit**; Flask's toasts ("Please enter description", the unsaved-changes one).
 - **"Fix Negative Balance"** when the expected cash is below zero, with Flask's own sentence for this page ("Cash balance cannot be negative, let's go back to") and Opening / Sales / Expenses / Deposit.
 
 Where the app differs (Flask's bugs, and the owner's rules of 2026-10-15):
@@ -229,7 +229,35 @@ Where the app differs (Flask's bugs, and the owner's rules of 2026-10-15):
 - **Layout, at a phone's width:** the expected-cash pill wraps its figure onto a second line rather than run off the card, and each calculator row puts its total under the count. Flask's 96 / 128px total box overlapped its "HKD" with any amount over 999; here the code sits beside the amount, and the box is 160px from 640px up.
 - **Left out:** Flask's "Set cash count before proceeding…" toast (it could not be reached once a difference needs a reason), the read-only view of a submitted report and its edit-mode "Save changes".
 
+### Report wizard, Ending: `/entity/<shortid>/<name>/petty-cash/reports/new/ending?transaction_date=`
+
+This is Flask's ORIGINAL `report/ending.html` (before the Part 15 redesign replaced it; Minty `f3e9d05`), at Flask's own address for it. It is built from `components/report/EndingStep.tsx`, with the sums and the drawings in `lib/ending.ts`, and reads `GET /reports/close` and submits through `POST /reports/submit` (Minty `petty_cash_api/routes/close.py`, over the submit the Jinja page shares, `report/services/submit.py`). The charts are plain SVG, no library.
+
+What it keeps from Flask:
+- **The report header and the stepper.**
+- **The slate "Draft report" callout**, word for word, then **"Summary"** with the currency code on the right.
+- **Total Sales:** the day's total, then "{x.x}%" with a green up or red down arrow and "Compared to Yesterday" (no sales the day before: the green arrow alone; an unchanged day is a red 0.0%, as in Flask). Then Electronic Sales | Delivery Sales | Cash Sales. "Show more" lists each method (electronic on the left; delivery and Cash Sales on the right), "-" for nothing, labelled as on Sales (`flaskLabel`).
+- **Sales History:** the 30 days up to the day as bars, seven to a view, scrolled to the day, which is red; each bar's figure ("1.2k" from a thousand) and its date ("13 OCT" / "TUE"). Nothing is drawn when every day is zero. The bars are measured from the box, as Flask's `bar_chart.html` does, including its phone sizes (under 640px).
+- **Total Expenses:** the day's lines summed by account, largest first. Flask's donut of the top seven and "Other expenses" (the rest, in yellow), with its gaps and minimum slice sizes; the total in the hole, or the slice under the pointer (on the chart or its name). The names beside it, truncated as in Flask, "&" written "and". "Show more" lists every account with its amount. "No expenses recorded" when there are none.
+- **Cash Balance:** what was counted (till + safebox); "Show more" splits it into "Cash Till Balance" and "Safebox".
+- **The difference box:** red "Cash Shortage: HKD…" or green "Cash Surplus: HKD…" with the reason, when there is a difference.
+- **Back** (to Cash Count, in this app) above **"Finish Daily Report"** (teal, the tick). While it submits the button says "Finishing..." and Flask's overlay counts "Finishing... N%" (2% every 600ms, never past 95%).
+- **"Fix Negative Balance"** on arrival when the expected cash is below zero, with Flask's five ways back (Opening, Sales, Expenses, Deposit, Cash Count). It cannot be dismissed.
+- After the submit: **Flask's Submitted page** (`/entity/<id>/petty-cash/reports/<report id>/submitted`, `submittedUrl` in `lib/flaskPages.ts`).
+
+Where the app differs (Flask's bugs):
+- **One submit, however many clicks.** Flask's form could post twice; here a ref guards the call and the button is disabled while it runs.
+- **A refusal keeps the day.** The API's 409 `{error, to}` shows its sentence and opens the step that fixes it (Opening, Sales, Expenses, Bank Deposit or Cash Count, in this app); `to: "dashboard"` lands on the dashboard with it (`lib/flash.ts`); `to: "submitted"` opens Flask's Submitted page for that report. Any other failure says so and leaves Finish ready to try again. Flask's clean-up could delete the draft.
+- **Nothing is posted while something would stop it.** When the API names a `problem` on arrival, it is said at once as Flask's toast and stays under the button (its accessible description); Finish then posts nothing and opens the step that fixes it, with the sentence. A drawer below zero shows Fix Negative Balance instead, and Finish only shows it again.
+- **The figures are the server's.** Flask read the drawer from its own template sums.
+- **The day already submitted** (a 409 on arrival) opens Flask's Submitted page for it; no draft goes back to Opening with Flask's sentence.
+- **The total in the donut is the real total.** Flask showed the total it had padded to draw a small "Other expenses".
+- **Layout, at a phone's width:** the big total and the three sales figures shrink to fit their column (Flask's `fitBalanceText` rule, never under 12px) instead of running into the next one, and a breakdown row puts its amount under a name too long to share the line.
+- **Show more** reaches 44px for a finger without moving Flask's layout, and says whether it is open (`aria-expanded`).
+- **Left out:** Flask's 30-second "Retry Submission" / "Cancel" panel (a failure here resets the button and says why), and the submitted-report mode of the same template (Delete, Edit Report, Share, Close), which comes with the report pages.
+- **Flask's own sizes below the workspace rules, kept:** the stepper's 7.6px labels and the chart's 10px figures and dates on a phone; the legend's 4px dots; the 40px-high Back.
+
 ## Not here yet
 
-- **The other pages.** The rest of the report wizard (Ending, Submitted), history, the report summary, settings and Xero publish are next, in that order.
+- **The other pages.** The Submitted page, history, the report summary, settings and Xero publish are next, in that order.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

@@ -6,7 +6,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { formatMoney } from "@/lib/money";
 import type { OpeningPage } from "@/lib/opening";
 
-const BADGE = "shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium";
+const BADGE = "shrink-0 whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium sm:px-3";
 
 /**
  * Flask's report header badge (`components/report_draft_header_badge.html`): Published (sent to
@@ -40,8 +40,8 @@ export function LoadingOverlay({ text = "Saving..." }: { text?: string }) {
  * Shrinks a one-line figure until it fits its box (Flask's `fitBalanceText` on Deposit and Cash
  * Count: a pixel at a time, never below 12px), and again on resize.
  */
-function useFitText(on: boolean) {
-  const ref = useRef<HTMLParagraphElement>(null);
+export function useFitText<T extends HTMLElement = HTMLParagraphElement>(on: boolean) {
+  const ref = useRef<T>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!on || !el) return;

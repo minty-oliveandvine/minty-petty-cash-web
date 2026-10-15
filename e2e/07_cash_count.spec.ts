@@ -1,6 +1,6 @@
 // The report wizard's Cash Count step (components/report/CashCountStep.tsx, Flask's look exactly),
-// against a STUBBED Petty Cash API. Needs only `npm run dev`. Flask's pages (Ending onwards) are
-// caught, so nothing leaves the app.
+// against a STUBBED Petty Cash API. Needs only `npm run dev`. Flask's pages (Submitted onwards)
+// are caught, so nothing leaves the app.
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
@@ -85,9 +85,22 @@ async function stub(page: Page, answer: Json, h: Handlers = {}) {
     route.fulfill({ json: { ...countAnswer(), denominations: undefined, safe_box_balance: undefined, discrepancy: undefined } }),
   );
   await page.route(`${API}/reports/opening**`, (route) => route.fulfill({ json: OPENING }));
+  // This app's own Ending step (e2e/08_ending.spec.ts covers it): a quiet stub, so Save & Next lands.
+  await page.route(`${API}/reports/close**`, (route) =>
+    route.fulfill({
+      json: {
+        ...countAnswer(),
+        sales: { methods: [], cash: 600, total: 600, yesterday_total: null, history: [] },
+        expenses: { lines: [], total: 88.5 },
+        cash: { bank_deposit: 300, expected: 1211.5, counted: 1211.5, safe_box: 0, difference: { amount: 0, kind: "none", reason: "" } },
+        closing_balance: 1211.5,
+        problem: null,
+      },
+    }),
+  );
   await page.route(`${API}/home`, (route) => route.fulfill({ json: HOME }));
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's pages (Ending onwards): caught.
+  // Flask's pages (Submitted onwards): caught.
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\//, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );
@@ -223,7 +236,8 @@ test("one cent short counts, and Save & Next needs a reason", async ({ page }) =
   await reason(page).fill("Rounding at the till");
   await expect(page.getByText("The count is HKD0.01 short. Add the reason to continue.")).toHaveCount(0);
   await page.getByRole("button", { name: "Save & Next" }).click();
-  await page.waitForURL(new RegExp(`/entity/${ENTITY}/petty-cash/reports/new/ending\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/ending\\?transaction_date=${DAY}$`));
+  await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
   expect(sent).toEqual({
     transaction_date: DAY,
     counts: { n1000: 1, n100: 2, c1: 11, c050: 0 },

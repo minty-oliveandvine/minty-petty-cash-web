@@ -1,5 +1,5 @@
 // The report wizard's Bank Deposit step (components/report/DepositStep.tsx, Flask's look exactly),
-// against a STUBBED Petty Cash API. Needs only `npm run dev`. Flask's pages (Ending onwards) are
+// against a STUBBED Petty Cash API. Needs only `npm run dev`. Flask's pages (Submitted onwards) are
 // caught, so nothing leaves the app.
 
 import { expect, test, type Page, type Route } from "@playwright/test";
@@ -80,7 +80,7 @@ async function stub(page: Page, answer: Json, h: Handlers = {}) {
   await page.route(`${API}/reports/cash-count**`, (route) => route.fulfill({ json: CASH_COUNT }));
   await page.route(`${API}/home`, (route) => route.fulfill({ json: HOME }));
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's pages (Ending onwards): caught.
+  // Flask's pages (Submitted onwards): caught.
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\//, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );

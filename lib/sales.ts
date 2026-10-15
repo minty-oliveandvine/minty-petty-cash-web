@@ -27,7 +27,8 @@ export type SalesPage = {
   cash_sales: number | null;
 };
 
-/** The method the save has always skipped; Flask's page leaves it out of the delivery list. */
+/** The method the save has always skipped, so it is never offered (Flask's Ending left it out of both
+ * lists; its Sales page only out of delivery, and dropped what was typed there). */
 const SKIPPED = "deliveroo_sales";
 
 /**
@@ -42,10 +43,10 @@ export function flaskLabel(name: string): string {
     .replace(/[A-Za-z]+/g, (word) => word[0].toUpperCase() + word.slice(1).toLowerCase());
 }
 
-/** The methods each section lists, in order (Deliveroo dropped from delivery, as Flask does). */
+/** The methods each section lists, in order (Deliveroo left out of both, as Flask's Ending does). */
 export function sections(methods: SalesMethod[]): { electronic: SalesMethod[]; delivery: SalesMethod[] } {
   return {
-    electronic: methods.filter((m) => m.type === "electronic"),
+    electronic: methods.filter((m) => m.type === "electronic" && m.value_name !== SKIPPED),
     delivery: methods.filter((m) => m.type === "delivery" && m.value_name !== SKIPPED),
   };
 }

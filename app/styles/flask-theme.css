@@ -73,6 +73,20 @@
   --color-flask-red-800: #991b1b;
   --color-flask-green-500: #22c55e;
 
+  /* the Ending step (report/ending.html with components/bar_chart.html and pie_chart.html): the
+     Sales History bars and their figures (the day itself is flask-red / flask-red-500), and the
+     expense pie's slice colours in Flask's order, "Other expenses" always yellow */
+  --color-flask-chart-bar: #e1f3f5;
+  --color-flask-chart-label: #b8b8b8;
+  --color-flask-pie-1: #278cf4;
+  --color-flask-pie-2: #f1b337;
+  --color-flask-pie-3: #f2822c;
+  --color-flask-pie-4: #b8e467;
+  --color-flask-pie-5: #67e4c0;
+  --color-flask-pie-6: #9f67e4;
+  --color-flask-pie-7: #e4679d;
+  --color-flask-pie-other: #f1db37;
+
   /* Quick Actions icons */
   --color-flask-purple-bg: #f3e8ff;
   --color-flask-purple: #9333ea;

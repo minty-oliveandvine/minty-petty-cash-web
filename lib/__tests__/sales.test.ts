@@ -33,6 +33,11 @@ describe("the sections and their totals", () => {
     method("alipay_sales", "electronic"),
   ];
 
+  it("leave Deliveroo out even when it is set up as an electronic method", () => {
+    const { electronic } = sections([method("deliveroo_sales", "electronic"), method("visa_sales", "electronic")]);
+    expect(electronic.map((m) => m.value_name)).toEqual(["visa_sales"]);
+  });
+
   it("keep Settings order and leave Deliveroo out of delivery", () => {
     const { electronic, delivery } = sections(methods);
     expect(electronic.map((m) => m.value_name)).toEqual(["visa_sales", "alipay_sales"]);

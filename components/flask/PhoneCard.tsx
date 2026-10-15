@@ -97,9 +97,9 @@ export function PhoneCard({
             </a>
           </div>
           {report ? (
-            <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-3">
+            <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap sm:gap-3">
               {datePill ? (
-                <span className="rounded-full bg-flask-teal-soft/50 px-3 py-1 text-xs font-medium text-flask-teal-pill">{datePill}</span>
+                <span className="whitespace-nowrap rounded-full bg-flask-teal-soft/50 px-2 py-1 text-xs font-medium text-flask-teal-pill sm:px-3">{datePill}</span>
               ) : null}
               <h1 className="text-lg font-medium text-flask-header">{acronym}</h1>
               {badge}

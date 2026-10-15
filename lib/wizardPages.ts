@@ -1,6 +1,6 @@
 /**
  * Where each report step lives: this app's own page once it is ported, Flask's until then
- * (lib/flaskPages.ts). Ported so far: Opening, Sales, Expenses, Bank Deposit and Cash Count.
+ * (lib/flaskPages.ts). Ported: every step - Opening, Sales, Expenses, Bank Deposit, Cash Count and Ending.
  */
 
 import { companyRef } from "@minty/shared/companyRef";
@@ -13,6 +13,7 @@ const PORTED: Partial<Record<WizardStep, string>> = {
   expenses: "expense",
   deposit: "deposit",
   cash_count: "cash-count",
+  ending: "ending",
 };
 
 /** Whether `step` is this app's own page (so going there is a client-side navigation). */

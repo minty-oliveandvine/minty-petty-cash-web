@@ -18,6 +18,7 @@
   --color-flask-gray-500: #6b7280;
   --color-flask-gray-600: #4b5563;
   --color-flask-gray-700: #374151;
+  --color-flask-gray-800: #1f2937;
   --color-flask-gray-900: #111827;
   --color-flask-red-500: #ef4444;
   --color-flask-black: #000000;
@@ -55,6 +56,16 @@
   --color-flask-danger-ink: #b91c1c;
   --color-flask-success-bg: #f0fdf4;
   --color-flask-success-ink: #166534;
+
+  /* the Expenses step (report/expense.html): the uploaded-receipt state, the drag-over state,
+     the Expense Details ink, and the link of a receipt no browser draws */
+  --color-flask-upload-ok-bg: #d9f7ef;
+  --color-flask-upload-ok: #00a078;
+  --color-flask-blue-50: #eff6ff;
+  --color-flask-blue-500: #3b82f6;
+  --color-flask-blue-600: #2563eb;
+  --color-flask-blue-800: #1e40af;
+  --color-flask-detail-ink: #0c4a6e;
 
   /* Quick Actions icons */
   --color-flask-purple-bg: #f3e8ff;
@@ -135,4 +146,30 @@
 .flask-radio:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+/* Flask's .hover-bounce (components/hover_effects.html): the trash icon hops on hover. Off on a
+   touch screen, as Flask's `@media (hover: none)` has it, and for anyone asking for less motion. */
+@keyframes flask-bounce {
+  0%,
+  20%,
+  50%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+.flask-hover-bounce:hover {
+  animation: flask-bounce 0.6s ease-in-out;
+}
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .flask-hover-bounce:hover {
+    animation: none;
+  }
 }

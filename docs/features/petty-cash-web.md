@@ -132,9 +132,62 @@ What it keeps from Flask:
 Where the app differs:
 - **The opening balance is the server's.** Flask took it from a hidden form field.
 - **A refused day lands on the dashboard with its message.** `lib/flash.ts` carries Flask's flash there, so the message still shows.
-- **Ported steps open in this app.** The dashboard's Start, the deposit check and the stepper all go through `lib/wizardPages.ts`, which sends the ported steps here and the rest to Flask. Sales onwards is still Flask's.
+- **Ported steps open in this app.** The dashboard's Start, the deposit check and the stepper all go through `lib/wizardPages.ts`, which sends the ported steps here and the rest to Flask. Bank Deposit onwards is still Flask's.
+
+### Report wizard, Sales: `/entity/<shortid>/<name>/petty-cash/reports/new/sale?transaction_date=`
+
+This is Flask's `report/sales.html`, at Flask's own address for it. It is built from `components/report/SalesStep.tsx` and `lib/sales.ts`, and reads and saves through `GET`/`PUT /reports/sales`.
+
+What it keeps from Flask:
+- **The report header and the stepper**, as on Opening, with the same unsaved-changes hold. Emptying a field does not count as a change, as in Flask.
+- **"Sales Entry"**, then one card:
+  - **Electronic Payments** and **Delivery Sales**: a field per method the company switched on, two to a row, in Settings order. Deliveroo is left out of delivery.
+  - **Cash Sales**: one full-width field with no label.
+  - each section ends in its running total ("Total Electronic Payment Sales", "Total Delivery Sales", "Total Cash Sales").
+- **Flask's labels:** Python's `.title()` of each name, so "WeChat Pay" shows as "Wechat Pay" and "OpenRice" as "Openrice" (`flaskLabel`).
+- **The money fields** of `lib/currencyInput.ts`. A zero shows as an empty field with the "0.00" placeholder.
+- **Save & Next** (to Expenses, in this app) and **Save & Exit**.
+
+Where the app differs:
+- **No stand-in fields.** Flask shows Visa, Mastercard and Food Panda to a company with no methods, then drops what is typed in them. They are left out here.
+- **A save with no draft** goes back to Opening with Flask's sentence as a toast.
+- **Flask's save bugs are fixed in the shared service** (Minty `report/services/sales.py`): a re-save closed on the cash typed the time before, and a method the page has no field for was zeroed.
+- **Not yet:** the read-only view of a submitted report, with its Close button. It comes with the Submitted step.
+- **Known:** at 360 px an amount like "1,200.50" does not fully show beside the currency code in the two-column grid. Flask's page is the same.
+
+### Report wizard, Expenses: `/entity/<shortid>/<name>/petty-cash/reports/new/expense?transaction_date=`
+
+This is Flask's `report/expense.html`, at Flask's own address for it. It is built from `components/report/ExpensesStep.tsx` (the page, the list and the two modals), `AddExpenseCard.tsx` (the add card) and `ReceiptViewer.tsx`, with its rules in `lib/expenses.ts`. It talks to `GET`/`PUT /reports/expenses`, `POST /reports/expenses/lines` (multipart), `DELETE /expense-lines/<id>`, `GET /expense-lines/<id>/receipts/<receipt id>` and `POST /suppliers`. `lib/apiClient.ts` gained a multipart body (`form`) and `pettyCashBlob` for a receipt's bytes.
+
+What it keeps from Flask:
+- **The report header and the stepper.** While the add card is open, the stepper holds with Flask's "You have an unsaved expense. Please save before navigating."
+- **"Expenses"**, then one card listing the day's lines as Flask's server-drawn rows: the account's name in bold ("N/A" without one), the supplier, the description, the amount in red, and the bin. "No expenses added yet" when there are none, then "Total Expense" and "+ Add New Expense".
+- **The add card, inline below the list:**
+  - "Receipt/Document": the dashed box to click or drop on. A picture shows itself (borderless, 256 x 192). A PDF turns the box green with `"<name>" Uploaded` and "Click to change files". The corner button opens the picked file full screen.
+  - "Expense Amount" with `lib/currencyInput.ts`, and "Description".
+  - "Suppliers": A to Z, any part of the name in any case, "+ Add '<text>' as a new contact" and "No Xero contact found", with ↑/↓/Enter/Escape. The "New Contact" panel (Cancel / Create, "Creating Contact...") adds the supplier to the list and chooses it.
+  - "Account Code": the name with its code under it, filtered by name.
+  - Cancel / Add. Add refuses an amount of 0, a supplier or account not chosen from its list, or no receipt, with red borders and "Please fill out the Required Fields".
+  - Flask's file sentences: "I can take PDF, JPEG, or PNG files.", "Files need to be under 10MB." and, on a drop, "Only one file is allowed per expense." A drop names the file, as Flask's does.
+- **Expense Details** (a tap on a line): the receipt first, "Amount Paid", Contact Name, Description and Account (`<code> <account>`), and Close.
+- **Delete Expense** (the bin): Flask's warning, Cancel / Delete, "Deleting Expense...".
+- **Flask's toasts and overlays**, word for word, and **Save & Next** (to Flask's Bank Deposit) / **Save & Exit**.
+
+Where the app differs:
+- **The server's sentence is shown.** A refused add, delete or new supplier shows what the API says; Flask's own fallbacks are used only when it says nothing.
+- **Receipts open full screen, never in a tab**, in Flask's receipt viewer. Their bytes are read with the bearer and shown as object URLs. This app does not carry pdf.js, so a PDF is not drawn as pages:
+  - in the add card it shows Flask's green "Uploaded" box with its tick;
+  - in Expense Details it is a tile with its name and "Open";
+  - full screen it is the browser's own PDF viewer in an `<object>`. Phone browsers that cannot show a PDF inline say "This PDF can't be previewed here."
+- **No page reload.** A delete updates the list and the total from the API's answer; Flask reloads the page.
+- **"+ Add … as a new contact" is offered only to someone allowed to create one** (`permissions.create_supplier`). Flask offers it to everyone and the server refuses.
+- **The drop box keeps its wording.** After an add or a cancel Flask's box says "Click to upload", which loses "or drag and drop"; here it never changes.
+- **Enter works.** Enter in the add card adds, and in New Contact it creates. Flask's Enter does nothing there.
+- **Every name is text.** Flask writes supplier and account names into its dropdowns as HTML; React escapes them.
+- **Left out:** editing a saved line (Flask's page has no way into it), the dead "submit all" path, the receipt reader (`expense_ai.js`, behind a flag), and the read-only view of a submitted report.
+- **Known, as in Flask:** Save & Next or Save & Exit with the add card still open leaves the typed expense unsaved, without a warning. Typing does not clear an open toast, which Flask does.
 
 ## Not here yet
 
-- **The other pages.** The rest of the report wizard (Sales, Expenses, Bank Deposit, Cash Count, Ending, Submitted), history, the report summary, settings and Xero publish are next, in that order.
+- **The other pages.** The rest of the report wizard (Bank Deposit, Cash Count, Ending, Submitted), history, the report summary, settings and Xero publish are next, in that order.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

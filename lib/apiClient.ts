@@ -39,6 +39,8 @@ const SESSION_ENDED = "Your session has ended. Signing you back in…";
 export type ApiRequest = Omit<RequestInit, "body"> & {
   /** JSON body; serialised here. */
   json?: unknown;
+  /** A multipart body (a file upload); the browser writes its Content-Type and boundary. */
+  form?: FormData;
   /** Query string, appended to the path. */
   query?: Record<string, string | number | boolean | undefined>;
   /**
@@ -76,28 +78,36 @@ function errorSentence(body: unknown): string | null {
   return null;
 }
 
-async function requestJson<T>(base: string, path: string, init: ApiRequest): Promise<T> {
-  const { json, query, headers: extraHeaders, onUnauthorized = "handoff", ...rest } = init;
+/** The call itself: the bearer, a 401 back through Flask, any other failure an `ApiError`. */
+async function send(base: string, path: string, init: ApiRequest, accept: string): Promise<Response> {
+  const { json, form, query, headers: extraHeaders, onUnauthorized = "handoff", ...rest } = init;
   const auth = getAuth();
 
   const headers = new Headers(extraHeaders);
-  headers.set("Accept", "application/json");
+  headers.set("Accept", accept);
   if (auth?.token) headers.set("Authorization", `Bearer ${auth.token}`);
   if (json !== undefined) headers.set("Content-Type", "application/json");
 
   const res = await fetch(`${base}${withQuery(path, query)}`, {
     ...rest,
     headers,
-    body: json === undefined ? undefined : JSON.stringify(json),
+    body: form ?? (json === undefined ? undefined : JSON.stringify(json)),
   });
 
   if (res.status === 401) {
     if (onUnauthorized === "handoff") redirectToHandoff();
     throw new ApiError(401, SESSION_ENDED);
   }
-  const body = await readBody(res);
-  if (!res.ok) throw new ApiError(res.status, errorSentence(body) ?? HOUSE_FALLBACK, body);
-  return body as T;
+  if (!res.ok) {
+    const body = await readBody(res);
+    throw new ApiError(res.status, errorSentence(body) ?? HOUSE_FALLBACK, body);
+  }
+  return res;
+}
+
+async function requestJson<T>(base: string, path: string, init: ApiRequest): Promise<T> {
+  const res = await send(base, path, init, "application/json");
+  return (await readBody(res)) as T;
 }
 
 /** The company the cookie is for - every Petty Cash API path is under it. */
@@ -117,6 +127,15 @@ function companyBase(): string {
  */
 export async function pettyCashFetch<T = unknown>(path: string, init: ApiRequest = {}): Promise<T> {
   return requestJson<T>(companyBase(), path, init);
+}
+
+/**
+ * A file from Petty Cash's API for the cookie's company - a receipt's bytes - as a Blob typed by
+ * the answer's Content-Type, for an object URL. Fails as `pettyCashFetch` does.
+ */
+export async function pettyCashBlob(path: string, init: ApiRequest = {}): Promise<Blob> {
+  const res = await send(companyBase(), path, init, "*/*");
+  return res.blob();
 }
 
 /** Flask's hub surface (`/api/me/profile`); a company travels as `?entity=`. */

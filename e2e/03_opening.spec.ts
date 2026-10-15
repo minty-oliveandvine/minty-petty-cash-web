@@ -1,6 +1,6 @@
 // The report wizard's Opening step (components/report/OpeningStep.tsx, Flask's look exactly),
-// against a STUBBED Petty Cash API. Needs only `npm run dev`. Flask's pages (Sales onwards) are
-// caught, so nothing leaves the app.
+// against a STUBBED Petty Cash API. Needs only `npm run dev`. Flask's pages (Expenses onwards)
+// are caught, so nothing leaves the app.
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
@@ -52,6 +52,11 @@ async function openWith(page: Page, answer: Json, onSave?: (body: Json, route: R
     await route.fulfill({ json: answer });
   });
   await page.route("**/api/petty-cash/v1/companies/*/home", (route) => route.fulfill({ json: HOME }));
+  // This app's own Sales step (e2e/04_sales.spec.ts covers it): a quiet stub, so Save & Next lands
+  // on it without reading anything real.
+  await page.route("**/api/petty-cash/v1/companies/*/reports/sales**", (route) =>
+    route.fulfill({ json: { transaction_date: DAY, currency_code: "HKD", draft: null, methods: [], cash_sales: null } }),
+  );
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
   // Flask's pages (the Sales step onwards): caught.
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\//, (route) =>

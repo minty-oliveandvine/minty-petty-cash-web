@@ -302,6 +302,28 @@ test("View: the header, the summary from the report, and Share, Delete, Edit Rep
   await expectNoHorizontalScroll(page);
 });
 
+for (const [badge, over] of [
+  ["Submitted", {}],
+  ["Published", { xero_integrated: true, publishing_status: "completed", was_published: true }],
+  ["Publish failed", { publishing_status: "failed" }],
+] as const) {
+  test(`View: the header's date, initials and "${badge}" clear the back arrow and the person's initials`, async ({ page }) => {
+    await openView(page, { report: reportAnswer(over) });
+    const box = async (locator: ReturnType<Page["locator"]>) => {
+      const b = await locator.boundingBox();
+      if (!b) throw new Error("not drawn");
+      return b;
+    };
+    const back = await box(page.getByRole("link", { name: "Back" }));
+    const profile = await box(page.getByRole("link", { name: "My Profile" }));
+    const date = await box(page.locator("span").filter({ hasText: /^13 OCT$/ }));
+    const pill = await box(page.getByText(badge, { exact: true }));
+    expect(date.x).toBeGreaterThanOrEqual(back.x + back.width);
+    expect(pill.x + pill.width).toBeLessThanOrEqual(profile.x);
+    await expectNoHorizontalScroll(page);
+  });
+}
+
 test("View: an older report shows only what the person may do - Share and Close", async ({ page }) => {
   await openView(page, {
     report: reportAnswer({ is_latest: false, xero_integrated: true, publishing_status: "completed", permissions: { edit: false, delete: false, publish: true, share: true } }),

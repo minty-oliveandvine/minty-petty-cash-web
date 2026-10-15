@@ -85,7 +85,7 @@ export function PhoneCard({
     <div className="flask-main-container flex min-h-screen items-center justify-center">
       <div className="relative flex h-screen w-full flex-col overflow-hidden bg-flask-gray-50 shadow-flask-xl">
         <div className="relative flex flex-shrink-0 items-center justify-between bg-flask-gray-50 px-4 py-3">
-          <div className="flex min-w-0 flex-1 justify-start">
+          <div className={report ? "flex shrink-0 justify-start sm:min-w-0 sm:flex-1" : "flex min-w-0 flex-1 justify-start"}>
             <a
               href={backHref ?? (mounted ? sidebarHost.links.entities() : undefined)}
               className="text-flask-header transition-colors"
@@ -97,17 +97,19 @@ export function PhoneCard({
             </a>
           </div>
           {report ? (
-            <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap sm:gap-3">
+            // Below 640px the group takes the room between the chevron and the buttons, centred there
+            // (the page's centre leaves the longest badge under the initials); above, Flask's centre.
+            <div className="mx-2 flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap sm:absolute sm:left-1/2 sm:mx-0 sm:flex-none sm:-translate-x-1/2 sm:gap-3">
               {datePill ? (
-                <span className="whitespace-nowrap rounded-full bg-flask-teal-soft/50 px-2 py-1 text-xs font-medium text-flask-teal-pill sm:px-3">{datePill}</span>
+                <span className="shrink-0 whitespace-nowrap rounded-full bg-flask-teal-soft/50 px-2 py-1 text-xs font-medium text-flask-teal-pill sm:px-3">{datePill}</span>
               ) : null}
-              <h1 className="text-lg font-medium text-flask-header">{acronym}</h1>
+              <h1 className="min-w-0 truncate text-lg font-medium text-flask-header">{acronym}</h1>
               {badge}
             </div>
           ) : (
             <h1 className="absolute left-1/2 -translate-x-1/2 text-lg font-semibold text-flask-header">{acronym}</h1>
           )}
-          <div className="flex flex-1 justify-end">
+          <div className={report ? "flex shrink-0 justify-end sm:flex-1" : "flex flex-1 justify-end"}>
             <HeaderButtons />
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
-import { isPorted, stepHref } from "@/lib/wizardPages";
+import { isPorted, outcomeHref, stepHref } from "@/lib/wizardPages";
 
 describe("money inputs (Flask's currency.js)", () => {
   it.each([
@@ -33,7 +33,7 @@ describe("money inputs (Flask's currency.js)", () => {
 
 describe("step addresses", () => {
   const ID = "360812e1-9f94-46a3-aa31-347e21afde8e";
-  it("send a ported step to this app and the rest to Flask", () => {
+  it("send every step to this app", () => {
     expect(stepHref(ID, "Olive & Vine", "opening", "2026-10-14")).toBe(
       "/entity/360812e1/olive-and-vine/petty-cash/reports/new/opening?transaction_date=2026-10-14",
     );
@@ -49,13 +49,21 @@ describe("step addresses", () => {
         "/entity/360812e1/olive-and-vine/petty-cash/reports/new/cash-count?transaction_date=2026-10-14",
       );
     }
+    // Close is this app's own since Wave 2e - every step is now
     expect(stepHref(ID, "Olive & Vine", "ending", "2026-10-14")).toBe(
-      `http://localhost:8000/entity/${ID}/petty-cash/reports/new/ending?transaction_date=2026-10-14`,
+      "/entity/360812e1/olive-and-vine/petty-cash/reports/new/ending?transaction_date=2026-10-14",
     );
   });
 
+  it("send a submitted report to its outcome page, at Flask's address shape", () => {
+    expect(outcomeHref(ID, "Olive & Vine", "5d6e7f80-0000-4000-8000-000000000001")).toBe(
+      "/entity/360812e1/olive-and-vine/petty-cash/reports/5d6e7f80-0000-4000-8000-000000000001/submitted",
+    );
+    expect(outcomeHref(ID, "Olive & Vine", "a/b")).toBe("/entity/360812e1/olive-and-vine/petty-cash/reports/a%2Fb/submitted");
+  });
+
   it("know which steps are this app's own - and that a key that is no step is not", () => {
-    expect(["opening", "sales", "expenses", "deposit", "cash_count", "ending"].filter(isPorted)).toEqual(["opening", "sales", "expenses", "deposit", "cash_count"]);
+    expect(["opening", "sales", "expenses", "deposit", "cash_count", "ending"].filter(isPorted)).toEqual(["opening", "sales", "expenses", "deposit", "cash_count", "ending"]);
     expect(isPorted("constructor")).toBe(false);
   });
 });

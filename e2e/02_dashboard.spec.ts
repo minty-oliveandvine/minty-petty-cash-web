@@ -85,6 +85,16 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock }: Enter 
       },
     }),
   );
+  // This app's own Close stage (e2e/07_close.spec.ts covers it): a quiet stub too.
+  await page.route("**/api/petty-cash/v1/companies/*/reports/close**", (route) =>
+    route.fulfill({
+      json: {
+        transaction_date: TODAY, currency_code: "HKD", draft: null, opening_balance: 0, cash_addition: 0,
+        sales: { methods: [], cash: 0, total: 0, yesterday_total: null, history: [] }, expenses: { lines: [], total: 0 },
+        cash: { bank_deposit: 0, expected: 0, counted: 0, safe_box: 0, difference: { amount: 0, kind: "none", reason: "" } }, closing_balance: 0, problem: null,
+      },
+    }),
+  );
   // Flask's wizard, summary and history pages: caught, so the spec can read where the app went.
   await page.route(/\/entity\/[^/]+\/petty-cash\/reports(?:[/?]|$)/, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
@@ -239,7 +249,7 @@ test("in progress: 3 of 5 done, the next stage, when it was saved, and Continue 
   await expect(page.getByRole("heading", { level: 1, name: "Cash Count" })).toBeVisible();
 });
 
-test("in progress on Close: Continue still resumes in Flask", async ({ page }) => {
+test("in progress on Close: Continue opens this app's own Close stage", async ({ page }) => {
   await enterWith(
     page,
     homeAnswer({
@@ -251,7 +261,8 @@ test("in progress on Close: Continue still resumes in Flask", async ({ page }) =
   await expect(c).toContainText("4 of 5 done");
   await expect(c).toContainText("Next: Close");
   await c.getByRole("button", { name: "Continue Daily Closing" }).click();
-  await expect(page).toHaveURL(/\/petty-cash\/reports\/resume\?transaction_date=2026-10-14/);
+  await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports/new/ending\\?transaction_date=2026-10-14$`));
+  await expect(page.getByRole("heading", { level: 1, name: "Close" })).toBeVisible();
 });
 
 test("in progress on Addition to Drawer: Continue opens this app's own stage", async ({ page }) => {

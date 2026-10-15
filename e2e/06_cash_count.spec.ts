@@ -1,7 +1,7 @@
 // The Daily Closing's Cash Count stage (components/closing/CashCount.tsx, Part 15.9 / 15.15d), with
 // Bank Deposit folded in as its first section (D15-05), against a STUBBED Petty Cash API. Needs
-// only `npm run dev`. Addition to Drawer and Expenses are this app's own stages (stubbed quietly);
-// Flask's pages (Close / Ending, by the company's full id) are caught, so nothing leaves the app.
+// only `npm run dev`. Addition to Drawer, Expenses and Close are this app's own stages (stubbed
+// quietly); Flask's pages (by the company's full id) are caught, so nothing leaves the app.
 // Refusals and warnings are inline alerts or Page banners, never toasts.
 
 import { expect, test, type Page, type Route } from "@playwright/test";
@@ -15,7 +15,7 @@ const BASE = `/entity/${companyRef(ENTITY, NAME)}/petty-cash`;
 const DAY = "2026-10-13";
 const STAGE_URL = `${BASE}/reports/new/cash-count?transaction_date=${DAY}`;
 const EXPENSES_URL = `${BASE}/reports/new/expense?transaction_date=${DAY}`;
-const ENDING = new RegExp(`/entity/${ENTITY}/petty-cash/reports/new/ending\\?transaction_date=${DAY}$`);
+const ENDING = new RegExp(`${BASE}/reports/new/ending\\?transaction_date=${DAY}$`);
 
 type Json = Record<string, unknown>;
 
@@ -64,6 +64,7 @@ const SAVED = {
   discrepancy: { amount: 0, kind: "none" },
 };
 
+const SAVED_DRAFT = { ...DRAFT, current_section: "ending", completed_sections: SAVED.completed_sections };
 const OPENING = { transaction_date: DAY, currency_code: "HKD", draft: DRAFT, starting_cash_balance: 500, yesterday_closing_balance: 500, safebox_balance: 0, cash_addition: null, withdrawal: "personal" };
 const EXPENSES = { transaction_date: DAY, currency_code: "HKD", draft: { ...DRAFT, current_section: "expenses", completed_sections: ["opening", "sales"] }, lines: [], total: 0, suppliers: [], accounts: [], permissions: { create_supplier: false } };
 
@@ -108,6 +109,16 @@ async function stub(page: Page, answer: Json, { onSave, read, home }: Setup = {}
     }
     await route.fulfill({ json: EXPENSES });
   });
+  // This app's own Close stage (e2e/07_close.spec.ts covers it): a quiet stub.
+  await page.route("**/api/petty-cash/v1/companies/*/reports/close**", (route) =>
+    route.fulfill({
+      json: {
+        transaction_date: DAY, currency_code: "HKD", draft: SAVED_DRAFT, opening_balance: 500, cash_addition: 100,
+        sales: { methods: [], cash: 820.5, total: 820.5, yesterday_total: null, history: [] }, expenses: { lines: [], total: 120 },
+        cash: { bank_deposit: 0, expected: 1300.5, counted: 1300.5, safe_box: 0, difference: { amount: 0, kind: "none", reason: "" } }, closing_balance: 1300.5, problem: null,
+      },
+    }),
+  );
   await page.route("**/api/petty-cash/v1/companies/*/home", (route) => route.fulfill({ json: home ?? homeAnswer() }));
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
   // Flask's pages (Close onwards, by the company's full id): caught.
@@ -244,8 +255,9 @@ test("a difference needs its reason on Save & Next - nothing is sent until it ha
   await expect(page.getByText("So the reviewer knows what happened. 18 of 300 characters.")).toBeVisible();
   await page.getByRole("button", { name: "Save & Next" }).click();
 
-  // Close is still Flask's Ending page
+  // Close, this app's own stage since Wave 2e
   await expect(page).toHaveURL(ENDING);
+  await expect(page.getByRole("heading", { level: 1, name: "Close" })).toBeVisible();
   expect(saves).toEqual([
     {
       transaction_date: DAY,

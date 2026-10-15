@@ -63,7 +63,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses and Cash Count rules (and the receipt read), the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -125,7 +125,7 @@ The states (`launchState` and `gateDay`, `lib/dashboard.ts`):
 | State | When | The card |
 |---|---|---|
 | First use | nothing submitted and no open report | 15.11a empty state with Minty, "Your first Daily Closing", **Start today's Daily Closing** |
-| In progress | an open report (the newest draft; its day is `draft_date`, as Flask's Continue used it) | its stages, **Continue Daily Closing** to Flask's resume (to this app's own stage when the report is on Addition to Drawer, Sales or Expenses, Waves 2a-2c) |
+| In progress | an open report (the newest draft; its day is `draft_date`, as Flask's Continue used it) | its stages, **Continue Daily Closing** to this app's own stage the report is on (every stage since Wave 2e; Flask's resume only for a section this app does not know) |
 | Done | `published[server_today]` exists | all five done, "Today's report is submitted", **View report** to Flask's summary |
 | Not started | otherwise | five stages ahead, **Start today's Daily Closing** |
 | Gate | yesterday has no submitted report although earlier days do | the Start is disabled with "Finish Tue 13 Oct first." beside it, and the banner starts that day |
@@ -197,7 +197,7 @@ Against Flask's Opening, deliberately: the "Fix Negative Balance" modal became t
 Known gaps of Wave 2a:
 - **No autosave and no "Saved 6:02 pm"** (15.9f): the API saves only on Save & Next / Save & Exit and `GET /reports/opening` carries no saved time.
 - **Stages not done cannot be opened from here**, even the one the report was left on: when someone goes back to this stage, Save & Next walks them forward through Flask's pages.
-- **Close is still Flask's page**, in Flask's look, with its six-step stepper (Sales moved here in Wave 2b, Expenses in Wave 2c, Cash Count in Wave 2d).
+- ~~Close is still Flask's page~~ - every stage is this app's since Wave 2e (Sales in 2b, Expenses in 2c, Cash Count in 2d, Close in 2e).
 
 ### Wave 2b: the second Daily Closing stage, "Sales" (Part 15.9 / 15.15)
 
@@ -303,7 +303,7 @@ The rules (the owner's, 2026-10-15; the API refuses the same):
 - **A count above a million** is said as typed ("The count is 1,000,001. Enter 1,000,000 or fewer.").
 - **The reason**: over 300 characters is said at once; missing while there is a difference only after a refused **Save & Next** ("The count is HKD20.00 short. Add the reason to continue."). **Save & Exit keeps a difference without one.** The reason is sent only while there is a difference (`""` otherwise), so a note never outlives the difference it explained.
 - **A refused Save & Next** with one problem moves the focus to that field; with two or more the shared error summary takes the focus and links to each. Nothing is sent.
-- **Save & Next** sends `{transaction_date, bank_deposit, counts: {<id>: n}, safe_box_balance, discrepancy_reason, action: "next"}` - **`bank_deposit` every time**, every denomination (an empty field as 0) - and goes on to Close, which is still **Flask's Ending page** (`openStep(..., "ending")`, a full navigation). **Save & Exit** sends `action: "exit"` and goes to the launch page.
+- **Save & Next** sends `{transaction_date, bank_deposit, counts: {<id>: n}, safe_box_balance, discrepancy_reason, action: "next"}` - **`bank_deposit` every time**, every denomination (an empty field as 0) - and goes on to Close (`openStep(..., "ending")`) - Flask's Ending page in Wave 2d, this app's own Close stage since Wave 2e (a client-side move). **Save & Exit** sends `action: "exit"` and goes to the launch page.
 - **The API's 422** names its field (`bank_deposit`, `discrepancy_reason`, `safe_box_balance` or a denomination id): its sentence shows on that field, which takes the focus, until the field changes. A 409 without a place (`{error}`) is a Danger inline alert above the actions; no draft (409 `to: "opening"`, the read's or a save's) goes to Addition to Drawer with the sentence, read once.
 - **Cash on hand below zero** is a business-rule gate (15.9e; Flask's "Fix Negative Balance" modal): the form gives way to a warning Page banner, "The cash on hand is below zero", with the sums ("Opening cash HKD600.00 plus cash sales HKD0.00, less expenses HKD620.00, comes to -HKD20.00, and cash can't be counted against less than zero. Check the expenses and the cash sales, then come back to Cash Count.") and one action, **Go to Expenses**. With the deposit limited to the cash on hand, the expected cash can only go below zero this way.
 - **Unsaved changes** (by value: the deposit, any count, the safebox, the reason) hold the stage links and the back link, as Waves 2a/2b.
@@ -325,7 +325,55 @@ Known gaps of Wave 2d:
 - **No denominations** (a company whose country has none set up): an Info inline alert says so in place of the calculator; a save is refused by the API's 409 ("...check the entity's country settings"), shown inline.
 - **The no-draft sentence is the API's** ("...let's start with the opening entry."), as Wave 2b.
 
+### Wave 2e: the fifth Daily Closing stage, "Close", and the outcome page (Part 15.9g / 15.15e / 15.12e)
+
+`/entity/<shortid>/<name>/petty-cash/reports/new/ending?transaction_date=` replaces Flask's Ending page on this branch, at Flask's own address, and `/entity/<shortid>/<name>/petty-cash/reports/<report id>/submitted` replaces Flask's "Report submitted" page, at Flask's address shape. They read and submit through the Petty Cash API's Close routes (Minty `petty_cash_api/routes/close.py`), unchanged: `GET /reports/close`, `POST /reports/submit` and `GET /reports/<report id>/outcome`. The submit is Flask's own (`report/services/submit.py`, shared with the Jinja Close page).
+
+**Close** (`components/closing/Close.tsx`, in Stage.tsx's frame; rules in `lib/close.ts`) is a Work Verification (15.9g): read-only, nothing typed, so no unsaved-changes hold. Top to bottom:
+1. **The Workflow header**, as Waves 2a-2d: Close is current; the four stages before it are done links. "Check the day, then submit the Daily Report."
+2. **The business-rule gate** (15.9e), only when the read's `problem` says the day can't be submitted now: a warning Page banner with the rule, the reason and one action, the stage that fixes it ("This day can't be submitted yet" / "Finish Sales before you submit the day." / **Go to Sales**; a date rule is **Go to Petty Cash**). A drawer below zero says it in figures, as Flask's Close did: "The drawer is below zero" / "Expected in drawer comes to -HKD20.00. Lower the deposit or check the earlier stages before you submit." / **Go to Cash Count**.
+3. **The summary**, one card, a section per stage, each a Section header (h2) with an **Edit** link (named "Edit Sales" and so on, 44 tall) back to that stage in the app:
+   - **Addition to Drawer**: "Starting cash balance", "Added to the drawer".
+   - **Sales**: one row per method the Sales stage shows (Settings order, catalogue names, Deliveroo left out), "Cash", **Total sales**.
+   - **Expenses (n)**: "General Expenses · ParknShop" per entry, "Receipts 1 of 2 expenses" (entries that carry a receipt), **Total expenses**; "No expenses added for the day." when there are none.
+   - **Cash Count**: "Cash taken for bank deposit", "Expected in drawer", "Counted in the drawer", "In the safe box", **Difference** in words ("HKD20.00 short", "HKD0.01 over", "None"). A difference adds a Warning inline alert in this section (15.10b): "The count is HKD20.00 short" with "Reason: …" (or "No reason was given yet.").
+4. **Closing balance**, the stage summary on a sunk surface, the API's figure.
+5. **The actions** (15.2, not sticky): **Submit Daily Report** (Primary, busy "Submitting…") first and full width on a phone, Save & Exit (Ghost, a link home: every stage saved itself) under it; `[Save & Exit] [Submit Daily Report]` at the right from 640. While the gate stands, Submit is disabled with its reason under it ("Fix Sales first, then submit.", `aria-describedby`).
+
+Every figure is the API's; nothing is added up in the browser. No KPIs or trends (D15-03): the read's `yesterday_total` and `history` are the Daily Report's. Amounts are plain text, never coloured. **Any cent is a difference** (the owner, 2026-10-15): `differenceOf` rounds on the size, so -0.005 is a cent short, never "None".
+
+The rules:
+- **Submit** sends `{transaction_date}` once - a ref guards it, so two clicks in the same tick send one request - and the button stays busy until the outcome page opens (a client-side move).
+- **A refused submit** (409 `{error, to}`; nothing was written) is a Danger inline alert above the actions with the API's sentence and one link to where it is fixed ("The figures changed after the cash count. Check the cash count again, then submit." / **Go to Cash Count**); Submit comes back. A 409 `to: "submitted"` (someone submitted the day meanwhile) opens that report's outcome instead. A 422, 403 or no answer is the sentence alone ("We couldn't submit the day. Check your connection, then try again.").
+- **No draft** (the read's 409 `to: "opening"`): Addition to Drawer, with the sentence as a warning Page banner, read once, as every stage.
+- **A day already submitted** (the read's 409 `to: "submitted"` with `report_id`): its outcome page.
+- These two, and the outcome after a submit, go **in place of** the Close page (`router.replace`), so Back from the outcome does not bounce through a day that is no longer open.
+
+**The outcome page** (`components/closing/ReportOutcome.tsx`, rules in `lib/outcome.ts`): a Part 14 Outcome state (Kind = Completion), a centred 440 column. Minty (decorative), the outcome sentence as the h1 - "Today's report is submitted" when the report is the server's today, else "The report is submitted" - which takes the focus (15.12); "Tue 13 Oct 2026 · E2E Petty Cash Shop"; three facts from the server: **Cash counted** (drawer + safebox), **Difference** ("HKD20.00 short · note added", "HKD0.01 over", "None"), **Sent to Xero** ("Yes · 6:12 pm" on the device's clock, "Pending", "Not yet: it failed", "Not yet"). While Xero is working on it, an Info inline alert says so (15.12 partial success). Then **View report** (Primary, full width) and, centred under it, **Back to home** and **Start the next day**. A report that is not submitted (a reopened draft) says "This report isn't submitted yet" with **Go to Close**. An id the API doesn't know (another company's, or none) shows the API's sentence and Back to home.
+
+- **View report** is Flask's report summary for the day (`reportSummaryUrl`) until the Daily Report (15.7) is built here.
+- **Start the next day** goes to the **launch page**, which starts `next_day` itself (`requestStart` / `takeStartRequest`, Flask's `autoStartNextDay`): the same rules as its Start button - the date rules, **Before You Start** when the submitted day banked cash, the deposit correction - then Addition to Drawer. It starts only when that day is the one the launch page would start (today with nothing open, or the gate's day), not for read-only access and not under Setup Required; otherwise the page just opens. It is offered only for an earlier day's report: today's next day is tomorrow, which no rule lets start.
+
+Addresses: `ending` is a ported step (`lib/wizardPages.ts`'s `PORTED`, to `reports/new/ending`), and `outcomeHref` is the outcome page. So Cash Count's Save & Next, the launch page's Continue on a report in `ending`, and its Close step link open Close in the app.
+
+Wave 1 and 2a-2d files touched for this wave:
+- `components/closing/Stage.tsx`: `refused` sends a `to: "submitted"` (with `report_id`) to the outcome page; a read refused with a place to go now **replaces** the page instead of pushing it (Close's already-submitted case would otherwise trap Back; Expenses' and Cash Count's no-draft reads behave the same way, now without the extra history entry); comments.
+- `lib/wizardPages.ts`: `ending` ported; `outcomeHref`.
+- `components/dashboard/Dashboard.tsx`: takes the outcome page's start request once on arrival and runs its own `start(day)`; a comment.
+- `components/closing/CashCount.tsx`: a comment only (Save & Next already follows `isPorted`).
+- `lib/__tests__/currencyInput.test.ts`: the step addresses (every step is this app's; the outcome address).
+- `e2e/02_dashboard.spec.ts`: Continue on a report left on Close opens this app's Close (was: Flask's resume); a quiet Close stub. `e2e/06_cash_count.spec.ts`: Save & Next lands on this app's Close (stubbed).
+
+Against Flask's pages, deliberately: Close's alerts are a gate with one action (the drawer below zero) and a section issue (the difference), with Submit disabled and its reason beside it - Flask only disabled Submit for the drawer; any rule the API reports now gates on arrival, not only after a refused submit; "Receipts" counts entries with a receipt, not receipt files (the same with the API's one-receipt rule); Close's Save & Exit is a link, as Flask's was.
+
+Known gaps of Wave 2e:
+- **Publish to Xero is left out** of the outcome page (the Xero API is not ported to the Petty Cash API). View report opens Flask's report page, which still publishes, with its confirmation. Part 15.12e names only View report and Back to home.
+- **No polling while Xero publishes**: "Pending" and the Info line stay until the page is reloaded (Flask's page polled its own publishing-status endpoint).
+- **Minty is the 2D cat** (`/cat-hole.png`), not the 3D happy pose 15.12e asks for, as everywhere.
+- **The no-draft sentence is the API's** ("...let's start with the opening entry."), as Waves 2b-2d.
+- **The gate's sentence is the API's** for every rule but the drawer below zero, and the API's below-zero sentence ("Hmm, it looks like your cash balance is negative...") is what a refused submit shows if the figures change between the read and the submit.
+
 ## Not here yet
 
-- **The other pages.** The report wizard, history, the report summary, settings and Xero publish are next, in that order.
+- **The other pages.** History, the report summary (the Daily Report, 15.7), settings and Xero publish are next, in that order; the Daily Closing's five stages and its outcome page are this app's since Wave 2e.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

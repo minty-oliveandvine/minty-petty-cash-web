@@ -18,13 +18,13 @@ import { setFlash, takeFlash, type FlashKind } from "@/lib/flash";
 import type { WizardStep } from "@/lib/flaskPages";
 import { leaveTo } from "@/lib/handoff";
 import { useAuth } from "@/lib/useAuth";
-import { isPorted, stepHref } from "@/lib/wizardPages";
+import { isPorted, outcomeHref, stepHref } from "@/lib/wizardPages";
 
 /**
  * What every Daily Closing stage page shares (Part 15.9 / 15.15): the frame (App bar, a centred
  * 720 column, phone first), the read and its loading / failed states, a message another page left
  * for this one, the Workflow header, the stages, the unsaved-changes hold, the Amount input and
- * Save & Next / Save & Exit. Each stage (AdditionToDrawer.tsx, Sales.tsx, Expenses.tsx, CashCount.tsx) draws only its form.
+ * Save & Next / Save & Exit. Each stage (AdditionToDrawer.tsx, Sales.tsx, Expenses.tsx, CashCount.tsx, Close.tsx) draws only its form.
  */
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
@@ -65,7 +65,8 @@ export function StagePage<T>({
   guidance: string;
   /**
    * This stage, for a read the API refuses with a place to go (`{error, to}`) - Expenses' read is
-   * a 409 `to: "opening"` when the day has no draft: the person is taken there and told why, as a
+   * a 409 `to: "opening"` when the day has no draft, Close's also `to: "submitted"` when the day
+   * is already submitted: the person is taken there (in place of this page) and told why, as a
    * refused save is (`refused`). Without it every refusal is a Danger inline alert here.
    */
   here?: StageKey;
@@ -94,7 +95,8 @@ export function StagePage<T>({
         const auth = getAuth();
         if (here && day && auth && err instanceof ApiError && typeof (err.body as { to?: unknown } | null)?.to === "string") {
           const home = pettyCashHome(auth.entityId, auth.entityName);
-          const push = (href: string) => router.push(href);
+          // In place of this page, which never showed: Back must not land on a page that sends it on again.
+          const push = (href: string) => router.replace(href);
           if (refused(err, { here, push, entityId: auth.entityId, entityName: auth.entityName, home, day }) === undefined) return;
         }
         setShownFlash(flash.current ?? null);
@@ -273,8 +275,10 @@ export function openStep(push: Push, entityId: string, entityName: string, step:
 /**
  * A refused save. A refusal that names another place (`to`) goes there and says why there, as a
  * Page banner read once (lib/flash.ts, Flask's flash; never a toast): `dashboard` is the launch
- * page, a section is that section's stage. Anything else stays on this stage: the sentence to
- * show inline is returned. A 401 has already gone back through the hand-off (undefined).
+ * page, a section is that section's stage, and `submitted` (with its `report_id`: the day is
+ * already submitted) is the report's outcome page, which says so itself. Anything else stays on
+ * this stage: the sentence to show inline is returned. A 401 has already gone back through the
+ * hand-off (undefined).
  */
 export function refused(
   err: unknown,
@@ -283,6 +287,11 @@ export function refused(
   if (err instanceof ApiError && err.status === 401) return undefined;
   const message = err instanceof ApiError ? err.message : NOT_SAVED;
   const to = err instanceof ApiError ? (err.body as { to?: unknown } | null)?.to : undefined;
+  const reportId = err instanceof ApiError ? (err.body as { report_id?: unknown } | null)?.report_id : undefined;
+  if (to === "submitted" && typeof reportId === "string") {
+    push(outcomeHref(entityId, entityName, reportId));
+    return undefined;
+  }
   if (to === "dashboard") {
     setFlash(message, "warning");
     push(home);

@@ -36,6 +36,7 @@ import { historyUrl, reportSummaryUrl, resumeUrl, settingsUrl } from "@/lib/flas
 import { takeFlash, type FlashKind } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
 import { formatMoney } from "@/lib/money";
+import { takeStartRequest } from "@/lib/outcome";
 import { isPorted, stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
@@ -174,6 +175,19 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
     }
     void correct("no", 0);
   }
+
+  // The outcome page's "Start the next day" (lib/outcome.ts, Flask's autoStartNextDay): start that
+  // day here, through the same rules as the Start button, when it is the day this page would start -
+  // today with nothing open, or the gate's day. Taken once, in a ref, so a development re-run of the
+  // effect does not start twice.
+  const askedStart = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (askedStart.current !== undefined) return;
+    const day = (askedStart.current = takeStartRequest());
+    if (!day || readOnly || !home.xero_settings.complete || launch.kind !== "not-started") return;
+    if (day === gate || (!gate && day === launch.day)) start(day);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on arrival with /home's answer
+  }, []);
 
   const problemAlert = problem ? <InlineAlert tone="warning">{problem}</InlineAlert> : null;
 
@@ -326,7 +340,7 @@ function ClosingCard({
     return stepHref(entityId, entityName, stageSection(STAGES[index], launch.draft.current_section), launch.day);
   };
   // Continue: Flask's resume opens the report's section, or `opening` when it has none - this
-  // app's own stage page when that section is redesigned (Addition to Drawer, Sales, Expenses, Cash Count).
+  // app's own stage page when that section is redesigned (every stage since Wave 2e, Close included).
   const resumeHref = (draft: NonNullable<Home["draft"]>, day: string): string => {
     const section = draft.current_section ?? "opening";
     return isPorted(section) ? stepHref(entityId, entityName, section, day) : resumeUrl(entityId, day);

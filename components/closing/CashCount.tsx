@@ -127,7 +127,7 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: CashCou
         method: "PUT",
         json: savePayload(day, page, values, diff, action),
       });
-      // Close is still Flask's Ending page.
+      // Close: this app's own stage since Wave 2e (a client-side move).
       if (answer.next === "ending") openStep(push, entityId, entityName, "ending", answer.transaction_date);
       else push(home);
     } catch (err) {

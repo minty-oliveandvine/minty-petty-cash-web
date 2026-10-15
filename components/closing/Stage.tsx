@@ -24,7 +24,7 @@ import { isPorted, stepHref } from "@/lib/wizardPages";
  * What every Daily Closing stage page shares (Part 15.9 / 15.15): the frame (App bar, a centred
  * 720 column, phone first), the read and its loading / failed states, a message another page left
  * for this one, the Workflow header, the stages, the unsaved-changes hold, the Amount input and
- * Save & Next / Save & Exit. Each stage (AdditionToDrawer.tsx, Sales.tsx, Expenses.tsx) draws only its form.
+ * Save & Next / Save & Exit. Each stage (AdditionToDrawer.tsx, Sales.tsx, Expenses.tsx, CashCount.tsx) draws only its form.
  */
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";

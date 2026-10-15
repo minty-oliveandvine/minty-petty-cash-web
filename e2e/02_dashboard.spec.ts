@@ -76,6 +76,15 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock }: Enter 
   await page.route("**/api/petty-cash/v1/companies/*/reports/sales**", (route) =>
     route.fulfill({ json: { transaction_date: TODAY, currency_code: "HKD", draft: null, methods: [], cash_sales: null } }),
   );
+  // This app's own Cash Count stage (e2e/06_cash_count.spec.ts covers it): a quiet stub too.
+  await page.route("**/api/petty-cash/v1/companies/*/reports/cash-count**", (route) =>
+    route.fulfill({
+      json: {
+        transaction_date: TODAY, currency_code: "HKD", draft: null, opening_balance: 0, cash_addition: 0, cash_sales: 0, expenses: 0, bank_deposit: 0,
+        cash_on_hand: 0, expected_cash: 0, denominations: [], safe_box_balance: 0, discrepancy: { amount: 0, kind: "none", reason: "" },
+      },
+    }),
+  );
   // Flask's wizard, summary and history pages: caught, so the spec can read where the app went.
   await page.route(/\/entity\/[^/]+\/petty-cash\/reports(?:[/?]|$)/, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
@@ -197,7 +206,7 @@ test("a deposit the company cannot correct offers only 'as stated'", async ({ pa
   await expect(page).toHaveURL(addition(TODAY));
 });
 
-test("in progress: 3 of 5 done, the next stage, when it was saved, and Continue resumes in Flask", async ({ page }) => {
+test("in progress: 3 of 5 done, the next stage, when it was saved, and Continue opens this app's Cash Count", async ({ page }) => {
   await enterWith(
     page,
     homeAnswer({
@@ -214,13 +223,33 @@ test("in progress: 3 of 5 done, the next stage, when it was saved, and Continue 
   await expect(c).toContainText("Saved 6:02 pm");
   const stages = c.getByRole("list", { name: "Daily Closing stages" });
   await expect(stages.locator('[aria-current="step"]')).toContainText("Cash Count");
-  // done and current stages open in the wizard; Cash Count where it was left - the deposit
+  // done and current stages open where they were left - Cash Count is this app's own stage, the
+  // deposit its first section (Wave 2d)
   await expect(stages.getByRole("link", { name: /Sales, done/ })).toHaveAttribute("href", /\/reports\/new\/sale\?transaction_date=2026-10-14/);
-  await expect(stages.getByRole("link", { name: /Cash Count, current step/ })).toHaveAttribute("href", /\/reports\/new\/deposit\?/);
+  await expect(stages.getByRole("link", { name: /Cash Count, current step/ })).toHaveAttribute(
+    "href",
+    `${HOME_PATH}/reports/new/cash-count?transaction_date=2026-10-14`,
+  );
   await expect(stages.getByRole("link", { name: /Close/ })).toHaveCount(0);
   // Addition to Drawer is this app's own stage page
   await expect(stages.getByRole("link", { name: /Drawer, done/ })).toHaveAttribute("href", addition(TODAY));
   await expect(page.getByRole("button", { name: "Start today's Daily Closing" })).toHaveCount(0);
+  await c.getByRole("button", { name: "Continue Daily Closing" }).click();
+  await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports/new/cash-count\\?transaction_date=2026-10-14$`));
+  await expect(page.getByRole("heading", { level: 1, name: "Cash Count" })).toBeVisible();
+});
+
+test("in progress on Close: Continue still resumes in Flask", async ({ page }) => {
+  await enterWith(
+    page,
+    homeAnswer({
+      draft: { id: "d", current_section: "ending", completed_sections: ["opening", "sales", "expenses", "deposit", "cash_count"], last_edit_seconds: 60 },
+      draft_date: TODAY,
+    }),
+  );
+  const c = card(page);
+  await expect(c).toContainText("4 of 5 done");
+  await expect(c).toContainText("Next: Close");
   await c.getByRole("button", { name: "Continue Daily Closing" }).click();
   await expect(page).toHaveURL(/\/petty-cash\/reports\/resume\?transaction_date=2026-10-14/);
 });

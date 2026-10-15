@@ -68,7 +68,7 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
     setSaving(action);
     try {
       const answer = await pettyCashFetch<ExpensesSaved>("/reports/expenses", { method: "PUT", json: { transaction_date: day, action } });
-      // Next is Cash Count, which opens at the deposit - still Flask's page.
+      // Next is Cash Count, whose first section is the deposit - this app's own stage since Wave 2d.
       if (answer.next === "deposit") openStep(push, entityId, entityName, "deposit", answer.transaction_date);
       else push(home);
     } catch (err) {

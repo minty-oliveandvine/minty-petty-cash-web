@@ -1,6 +1,6 @@
 // The Daily Closing's Expenses stage (components/closing/Expenses.tsx, Part 15.9 / 15.15c),
 // against a STUBBED Petty Cash API. Needs only `npm run dev`. Addition to Drawer and Sales are this
-// app's own stages (stubbed quietly); Flask's pages (Cash Count onwards, by the company's full id)
+// app's own stages (stubbed quietly); Flask's pages (Close onwards, by the company's full id)
 // are caught, so nothing leaves the app - and nothing reaches Xero: `POST /suppliers` is stubbed.
 
 import { expect, test, type Page, type Route } from "@playwright/test";
@@ -149,7 +149,16 @@ async function stub(page: Page, answer: Json, setup: Setup = {}): Promise<Calls>
   });
   await page.route("**/api/petty-cash/v1/companies/*/home", (route) => route.fulfill({ json: setup.home ?? homeAnswer() }));
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's pages (Cash Count onwards, by the company's full id): caught.
+  // This app's own Cash Count stage (e2e/06_cash_count.spec.ts covers it): a quiet stub.
+  await page.route("**/api/petty-cash/v1/companies/*/reports/cash-count**", (route) =>
+    route.fulfill({
+      json: {
+        transaction_date: DAY, currency_code: "HKD", draft: DRAFT, opening_balance: 500, cash_addition: 0, cash_sales: 0, expenses: 0, bank_deposit: 0,
+        cash_on_hand: 500, expected_cash: 500, denominations: [], safe_box_balance: 0, discrepancy: { amount: 0, kind: "none", reason: "" },
+      },
+    }),
+  );
+  // Flask's pages (Close onwards, by the company's full id): caught.
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports(?:[/?]|$)/, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );
@@ -478,10 +487,11 @@ test("a receipt opens full screen in the app - never a new tab - and Escape clos
   await expect(drawer(page)).toBeVisible();
 });
 
-test("Save & Next marks the stage done and goes on to Flask's Bank Deposit", async ({ page }) => {
+test("Save & Next marks the stage done and goes on to this app's Cash Count, which opens at the deposit", async ({ page }) => {
   const calls = await openWith(page, expensesAnswer());
   await page.getByRole("button", { name: "Save & Next" }).click();
-  await expect(page).toHaveURL(new RegExp(`/entity/${ENTITY}/petty-cash/reports/new/deposit\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/cash-count\\?transaction_date=${DAY}$`));
+  await expect(page.getByRole("heading", { level: 1, name: "Cash Count" })).toBeVisible();
   expect(calls.saves).toEqual([{ transaction_date: DAY, action: "next" }]);
 });
 

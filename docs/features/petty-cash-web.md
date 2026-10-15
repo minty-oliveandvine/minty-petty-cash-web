@@ -63,7 +63,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales and Expenses rules (and the receipt read), the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses and Cash Count rules (and the receipt read), the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -197,7 +197,7 @@ Against Flask's Opening, deliberately: the "Fix Negative Balance" modal became t
 Known gaps of Wave 2a:
 - **No autosave and no "Saved 6:02 pm"** (15.9f): the API saves only on Save & Next / Save & Exit and `GET /reports/opening` carries no saved time.
 - **Stages not done cannot be opened from here**, even the one the report was left on: when someone goes back to this stage, Save & Next walks them forward through Flask's pages.
-- **Cash Count onwards are still Flask's pages**, in Flask's look, with its six-step stepper (Sales moved here in Wave 2b, Expenses in Wave 2c).
+- **Close is still Flask's page**, in Flask's look, with its six-step stepper (Sales moved here in Wave 2b, Expenses in Wave 2c, Cash Count in Wave 2d).
 
 ### Wave 2b: the second Daily Closing stage, "Sales" (Part 15.9 / 15.15)
 
@@ -259,7 +259,7 @@ Validation (CLAUDE.md, as typed; the API refuses the same with a 422):
 **Receipts open full screen, never in a new tab** (`components/closing/ReceiptViewer.tsx`, loaded on first open): the bytes are read with the bearer (`pettyCashBlob`, new in `lib/apiClient.ts`) or taken from the picked file, and drawn from an object URL the viewer owns and revokes - an image in `<img>`, a PDF in the browser's own viewer in an `<iframe>` (pdf.js is not a dependency here). A failed read says why in place. Its Escape is caught on `window` in the capture phase, so over the sheet one Escape closes only the viewer. It is the app's one viewer.
 
 The rules:
-- **Save & Next** sends `{transaction_date, action: "next"}` and goes on to Cash Count, which opens at Bank Deposit - still **Flask's page** (`openStep(..., "deposit")`, a full navigation). **Save & Exit** sends `action: "exit"` (Flask records nothing) and goes to the launch page.
+- **Save & Next** sends `{transaction_date, action: "next"}` and goes on to Cash Count, which opens at Bank Deposit (`openStep(..., "deposit")`) - Flask's page in Wave 2c, this app's own Cash Count stage since Wave 2d (a client-side move). **Save & Exit** sends `action: "exit"` (Flask records nothing) and goes to the launch page.
 - **No draft for the day.** Unlike Sales, Expenses' read itself is refused (409 `to: "opening"`), so the stage never shows: the person lands on Addition to Drawer, with the sentence as a warning Page banner, read once.
 - **Every add and delete is saved at once**, so the stage has no unsaved-changes hold of its own; the sheet asks before it discards.
 - **A report that is no longer a draft** shows its entries without Add expense or Delete (Flask hid both).
@@ -283,6 +283,47 @@ Known gaps of Wave 2c:
 - **A PDF is drawn by the browser's own viewer**, which an iPhone shows as its first page only; zoom is the viewer's own.
 - **Receipts are read twice in development** (React's strict effects), once in production.
 - **No autosave status** (15.9f), as Waves 2a/2b - each entry is saved by Add expense.
+
+### Wave 2d: the fourth Daily Closing stage, "Cash Count" (Part 15.9 / 15.15d, D15-05)
+
+`/entity/<shortid>/<name>/petty-cash/reports/new/cash-count?transaction_date=` replaces Flask's Bank Deposit **and** Cash Count pages on this branch, at Flask's Cash Count address. Part 15 folds Bank Deposit into Cash Count (D15-05): one stage, the deposit first, because the cash for the bank is taken out before counting (A15-02). It reads through `GET /reports/cash-count` and saves the deposit and the count **together** through `PUT /reports/cash-count` with `bank_deposit` (Minty `petty_cash_api/routes/cash.py`): one transaction, and a refusal of either writes nothing. `GET`/`PUT /reports/deposit` are not used.
+
+The page, top to bottom (`components/closing/CashCount.tsx`, in Stage.tsx's frame; rules in `lib/cashCount.ts`):
+1. **The Workflow header**, as Waves 2a-2c: Cash Count is current; Drawer, Sales and Expenses are done links to this app's stages. "Take out any cash for the bank first, then count what is left in the drawer and the safebox."
+2. **The stage card**, three groups (Section header + why):
+   - **Bank deposit**: "Cash on hand" as a Description row (opening cash and cash sales, less expenses - the API's figure), then **Cash taken for bank deposit** (optional), the Stage Amount input with the limit in its helper: "Optional. Up to HKD1,300.50, the cash on hand."
+   - **Cash in the drawer**: Flask's calculator, kept (15.15) and now on the page instead of in a modal - the company's notes, then its coins, each a `fieldset`; one row per denomination: its name ("HKD1,000", "HKD0.50"), the count (`inputMode="numeric"`, digits only, labelled "Number of HKD1,000 notes"), and the row's amount. The amount wraps under the row before it is ever clipped. Then "Drawer total", a polite live region.
+   - **Cash in the safebox** (optional): an Amount input. It counts with the drawer, as Flask's formula does.
+3. **Check** (the stage summary, 15.15d): **Expected in drawer** (cash on hand less the deposit as typed), **Counted** (drawer + safebox), **Difference** in words - "HKD20.00 short", "HKD0.01 over", "None" - each a polite live region, plain text, never coloured. A difference adds a Warning inline alert, "The count is HKD20.00 short", and **Reason for the difference** (a Textarea; required while there is a difference, with the red `*`, sr-only "(required)" and `aria-required`; helper "So the reviewer knows what happened. 18 of 300 characters.").
+4. **The actions**, as Waves 2a-2c. Enter in a count or an amount is Save & Next.
+
+The rules (the owner's, 2026-10-15; the API refuses the same):
+- **Expected = cash on hand - deposit; difference = (drawer + safebox) - expected**, to the cent, added up in cents (3 x HKD0.10 is exactly HKD0.30). **Any cent is a difference** (Flask ignored 0.01).
+- **The deposit can't be more than the cash on hand**, said as it is typed and naming the amount allowed (the API's sentence): "The deposit can't be more than the cash on hand. Enter HKD1,300.50 or less."
+- **A count above a million** is said as typed ("The count is 1,000,001. Enter 1,000,000 or fewer.").
+- **The reason**: over 300 characters is said at once; missing while there is a difference only after a refused **Save & Next** ("The count is HKD20.00 short. Add the reason to continue."). **Save & Exit keeps a difference without one.** The reason is sent only while there is a difference (`""` otherwise), so a note never outlives the difference it explained.
+- **A refused Save & Next** with one problem moves the focus to that field; with two or more the shared error summary takes the focus and links to each. Nothing is sent.
+- **Save & Next** sends `{transaction_date, bank_deposit, counts: {<id>: n}, safe_box_balance, discrepancy_reason, action: "next"}` - **`bank_deposit` every time**, every denomination (an empty field as 0) - and goes on to Close, which is still **Flask's Ending page** (`openStep(..., "ending")`, a full navigation). **Save & Exit** sends `action: "exit"` and goes to the launch page.
+- **The API's 422** names its field (`bank_deposit`, `discrepancy_reason`, `safe_box_balance` or a denomination id): its sentence shows on that field, which takes the focus, until the field changes. A 409 without a place (`{error}`) is a Danger inline alert above the actions; no draft (409 `to: "opening"`, the read's or a save's) goes to Addition to Drawer with the sentence, read once.
+- **Cash on hand below zero** is a business-rule gate (15.9e; Flask's "Fix Negative Balance" modal): the form gives way to a warning Page banner, "The cash on hand is below zero", with the sums ("Opening cash HKD600.00 plus cash sales HKD0.00, less expenses HKD620.00, comes to -HKD20.00, and cash can't be counted against less than zero. Check the expenses and the cash sales, then come back to Cash Count.") and one action, **Go to Expenses**. With the deposit limited to the cash on hand, the expected cash can only go below zero this way.
+- **Unsaved changes** (by value: the deposit, any count, the safebox, the reason) hold the stage links and the back link, as Waves 2a/2b.
+
+Addresses: `deposit` and `cash_count` are both ported steps (`lib/wizardPages.ts`'s `PORTED`, each to `reports/new/cash-count`), so the launch page's stage link, its **Continue** on a report in `deposit` or `cash_count`, and Expenses' Save & Next all open this stage in-app. Flask's own Bank Deposit address on this app, `.../reports/new/deposit?transaction_date=`, **redirects** here with the same day (`reports/new/deposit/page.tsx`, a server `redirect`) - both, so a link written either way lands.
+
+Wave 2a-2c files touched for this wave:
+- `lib/wizardPages.ts`: `deposit` and `cash_count` ported (to `reports/new/cash-count`).
+- `components/closing/Expenses.tsx`, `components/closing/Stage.tsx`, `components/dashboard/Dashboard.tsx`: comments only (Save & Next and Continue already follow `isPorted`).
+- `lib/__tests__/currencyInput.test.ts`: the step addresses.
+- `e2e/02_dashboard.spec.ts`: Continue on a `deposit` report opens this app's Cash Count (stubbed), and a new test keeps Flask's resume for a report on Close; `e2e/05_expenses.spec.ts`: Save & Next lands on this app's Cash Count (stubbed); `e2e/04_sales.spec.ts`: a comment.
+
+Against Flask's pages, deliberately: one stage instead of two (D15-05); the calculator is on the page, not in a modal behind a button, and the read-only "Cash Box Balance" it filled is gone (the drawer total is live); Flask's denomination label drew a 0.50 coin as "$0" (`| int`) - it reads "HKD0.50" here; "Cash Shortage"/"Cash Surplus" in red or green became the difference in words in a Warning alert; the cash-register and safebox pictures are gone (15.D); the "Fix Negative Balance" modal with four ways back became the gate with one; "Expected Cash Count Balance" is "Expected in drawer".
+
+Known gaps of Wave 2d:
+- **No autosave and no "Saved 6:02 pm"** (15.9f), as Waves 2a-2c.
+- **The gate's one action is Expenses.** A negative cash on hand can also come from a missing cash sale or a low opening; Flask offered all four stages. 15.9e asks for one action, and the stage just before is the likeliest.
+- **A difference shows on arrival.** Before anything is counted, Counted is HKD0.00 and the Check says the whole expected cash is short (with the Warning alert); nothing is red, and the reason is asked for only by Save & Next.
+- **No denominations** (a company whose country has none set up): an Info inline alert says so in place of the calculator; a save is refused by the API's 409 ("...check the entity's country settings"), shown inline.
+- **The no-draft sentence is the API's** ("...let's start with the opening entry."), as Wave 2b.
 
 ## Not here yet
 

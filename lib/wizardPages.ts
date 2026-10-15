@@ -1,16 +1,24 @@
 /**
  * Where each report section lives: this app's own page once it is redesigned, Flask's until then
  * (lib/flaskPages.ts). Redesigned so far: `opening`, the "Addition to Drawer" stage, `sales`,
- * the "Sales" stage, and `expenses`, the "Expenses" stage - at Flask's own paths
- * (`reports/new/opening`, `reports/new/sale`, `reports/new/expense`), so a link
- * into one app works in the other.
+ * the "Sales" stage, `expenses`, the "Expenses" stage, and `deposit` + `cash_count`, the one
+ * "Cash Count" stage (D15-05: the deposit is its first section) - at Flask's own paths
+ * (`reports/new/opening`, `reports/new/sale`, `reports/new/expense`, `reports/new/cash-count`),
+ * so a link into one app works in the other. Flask's `reports/new/deposit` redirects to
+ * `reports/new/cash-count` here (its page.tsx).
  */
 
 import { companyRef } from "@minty/shared/companyRef";
 
 import { wizardStepUrl, type WizardStep } from "@/lib/flaskPages";
 
-const PORTED: Partial<Record<WizardStep, string>> = { opening: "opening", sales: "sale", expenses: "expense" };
+const PORTED: Partial<Record<WizardStep, string>> = {
+  opening: "opening",
+  sales: "sale",
+  expenses: "expense",
+  deposit: "cash-count",
+  cash_count: "cash-count",
+};
 
 /** Whether `step` is this app's own page (so going there is a client-side navigation). */
 export function isPorted(step: string): step is WizardStep {

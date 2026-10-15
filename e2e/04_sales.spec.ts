@@ -1,6 +1,6 @@
 // The Daily Closing's Sales stage (components/closing/Sales.tsx, Part 15.9 / 15.15), against a
 // STUBBED Petty Cash API. Needs only `npm run dev`. Addition to Drawer and Expenses are this app's
-// own stages (stubbed quietly); Flask's pages (Cash Count onwards, by the company's full id) are
+// own stages (stubbed quietly); Flask's pages (Close onwards, by the company's full id) are
 // caught, so nothing leaves the app. Refusals and warnings are inline alerts or Page banners, never toasts.
 
 import { expect, test, type Page, type Route } from "@playwright/test";

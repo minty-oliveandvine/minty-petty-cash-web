@@ -326,7 +326,7 @@ function ClosingCard({
     return stepHref(entityId, entityName, stageSection(STAGES[index], launch.draft.current_section), launch.day);
   };
   // Continue: Flask's resume opens the report's section, or `opening` when it has none - this
-  // app's own stage page when that section is redesigned (Addition to Drawer, Sales, Expenses).
+  // app's own stage page when that section is redesigned (Addition to Drawer, Sales, Expenses, Cash Count).
   const resumeHref = (draft: NonNullable<Home["draft"]>, day: string): string => {
     const section = draft.current_section ?? "opening";
     return isPorted(section) ? stepHref(entityId, entityName, section, day) : resumeUrl(entityId, day);

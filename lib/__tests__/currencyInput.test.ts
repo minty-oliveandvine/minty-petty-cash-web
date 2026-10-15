@@ -43,13 +43,19 @@ describe("step addresses", () => {
     expect(stepHref(ID, "Olive & Vine", "expenses", "2026-10-14")).toBe(
       "/entity/360812e1/olive-and-vine/petty-cash/reports/new/expense?transaction_date=2026-10-14",
     );
-    expect(stepHref(ID, "Olive & Vine", "deposit", "2026-10-14")).toBe(
-      `http://localhost:8000/entity/${ID}/petty-cash/reports/new/deposit?transaction_date=2026-10-14`,
+    // the deposit is Cash Count's first section (D15-05): both land on the one stage
+    for (const step of ["deposit", "cash_count"] as const) {
+      expect(stepHref(ID, "Olive & Vine", step, "2026-10-14")).toBe(
+        "/entity/360812e1/olive-and-vine/petty-cash/reports/new/cash-count?transaction_date=2026-10-14",
+      );
+    }
+    expect(stepHref(ID, "Olive & Vine", "ending", "2026-10-14")).toBe(
+      `http://localhost:8000/entity/${ID}/petty-cash/reports/new/ending?transaction_date=2026-10-14`,
     );
   });
 
   it("know which steps are this app's own - and that a key that is no step is not", () => {
-    expect(["opening", "sales", "expenses", "deposit", "cash_count", "ending"].filter(isPorted)).toEqual(["opening", "sales", "expenses"]);
+    expect(["opening", "sales", "expenses", "deposit", "cash_count", "ending"].filter(isPorted)).toEqual(["opening", "sales", "expenses", "deposit", "cash_count"]);
     expect(isPorted("constructor")).toBe(false);
   });
 });

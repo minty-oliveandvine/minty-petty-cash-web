@@ -200,13 +200,32 @@ test("a draft shows its progress and continues where it was left", async ({ page
   await expect(page).toHaveURL(/\/petty-cash\/reports\/resume\?transaction_date=2026-10-14/);
 });
 
-test("a submitted day shows its balance and opens its report", async ({ page }) => {
+test("a submitted day shows its balance and opens its report, in this app", async ({ page }) => {
+  // the report's own view (09_submitted_report covers it): only enough of GET /reports/<id> to draw
+  await page.route("**/api/petty-cash/v1/companies/*/reports/a", (route) =>
+    route.fulfill({
+      json: {
+        report_id: "a",
+        transaction_date: "2026-10-10",
+        currency_code: "HKD",
+        status: "submitted",
+        publishing_status: "completed",
+        xero_integrated: true,
+        was_published: true,
+        sales: { methods: [], cash: 0, total: 0, yesterday_total: null, history: [] },
+        expenses: { lines: [], total: 0 },
+        cash: { counted: 900, safe_box: 0, difference: { amount: 0, kind: "none", reason: "" } },
+        permissions: { edit: false, delete: false, publish: true, share: true },
+      },
+    }),
+  );
   await enterWith(page, homeAnswer());
   await page.getByRole("button", { name: "10 Oct 2026, submitted" }).click();
   await expect(page.getByText("10 Oct 2026")).toBeVisible();
   await expect(page.getByText("HKD900.00")).toBeVisible();
   await page.getByRole("button", { name: "View Report" }).click();
-  await expect(page).toHaveURL(/\/petty-cash\/reports\/summary\?transaction_date=2026-10-10/);
+  await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports/a/summary$`));
+  await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
 });
 
 test("missing Xero settings hold the page with the way to set them up", async ({ page }) => {

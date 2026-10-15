@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type MouseEvent } from "react";
 
 import { PhoneCard } from "@/components/flask/PhoneCard";
 import { Stepper } from "@/components/flask/Stepper";
 import { useToast } from "@/components/flask/Toasts";
 import { AddExpenseCard } from "@/components/report/AddExpenseCard";
 import { ReceiptViewer, useReceiptUrls, type ShownReceipt } from "@/components/report/ReceiptViewer";
-import { LoadingOverlay, ReportBadge } from "@/components/report/ReportChrome";
+import { LoadingOverlay, Modal, ReportBadge } from "@/components/report/ReportChrome";
 import { sentenceOf, toOpening, useBackToOpening } from "@/components/report/stepErrors";
 import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
@@ -301,34 +301,6 @@ function ExpenseRow({ line, code, onOpen, onDelete }: { line: ExpenseLine; code:
             </button>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Flask's modal frame on the report pages: a half-black backdrop over the phone card and a white
- * panel, 384px at most. A click outside or Escape closes it.
- */
-function Modal({ titleId, onClose, className, children }: { titleId: string; onClose: () => void; className: string; children: ReactNode }) {
-  const panel = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    panel.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return (
-    <div
-      className="absolute inset-0 z-50 flex items-center justify-center bg-flask-black/50 p-4"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div ref={panel} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={`mx-auto w-full min-w-0 max-w-sm outline-none ${className}`}>
-        {children}
       </div>
     </div>
   );

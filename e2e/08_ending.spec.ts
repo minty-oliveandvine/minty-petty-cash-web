@@ -1,6 +1,6 @@
 // The report wizard's Ending step (components/report/EndingStep.tsx, Flask's ORIGINAL look), against
-// a STUBBED Petty Cash API. Needs only `npm run dev`. Flask's pages (Submitted) are caught, so
-// nothing leaves the app.
+// a STUBBED Petty Cash API. Needs only `npm run dev`. Flask's pages are caught, so nothing leaves
+// the app; the Submitted page after Finish is this app's own (09_submitted_report covers it).
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
@@ -13,7 +13,7 @@ const BASE = `/entity/${companyRef(ENTITY, NAME)}/petty-cash`;
 const DAY = "2026-10-13";
 const API = "**/api/petty-cash/v1/companies/*";
 const REPORT = "8a1d3c55-0f8e-4f4e-9d55-2c4b7d1e0a77";
-const SUBMITTED = new RegExp(`/entity/${ENTITY}/petty-cash/reports/${REPORT}/submitted$`);
+const SUBMITTED = new RegExp(`${BASE}/reports/${REPORT}/submitted$`);
 
 type Json = Record<string, unknown>;
 
@@ -104,6 +104,23 @@ const HOME = {
   permissions: { read_only: false, correct_deposit: true },
 };
 
+const OUTCOME = {
+  report_id: REPORT,
+  transaction_date: DAY,
+  currency_code: "HKD",
+  company_name: NAME,
+  status: "submitted",
+  submitted: true,
+  submitted_at: "2026-10-13T12:00:00+00:00",
+  submitted_by: "Tess",
+  cash_counted: 1160.5,
+  difference: { amount: -11, kind: "short", has_reason: true },
+  xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false },
+  can_publish: true,
+  is_today: false,
+  next_day: "2026-10-14",
+};
+
 const OPENING = { transaction_date: DAY, currency_code: "HKD", draft: DRAFT, starting_cash_balance: 0, yesterday_closing_balance: 0, safebox_balance: 0, cash_addition: null, withdrawal: "personal" };
 const EXPENSES = { transaction_date: DAY, currency_code: "HKD", draft: DRAFT, lines: [], total: 0, suppliers: [], accounts: [], permissions: { create_supplier: false } };
 
@@ -123,8 +140,9 @@ async function stub(page: Page, answer: Json, h: Handlers = {}) {
   await page.route(`${API}/reports/expenses**`, (route) => route.fulfill({ json: EXPENSES }));
   await page.route(`${API}/reports/opening**`, (route) => route.fulfill({ json: OPENING }));
   await page.route(`${API}/home`, (route) => route.fulfill({ json: HOME }));
+  await page.route(`${API}/reports/${REPORT}/outcome`, (route) => route.fulfill({ json: OUTCOME }));
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's pages (Submitted): caught.
+  // Flask's pages: caught.
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\//, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );
@@ -253,7 +271,7 @@ test("a fall against yesterday is red and points down; a surplus is green", asyn
   await expect(page.getByText("Cash Surplus: HKD8.50")).toBeVisible();
 });
 
-test("Finish posts the day once, shows Finishing..., then Flask's Submitted page", async ({ page }) => {
+test("Finish posts the day once, shows Finishing..., then the Submitted page", async ({ page }) => {
   const posts: Json[] = [];
   let release: () => void = () => {};
   const held = new Promise<void>((resolve) => (release = resolve));
@@ -272,6 +290,7 @@ test("Finish posts the day once, shows Finishing..., then Flask's Submitted page
   await expect(page.getByRole("status").filter({ hasText: /Finishing\.\.\. \d+%/ })).toBeVisible();
   release();
   await page.waitForURL(SUBMITTED);
+  await expect(page.getByRole("heading", { name: "Report Submitted Successfully!" })).toBeVisible();
   expect(posts).toEqual([{ transaction_date: DAY }]);
 });
 
@@ -291,7 +310,7 @@ test("a refusal sends the person to the step that fixes it, with the sentence", 
   expect(posts).toBe(1);
 });
 
-test("a refusal because the day is in already goes to Flask's Submitted page", async ({ page }) => {
+test("a refusal because the day is in already goes to its Submitted page", async ({ page }) => {
   await openWith(page, closeAnswer(), {
     onSubmit: (_body, route) => route.fulfill({ status: 409, json: { error: "This day is already submitted.", to: "submitted", report_id: REPORT } }),
   });
@@ -372,7 +391,7 @@ test("a day with no draft goes back to Opening and says why", async ({ page }) =
   await expect(toast(page, why)).toBeVisible();
 });
 
-test("a day already submitted opens Flask's Submitted page for it", async ({ page }) => {
+test("a day already submitted opens its Submitted page", async ({ page }) => {
   await stub(page, closeAnswer(), {
     onRead: (route) => route.fulfill({ status: 409, json: { error: "This day is already submitted.", to: "submitted", report_id: REPORT } }),
   });

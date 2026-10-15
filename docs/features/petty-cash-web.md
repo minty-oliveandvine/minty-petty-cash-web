@@ -70,7 +70,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`), the flash and the next-day hand-over, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -111,6 +111,9 @@ Behaviour is Flask's, minus its bugs:
   - the "1 user" count, which never counted;
   - the heading overwrite that happened in draft mode.
 
+- **View Report opens the report's own view in this app** (by the day's `id` in `published`), no longer Flask's summary.
+- **"Continue to next day report" starts the day here.** The Submitted page leaves the next day for the dashboard (Flask's `autoStartNextDay`, `takeNextDay` in `lib/flash.ts`). The dashboard selects it and runs Start New Report for it, date rules and deposit check included.
+
 Not ported yet:
 - **The subscription notice.**
 - **The "Congratulations!" modal**, which comes with the settings page.
@@ -132,7 +135,7 @@ What it keeps from Flask:
 Where the app differs:
 - **The opening balance is the server's.** Flask took it from a hidden form field.
 - **A refused day lands on the dashboard with its message.** `lib/flash.ts` carries Flask's flash there, so the message still shows.
-- **Ported steps open in this app.** The dashboard's Start, the deposit check and the stepper all go through `lib/wizardPages.ts`, which sends every step of the wizard here; the Submitted page after it is still Flask's.
+- **Ported steps open in this app.** The dashboard's Start, the deposit check and the stepper all go through `lib/wizardPages.ts`, which sends every step of the wizard here. The Submitted page after it is this app's too.
 
 ### Report wizard, Sales: `/entity/<shortid>/<name>/petty-cash/reports/new/sale?transaction_date=`
 
@@ -152,7 +155,7 @@ Where the app differs:
 - **No stand-in fields.** Flask shows Visa, Mastercard and Food Panda to a company with no methods, then drops what is typed in them. They are left out here.
 - **A save with no draft** goes back to Opening with Flask's sentence as a toast.
 - **Flask's save bugs are fixed in the shared service** (Minty `report/services/sales.py`): a re-save closed on the cash typed the time before, and a method the page has no field for was zeroed.
-- **Not yet:** the read-only view of a submitted report, with its Close button. It comes with the Submitted step.
+- **Not yet:** this step's read-only view of a submitted report, with its Close button. The report's own view is ported (below); the per-step views are not.
 - **One column on phones** (the owner, 2026-10-15): Flask's two-column grid cut an amount like "1,200.50" short beside the currency code at 360 px, so the fields stack below 640 px and pair up from there. The only layout change from Flask on this page.
 
 ### Report wizard, Expenses: `/entity/<shortid>/<name>/petty-cash/reports/new/expense?transaction_date=`
@@ -231,7 +234,7 @@ Where the app differs (Flask's bugs, and the owner's rules of 2026-10-15):
 
 ### Report wizard, Ending: `/entity/<shortid>/<name>/petty-cash/reports/new/ending?transaction_date=`
 
-This is Flask's ORIGINAL `report/ending.html` (before the Part 15 redesign replaced it; Minty `f3e9d05`), at Flask's own address for it. It is built from `components/report/EndingStep.tsx`, with the sums and the drawings in `lib/ending.ts`, and reads `GET /reports/close` and submits through `POST /reports/submit` (Minty `petty_cash_api/routes/close.py`, over the submit the Jinja page shares, `report/services/submit.py`). The charts are plain SVG, no library.
+This is Flask's ORIGINAL `report/ending.html` (before the Part 15 redesign replaced it; Minty `f3e9d05`), at Flask's own address for it. It is built from `components/report/EndingStep.tsx` and `ReportSummary.tsx` (the summary's cards, shared with a submitted report's view), with the sums and the drawings in `lib/ending.ts`, and reads `GET /reports/close` and submits through `POST /reports/submit` (Minty `petty_cash_api/routes/close.py`, over the submit the Jinja page shares, `report/services/submit.py`). The charts are plain SVG, no library.
 
 What it keeps from Flask:
 - **The report header and the stepper.**
@@ -243,21 +246,60 @@ What it keeps from Flask:
 - **The difference box:** red "Cash Shortage: HKD…" or green "Cash Surplus: HKD…" with the reason, when there is a difference.
 - **Back** (to Cash Count, in this app) above **"Finish Daily Report"** (teal, the tick). While it submits the button says "Finishing..." and Flask's overlay counts "Finishing... N%" (2% every 600ms, never past 95%).
 - **"Fix Negative Balance"** on arrival when the expected cash is below zero, with Flask's five ways back (Opening, Sales, Expenses, Deposit, Cash Count). It cannot be dismissed.
-- After the submit: **Flask's Submitted page** (`/entity/<id>/petty-cash/reports/<report id>/submitted`, `submittedUrl` in `lib/flaskPages.ts`).
+- After the submit: **the Submitted page**, this app's own (`reportHref(…, "submitted")` in `lib/companyPages.ts`).
 
 Where the app differs (Flask's bugs):
 - **One submit, however many clicks.** Flask's form could post twice; here a ref guards the call and the button is disabled while it runs.
-- **A refusal keeps the day.** The API's 409 `{error, to}` shows its sentence and opens the step that fixes it (Opening, Sales, Expenses, Bank Deposit or Cash Count, in this app); `to: "dashboard"` lands on the dashboard with it (`lib/flash.ts`); `to: "submitted"` opens Flask's Submitted page for that report. Any other failure says so and leaves Finish ready to try again. Flask's clean-up could delete the draft.
+- **A refusal keeps the day.** The API's 409 `{error, to}` shows its sentence and opens the step that fixes it (Opening, Sales, Expenses, Bank Deposit or Cash Count, in this app); `to: "dashboard"` lands on the dashboard with it (`lib/flash.ts`); `to: "submitted"` opens that report's Submitted page. Any other failure says so and leaves Finish ready to try again. Flask's clean-up could delete the draft.
 - **Nothing is posted while something would stop it.** When the API names a `problem` on arrival, it is said at once as Flask's toast and stays under the button (its accessible description); Finish then posts nothing and opens the step that fixes it, with the sentence. A drawer below zero shows Fix Negative Balance instead, and Finish only shows it again.
 - **The figures are the server's.** Flask read the drawer from its own template sums.
-- **The day already submitted** (a 409 on arrival) opens Flask's Submitted page for it; no draft goes back to Opening with Flask's sentence.
+- **The day already submitted** (a 409 on arrival) opens its Submitted page; no draft goes back to Opening with Flask's sentence.
 - **The total in the donut is the real total.** Flask showed the total it had padded to draw a small "Other expenses".
 - **Layout, at a phone's width:** the big total and the three sales figures shrink to fit their column (Flask's `fitBalanceText` rule, never under 12px) instead of running into the next one, and a breakdown row puts its amount under a name too long to share the line.
 - **Show more** reaches 44px for a finger without moving Flask's layout, and says whether it is open (`aria-expanded`).
-- **Left out:** Flask's 30-second "Retry Submission" / "Cancel" panel (a failure here resets the button and says why), and the submitted-report mode of the same template (Delete, Edit Report, Share, Close), which comes with the report pages.
+- **Left out:** Flask's 30-second "Retry Submission" / "Cancel" panel (a failure here resets the button and says why). The submitted-report mode of the same template is its own page here (below).
 - **Flask's own sizes below the workspace rules, kept:** the stepper's 7.6px labels and the chart's 10px figures and dates on a phone; the legend's 4px dots; the 40px-high Back.
+
+### The Submitted page: `/entity/<shortid>/<name>/petty-cash/reports/<report id>/submitted`
+
+This is Flask's ORIGINAL `report/submitted.html` (Minty `1c25b35^1`), at Flask's own address for it. It is built from `components/report/SubmittedPage.tsx` and `ReportActions.tsx` (Share), with its wording in `lib/report.ts`, and reads `GET /reports/<id>/outcome` (Minty `petty_cash_api/routes/close.py`). The Ending step's Finish, and its "already submitted" refusals, open it.
+
+What it keeps from Flask:
+- **The phone card with no header**, its content centred: the teal tick, **"Report Submitted / Successfully!"** ("Report Published to Xero / Successfully!" once the report is in Xero) and "Your daily petty cash report has been processed".
+- **"Export Options"** with **Share**. Flask's Save as Image and Detailed PDF were commented out, so they are not here either.
+- **"Share Report":** the modal opens saying "Generating link...", then `POST /reports/<id>/share-link` fills in the link. Copy, "Link copied to clipboard!" for three seconds, and Close, Escape or a click outside to close.
+- **Publish to Xero** ("Republish to Xero" once it is in Xero), only with `can_publish`.
+- **Back to Dashboard** ("Redirecting to Dashboard...") and **Continue to next day report** ("Starting next day report..."). The second leaves `next_day` for the dashboard to start, as Flask's `autoStartNextDay` did.
+
+Where the app differs:
+- **Publishing to Xero is still Flask's.** The button is a full-page link to Flask's own Submitted page for the report (`submittedUrl` in `lib/flaskPages.ts`), where the person publishes. Flask's publishing overlay, its republish warning and its polling are not ported.
+- **A refused share says the API's sentence** and closes the modal (a draft: "A draft can't be shared. Submit the day first.").
+- **A report reopened since** (`submitted: false`) has nothing submitted to show, so the page opens that day's Ending step instead of saying "Submitted".
+- **Content taller than the screen scrolls from its top** (a short phone, text at 200%); Flask's centring cut it off above.
+- **Left out:** Flask's "Report Successfully Published" toast after its own publish. It comes with Xero publish.
+
+### A submitted report: `/entity/<shortid>/<name>/petty-cash/reports/<report id>/summary`
+
+This is the submitted-report mode of Flask's ORIGINAL `report/ending.html` (Minty `1c25b35^1`, `report/services/ending.py`), at Flask's id address for it. Flask also serves `/reports/summary?transaction_date=`; this app uses the id form. It is built from `components/report/ReportView.tsx`, the summary of `ReportSummary.tsx` (the Ending step's own cards) and `ReportActions.tsx` (Share and Delete), and reads `GET /reports/<id>` (Minty `petty_cash_api/routes/report.py`). The dashboard's View Report opens it.
+
+What it keeps from Flask:
+- **The report header:** the date pill, the initials and the Submitted / Published badge. The chevron goes to the dashboard.
+- **The summary**, as on Ending: "Summary" with the currency, Total Sales (against yesterday, the three totals, Show more for each method), Sales History (30 days, the day in red), Total Expenses (the donut and every account), Cash Balance (the till and the safebox), and the shortage or surplus box with its reason. No "Draft report" callout.
+- **Share**, then **Delete Report** (red), **Edit Report** (olive) and **Close** (teal). Each shows only when the API's `permissions` allow it (`share`, `delete`, `edit`; Close always), so an older report shows Share and Close, as Flask's did.
+- **Edit Report:** `POST /reports/<id>/reopen`, with Flask's toasts ("Converting report to draft...", "Back to draft — opening it for you now."), then this app's Opening step for the day. For a report that has been to Xero, Flask's confirm comes first.
+- **Delete Report:** Flask's "Delete Report" modal (Cancel / Delete), "Deleting report...", `DELETE /reports/<id>`, then the dashboard with "That report's deleted.".
+- **A report that has been to Xero may be deleted, with a warning first** (the owner, 2026-10-15). The modal adds "It is in Xero": "Deleting it here does not remove its entries in Xero, and publishing this day again adds a second copy. To change the report, use Edit report instead." These are Flask's own modal's words, drawn as Flask's amber warning above the red one. The API's `was_published` decides it.
+- **Share:** Flask's Share Report modal, as on the Submitted page.
+
+Where the app differs:
+- **Every refusal keeps the page and says the API's sentence** (400 not the latest, 403, 404, 409 while publishing or a draft). Flask's delete went to the dashboard as if it had worked ("Failed, Redirecting to Dashboard...").
+- **Close goes to the dashboard.** Flask's went to report history, which is not ported.
+- **A draft opens its Ending step:** a draft's summary is the wizard's.
+- **No stepper.** Flask drew the six steps, all done, each leading to that step's read-only view of the submitted report. Those views are not ported (the steps here open only a draft); Edit Report is the way back into the wizard.
+- **Not yet (no API):** Flask's per-field edits of a submitted report (the difference reason, the withdrawal and an expense line) and older reports' "Edit Details" mode.
+- **Known, shared with every report page:** at 360px the header's centred group (date, initials, badge) runs about 6px under the person's initials with a four-letter company acronym and the longer Submitted / Published badge. Flask's header has the same geometry; `PhoneCard` needs a narrower centre to fix it.
 
 ## Not here yet
 
-- **The other pages.** The Submitted page, history, the report summary, settings and Xero publish are next, in that order.
+- **The other pages.** History, settings and Xero publish are next, in that order. Until Xero publish is ported, the Submitted page's Publish to Xero opens Flask's Submitted page.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

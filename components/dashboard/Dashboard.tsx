@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { BeforeYouStartModal, DepositModal, SetupRequiredModal, type Confirmation } from "@/components/dashboard/Modals";
 import { ReportCalendar } from "@/components/dashboard/ReportCalendar";
@@ -9,6 +9,7 @@ import { PhoneCard } from "@/components/flask/PhoneCard";
 import { useToast } from "@/components/flask/Toasts";
 import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
+import { reportHref } from "@/lib/companyPages";
 import {
   balanceFor,
   depositToConfirm,
@@ -21,8 +22,8 @@ import {
   type Home,
 } from "@/lib/dashboard";
 import { formatDay, formatDayWithWeekday } from "@/lib/dates";
-import { historyUrl, reportSummaryUrl, resumeUrl, settingsUrl } from "@/lib/flaskPages";
-import { takeFlash } from "@/lib/flash";
+import { historyUrl, resumeUrl, settingsUrl } from "@/lib/flaskPages";
+import { takeFlash, takeNextDay } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
 import { formatMoney } from "@/lib/money";
 import { useAuth } from "@/lib/useAuth";
@@ -34,13 +35,13 @@ const READ_ONLY = "Read-only access";
 const TEAL_BUTTON =
   "flex w-full items-center justify-center gap-2 rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white shadow-flask-md transition-colors hover:bg-flask-teal/80 disabled:cursor-not-allowed disabled:opacity-50";
 
-type Load = { kind: "loading" } | { kind: "ready"; home: Home } | { kind: "failed" };
+type Load = { kind: "loading" } | { kind: "ready"; home: Home; nextDay: string | null } | { kind: "failed" };
 
 /**
  * The Petty Cash dashboard - a pixel-faithful port of Flask's `entity/entity_dashboard_v2.html`:
  * the same phone card, sections, wording, colours and destinations. Its rules are lib/dashboard.ts
  * (the same ones the payments-look port on `port/prw-look` uses); what it reads is `GET /home`.
- * The wizard, history, summary and settings it links to are still Flask's pages.
+ * History and settings, which it links to, are still Flask's pages.
  */
 export function Dashboard() {
   const toast = useToast();
@@ -56,7 +57,8 @@ export function Dashboard() {
   useEffect(() => {
     let live = true;
     pettyCashFetch<Home>("/home")
-      .then((home) => live && setLoad({ kind: "ready", home }))
+      // the Submitted page's "Continue to next day report": that day, started on arrival
+      .then((home) => live && setLoad({ kind: "ready", home, nextDay: takeNextDay() }))
       .catch((err: unknown) => {
         // A 401 has already gone back through the hand-off.
         if (!live || (err instanceof ApiError && err.status === 401)) return;
@@ -80,12 +82,25 @@ export function Dashboard() {
       </PhoneCard>
     );
   }
-  return <DashboardBody home={load.home} entityId={auth?.entityId ?? ""} entityName={auth?.entityName ?? ""} acronym={acronym} />;
+  return <DashboardBody home={load.home} nextDay={load.nextDay} entityId={auth?.entityId ?? ""} entityName={auth?.entityName ?? ""} acronym={acronym} />;
 }
 
-function DashboardBody({ home, entityId, entityName, acronym }: { home: Home; entityId: string; entityName: string; acronym: string }) {
+function DashboardBody({
+  home,
+  nextDay,
+  entityId,
+  entityName,
+  acronym,
+}: {
+  home: Home;
+  /** A day to start on arrival (Flask's `autoStartNextDay`): selected, then started as Start New Report would. */
+  nextDay: string | null;
+  entityId: string;
+  entityName: string;
+  acronym: string;
+}) {
   const toast = useToast();
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(nextDay);
   const [confirming, setConfirming] = useState<{ day: string; deposit: number; submitter: string | null } | null>(null);
   const [step, setStep] = useState<"confirm" | "amount">("confirm");
   const [busy, setBusy] = useState(false);
@@ -97,6 +112,7 @@ function DashboardBody({ home, entityId, entityName, acronym }: { home: Home; en
   const selectedReport = selected ? home.published[selected] : undefined;
   const actionDay = selected ?? home.server_today;
   const viewing = selected ? !!selectedReport : home.today_has_report;
+  const actionReport = home.published[actionDay];
   const summaryDay = selected ?? home.latest.date;
   const summaryBalance = selected ? balanceFor(home, selected) : home.latest.closing_balance;
   const todaySubmitted = !draft && home.today_is_latest_report && !(selected && !selectedReport);
@@ -125,6 +141,14 @@ function DashboardBody({ home, entityId, entityName, acronym }: { home: Home; en
     setStep("confirm");
     setConfirming({ day: previous.day, deposit: previous.report.bank_deposit, submitter: previous.report.submitter_first_name });
   }
+
+  const started = useRef(false); // once, though development runs effects twice
+  useEffect(() => {
+    if (started.current || !nextDay) return;
+    started.current = true;
+    start(nextDay);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on arrival: `start` reads this render's home
+  }, [nextDay]);
 
   async function correct(kind: "change" | "no", amount: number) {
     if (!confirming) return;
@@ -283,7 +307,7 @@ function DashboardBody({ home, entityId, entityName, acronym }: { home: Home; en
             {viewing ? (
               <button
                 type="button"
-                onClick={() => leaveTo(reportSummaryUrl(entityId, actionDay))}
+                onClick={() => actionReport && leaveTo(reportHref(entityId, entityName, actionReport.id, "summary"))}
                 className="flex w-full items-center justify-center rounded-flask-xl bg-flask-green px-4 py-3 font-medium text-flask-white shadow-flask-md transition-colors hover:bg-flask-green/80"
               >
                 <span>View Report</span>

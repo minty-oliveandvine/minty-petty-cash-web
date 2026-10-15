@@ -49,6 +49,9 @@ export type ClosePage = {
   problem: { error: string; to: string } | null;
 };
 
+/** What the summary's Total Sales card draws - the Ending step's sales, or a submitted report's. */
+export type SummarySales = Pick<ClosePage["sales"], "methods" | "cash" | "total">;
+
 /** Flask's `"{:,.2f}"`: two decimals, thousands grouped, no currency. */
 export function plain(amount: number): string {
   return (Number.isFinite(amount) ? amount : 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -71,7 +74,7 @@ export function versusYesterday(today: number, yesterday: number | null): { up: 
 }
 
 /** The Total Sales card's three figures: electronic and delivery from the method rows, cash its own. */
-export function salesSplit(page: ClosePage["sales"]): { electronic: number; delivery: number; cash: number } {
+export function salesSplit(page: Pick<SummarySales, "methods" | "cash">): { electronic: number; delivery: number; cash: number } {
   let electronic = 0;
   let delivery = 0;
   for (const m of page.methods) {

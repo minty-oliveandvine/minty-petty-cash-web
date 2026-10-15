@@ -87,6 +87,16 @@
   --color-flask-pie-7: #e4679d;
   --color-flask-pie-other: #f1db37;
 
+  /* the Submitted page (report/submitted.html) and a submitted report's view (report/ending.html):
+     Tailwind v3's slate for the heading, the Export Options button and the Xero button's ring,
+     and the olive of the share glyph and Edit Report */
+  --color-flask-slate-100: #f1f5f9;
+  --color-flask-slate-200: #e2e8f0;
+  --color-flask-slate-500: #64748b;
+  --color-flask-slate-700: #334155;
+  --color-flask-slate-800: #1e293b;
+  --color-flask-olive: #567a5c;
+
   /* Quick Actions icons */
   --color-flask-purple-bg: #f3e8ff;
   --color-flask-purple: #9333ea;
@@ -104,6 +114,8 @@
   --shadow-flask-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-flask-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-flask-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  /* Flask's .hover-lift (components/hover_effects.html) */
+  --shadow-flask-lift: 0 4px 12px rgb(0 0 0 / 0.15);
 }
 
 /* The phone card's width (Flask's .main-container media queries): full width on a phone, then

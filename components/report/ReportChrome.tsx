@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import { formatMoney } from "@/lib/money";
 import type { OpeningPage } from "@/lib/opening";
@@ -31,6 +31,46 @@ export function LoadingOverlay({ text = "Saving..." }: { text?: string }) {
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
         <span className="font-medium text-flask-gray-700">{text}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Flask's modal frame on the report pages: a half-black backdrop over the phone card and a white
+ * panel, 384px at most (448px `wide`). A click outside or Escape closes it.
+ */
+export function Modal({
+  titleId,
+  onClose,
+  className,
+  wide = false,
+  children,
+}: {
+  titleId: string;
+  onClose: () => void;
+  className: string;
+  wide?: boolean;
+  children: ReactNode;
+}) {
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    panel.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div
+      className="absolute inset-0 z-50 flex items-center justify-center bg-flask-black/50 p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div ref={panel} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={`mx-auto w-full min-w-0 ${wide ? "max-w-md" : "max-w-sm"} outline-none ${className}`}>
+        {children}
       </div>
     </div>
   );

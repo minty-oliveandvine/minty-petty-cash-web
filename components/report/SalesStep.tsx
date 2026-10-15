@@ -175,12 +175,12 @@ function SalesForm({ page, entityId, entityName, acronym }: { page: SalesPage; e
       >
         <div className="mb-6 rounded-flask-lg bg-flask-white p-6 shadow-flask-sm">
           <Section icon={<CardIcon />} title="Electronic Payments" smallTitle>
-            <div className="mb-4 grid grid-cols-2 gap-4">{electronic.map(field)}</div>
+            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">{electronic.map(field)}</div>
             <Total label="Total Electronic Payment Sales" amount={formatMoney(totals.electronic, code)} />
           </Section>
 
           <Section icon={<TruckIcon />} title="Delivery Sales">
-            <div className="mb-4 grid grid-cols-2 gap-4">{delivery.map(field)}</div>
+            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">{delivery.map(field)}</div>
             <Total label="Total Delivery Sales" amount={formatMoney(totals.delivery, code)} />
           </Section>
 

@@ -153,7 +153,7 @@ Where the app differs:
 - **A save with no draft** goes back to Opening with Flask's sentence as a toast.
 - **Flask's save bugs are fixed in the shared service** (Minty `report/services/sales.py`): a re-save closed on the cash typed the time before, and a method the page has no field for was zeroed.
 - **Not yet:** the read-only view of a submitted report, with its Close button. It comes with the Submitted step.
-- **Known:** at 360 px an amount like "1,200.50" does not fully show beside the currency code in the two-column grid. Flask's page is the same.
+- **One column on phones** (the owner, 2026-10-15): Flask's two-column grid cut an amount like "1,200.50" short beside the currency code at 360 px, so the fields stack below 640 px and pair up from there. The only layout change from Flask on this page.
 
 ### Report wizard, Expenses: `/entity/<shortid>/<name>/petty-cash/reports/new/expense?transaction_date=`
 

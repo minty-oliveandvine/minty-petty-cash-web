@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, type ReactNode } from "react";
 
-import { InlineAlert } from "@minty/shared/ui";
+import { buttonClass, InlineAlert, PageBanner } from "@minty/shared/ui";
 
 import { AmountInput, openStep, refused, StageActions, StagePage, stageSteps, useLeaveHold, WorkflowHeader, type StageContext } from "@/components/closing/Stage";
 import { pettyCashFetch } from "@/lib/apiClient";
@@ -11,6 +12,7 @@ import { parseMoney } from "@/lib/currencyInput";
 import { formatMoney } from "@/lib/money";
 import { reportStatus } from "@/lib/reportStatus";
 import { initialValues, salesAmounts, salesDirty, salesTotals, sections, type SalesMethod, type SalesPage, type SalesSaved } from "@/lib/sales";
+import { stepHref } from "@/lib/wizardPages";
 
 const STAGE = "Sales";
 const GUIDANCE = "Add the day's sales for each way your customers paid. Leave a method empty if it had no sales.";
@@ -79,18 +81,46 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: SalesPa
     />
   );
 
+  const header = (
+    <WorkflowHeader
+      home={home}
+      day={day}
+      title={STAGE}
+      guidance={GUIDANCE}
+      status={reportStatus(page.draft)}
+      steps={stageSteps(entityId, entityName, progress, "sales", day)}
+      onLeave={hold.onLeave}
+      held={hold.held}
+    />
+  );
+
+  if (page.draft === null) {
+    // The day has no Daily Closing yet (it starts at Addition to Drawer, which makes the draft):
+    // said on arrival with the one way on, instead of a form whose save is refused and whose
+    // typing is lost (the owner, 2026-10-15).
+    return (
+      <>
+        {header}
+        {notice}
+        <PageBanner
+          tone="warning"
+          title="This day's Daily Closing hasn't started"
+          action={
+            <Link href={stepHref(entityId, entityName, "opening", day)} className={buttonClass("link")}>
+              Go to Addition to Drawer
+            </Link>
+          }
+        >
+          Sales are added once the cash in the drawer is counted in. Start with Addition to Drawer, then come back to
+          Sales.
+        </PageBanner>
+      </>
+    );
+  }
+
   return (
     <>
-      <WorkflowHeader
-        home={home}
-        day={day}
-        title={STAGE}
-        guidance={GUIDANCE}
-        status={reportStatus(page.draft)}
-        steps={stageSteps(entityId, entityName, progress, "sales", day)}
-        onLeave={hold.onLeave}
-        held={hold.held}
-      />
+      {header}
       {notice}
       <form
         className="flex flex-col gap-6"

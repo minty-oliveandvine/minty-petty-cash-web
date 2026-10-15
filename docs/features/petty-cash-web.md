@@ -216,13 +216,13 @@ The page, top to bottom (`components/closing/Sales.tsx`, rules in `lib/sales.ts`
 
 The rules:
 - **Save & Next** sends `{transaction_date, cash_sales, amounts, action: "next"}` with **every** method the stage shows (an empty field as 0) and opens Expenses (this app's own stage since Wave 2c, a client-side move). **Save & Exit** sends `action: "exit"` and goes to the launch page.
-- **No draft for the day** (409 `to: "opening"`): the person is taken to this app's Addition to Drawer, which shows the API's sentence as a warning Page banner under its header, read once (`lib/flash.ts`). Any other refusal (422, 403, no answer) is a Danger inline alert above the actions, and the actions come back.
+- **A day with no Daily Closing yet** (`draft: null` in the read; the owner, 2026-10-15): instead of the form, a warning Page banner says so on arrival - "This day's Daily Closing hasn't started" - with one action, **Go to Addition to Drawer**. There is nothing to type, so nothing is lost.
+- **A draft gone by the time of the save** (409 `to: "opening"`): the person is taken to this app's Addition to Drawer, which shows the API's sentence as a warning Page banner under its header, read once (`lib/flash.ts`). Any other refusal (422, 403, no answer) is a Danger inline alert above the actions, and the actions come back.
 - **Unsaved changes** are counted by amount: grouping does not count, an emptied field does (it saves as zero), and putting a value back clears the hold.
 - **The launch page's Continue** opens this stage when the report is on `sales` (and Expenses on `expenses`, Wave 2c); every later section still uses Flask's resume. Addition to Drawer's Save & Next opens it in-app.
 
 Known gaps of Wave 2b:
 - **No autosave and no "Saved 6:02 pm"** (15.9f), as Wave 2a: the API saves only on Save & Next / Save & Exit and carries no saved time.
-- **A day with no draft still shows the form.** The API refuses only the save (409), so someone who types first is sent to Addition to Drawer and loses what they typed. A business-rule gate on arrival (15.9e) would need the read to say so; `draft: null` alone could be used, but Flask's page did not gate either.
 - **The no-draft sentence is the API's** ("...let's start with the opening entry."), which still names Flask's old stage.
 
 ### Wave 2c: the third Daily Closing stage, "Expenses" (Part 15.9 / 15.15c)

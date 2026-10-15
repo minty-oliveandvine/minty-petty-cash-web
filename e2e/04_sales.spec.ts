@@ -236,15 +236,27 @@ test("Save & Exit saves - empty fields as zero - and goes back to the launch pag
   ]);
 });
 
-test("no draft for the day: the save goes to Addition to Drawer, which says why in a Page banner, once", async ({ page }) => {
+test("a day with no Daily Closing yet says so on arrival, with the way to Addition to Drawer", async ({ page }) => {
+  await openWith(page, salesAnswer({ draft: null }));
+
+  const banner = page.getByRole("status").filter({ hasText: "This day's Daily Closing hasn't started" });
+  await expect(banner).toBeVisible();
+  await expect(banner).toHaveAttribute("data-tone", "warning");
+  // no form to type into, so nothing can be lost
+  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save & Next" })).toHaveCount(0);
+  await banner.getByRole("link", { name: "Go to Addition to Drawer" }).click();
+  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/opening\\?transaction_date=${DAY}$`));
+  await expect(page.getByRole("heading", { level: 1, name: "Addition to Drawer" })).toBeVisible();
+});
+
+test("a draft gone by the time of the save: Addition to Drawer says why in a Page banner, once", async ({ page }) => {
   const why = "I don't see a draft yet - let's start with the opening entry.";
-  await openWith(page, salesAnswer({ draft: null }), {
+  await openWith(page, salesAnswer(), {
     onSave: async (_body, route) => {
       await route.fulfill({ status: 409, json: { error: why, to: "opening" } });
     },
   });
-  // no draft yet: no stage is done, so none opens from here
-  await expect(stages(page).getByRole("link")).toHaveCount(0);
   await amount(page, "Visa").fill("5");
   await page.getByRole("button", { name: "Save & Next" }).click();
 

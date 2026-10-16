@@ -130,11 +130,13 @@ type Handlers = {
   onReopen?: (route: Route) => Promise<void>;
   onDelete?: (route: Route) => Promise<void>;
   onShare?: (route: Route) => Promise<void>;
+  /** An edit (PUT difference-reason / withdrawal, PATCH an expense line): answer it, or the edited report. */
+  onEdit?: (route: Route) => Promise<void>;
 };
 
 /** Every call the two pages (and where they lead) make, stubbed; returns what was sent. */
 async function stub(page: Page, h: Handlers = {}) {
-  const sent = { reopen: 0, delete: 0, share: 0 };
+  const sent = { reopen: 0, delete: 0, share: 0, edits: [] as { method: string; path: string; json: Json | null; form: string | null }[] };
   await page.route(`${API}/reports/${REPORT}`, async (route) => {
     if (route.request().method() === "DELETE") {
       sent.delete += 1;
@@ -154,6 +156,18 @@ async function stub(page: Page, h: Handlers = {}) {
     sent.share += 1;
     if (h.onShare) await h.onShare(route);
     else await route.fulfill({ json: { url: SHARE_URL } });
+  });
+  await page.route(new RegExp(`/reports/${REPORT}/(difference-reason|withdrawal|expense-lines/[^/]+)$`), async (route) => {
+    const req = route.request();
+    const multipart = (req.headers()["content-type"] ?? "").startsWith("multipart/");
+    sent.edits.push({
+      method: req.method(),
+      path: new URL(req.url()).pathname.replace(/^.*\/reports\/[^/]+\//, ""),
+      json: multipart ? null : (req.postDataJSON() as Json),
+      form: multipart ? (req.postDataBuffer()?.toString("latin1") ?? "") : null,
+    });
+    if (h.onEdit) await h.onEdit(route);
+    else await route.fulfill({ json: h.report ?? reportAnswer() });
   });
   await page.route(`${API}/reports/opening**`, (route) => {
     const day = new URL(route.request().url()).searchParams.get("transaction_date") ?? DAY;
@@ -456,4 +470,248 @@ test("both pages reload with no console error", async ({ page }) => {
   await page.reload();
   await expect(page.getByRole("heading", { name: "Report Submitted Successfully!" })).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+// ---- Edit Details: the three edits that move no balance (Flask's report_edit mode) ----
+
+const OPTIONS = {
+  suppliers: [
+    { id: "s", name: "Acme" },
+    { id: "s2", name: "Bright Cleaners" },
+  ],
+  accounts: [
+    { id: "a1", code: "420", name: "Food & Drink" },
+    { id: "a2", code: "430", name: "Cleaning" },
+  ],
+};
+const editLine = (id: string, item: string, amount: number, account: Json) => ({ ...line(id, item, amount), remarks: "Lunch", account });
+
+/** A report in Xero, with an addition to the drawer, that the person may edit the details of. */
+function editable(over: Json = {}): Json {
+  const base = reportAnswer();
+  return reportAnswer({
+    xero_integrated: true,
+    publishing_status: "completed",
+    was_published: true,
+    status_label: "Published to Xero",
+    expenses: { lines: [editLine("e1", "Food & Drink", 78.5, OPTIONS.accounts[0]), editLine("e2", "Cleaning", 50, OPTIONS.accounts[1])], total: 128.5 },
+    cash: { ...(base.cash as Json), cash_addition: 200, cash_addition_type: "personal" },
+    permissions: { edit: true, delete: true, publish: true, share: true, edit_details: true },
+    options: OPTIONS,
+    ...over,
+  });
+}
+
+/** An edit's answer: the report out of Xero (Flask's `mark_diverged_from_xero`), with `cash` / `expenses` changed. */
+function edited(over: Json): Json {
+  return editable({ xero_integrated: false, status_label: "Submitted", ...over });
+}
+
+async function openDetails(page: Page, h: Handlers = {}) {
+  const sent = await openView(page, { report: editable(), ...h });
+  await page.getByRole("button", { name: "Edit Details" }).click();
+  await expect(page.getByRole("button", { name: "Done editing" })).toBeVisible();
+  return sent;
+}
+
+const reasonBox = (page: Page) => page.getByRole("textbox", { name: /^Reason/ });
+const fulfil = (json: Json) => (route: Route) => route.fulfill({ json });
+const dialog = (page: Page) => page.getByRole("dialog", { name: "Expense Details" });
+const linesCard = (page: Page) => card(page, "Expenses");
+
+test("Edit Details: hidden without edit_details - no button, no editors", async ({ page }) => {
+  await openView(page);
+  await expect(page.getByRole("button", { name: "Edit Details" })).toHaveCount(0);
+  await expect(reasonBox(page)).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Addition to Cash Drawer" })).toHaveCount(0);
+  await expect(page.getByText("Paid a courier")).toBeVisible();
+});
+
+test("Edit Details: no warning (Flask's had none), Close hides, Done editing leaves the mode", async ({ page }) => {
+  let dialogs = 0;
+  page.on("dialog", (d) => {
+    dialogs += 1;
+    void d.dismiss();
+  });
+  const sent = await openDetails(page);
+  expect(dialogs).toBe(0);
+  await expect(page.getByRole("button", { name: "Close", exact: true })).toHaveCount(0);
+  await expect(reasonBox(page)).toHaveValue("Paid a courier");
+  await expect(page.getByRole("heading", { name: "Addition to Cash Drawer" })).toBeVisible();
+  await expect(linesCard(page).getByRole("button", { name: /Food & Drink/ })).toBeVisible();
+  // no bin: a submitted report's lines are edited, not deleted
+  await expect(page.getByRole("button", { name: "Delete expense" })).toHaveCount(0);
+  await expectNoHorizontalScroll(page);
+  await page.getByRole("button", { name: "Done editing" }).click();
+  await expect(reasonBox(page)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Close", exact: true })).toBeVisible();
+  expect(sent.edits).toEqual([]);
+});
+
+test("Edit Details: the reason saves in place, the page redraws and the report leaves Xero", async ({ page }) => {
+  const base = reportAnswer();
+  const answer = edited({
+    cash: { ...(base.cash as Json), cash_addition: 200, cash_addition_type: "personal", difference: { amount: -11, kind: "short", reason: "Courier, paid from the till" } },
+  });
+  const sent = await openDetails(page, { onEdit: fulfil(answer) });
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+  await reasonBox(page).fill("Courier, paid from the till");
+  await page.getByRole("button", { name: "Save changes" }).first().click();
+  await expect(toast(page, "Your discrepancy reason is saved.")).toBeVisible();
+  expect(sent.edits).toEqual([{ method: "PUT", path: "difference-reason", json: { reason: "Courier, paid from the till" }, form: null }]);
+  await expect(page.getByText("Submitted", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Done editing" }).click();
+  await expect(page.getByText("Courier, paid from the till")).toBeVisible();
+});
+
+test("Edit Details: the reason is checked as it is typed - 300 characters, never emptied while short", async ({ page }) => {
+  const sent = await openDetails(page);
+  await reasonBox(page).fill("x".repeat(301));
+  await expect(page.getByText("Keep the reason to 300 characters or fewer.")).toBeVisible();
+  await reasonBox(page).fill("x".repeat(300));
+  await expect(page.getByText("Keep the reason to 300 characters or fewer.")).toHaveCount(0);
+  await reasonBox(page).fill("");
+  await expect(page.getByText("The cash was short, so the reason is still needed. Add the reason to save it.")).toBeVisible();
+  await expect(reasonBox(page)).toHaveAttribute("aria-invalid", "true");
+  await page.getByRole("button", { name: "Save changes" }).first().click();
+  await expect(reasonBox(page)).toBeFocused();
+  expect(sent.edits).toEqual([]);
+});
+
+test("Edit Details: a refused reason shows the API's sentence at the field, and no success", async ({ page }) => {
+  await openDetails(page, {
+    onEdit: (route) => route.fulfill({ status: 409, json: { error: "Xero is still publishing this report. Wait until it finishes, then edit it." } }),
+  });
+  await reasonBox(page).fill("Recounted");
+  await page.getByRole("button", { name: "Save changes" }).first().click();
+  await expect(page.locator("#reason_message")).toHaveText("Xero is still publishing this report. Wait until it finishes, then edit it.");
+  await expect(toast(page, "Your discrepancy reason is saved.")).toHaveCount(0);
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+});
+
+test("Edit Details: Withdrawal from saves Company Bank; a refusal is said under it", async ({ page }) => {
+  const base = reportAnswer();
+  let refuse = true;
+  const sent = await openDetails(page, {
+    onEdit: async (route) => {
+      if (refuse) await route.fulfill({ status: 400, json: { error: "That withdrawal type doesn't look quite right to me." } });
+      else await route.fulfill({ json: edited({ cash: { ...(base.cash as Json), cash_addition: 200, cash_addition_type: "company" } }) });
+    },
+  });
+  const withdrawal = page.locator("form").filter({ has: page.getByRole("heading", { name: "Addition to Cash Drawer" }) });
+  await expect(withdrawal.getByText("HKD200.00")).toBeVisible();
+  await expect(withdrawal.getByRole("radio", { name: "Personal" })).toBeChecked();
+  await withdrawal.getByRole("radio", { name: "Company Bank" }).check();
+  await withdrawal.getByRole("button", { name: "Save changes" }).click();
+  await expect(withdrawal.getByText("That withdrawal type doesn't look quite right to me.")).toBeVisible();
+  await expect(toast(page, "Your withdrawal source is saved.")).toHaveCount(0);
+  refuse = false;
+  await withdrawal.getByRole("button", { name: "Save changes" }).click();
+  await expect(toast(page, "Your withdrawal source is saved.")).toBeVisible();
+  await expect(withdrawal.getByRole("radio", { name: "Company Bank" })).toBeChecked();
+  expect(sent.edits.map((e) => e.json)).toEqual([{ withdrawal_type: "company" }, { withdrawal_type: "company" }]);
+});
+
+test("Edit Details: no addition to the drawer, no Withdrawal from", async ({ page }) => {
+  const base = reportAnswer();
+  await openView(page, { report: editable({ cash: { ...(base.cash as Json), cash_addition: 0 } }) });
+  await page.getByRole("button", { name: "Edit Details" }).click();
+  await expect(reasonBox(page)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Addition to Cash Drawer" })).toHaveCount(0);
+});
+
+test("Edit Details: a line sends only what changed; a new account renames it", async ({ page }) => {
+  const answer = edited({
+    expenses: { lines: [{ ...editLine("e1", "Cleaning", 78.5, OPTIONS.accounts[1]), remarks: "Team lunch" }, editLine("e2", "Cleaning", 50, OPTIONS.accounts[1])], total: 128.5 },
+  });
+  const sent = await openDetails(page, { onEdit: fulfil(answer) });
+  await linesCard(page).getByRole("button", { name: /Food & Drink/ }).click();
+  const modal = dialog(page);
+  await expect(modal.getByText("HKD78.50")).toBeVisible();
+  // the amount is never a field
+  await expect(modal.getByRole("textbox")).toHaveCount(1);
+  await expect(modal.getByLabel("Supplier")).toHaveValue("s");
+  await expect(modal.getByLabel("Account Code")).toHaveValue("a1");
+  await modal.getByLabel("Description").fill("Team lunch");
+  await modal.getByLabel("Account Code").selectOption("a2");
+  await expectNoHorizontalScroll(page);
+  await modal.getByRole("button", { name: "Save changes" }).click();
+  await expect(toast(page, "Expense updated successfully!")).toBeVisible();
+  await expect(modal).toHaveCount(0);
+  expect(sent.edits).toHaveLength(1);
+  const { method: verb, path, form } = sent.edits[0];
+  expect([verb, path]).toEqual(["PATCH", "expense-lines/e1"]);
+  expect(form).toMatch(/name="remarks"\r\n\r\nTeam lunch\r\n/);
+  expect(form).toMatch(/name="account_id"\r\n\r\na2\r\n/);
+  expect(form).not.toContain('name="supplier_id"');
+  expect(form).not.toContain('name="receipt"');
+  // redrawn from the answer: the line is named after its new account, the report out of Xero
+  await expect(linesCard(page).getByRole("button", { name: /^Cleaning/ })).toHaveCount(2);
+  await expect(page.getByText("Submitted", { exact: true })).toBeVisible();
+});
+
+test("Edit Details: a receipt is checked before it is sent - one PDF, JPEG or PNG of 10 MB at most", async ({ page }) => {
+  const sent = await openDetails(page);
+  await linesCard(page).getByRole("button", { name: /Food & Drink/ }).click();
+  const modal = dialog(page);
+  const files = modal.locator('input[type="file"]');
+  await files.setInputFiles({ name: "cat.gif", mimeType: "image/gif", buffer: Buffer.from("GIF89a") });
+  await expect(modal.getByText("I can take PDF, JPEG, or PNG files.")).toBeVisible();
+  await files.setInputFiles({ name: "big.png", mimeType: "image/png", buffer: Buffer.alloc(10 * 1024 * 1024 + 1) });
+  await expect(modal.getByText("Files need to be under 10MB.")).toBeVisible();
+  await modal.getByRole("button", { name: "Save changes" }).click();
+  await expect(modal.getByText("Nothing has changed yet. Change a detail to save it.")).toBeVisible();
+  expect(sent.edits).toEqual([]);
+  await files.setInputFiles({ name: "receipt.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4") });
+  await expect(modal.getByText("receipt.pdf")).toBeVisible();
+  await expect(modal.getByText("Files need to be under 10MB.")).toHaveCount(0);
+  await modal.getByRole("button", { name: "Save changes" }).click();
+  await expect(toast(page, "Expense updated successfully!")).toBeVisible();
+  const form = sent.edits[0].form ?? "";
+  expect(form).toMatch(/name="receipt"; filename="receipt.pdf"/);
+  expect(form).not.toContain('name="remarks"');
+  expect(form).not.toContain('name="account_id"');
+});
+
+test("Edit Details: a description is checked as it is typed; nothing is sent past 300", async ({ page }) => {
+  const sent = await openDetails(page);
+  await linesCard(page).getByRole("button", { name: /Food & Drink/ }).click();
+  const modal = dialog(page);
+  await modal.getByLabel("Description").fill("y".repeat(301));
+  await expect(modal.getByText("Keep the description to 300 characters or fewer.")).toBeVisible();
+  await modal.getByRole("button", { name: "Save changes" }).click();
+  await expect(modal.getByLabel("Description")).toBeFocused();
+  expect(sent.edits).toEqual([]);
+});
+
+test("Edit Details: a line's refusal is said at its field; a 409 under Save", async ({ page }) => {
+  let answer: { status: number; error: string } = { status: 422, error: "Choose an account code from the list." };
+  await openDetails(page, { onEdit: (route) => route.fulfill({ status: answer.status, json: { error: answer.error } }) });
+  await linesCard(page).getByRole("button", { name: /Food & Drink/ }).click();
+  const modal = dialog(page);
+  await modal.getByLabel("Account Code").selectOption("a2");
+  await modal.getByRole("button", { name: "Save changes" }).click();
+  await expect(modal.locator("#editExpAccount_message")).toHaveText("Choose an account code from the list.");
+  answer = { status: 409, error: "This report is still a draft. Change it in the Daily Closing." };
+  await modal.getByRole("button", { name: "Save changes" }).click();
+  await expect(modal.locator("#editExp_message")).toHaveText("This report is still a draft. Change it in the Daily Closing.");
+  await expect(toast(page, "Expense updated successfully!")).toHaveCount(0);
+  await expect(modal).toBeVisible();
+});
+
+test("Edit Details: Escape keeps an editor with changes open (Flask's toast); Close discards them", async ({ page }) => {
+  const sent = await openDetails(page);
+  await linesCard(page).getByRole("button", { name: /Food & Drink/ }).click();
+  const modal = dialog(page);
+  await modal.getByLabel("Supplier").selectOption("s2");
+  await page.keyboard.press("Escape");
+  await expect(toast(page, "You have unsaved changes. Please save your changes first.")).toBeVisible();
+  await expect(modal).toBeVisible();
+  await modal.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await linesCard(page).getByRole("button", { name: /Food & Drink/ }).click();
+  await expect(dialog(page).getByLabel("Supplier")).toHaveValue("s");
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toHaveCount(0);
+  expect(sent.edits).toEqual([]);
 });

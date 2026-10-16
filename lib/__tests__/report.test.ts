@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import { salesSplit } from "@/lib/ending";
-import { DELETE_IN_XERO, publishLabel, submittedHeading, summarySales, type DailyReport } from "@/lib/report";
+import {
+  DELETE_IN_XERO,
+  editReasonProblem,
+  editReceiptProblem,
+  lineChanges,
+  publishLabel,
+  remarksProblem,
+  submittedHeading,
+  summarySales,
+  type DailyReport,
+  type ReportLine,
+} from "@/lib/report";
 
 const method = (value_name: string, type: string, amount: number) => ({ sale_id: value_name, name: value_name, value_name, type, amount });
 
@@ -44,5 +55,58 @@ describe("the owner's Xero warning on Delete (2026-10-15)", () => {
     expect(DELETE_IN_XERO.body).toBe(
       "Deleting it here does not remove its entries in Xero, and publishing this day again adds a second copy. To change the report, use Edit report instead.",
     );
+  });
+});
+
+describe("editing a submitted report's details (Flask's Edit Details)", () => {
+  it("checks the difference reason as it is typed: at most 300 characters, never emptied while the cash is out", () => {
+    expect(editReasonProblem("Paid a courier", "short")).toBeNull();
+    expect(editReasonProblem("x".repeat(300), "over")).toBeNull();
+    expect(editReasonProblem("x".repeat(301), "short")).toBe("Keep the reason to 300 characters or fewer.");
+    expect(editReasonProblem("  ", "short")).toBe("The cash was short, so the reason is still needed. Add the reason to save it.");
+    expect(editReasonProblem("", "over")).toBe("The cash was over, so the reason is still needed. Add the reason to save it.");
+    expect(editReasonProblem("", "none")).toBeNull();
+  });
+
+  it("checks a description as it is typed: at most 300 characters", () => {
+    expect(remarksProblem("")).toBeNull();
+    expect(remarksProblem("y".repeat(300))).toBeNull();
+    expect(remarksProblem("y".repeat(301))).toBe("Keep the description to 300 characters or fewer.");
+  });
+
+  const saved: ReportLine = {
+    id: "e1",
+    item: "Food & Drink",
+    amount: 78.5,
+    remarks: "Lunch",
+    supplier: { id: "s1", name: "Acme" },
+    account: { id: "a1", code: "420", name: "Food & Drink" },
+    receipts: [],
+  };
+  const same = { remarks: "Lunch", supplierId: "s1", accountId: "a1", receipt: null };
+
+  it("sends only what changed - nothing when nothing did", () => {
+    expect(lineChanges(saved, same)).toEqual({});
+    expect(lineChanges(saved, { ...same, remarks: "  Lunch  " })).toEqual({});
+    expect(lineChanges(saved, { ...same, remarks: "Team lunch" })).toEqual({ remarks: "Team lunch" });
+    expect(lineChanges(saved, { ...same, remarks: "" })).toEqual({ remarks: "" });
+    expect(lineChanges(saved, { ...same, supplierId: "s2" })).toEqual({ supplier_id: "s2" });
+    expect(lineChanges(saved, { ...same, accountId: "a2" })).toEqual({ account_id: "a2" });
+    const receipt = new File(["%PDF"], "r.pdf", { type: "application/pdf" });
+    expect(lineChanges(saved, { ...same, receipt })).toEqual({ receipt });
+  });
+
+  it("never sends an empty supplier or account (the API cannot clear one)", () => {
+    const bare: ReportLine = { ...saved, supplier: null, account: null };
+    expect(lineChanges(bare, { remarks: "Lunch", supplierId: "", accountId: "", receipt: null })).toEqual({});
+    expect(lineChanges(bare, { remarks: "Lunch", supplierId: "s1", accountId: "a1", receipt: null })).toEqual({ supplier_id: "s1", account_id: "a1" });
+  });
+
+  it("refuses a receipt that is not a PDF, JPEG or PNG of at most 10 MB, before it is sent", () => {
+    const file = (type: string, size = 10) => new File([new Uint8Array(size)], "r", { type });
+    expect(editReceiptProblem(file("image/png"))).toBeNull();
+    expect(editReceiptProblem(file("application/pdf", 10 * 1024 * 1024))).toBeNull();
+    expect(editReceiptProblem(file("image/gif"))).toBe("I can take PDF, JPEG, or PNG files.");
+    expect(editReceiptProblem(file("image/jpeg", 10 * 1024 * 1024 + 1))).toBe("Files need to be under 10MB.");
   });
 });

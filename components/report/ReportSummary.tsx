@@ -51,6 +51,7 @@ export function ReportSummary({
   history,
   lines,
   cash,
+  reasonEditor,
 }: {
   code: string | null;
   sales: SummarySales;
@@ -60,6 +61,8 @@ export function ReportSummary({
   history: ClosePage["sales"]["history"];
   lines: Pick<CloseLine, "item" | "amount">[];
   cash: Pick<ClosePage["cash"], "counted" | "safe_box" | "difference">;
+  /** A submitted report's Edit Details: the reason's editor, drawn in the box in place of the reason. */
+  reasonEditor?: ReactNode;
 }) {
   return (
     <>
@@ -72,13 +75,13 @@ export function ReportSummary({
       <SalesHistory history={history} />
       <TotalExpenses lines={lines} />
       <CashBalance till={cash.counted} safeBox={cash.safe_box} />
-      <DifferenceBox difference={cash.difference} code={code} />
+      <DifferenceBox difference={cash.difference} code={code} reasonEditor={reasonEditor} />
     </>
   );
 }
 
 /** Flask's red "Cash Shortage" or green "Cash Surplus" box with the reason; nothing when the count balanced. */
-function DifferenceBox({ difference, code }: { difference: ClosePage["cash"]["difference"]; code: string | null }) {
+function DifferenceBox({ difference, code, reasonEditor }: { difference: ClosePage["cash"]["difference"]; code: string | null; reasonEditor?: ReactNode }) {
   if (difference.amount === 0) return null;
   const short = difference.amount < 0;
   return (
@@ -102,7 +105,7 @@ function DifferenceBox({ difference, code }: { difference: ClosePage["cash"]["di
             {short ? "Cash Shortage: " : "Cash Surplus: "}
             <span className="break-all">{formatMoney(Math.abs(difference.amount), code)}</span>
           </h3>
-          {difference.reason ? <p className="mt-1 text-sm text-flask-gray-600 [overflow-wrap:anywhere]">{difference.reason}</p> : null}
+          {reasonEditor ?? (difference.reason ? <p className="mt-1 text-sm text-flask-gray-600 [overflow-wrap:anywhere]">{difference.reason}</p> : null)}
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useState, type MouseEvent, type ReactNode } from "react";
 
 import { PhoneCard } from "@/components/flask/PhoneCard";
 import { Stepper } from "@/components/flask/Stepper";
@@ -262,8 +262,9 @@ const TRASH = (
 /**
  * A line as Flask's server-drawn row has it: the account's name in bold ("N/A" without one), the
  * supplier, the description, then the amount in red and the bin. The row opens Expense Details.
+ * Without `onDelete` there is no bin (a submitted report's Edit Details).
  */
-function ExpenseRow({ line, code, onOpen, onDelete }: { line: ExpenseLine; code: string | null; onOpen: () => void; onDelete: () => void }) {
+export function ExpenseRow({ line, code, onOpen, onDelete }: { line: ExpenseLine; code: string | null; onOpen: () => void; onDelete?: () => void }) {
   return (
     <div
       role="button"
@@ -288,17 +289,19 @@ function ExpenseRow({ line, code, onOpen, onDelete }: { line: ExpenseLine; code:
         <div className="text-right">
           <div className="flex items-center justify-end gap-3">
             <div className="font-medium text-flask-red-600">{formatMoney(line.amount, code)}</div>
-            <button
-              type="button"
-              aria-label="Delete expense"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="flask-hover-bounce -m-2 cursor-pointer rounded-full p-2 text-flask-gray-400 hover:text-flask-red-600"
-            >
-              {TRASH}
-            </button>
+            {onDelete ? (
+              <button
+                type="button"
+                aria-label="Delete expense"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="flask-hover-bounce -m-2 cursor-pointer rounded-full p-2 text-flask-gray-400 hover:text-flask-red-600"
+              >
+                {TRASH}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -320,16 +323,32 @@ const EXPAND = (
  * Flask's "Expense Details" (#viewExpenseModal): the receipt first (a picture as a 256px tile that
  * opens full screen; a PDF as a tile with its name and "Open"), "Amount Paid", then Contact Name,
  * Description and Account in a grey box, and Close.
+ *
+ * With `editor` (a submitted report's Edit Details, Flask's report_edit mode) the editor takes the
+ * grey box's place, and `onDismiss` - Escape or a click outside - may refuse while it holds changes;
+ * Close always closes (discarding them), as Flask's did.
  */
-function ExpenseDetailsModal({ line, code, onClose }: { line: ExpenseLine; code: string | null; onClose: () => void }) {
+export function ExpenseDetailsModal({
+  line,
+  code,
+  onClose,
+  onDismiss = onClose,
+  editor,
+}: {
+  line: ExpenseLine;
+  code: string | null;
+  onClose: () => void;
+  onDismiss?: () => void;
+  editor?: ReactNode;
+}) {
   const urls = useReceiptUrls(line);
   const [shown, setShown] = useState<ShownReceipt | null>(null);
   const rows = detailRows(line);
   const closeViewer = useCallback(() => setShown(null), []);
   // while the receipt is open full screen, Escape and outside clicks belong to it
   const close = useCallback(() => {
-    if (!shown) onClose();
-  }, [shown, onClose]);
+    if (!shown) onDismiss();
+  }, [shown, onDismiss]);
 
   return (
     <Modal titleId="viewExpenseTitle" onClose={close} className="max-h-[90vh] overflow-y-auto rounded-flask-lg bg-flask-white p-6 shadow-flask-xl">
@@ -416,11 +435,13 @@ function ExpenseDetailsModal({ line, code, onClose }: { line: ExpenseLine; code:
           <p className="mb-1 text-sm text-flask-gray-400">Amount Paid</p>
           <p className="text-3xl font-bold text-flask-detail-ink [overflow-wrap:anywhere]">{formatMoney(line.amount, code)}</p>
         </div>
-        <div className="mt-4 rounded-flask-xl bg-flask-gray-50 px-4 py-2">
-          <DetailRow label="Contact Name" value={rows.contact} />
-          <DetailRow label="Description" value={rows.description} />
-          <DetailRow label="Account" value={rows.account} />
-        </div>
+        {editor ?? (
+          <div className="mt-4 rounded-flask-xl bg-flask-gray-50 px-4 py-2">
+            <DetailRow label="Contact Name" value={rows.contact} />
+            <DetailRow label="Description" value={rows.description} />
+            <DetailRow label="Account" value={rows.account} />
+          </div>
+        )}
       </div>
 
       <div className="flex justify-center gap-3">

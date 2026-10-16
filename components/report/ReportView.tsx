@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PhoneCard } from "@/components/flask/PhoneCard";
 import { useToast } from "@/components/flask/Toasts";
 import { DeleteReportModal, ShareButton, ShareModal, useEditReport, useShareLink } from "@/components/report/ReportActions";
 import { LoadingOverlay, ReportBadge } from "@/components/report/ReportChrome";
+import { EditLinesCard, LineEditor, ReasonEditor, WithdrawalCard } from "@/components/report/ReportEdits";
 import { ReportSummary } from "@/components/report/ReportSummary";
 import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
@@ -40,8 +41,12 @@ const ICON_GROW = "transition-transform duration-300 group-hover:scale-[1.2]";
  * - Share: `POST /reports/<id>/share-link` into Flask's Share Report modal.
  * - Close: report history, as Flask's did.
  *
- * Every refusal shows the API's sentence and keeps the page. Flask's per-field edits of a submitted
- * report have no API yet, so they are not here.
+ * - Edit Details (`permissions.edit_details`): Flask's constrained report_edit mode, in place on
+ *   this page (ReportEdits.tsx) - the difference reason in its box, "Addition to Cash Drawer"'s
+ *   Withdrawal from, and each expense line's editor. Each edit answers the Daily Report and the
+ *   page is drawn from it again. "Done editing" leaves the mode; Close hides while in it, as Flask's.
+ *
+ * Every refusal shows the API's sentence and keeps the page.
  */
 export function ReportView({ reportId }: { reportId: string }) {
   const toast = useToast();
@@ -82,10 +87,23 @@ export function ReportView({ reportId }: { reportId: string }) {
       </PhoneCard>
     );
   }
-  return <ReportViewBody report={report} entityId={auth.entityId} entityName={auth.entityName} acronym={acronym} />;
+  return <ReportViewBody report={report} onSaved={setReport} entityId={auth.entityId} entityName={auth.entityName} acronym={acronym} />;
 }
 
-function ReportViewBody({ report, entityId, entityName, acronym }: { report: DailyReport; entityId: string; entityName: string; acronym: string }) {
+function ReportViewBody({
+  report,
+  onSaved,
+  entityId,
+  entityName,
+  acronym,
+}: {
+  report: DailyReport;
+  /** An edit's answer: the whole Daily Report, drawn again. */
+  onSaved: (report: DailyReport) => void;
+  entityId: string;
+  entityName: string;
+  acronym: string;
+}) {
   const toast = useToast();
   const router = useRouter();
   const home = pettyCashHome(entityId, entityName);
@@ -96,6 +114,9 @@ function ReportViewBody({ report, entityId, entityName, acronym }: { report: Dai
   // a ref, not state: a second click in the same frame must see the first one
   const acting = useRef(false);
   const edit = useEditReport(entityId, entityName, acting);
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [lineId, setLineId] = useState<string | null>(null);
+  const closeLine = useCallback(() => setLineId(null), []);
 
   function refused(err: unknown) {
     acting.current = false;
@@ -119,15 +140,20 @@ function ReportViewBody({ report, entityId, entityName, acronym }: { report: Dai
     }
   }
 
+  const may = report.permissions;
+  // the edits show only while the API allows them: an answer without edit_details ends the mode
+  const details = may.edit_details && editingDetails;
+  const editedLine = details && lineId ? report.expenses.lines.find((l) => l.id === lineId) : undefined;
+
   const overlays = (
     <>
+      {editedLine ? <LineEditor key={editedLine.id} report={report} line={editedLine} onSaved={onSaved} onClose={closeLine} /> : null}
       {busy ? <LoadingOverlay text={busy} /> : null}
       {share.link ? <ShareModal url={share.link.url} onClose={share.close} /> : null}
       {confirmDelete ? <DeleteReportModal wasPublished={report.was_published} onCancel={() => setConfirmDelete(false)} onDelete={() => void remove()} /> : null}
     </>
   );
 
-  const may = report.permissions;
   return (
     <PhoneCard
       acronym={acronym}
@@ -154,7 +180,11 @@ function ReportViewBody({ report, entityId, entityName, acronym }: { report: Dai
         history={report.sales.history}
         lines={report.expenses.lines}
         cash={report.cash}
+        reasonEditor={details && report.cash.difference.kind !== "none" ? <ReasonEditor key={report.cash.difference.reason} report={report} onSaved={onSaved} /> : undefined}
       />
+
+      {details && report.cash.cash_addition > 0 ? <WithdrawalCard key={report.cash.cash_addition_type ?? ""} report={report} onSaved={onSaved} /> : null}
+      {details && report.expenses.lines.length > 0 ? <EditLinesCard report={report} onOpen={(line) => setLineId(line.id)} /> : null}
 
       {may.share ? (
         <div className="mt-6 flex items-start justify-center gap-8 sm:gap-12">
@@ -187,12 +217,40 @@ function ReportViewBody({ report, entityId, entityName, acronym }: { report: Dai
         </button>
       ) : null}
 
-      <button type="button" onClick={() => router.push(historyHref(entityId, entityName))} className={`${ACTION} bg-flask-teal hover:bg-flask-teal/80`}>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={`size-6 ${ICON_GROW}`} aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-        </svg>
-        <span>Close</span>
-      </button>
+      {may.edit_details ? (
+        <button
+          type="button"
+          onClick={() => {
+            setLineId(null);
+            setEditingDetails((on) => !on);
+          }}
+          className={`${ACTION} bg-flask-olive hover:bg-flask-olive/80`}
+        >
+          {editingDetails ? (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={`size-6 ${ICON_GROW}`} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={`size-6 ${ICON_GROW}`} aria-hidden="true">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"
+              />
+            </svg>
+          )}
+          <span>{editingDetails ? "Done editing" : "Edit Details"}</span>
+        </button>
+      ) : null}
+
+      {!details ? (
+        <button type="button" onClick={() => router.push(historyHref(entityId, entityName))} className={`${ACTION} bg-flask-teal hover:bg-flask-teal/80`}>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={`size-6 ${ICON_GROW}`} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          <span>Close</span>
+        </button>
+      ) : null}
     </PhoneCard>
   );
 }

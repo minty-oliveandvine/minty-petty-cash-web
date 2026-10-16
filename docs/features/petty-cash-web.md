@@ -70,7 +70,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`), report history's (`lib/history.ts`: the filters in the address, Flask's pager, the CSV link, a row's badge, time and figures, the range calendar's picks), settings' (`lib/settings.ts`: the address, the pickers' filter, what the country Save sends, the catalogue, a method name's live checks, a shared method's rename sentence, Move up / down, view-only), the flash and the next-day hand-over, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`, Edit Details' among them: the reason's and a description's live checks, a receipt's check before it is sent, and what a line's edit sends - only what changed, never an empty supplier or account), report history's (`lib/history.ts`: the filters in the address, Flask's pager, the CSV link, a row's badge, time and figures, the range calendar's picks), settings' (`lib/settings.ts`: the address, the pickers' filter, what the country Save sends, the catalogue, a method name's live checks, a shared method's rename sentence, Move up / down, view-only), the flash and the next-day hand-over, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -282,7 +282,7 @@ Where the app differs:
 
 ### A submitted report: `/entity/<shortid>/<name>/petty-cash/reports/<report id>/summary`
 
-This is the submitted-report mode of Flask's ORIGINAL `report/ending.html` (Minty `1c25b35^1`, `report/services/ending.py`), at Flask's id address for it. Flask also serves `/reports/summary?transaction_date=`; this app uses the id form. It is built from `components/report/ReportView.tsx`, the summary of `ReportSummary.tsx` (the Ending step's own cards) and `ReportActions.tsx` (Share and Delete), and reads `GET /reports/<id>` (Minty `petty_cash_api/routes/report.py`). The dashboard's View Report opens it.
+This is the submitted-report mode of Flask's ORIGINAL `report/ending.html` (Minty `1c25b35^1`, `report/services/ending.py`), at Flask's id address for it. Flask also serves `/reports/summary?transaction_date=`; this app uses the id form. It is built from `components/report/ReportView.tsx`, the summary of `ReportSummary.tsx` (the Ending step's own cards), `ReportActions.tsx` (Share and Delete) and `ReportEdits.tsx` (Edit Details), with its rules in `lib/report.ts`, and reads `GET /reports/<id>` (Minty `petty_cash_api/routes/report.py`). The dashboard's View Report opens it.
 
 What it keeps from Flask:
 - **The report header:** the date pill, the initials and the Submitted / Published badge. The chevron goes to the dashboard.
@@ -292,13 +292,25 @@ What it keeps from Flask:
 - **Delete Report:** Flask's "Delete Report" modal (Cancel / Delete), "Deleting report...", `DELETE /reports/<id>`, then the dashboard with "That report's deleted.".
 - **A report that has been to Xero may be deleted, with a warning first** (the owner, 2026-10-15). The modal adds "It is in Xero": "Deleting it here does not remove its entries in Xero, and publishing this day again adds a second copy. To change the report, use Edit report instead." These are Flask's own modal's words, drawn as Flask's amber warning above the red one. The API's `was_published` decides it.
 - **Share:** Flask's Share Report modal, as on the Submitted page.
+- **Edit Details** (olive, under Edit Report): Flask's constrained `report_edit` mode, which changes the three details that move no balance. It shows only with the API's `permissions.edit_details` (any submitted report not being published - not only the latest). In the mode the button reads **Done editing** and Close hides, as in Flask. Each edit is one call that answers the whole Daily Report, and the page is drawn again from it - so after an edit to a report in Xero the badge reads Submitted again (Flask takes the report out of Xero on any edit). Flask's success toasts, word for word, only after the API says yes:
+  - **The difference reason**, in the shortage or surplus box: cash_count.html's box and "Save changes", `PUT /reports/<id>/difference-reason` `{reason}`, "Your discrepancy reason is saved.".
+  - **Addition to Cash Drawer:** the amount (never editable), then opening.html's "Withdrawal from:" Company Bank / Personal (Personal when none was saved, as Flask checked it) and "Save changes", `PUT /reports/<id>/withdrawal` `{withdrawal_type}`, "Your withdrawal source is saved.". Only when the day had an addition.
+  - **An expense line:** an "Expenses" card lists the lines as the Expenses step does (no bin); a tap opens Expense Details with expense.html's editor in place of the grey box - Description, Supplier and Account Code (Flask's selects, from the read's `options`), Receipt/Document ("Click to change files", one file) and "Save changes". The receipt and Amount Paid stay as they are; the amount is never a field. `PATCH /reports/<id>/expense-lines/<line id>`, multipart, with **only the fields that changed** (`remarks`, `supplier_id`, `account_id`, `receipt`); a new account renames the line on the server. "Expense updated successfully!" and the editor closes. Escape or a click outside keeps an editor with changes open with Flask's "You have unsaved changes. Please save your changes first."; Close discards them, as Flask's did.
+  - **Checked as it is typed** (CLAUDE.md): a reason or a description over 300 characters ("Keep the reason / description to 300 characters or fewer."), a reason emptied while the cash was short or over ("The cash was short, so the reason is still needed. Add the reason to save it."), and a receipt that is not one PDF, JPEG or PNG of 10 MB at most (the Expenses step's sentences), refused before anything is sent.
+  - **A refusal (400, 403, 404, 409, 422) is said under its field** in the API's words and nothing changes; a line's refusal goes under the field its sentence names (supplier, account, description, receipt), anything else under Save changes.
 
 Where the app differs:
 - **Every refusal keeps the page and says the API's sentence** (400 not the latest, 403, 404, 409 while publishing or a draft). Flask's delete went to the dashboard as if it had worked ("Failed, Redirecting to Dashboard...").
 - **Close goes to report history**, as Flask's did.
 - **A draft opens its Ending step:** a draft's summary is the wizard's.
 - **No stepper.** Flask drew the six steps, all done, each leading to that step's read-only view of the submitted report. Those views are not ported (the steps here open only a draft); Edit Report is the way back into the wizard.
-- **Not yet (no API):** Flask's per-field edits of a submitted report (the difference reason, the withdrawal and an expense line) and older reports' "Edit Details" mode.
+- **Edit Details, where it differs from Flask:**
+  - It is on the report's own view. Flask's mode lived on the step pages (Opening, Expenses, Cash Count, reached through the stepper with `?report_edit=true`), and only older reports offered it.
+  - "Done editing" stays on the page; Flask's went to report history.
+  - The withdrawal shows only when there was an addition; Flask's Opening always drew the radios.
+  - Save changes with nothing changed says "Nothing has changed yet. Change a detail to save it." and sends nothing; Flask sent every field each time.
+  - The selects offer no empty choice: the API cannot clear a supplier or an account. A line's own supplier or account stays in its list even when it is no longer among the options.
+  - There is no Xero warning before editing, as in Flask (its warning was on Edit Report only).
 - **Known, shared with every report page:** at 360px the header's centred group (date, initials, badge) runs about 6px under the person's initials with a four-letter company acronym and the longer Submitted / Published badge. Flask's header has the same geometry; `PhoneCard` needs a narrower centre to fix it.
 
 ### Report history: `/entity/<shortid>/<name>/petty-cash/reports?start_date=&end_date=&page=`
@@ -326,7 +338,7 @@ Where the app differs:
 - **A tap shows a failed publish's reasons:** Tailwind v4 applies hover only where there is one, so on a phone the badge is a button that opens and closes them (and keyboard focus shows them).
 - **Layout, at a phone's width** (the only layout change): below 640px Sales sits over Expenses - side by side, Flask's row ran past its card with a "Publish failed" badge or a six-figure amount. The amount columns keep Flask's widths as minimums, so a long figure widens its column instead of running into the next one; the page numbers wrap on the 640px card, where Flask's ran off its edge. The ⋮, the chevron and the page links reach 44px for a finger without moving Flask's layout.
 - **Flask's own sizes below the workspace rules, kept:** the 8-10px dates, figures and times on a phone, the 9px badge and the calendar's 42px days.
-- **Not yet:** "Edit" on an older report (Flask's "Edit Details" mode of the summary) has no API, so the menu leaves it out.
+- **"Edit" on an older report is not in the menu.** Flask's opened the summary's "Edit Details" mode; here it is View, then Edit Details on the report's view.
 
 ### Petty Cash Settings: `/entity/<shortid>/<name>/settings/petty-cash`
 

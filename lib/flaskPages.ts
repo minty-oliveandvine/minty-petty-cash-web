@@ -43,9 +43,12 @@ export function publishUrl(entityId: string, reportId: string): string {
   return `${company(entityId)}/petty-cash/reports/${encodeURIComponent(reportId)}/submitted`;
 }
 
-/** Report history (Flask `report.entity_report_history`). */
-export function historyUrl(entityId: string): string {
-  return `${company(entityId)}/petty-cash/reports`;
+/**
+ * The CSV of every report between two days (Flask `report.download_reports_csv`): Export CSV on
+ * this app's report history stays Flask's download, a full-page link.
+ */
+export function csvUrl(entityId: string, start: string, end: string): string {
+  return `${company(entityId)}/petty-cash/reports/download-csv?${new URLSearchParams({ start_date: start, end_date: end })}`;
 }
 
 /** Petty Cash settings (Flask `entity_settings_entity`). */

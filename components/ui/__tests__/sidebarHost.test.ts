@@ -12,10 +12,11 @@ const HOME = "/entity/360812e1/olive-and-vine/petty-cash";
 afterEach(() => _resetHandoffForTests());
 
 describe("the menu's links", () => {
-  it("keeps the dashboard in this app, and sends Reports and Settings to Flask until they are ported", () => {
+  it("keeps the dashboard and Reports in this app, and sends Settings to Flask until it is ported", () => {
     setAuth("tok", ENTITY, "Olive & Vine");
     expect(sidebarHost.links.pettyCashDashboard()).toBe(HOME);
-    expect(sidebarHost.links.pettyCashReports(ENTITY)).toBe(`http://localhost:8000/entity/${ENTITY}/petty-cash/reports`);
+    expect(sidebarHost.links.pettyCashReports(ENTITY)).toBe(`${HOME}/reports`);
+    expect(sidebarHost.links.pettyCashReports("")).toBe(`${HOME}/reports`);
     expect(sidebarHost.links.settings()).toBe(`http://localhost:8000/entity/${ENTITY}/settings/petty-cash`);
   });
 

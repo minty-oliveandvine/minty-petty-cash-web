@@ -8,7 +8,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, buttonClass, Icon, InlineAlert, inputClass, Modal, PageBanner, Skeleton, StatusPill } from "@minty/shared/ui";
 
 import type { ViewerFile } from "@/components/closing/ReceiptViewer";
-import { openStep } from "@/components/closing/Stage";
+import { DeleteReportDialog, EditReportDialog } from "@/components/closing/ReportDialogs";
 import { AppBar } from "@/components/layout/AppBar";
 import { MoreMenu, type MoreItem } from "@/components/ui/MoreMenu";
 import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
@@ -25,9 +25,7 @@ import {
   auditFacts,
   cashRows,
   deletedMessage,
-  deleteWarning,
   differenceAlert,
-  editWarning,
   expenseMeta,
   expenseTitle,
   isDraft,
@@ -36,19 +34,15 @@ import {
   reportPill,
   reportReceipts,
   type DailyReport as Report,
-  type Deleted,
-  type Reopened,
 } from "@/lib/report";
 import { useAuth } from "@/lib/useAuth";
-import { stepHref } from "@/lib/wizardPages";
+import { historyHref, stepHref } from "@/lib/wizardPages";
 
 // The full-screen receipt view loads when first opened (the app's one viewer).
 const ReceiptViewer = dynamic(() => import("@/components/closing/ReceiptViewer"), { ssr: false });
 
 const TITLE = "Daily Report";
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
-const NOT_REOPENED = "We couldn't open the report for editing. Check your connection, then try again.";
-const NOT_DELETED = "We couldn't delete the report. Check your connection, then try again.";
 const NO_LINK = "We couldn't make the link. Check your connection, then try again.";
 const NOT_COPIED = "We couldn't copy the link. Select it above, then copy it yourself.";
 
@@ -89,6 +83,8 @@ export function DailyReport({ reportId }: { reportId: string }) {
   const entityId = auth?.entityId ?? "";
   const entityName = auth?.entityName ?? "";
   const home = auth ? pettyCashHome(entityId, entityName) : "";
+  // The Report header's way back: the report history, the Daily Report's parent list (Flask's too).
+  const reports = auth ? historyHref(entityId, entityName) : "";
 
   return (
     <>
@@ -97,10 +93,10 @@ export function DailyReport({ reportId }: { reportId: string }) {
       <main className="px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pt-8">
         <div className="mx-auto flex w-full min-w-0 max-w-[720px] flex-col gap-6">
           {load.kind === "ready" && auth ? (
-            <ReportBody report={load.report} entityId={entityId} entityName={entityName} home={home} />
+            <ReportBody report={load.report} entityId={entityId} entityName={entityName} home={home} reports={reports} />
           ) : load.kind === "failed" ? (
             <>
-              <ReportHeader home={home} />
+              <ReportHeader reports={reports} />
               <InlineAlert tone="danger">{load.message}</InlineAlert>
               {home ? (
                 <Link href={home} className={`${buttonClass("link")} w-fit`}>
@@ -110,7 +106,7 @@ export function DailyReport({ reportId }: { reportId: string }) {
             </>
           ) : (
             <>
-              <ReportHeader home={home} />
+              <ReportHeader reports={reports} />
               <div className="flex flex-col gap-4" role="status" aria-busy="true" aria-label="Loading">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Skeleton className="h-24 w-full" />
@@ -130,20 +126,21 @@ export function DailyReport({ reportId }: { reportId: string }) {
 }
 
 /**
- * Part 15.1 Report header: the way back to the launch page, "Daily Report" (the h1) with its
+ * Part 15.1 Report header: the way back to the report history ("‹ Reports", its parent list - as
+ * Flask's page; it was the launch page until history was this app's), "Daily Report" (the h1) with its
  * Status pill, the day, then the actions - [Share] [Publish to Xero] [More] at the right from 768;
  * on a phone the Primary is first and full width, the rest share the row under it (15.2).
  * While loading, the title shows at once and the day is skeleton.
  */
 function ReportHeader({
-  home,
+  reports,
   day,
   status,
   actions,
   primary,
   more,
 }: {
-  home: string;
+  reports: string;
   day?: string;
   status?: ReactNode;
   actions?: ReactNode;
@@ -152,13 +149,13 @@ function ReportHeader({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      {home ? (
+      {reports ? (
         <Link
-          href={home}
+          href={reports}
           className="-ml-1 inline-flex min-h-11 w-fit items-center gap-1 rounded-lg pr-2 text-body-m font-medium text-text-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
         >
           <Icon name="chevron_left" size="md" />
-          Petty Cash
+          Reports
         </Link>
       ) : (
         <span className="min-h-11" aria-hidden />
@@ -183,7 +180,20 @@ function ReportHeader({
   );
 }
 
-function ReportBody({ report, entityId, entityName, home }: { report: Report; entityId: string; entityName: string; home: string }) {
+function ReportBody({
+  report,
+  entityId,
+  entityName,
+  home,
+  reports,
+}: {
+  report: Report;
+  entityId: string;
+  entityName: string;
+  home: string;
+  reports: string;
+}) {
+  const router = useRouter();
   const [dialog, setDialog] = useState<"edit" | "delete" | null>(null);
   const [share, setShare] = useState<Share | null>(null);
   const [viewing, setViewing] = useState<ViewerFile | null>(null);
@@ -199,6 +209,7 @@ function ReportBody({ report, entityId, entityName, home }: { report: Report; en
   const difference = differenceAlert(report);
   const lines = report.expenses.lines;
   const receipts = reportReceipts(report);
+  const dialogReport = { id: report.report_id, day, was_published: report.was_published };
 
   async function makeLink() {
     const call = ++shareCall.current;
@@ -247,7 +258,7 @@ function ReportBody({ report, entityId, entityName, home }: { report: Report; en
   return (
     <>
       <ReportHeader
-        home={home}
+        reports={reports}
         day={day}
         status={<StatusPill label={pill.label} tone={pill.tone} />}
         actions={shareButton}
@@ -388,8 +399,20 @@ function ReportBody({ report, entityId, entityName, home }: { report: Report; en
         ))}
       </div>
 
-      {dialog === "edit" ? <EditReport report={report} entityId={entityId} entityName={entityName} onCancel={() => setDialog(null)} /> : null}
-      {dialog === "delete" ? <DeleteReport report={report} home={home} onCancel={() => setDialog(null)} /> : null}
+      {dialog === "edit" ? (
+        <EditReportDialog report={dialogReport} entityId={entityId} entityName={entityName} onCancel={() => setDialog(null)} />
+      ) : null}
+      {dialog === "delete" ? (
+        <DeleteReportDialog
+          report={dialogReport}
+          onCancel={() => setDialog(null)}
+          onDeleted={(answer) => {
+            // The launch page says so (a Page banner, read once) - in place of this page, which shows a report that is gone.
+            setFlash(deletedMessage(answer.transaction_date), "success");
+            router.replace(home);
+          }}
+        />
+      ) : null}
       {share ? (
         <ShareReport
           share={share}
@@ -439,140 +462,6 @@ function Row({ label, value, total = false, words = false }: { label: string; va
         {value}
       </dd>
     </div>
-  );
-}
-
-/** A Xero warning inside a confirmation (Warning tone, the owner's words). */
-function XeroWarning({ warning }: { warning: { title: string; body: string } | null }) {
-  return warning ? (
-    <InlineAlert tone="warning" title={warning.title}>
-      {warning.body}
-    </InlineAlert>
-  ) : null;
-}
-
-/**
- * Edit report - a Part 14 Confirmation modal (Flask's page asks the same): the report goes back to
- * a draft, then Addition to Drawer opens (`openStep`). A report that has been to Xero warns first.
- * A refusal shows its sentence inside the modal.
- */
-function EditReport({ report, entityId, entityName, onCancel }: { report: Report; entityId: string; entityName: string; onCancel: () => void }) {
-  const router = useRouter();
-  const cancel = useRef<HTMLButtonElement>(null);
-  // A ref, not state: a double click lands twice before React re-renders, and must send once.
-  const inFlight = useRef(false);
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
-  const warning = editWarning(report);
-
-  async function confirm() {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    setBusy(true);
-    setProblem(null);
-    try {
-      const answer = await pettyCashFetch<Reopened>(`/reports/${encodeURIComponent(report.report_id)}/reopen`, { method: "POST" });
-      // The button stays busy until the stage is up.
-      openStep((href) => router.push(href), entityId, entityName, "opening", answer.transaction_date);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) return;
-      inFlight.current = false;
-      setBusy(false);
-      setProblem(err instanceof ApiError ? err.message : NOT_REOPENED);
-    }
-  }
-
-  return (
-    <Modal
-      open
-      role="alertdialog"
-      onRequestClose={() => !busy && onCancel()}
-      initialFocus={cancel}
-      title="Edit this report?"
-      description="It goes back to a draft so every stage can be changed, then you submit it again."
-      footer={
-        <>
-          <Button ref={cancel} kind="secondary" onClick={onCancel} disabled={busy}>
-            Cancel
-          </Button>
-          <Button kind="primary" onClick={() => void confirm()} processing={busy} processingLabel="Opening…">
-            Edit report
-          </Button>
-        </>
-      }
-    >
-      {warning || problem ? (
-        <div className="flex flex-col gap-3">
-          <XeroWarning warning={warning} />
-          {problem ? <InlineAlert tone="danger">{problem}</InlineAlert> : null}
-        </div>
-      ) : null}
-    </Modal>
-  );
-}
-
-/**
- * Delete report - a Part 14 Confirmation modal, Destructive: what goes and that it can't be
- * undone, Cancel focused first, Delete report in Danger. A report that has been to Xero MAY be
- * deleted, but the modal warns first (the owner, 2026-10-15). After it, the launch page says so
- * (a Page banner, read once) - in place of this page, which shows a report that is gone.
- */
-function DeleteReport({ report, home, onCancel }: { report: Report; home: string; onCancel: () => void }) {
-  const router = useRouter();
-  const cancel = useRef<HTMLButtonElement>(null);
-  const inFlight = useRef(false);
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
-  const warning = deleteWarning(report);
-
-  async function confirm() {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    setBusy(true);
-    setProblem(null);
-    try {
-      const answer = await pettyCashFetch<Deleted>(`/reports/${encodeURIComponent(report.report_id)}`, { method: "DELETE" });
-      setFlash(deletedMessage(answer.transaction_date), "success");
-      router.replace(home);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) return;
-      inFlight.current = false;
-      setBusy(false);
-      setProblem(err instanceof ApiError ? err.message : NOT_DELETED);
-    }
-  }
-
-  return (
-    <Modal
-      open
-      role="alertdialog"
-      onRequestClose={() => !busy && onCancel()}
-      initialFocus={cancel}
-      title="Delete this report?"
-      description={
-        <>
-          <span className="font-semibold">The Daily Report for {formatWeekdayDay(report.transaction_date)} is deleted with its expenses and receipts.</span>{" "}
-          This can&apos;t be undone.
-        </>
-      }
-      footer={
-        <>
-          <Button ref={cancel} kind="secondary" onClick={onCancel} disabled={busy}>
-            Cancel
-          </Button>
-          <Button kind="danger" onClick={() => void confirm()} processing={busy} processingLabel="Deleting…">
-            Delete report
-          </Button>
-        </>
-      }
-    >
-      {warning || problem ? (
-        <div className="flex flex-col gap-3">
-          <XeroWarning warning={warning} />
-          {problem ? <InlineAlert tone="danger">{problem}</InlineAlert> : null}
-        </div>
-      ) : null}
-    </Modal>
   );
 }
 

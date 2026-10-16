@@ -204,7 +204,8 @@ test("the view: header and pill, three KPIs, the difference as a fact, the break
   const pill = page.locator("main [data-tone]").filter({ hasText: "Submitted" }).first();
   await expect(pill).toHaveAttribute("data-tone", "info");
   await expect(page.getByText("Tue 13 Oct 2026", { exact: true })).toBeVisible();
-  await expect(page.locator("main").getByRole("link", { name: "Petty Cash" })).toHaveAttribute("href", BASE);
+  // the way back is the report history, its parent list (as Flask's page)
+  await expect(page.locator("main").getByRole("link", { name: "Reports" })).toHaveAttribute("href", `${BASE}/reports`);
 
   // exactly three KPIs, the server's figures
   const kpis = page.locator("main dl").filter({ has: page.locator("dt", { hasText: "Cash position" }) });

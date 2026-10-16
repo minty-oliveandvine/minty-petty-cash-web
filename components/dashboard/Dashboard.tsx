@@ -33,12 +33,12 @@ import {
   type Launch,
 } from "@/lib/dashboard";
 import { formatWeekdayDay, formatWeekdayShort, savedText } from "@/lib/dates";
-import { historyUrl, resumeUrl, settingsUrl } from "@/lib/flaskPages";
+import { resumeUrl, settingsUrl } from "@/lib/flaskPages";
 import { takeFlash, type FlashKind } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
 import { formatMoney } from "@/lib/money";
 import { takeStartRequest } from "@/lib/outcome";
-import { isPorted, reportHref, stepHref } from "@/lib/wizardPages";
+import { historyHref, isPorted, reportHref, stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const READ_ONLY = "Read-only access";
@@ -56,8 +56,8 @@ const FLASH_TONE = { error: "danger", warning: "warning", success: "success", in
  * (today's Daily Closing over its five stages, Part 15.15), the business-rule gate when an earlier
  * day is unfinished, and the recent reports. No calendar, no Quick Actions, no KPIs (15.6).
  * Its rules live in lib/dashboard.ts and lib/dailyClosing.ts; what it reads is `GET /home`. The
- * stages and the Daily Report it opens are this app's; history and settings are still Flask's
- * (lib/flaskPages.ts).
+ * stages, the Daily Report and the report history it opens are this app's; settings is still
+ * Flask's (lib/flaskPages.ts).
  */
 export function Dashboard() {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -406,7 +406,7 @@ function ClosingCard({
   );
 }
 
-/** "Recent reports": the newest 2-3 submitted days as Record rows, each opening its Daily Report, and the way to all of them. */
+/** "Recent reports": the newest 2-3 submitted days as Record rows, each opening its Daily Report, and See all - the report history. */
 function RecentReports({ home, entityId, entityName }: { home: Home; entityId: string; entityName: string }) {
   const rows = recentReports(home);
   return (
@@ -415,9 +415,9 @@ function RecentReports({ home, entityId, entityName }: { home: Home; entityId: s
         <h2 id="recent-title" className="text-title-m text-text-primary">
           Recent reports
         </h2>
-        <a href={historyUrl(entityId)} className={buttonClass("link")}>
+        <Link href={historyHref(entityId, entityName)} className={buttonClass("link")}>
           See all
-        </a>
+        </Link>
       </div>
       {rows.length ? (
         <ul className="flex flex-col gap-2">

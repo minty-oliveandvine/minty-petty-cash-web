@@ -47,7 +47,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 ## The sidebar
 
 `@minty/shared/sidebar`, with this app's host in `components/ui/sidebarHost.ts`. That file is the only app-specific part.
-- **This app's own pages:** Dashboard, Reports and Settings.
+- **This app's own pages:** Dashboard and Reports (the report history, since Wave 2g). Settings is still Flask's (`lib/flaskPages.ts`) until it is ported.
 - **minty-web's pages, through Flask's hand-offs:** the entity list, Subscriptions and My Profile.
 - **Through Flask's `/entity/<id>/payment-request`:** Bills.
 - **No profile slot.** My Profile is minty-web's page.
@@ -63,7 +63,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the Daily Report's facts and warnings, the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the Daily Report's facts and warnings, the report history's rules (address and filters, the pager, "Showing a–b of n", the date range, the CSV link and its gate, a row's meta and actions), the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -116,7 +116,7 @@ The page, top to bottom (`components/dashboard/Dashboard.tsx`):
 2. **The greeting** (P15-01): "Good evening, Olive · Wed 14 Oct 2026" with a small Minty. Not a heading. The first name is the first word of `useViewer()`'s name, the time of day is the device's clock, the date is `server_today`. No name, no greeting. On first use the empty state carries Minty, so the greeting goes without.
 3. **One primary work card.** "Today's Daily Closing", or "Daily Closing · Tue 13 Oct" when the open report is an earlier day's. It holds the Step progress, "3 of 5 done · Next: Cash Count", "Saved 6:02 pm" and one action.
 4. **The business-rule gate** (15.9e): a warning Page banner, "Finish Tue 13 Oct first", with "Start Daily Closing for Tue 13 Oct". The banner has no action when the open report is already that day's (the card's Continue is the action), and none for read-only access.
-5. **"Recent reports"**: the newest three submitted days as Record rows (the day, "Closing balance", the amount as plain text, a Submitted pill in Info), each opening the day's report - Flask's report summary in Wave 1, this app's Daily Report since Wave 2f - plus "See all" to Flask's history.
+5. **"Recent reports"**: the newest three submitted days as Record rows (the day, "Closing balance", the amount as plain text, a Submitted pill in Info), each opening the day's report - Flask's report summary in Wave 1, this app's Daily Report since Wave 2f - plus "See all" to the report history (Flask's until Wave 2g, this app's since).
 
 Layout (15.6 Responsive, with this app's Tailwind breakpoints): one column on a phone; at most 640 wide on a tablet; from `lg` (1024) the card and the recent reports sit side by side (2:1), centred, at most 1200.
 
@@ -404,7 +404,9 @@ Wave 1 and 2a-2e files touched for this wave:
 - New in `components/ui/`: `MoreMenu.tsx` (Part 14 Menu) and `Toast.tsx` (Part 14 Toast) - `@minty/shared/ui` has neither yet.
 - `e2e/02_dashboard.spec.ts`, `e2e/07_close.spec.ts`: View report and Recent reports land on this page. `lib/__tests__/dashboard.test.ts`, `lib/__tests__/currencyInput.test.ts`, `lib/__tests__/dates.test.ts`: the Done state's id, the page's address, `momentText`.
 
-Against Flask's page, deliberately: the back link is the launch page ("Petty Cash"), not history (history is still Flask's); Publish to Xero is on the report (Flask's redesign keeps it on the outcome page only); Share confirms with a toast instead of a line inside the modal; Delete lands on the launch page with a banner; a draft shows its figures with the way back to Close.
+Its way back was the launch page ("‹ Petty Cash") while history was Flask's; since Wave 2g it is "‹ Reports", the report history, as Flask's page does.
+
+Against Flask's page, deliberately: Publish to Xero is on the report (Flask's redesign keeps it on the outcome page only); Share confirms with a toast instead of a line inside the modal; Delete lands on the launch page with a banner; a draft shows its figures with the way back to Close.
 
 Not yet (no API):
 - **Per-field edits on a submitted report**: the difference reason, the withdrawal (where the cash came from), an expense line's supplier, account or receipt (Flask's "Edit details" on an earlier report). Only Edit report (back to a draft, latest report only) exists.
@@ -419,7 +421,90 @@ Known gaps of Wave 2f:
 - **The toast and the More menu live in this app** until `@minty/shared/ui` has them.
 - **Recent reports still say Submitted** for a day already in Xero (`published[day].xero_integrated` is not read there yet); the Daily Report itself says Published to Xero.
 
+### Wave 2g: Report history (Part 15.4b)
+
+`/entity/<shortid>/<name>/petty-cash/reports` replaces Flask's report history on this branch, at Flask's own address. Every filter lives in the address: `?status=&start_date=&end_date=&page=&per_page=`.
+- Back and a reload keep the filters, and a filter change goes back to page 1.
+- It reads `GET /reports` (Minty `petty_cash_api/routes/history.py`) with the address's five keys exactly as they stand, so a bad one is the API's to refuse.
+- Edit and Delete use the Daily Report's `POST /reports/<id>/reopen` and `DELETE /reports/<id>`, unchanged.
+- Its order and content are those of Flask's redesigned Jinja page (`report_history/report_history.html`).
+
+The page, top to bottom (`components/history/ReportHistory.tsx`, rules in `lib/history.ts`, a centred 960 column - 15.4: list rows stay at most 960 wide):
+1. **The Standard header** (15.1): "‹ Petty Cash" back to the launch page, "Reports" (the h1, the sidebar's word and Flask's), "Every Daily Report, newest first."
+2. **The date range** (Part 14 has no Date range yet: two Date fields, the native pickers): **From**, **To**, **Show** (Secondary; Enter in a field is Show) and **Export CSV** (Ghost). On a phone the two dates share one row and the buttons go under them.
+   - An end before the start is said at once on To: "The end date is before the start date. Choose a later end date."
+   - One date alone means "not finished yet", so it is said only when Show is pressed, on the empty one: "The To date is still empty. Choose it to see the reports between the two dates." The field takes the focus, and from then on both are checked as typed.
+   - Nothing is sent while either stands. The fields follow the address, so Back puts the dates back.
+3. **The status chips** (Part 14 Filter chip, toggles with `aria-pressed`, the pill's own words): All, Draft, Submitted, Published to Xero, Publish failed.
+   - "Publish failed" also holds a publish still under way (Publishing to Xero), as the API's `failed` does.
+   - On a phone they scroll sideways in their own row (never the page), and the chosen one is brought into view.
+   - **Clear filters** follows them while a status or a date range is set.
+4. **The reports** as Part 14 Record rows, newest day first, in a list named "Daily Reports":
+   - the day (the row's link; the whole card opens it);
+   - the meta line, "Expenses HKD240.50 · Submitted by Olive", or "Daily Closing in progress" for a draft;
+   - Total sales, plain text, never coloured, captioned "Sales" (its own right-aligned 160 track from 768);
+   - the API's Status pill (`status_label` / `status_tone`, through `reportPill`);
+   - the row's **More** menu where the API allows anything.
+   - A failed publish lists its reasons under "Why it didn't reach Xero", each with an icon and, once resolved, "· Resolved" in words.
+   - On a phone each row is a stacked card. From 768 the amount and the pill sit in their own columns.
+5. **The pager** (Part 14 Pagination): "Showing 21–30 of 120", **Rows per page** (10/25/50/100) and the pages as links in the address (`1 … 2 3 4 … 12`, `aria-current="page"`).
+   - Previous / Next are disabled at the ends.
+   - Targets are 36 for a pointer and 44 for touch (`pointer-coarse`: by the input, not the width).
+   - A phone gets Previous, "Page 3 of 12" and Next only.
+
+The states:
+- **Loading:** five Skeleton rows (`aria-busy`). A reload in place (Try again, or after a delete) keeps the rows on show.
+- **No reports at all:** the 15.11a first-use Empty state with Minty, "No reports yet" / "Completed Daily Reports will appear here." (Part 10's words) and **Go to Petty Cash**.
+- **No reports match:** the 15.11c Empty state, no character, "No reports match these filters" / "Try another date range or status." and **Clear filters**.
+- **A 422** (a filter the API refuses, from a typed address): the API's sentence as a Danger inline alert with **Clear filters**.
+- **Any other failure:** the API's sentence (or "We couldn't reach Petty Cash. Check your connection, then try again.") with **Try again**.
+- **A page past the end** (the last row of the last page deleted, or a typed address): the last page opens in its place.
+
+Opening a row:
+- **A submitted row** opens its Daily Report (`reportHref`), client-side.
+- **A draft** opens its Daily Closing where it was left, as the launch page's Continue does: the row's `current_section` (opening .. ending) through the app's section-to-stage mapping (`stepHref`; `deposit` and `cash_count` are both Cash Count), or Addition to Drawer when it names none. It is a plain link, so a new tab lands there too. A section this app did not know would go to Flask's resume (`resumeUrl`), as on the launch page.
+
+The row actions (Part 14 Menu, `components/ui/MoreMenu.tsx`), each only where the API allows (15.1: hidden, not disabled):
+- **Publish to Xero**, or "Publish to Xero again" once the pill says Published to Xero: with `can_publish`, never on a draft. It stays Flask's page, a full-page link (`publishUrl`).
+- **Edit report** (`permissions.edit`: the latest report only, never a draft): the Daily Report's Confirmation modal (with "It is already in Xero" when it has been there). It reopens the report, then opens Addition to Drawer for the day.
+- **Delete report** (`permissions.delete`), last, in Danger: the Daily Report's Destructive modal, with the owner's "It is in Xero" warning when `was_published`.
+  - On success the list is read again in place, a **toast** says "The Daily Report for Tue 13 Oct 2026 is deleted.", and the focus goes to the h1.
+  - A refusal shows the API's sentence inside the dialog, which stays open.
+
+**Export CSV stays Flask's download**: a full-page link to `ACCOUNTS_API_URL` + `/entity/<entity id>/petty-cash/reports/download-csv?start_date=&end_date=` (`csvUrl`, `lib/flaskPages.ts`).
+- It exports the dates the list **shows** (the address's), not what the fields hold while typed.
+- Until both are shown it is a disabled button with its reason beside it (`aria-describedby`): "To export, choose both dates and select Show."
+
+The ways in, now this app's (`historyHref`, `lib/wizardPages.ts`; Flask's `historyUrl` is gone):
+- the launch page's **See all** (a client-side `Link`);
+- the sidebar's **Reports** (`components/ui/sidebarHost.ts`'s `pettyCashReports`);
+- the Daily Report's way back, "‹ Reports" (it was "‹ Petty Cash"). 15.1 gives a Record header a back link to its parent list, and Flask's Daily Report goes back to history.
+
+Wave 1 and 2a-2f files touched for this wave:
+- `components/closing/DailyReport.tsx`: Edit report and Delete report moved to `components/closing/ReportDialogs.tsx` (`EditReportDialog`, `DeleteReportDialog`), shared with this page. Where a delete lands stays the page's (`onDeleted`), so the Daily Report behaves as before. The back link is "‹ Reports".
+- `lib/report.ts`: `reportPill`, `publishLabel`, `editWarning` and `deleteWarning` take only the fields they read, so a history row fits them.
+- `lib/flaskPages.ts`: `csvUrl` in place of `historyUrl`. `lib/wizardPages.ts`: `historyHref`.
+- `components/dashboard/Dashboard.tsx`: See all. `components/ui/sidebarHost.ts`: Reports.
+- `components/ui/__tests__/sidebarHost.test.ts`: Reports is this app's page. `e2e/02_dashboard.spec.ts`: See all lands on this app's history (a quiet stub of its read). `e2e/08_daily_report.spec.ts`: the back link.
+
+Against Flask's page, deliberately:
+- a failed row shows its publish reasons on the page, where Flask's redesign dropped them (its old page had them in a hover tooltip);
+- Edit report and Publish to Xero join Delete in the row's More menu, where the API allows them;
+- a delete reloads the list in place with a toast, not the whole page with a flash;
+- a filter the API refuses says so, where Flask quietly fell back to the whole list.
+
+Not yet (no API):
+- **Counts on the chips** (15.4: "counts per status from the same query"): the read gives only the filtered total. 15.4b's historical variant says "no counts" anyway.
+- **Search** (15.4b: "search/date filter first"): the API filters by status and dates only.
+- **The Table view** (15.4, D14-16): Record rows only.
+
+Known gaps of Wave 2g:
+- **"Publish to Xero again" is chosen by the pill's tone** (Success is only ever Published to Xero): the rows carry no `xero_integrated`.
+- **The date fields are the browser's own pickers**, in the device's date order. Part 14's Date field wants a calendar popover on a computer, and its Date range is a future component.
+- **A phone has no numbered pages**, only Previous / Next and "Page n of m" (Part 14 Pagination: "Phone: prev/next or Load more"). There is no Load more.
+- **No polling while Xero publishes**, as on the Daily Report.
+
 ## Not here yet
 
-- **The other pages.** History, settings and Xero publish are next, in that order; the Daily Closing's five stages and its outcome page are this app's since Wave 2e, the Daily Report since Wave 2f.
+- **The other pages.** Settings and Xero publish are next, in that order. The Daily Closing's five stages and its outcome page are this app's since Wave 2e, the Daily Report since Wave 2f, and the report history since Wave 2g.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

@@ -6,8 +6,8 @@
  * at Flask's own paths (`reports/new/opening`, `reports/new/sale`, `reports/new/expense`,
  * `reports/new/cash-count`, `reports/new/ending`), so a link into one app works in the other.
  * Flask's `reports/new/deposit` redirects to `reports/new/cash-count` here (its page.tsx). The
- * outcome page after Submit is `reports/<report id>/submitted`, and the Daily Report
- * `reports/<report id>/summary` - Flask's addresses too.
+ * outcome page after Submit is `reports/<report id>/submitted`, the Daily Report
+ * `reports/<report id>/summary` and the report history `reports` - Flask's addresses too.
  */
 
 import { companyRef } from "@minty/shared/companyRef";
@@ -43,4 +43,9 @@ export function outcomeHref(entityId: string, entityName: string, reportId: stri
 /** A report's Daily Report (15.7) - `/entity/<ref>/petty-cash/reports/<report id>/summary`, Flask's id address for its summary. */
 export function reportHref(entityId: string, entityName: string, reportId: string): string {
   return `/entity/${companyRef(entityId, entityName)}/petty-cash/reports/${encodeURIComponent(reportId)}/summary`;
+}
+
+/** The report history (15.4b) - `/entity/<ref>/petty-cash/reports`, Flask's address for it - with its filters' `query` (no "?"). */
+export function historyHref(entityId: string, entityName: string, query = ""): string {
+  return `/entity/${companyRef(entityId, entityName)}/petty-cash/reports${query ? `?${query}` : ""}`;
 }

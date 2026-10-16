@@ -107,7 +107,11 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock }: Enter 
       },
     }),
   );
-  // Flask's wizard and history pages: caught, so the spec can read where the app went.
+  // This app's own report history (e2e/09_report_history.spec.ts covers it): a quiet stub too.
+  await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/reports(\?.*)?$/, (route) =>
+    route.fulfill({ json: { reports: [], page: 1, per_page: 10, total_pages: 1, total_count: 0, latest_report_id: null, currency_code: "HKD", can_publish: true } }),
+  );
+  // Flask's wizard pages: caught, so the spec can read where the app went.
   await page.route(/\/entity\/[^/]+\/petty-cash\/reports(?:[/?]|$)/, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );
@@ -337,13 +341,15 @@ test("recent reports: the newest three, Submitted, each opening its report, and 
   await expect(rows.nth(0)).toContainText("Submitted");
   await expect(rows.nth(2)).toContainText("Sun 11 Oct 2026");
   await expect(recent).not.toContainText("10 Oct");
-  await expect(recent.getByRole("link", { name: "See all" })).toHaveAttribute("href", /\/petty-cash\/reports$/);
+  await expect(recent.getByRole("link", { name: "See all" })).toHaveAttribute("href", `${HOME_PATH}/reports`);
   await rows.nth(1).getByRole("link").click();
   await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports/r-1000/summary$`));
   await expect(page.getByRole("heading", { level: 1, name: "Daily Report" })).toBeVisible();
   await page.goBack();
+  // See all: this app's report history
   await page.getByRole("link", { name: "See all" }).click();
-  await expect(page).toHaveURL(/\/petty-cash\/reports$/);
+  await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports$`));
+  await expect(page.getByRole("heading", { level: 1, name: "Reports" })).toBeVisible();
 });
 
 test("missing Xero settings hold the page with the way to set them up", async ({ page }) => {

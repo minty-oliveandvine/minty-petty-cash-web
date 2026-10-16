@@ -64,8 +64,8 @@ export type Deleted = { deleted: string; transaction_date: string; next: "dashbo
 
 const TONES: readonly StatusTone[] = ["success", "warning", "danger", "info", "neutral"];
 
-/** The header's Status pill: the API's label and tone, as they stand. */
-export function reportPill(report: DailyReport): { label: string; tone: StatusTone } {
+/** The Status pill (the header's, and each history row's): the API's label and tone, as they stand. */
+export function reportPill(report: Pick<DailyReport, "status_label" | "status_tone">): { label: string; tone: StatusTone } {
   const tone = TONES.find((t) => t === report.status_tone);
   // A tone outside Part 13's five is the API's mistake: say so, and draw it Neutral rather than guess.
   if (!tone) console.error(`Unknown status tone from the API: ${report.status_tone}`);
@@ -167,14 +167,14 @@ export function xeroFact(report: DailyReport): string {
 }
 
 /** The Publish to Xero link's label - Flask's own page publishes (it is not ported). */
-export function publishLabel(report: DailyReport): string {
+export function publishLabel(report: Pick<DailyReport, "xero_integrated">): string {
   return report.xero_integrated ? "Publish to Xero again" : "Publish to Xero";
 }
 
 type Warning = { title: string; body: string };
 
 /** Edit report's warning for a report that has been to Xero (Flask's page, word for word). */
-export function editWarning(report: DailyReport): Warning | null {
+export function editWarning(report: Pick<DailyReport, "was_published">): Warning | null {
   if (!report.was_published) return null;
   return {
     title: "It is already in Xero",
@@ -186,7 +186,7 @@ export function editWarning(report: DailyReport): Warning | null {
  * Delete's warning for a report that has been to Xero. The owner's rule (2026-10-15): such a
  * report MAY be deleted, but the dialog says first what stays in Xero and points to Edit report.
  */
-export function deleteWarning(report: DailyReport): Warning | null {
+export function deleteWarning(report: Pick<DailyReport, "was_published">): Warning | null {
   if (!report.was_published) return null;
   return {
     title: "It is in Xero",

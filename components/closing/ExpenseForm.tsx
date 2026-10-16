@@ -304,8 +304,11 @@ export default function ExpenseForm({
  * can also be dropped on it), then a File card with View and Remove. The file inputs themselves
  * are the controls (visually hidden, inside their button-looking labels), so they carry the
  * field's name, `aria-required` and the problem.
+ *
+ * Also the Daily Report's Edit expense (components/closing/ReportEdits.tsx), where the receipt
+ * replaces the saved one: not `required`, with its own `prompt` and `note`.
  */
-function ReceiptField({
+export function ReceiptField({
   id,
   file,
   problem,
@@ -313,6 +316,9 @@ function ReceiptField({
   onPick,
   onRemove,
   onView,
+  required = true,
+  prompt = "Add the receipt",
+  note = "One receipt for each expense.",
 }: {
   id: string;
   file: File | null;
@@ -321,6 +327,9 @@ function ReceiptField({
   onPick: (file: File) => void;
   onRemove: () => void;
   onView: () => void;
+  required?: boolean;
+  prompt?: string;
+  note?: string;
 }) {
   const legendId = `${id}-legend`;
   const noteId = `${id}-note`;
@@ -351,7 +360,7 @@ function ReceiptField({
     className: "sr-only",
     disabled,
     onChange: picked,
-    "aria-required": true as const,
+    ...(required ? { "aria-required": true as const } : {}),
     "aria-describedby": noteId,
     ...(problem ? { "aria-invalid": true as const } : {}),
   };
@@ -363,10 +372,14 @@ function ReceiptField({
     <div role="group" aria-labelledby={legendId} className="flex min-w-0 flex-col gap-1.5">
       <p id={legendId} className="text-label text-text-secondary">
         Receipt
-        <span className="text-action-danger" aria-hidden>
-          {" *"}
-        </span>
-        <span className="sr-only"> (required)</span>
+        {required ? (
+          <>
+            <span className="text-action-danger" aria-hidden>
+              {" *"}
+            </span>
+            <span className="sr-only"> (required)</span>
+          </>
+        ) : null}
       </p>
       {file ? (
         // Part 14 File card: thumbnail, name (truncated at the end), size and type, View and Remove.
@@ -406,7 +419,7 @@ function ReceiptField({
         >
           <Icon name="receipt_long" size="lg" className="text-text-secondary" />
           <div className="flex flex-col gap-0.5">
-            <p className="text-body-m font-semibold text-text-primary">Add the receipt</p>
+            <p className="text-body-m font-semibold text-text-primary">{prompt}</p>
             <p className="text-body-s text-text-secondary">Keep the total and the date in view. {RECEIPT_LIMITS}</p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
@@ -425,7 +438,7 @@ function ReceiptField({
         </div>
       )}
       <p id={noteId} className={`text-caption ${problem ? "text-status-danger-ink" : "text-text-muted"}`} {...(problem ? { role: "alert" } : {})}>
-        {problem ?? "One receipt for each expense."}
+        {problem ?? note}
       </p>
     </div>
   );
@@ -438,8 +451,11 @@ function ReceiptField({
  * Adding is never automatic: it opens the New supplier panel, and only Add supplier creates it
  * in Xero (`POST /suppliers`). The list is in the flow (never clipped by the sheet), options 52
  * tall; ↑ ↓ move, Enter chooses, Escape closes the list (and only the list).
+ *
+ * Also the Daily Report's Edit expense (components/closing/ReportEdits.tsx), with no new
+ * suppliers, and not `required` for a line saved without one.
  */
-function SupplierPicker({
+export function SupplierPicker({
   id,
   suppliers,
   onSuppliers,
@@ -451,6 +467,7 @@ function SupplierPicker({
   onQuery,
   onChoose,
   onLeave,
+  required = true,
 }: {
   id: string;
   suppliers: Supplier[];
@@ -463,6 +480,7 @@ function SupplierPicker({
   onQuery: (text: string) => void;
   onChoose: (supplier: Supplier) => void;
   onLeave: () => void;
+  required?: boolean;
 }) {
   const listId = `${id}-list`;
   const input = useRef<HTMLInputElement>(null);
@@ -528,7 +546,7 @@ function SupplierPicker({
       <Field
         id={id}
         label="Supplier"
-        required
+        required={required}
         // While the New supplier panel is open, the panel is the answer to "not a supplier yet".
         error={newName === null ? problem : undefined}
         helper={chosen ? undefined : "Search your Xero suppliers by name."}

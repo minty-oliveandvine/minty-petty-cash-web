@@ -16,7 +16,7 @@ import { signedMoney } from "@/lib/addition";
 import { differenceText } from "@/lib/cashCount";
 import { differenceOf, type ClosePage } from "@/lib/close";
 import { formatWeekdayDay, momentText } from "@/lib/dates";
-import type { ExpenseLine, Receipt } from "@/lib/expenses";
+import type { ExpenseAccount, ExpenseLine, Receipt, Supplier } from "@/lib/expenses";
 import { formatMoney } from "@/lib/money";
 
 export type DailyReport = {
@@ -53,7 +53,10 @@ export type DailyReport = {
     difference: { amount: number; kind: string; reason: string };
   };
   closing_balance: number;
-  permissions: { edit: boolean; delete: boolean; publish: boolean; share: boolean };
+  /** `edit_details`: the details that move no balance may be changed (lib/reportEdits.ts) - any submitted report, not only the latest. */
+  permissions: { edit: boolean; delete: boolean; publish: boolean; share: boolean; edit_details: boolean };
+  /** What an expense line may be changed to - only while `edit_details`, else null. */
+  options: { suppliers: Supplier[]; accounts: ExpenseAccount[] } | null;
 };
 
 /** What `POST /reports/<id>/reopen` answers: the report is a draft again, at Addition to Drawer. */

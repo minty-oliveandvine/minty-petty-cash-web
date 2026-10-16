@@ -69,7 +69,8 @@ function report(over: Partial<DailyReport> = {}, cash: Partial<DailyReport["cash
       ...cash,
     },
     closing_balance: 760,
-    permissions: { edit: true, delete: true, publish: true, share: true },
+    permissions: { edit: true, delete: true, publish: true, share: true, edit_details: true },
+    options: { suppliers: [], accounts: [] },
     ...over,
   };
 }

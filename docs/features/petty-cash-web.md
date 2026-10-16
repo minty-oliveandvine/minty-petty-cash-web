@@ -63,7 +63,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the Daily Report's facts and warnings, the report history's rules (address and filters, the pager, "Showing a–b of n", the date range, the CSV link and its gate, a row's meta and actions), the settings rules (the country body, the sales-method list on the page, the name checks, the waiting changes and how Save sends them, stopping at a refusal), the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the Daily Report's facts and warnings, its detail edits (what may be edited and when, the reason and supplier checks as typed, only the changed fields in the PATCH, the Xero notice, the toasts), the report history's rules (address and filters, the pager, "Showing a–b of n", the date range, the CSV link and its gate, a row's meta and actions), the settings rules (the country body, the sales-method list on the page, the name checks, the waiting changes and how Save sends them, stopping at a refusal), the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -409,7 +409,6 @@ Its way back was the launch page ("‹ Petty Cash") while history was Flask's; s
 Against Flask's page, deliberately: Publish to Xero is on the report (Flask's redesign keeps it on the outcome page only); Share confirms with a toast instead of a line inside the modal; Delete lands on the launch page with a banner; a draft shows its figures with the way back to Close.
 
 Not yet (no API):
-- **Per-field edits on a submitted report**: the difference reason, the withdrawal (where the cash came from), an expense line's supplier, account or receipt (Flask's "Edit details" on an earlier report). Only Edit report (back to a draft, latest report only) exists.
 - **Download PDF** (15.7's header names it) and **revoking a share link** (15.7: "read-only and revocable").
 - **The shared (public) variant**: a share link still opens Flask's page.
 - **"Edited after submission"** (15.7's Info banner "Edited by … · see history"): the read carries no edit history.
@@ -563,8 +562,62 @@ Known gaps of Wave 2h:
 - **No drag to reorder**: Move up / Move down only.
 - **Every Save sends one call per change**, so many changes are several round trips. Two people editing at once can stale the order (the API's 409, shown with its sentence).
 
+### Wave 2i: editing a submitted report's details (Part 15.7)
+
+The Daily Report lets a person change the three details of a submitted report that move no balance. This is Flask's "Edit details" (`report/ending.html?report_edit=true`), which sent people to the Cash Count and Addition to Drawer pages in a locked mode; here they are edited in place on the report. It writes through the Petty Cash API's edit routes (Minty `petty_cash_api/routes/report.py` over `report/services/report_edits.py`), unchanged: `PUT /reports/<id>/difference-reason` `{reason}`, `PUT /reports/<id>/withdrawal` `{withdrawal_type}` and `PATCH /reports/<id>/expense-lines/<line id>` (multipart). **Each answers the whole Daily Report, and the page redraws from it.**
+
+The rules are `lib/reportEdits.ts`; the dialogs are `components/closing/ReportEdits.tsx`, loaded when first opened.
+
+**Gating:** every edit shows only while `permissions.edit_details` is true: any submitted report that Xero is not publishing, for someone with the right. That is not only the latest, so an older report has these edits but no Edit report or Delete. A draft has none. Hidden, not disabled (15.1).
+- **Edit reason** is the difference alert's Link action, only while the cash was short or over (any cent).
+- **Edit where the cash came from** is a Link under the Cash breakdown's rows, only when cash was added (the row shows only then).
+- **Edit** is a Link on each expense row (its accessible name names the expense and its amount), only while the read carries `options`.
+
+The three editors:
+1. **Edit the reason** (Part 14 modal; "Cash was HKD20.00 short."): **Reason for the difference**, required (red `*`, "(required)", `aria-required`), holding the saved reason and focused, with the Cash Count stage's helper and live counter. Checked as typed:
+   - over 300 characters, at once: "The reason is 301 characters. Shorten it to 300 characters or fewer.";
+   - emptied while the cash was short or over, at once: "The cash was short, so the reason is still needed. Add the reason to save it." (the API's own sentence). A reason that opens empty turns red only after a refused Save.
+2. **Where the cash came from** (Part 14 modal; "HKD100.00 was added to the drawer. The amount stays as it is."): Company bank / Personal, the Addition to Drawer stage's radio cards.
+3. **Edit expense** (Part 14 Drawer: 480 on a computer, a full-screen sheet on a phone; "General Expenses · HKD120.50"), top to bottom:
+   - the **Amount** as a fact ("The amount can't be changed here.");
+   - the saved receipt as a File card (View opens it full screen);
+   - the Expenses stage's own **receipt capture**: Replace the receipt (Take photo on a phone, Choose file, drop), optional;
+   - its **Supplier picker** over the read's `options.suppliers`, with no new supplier here;
+   - **Account**, a native select of `options.accounts` ("Choosing another account renames the expense to it."). The line's own account stays choosable if it is no longer switched on;
+   - **Description**.
+
+   Checked as typed:
+   - a file, the moment it is picked: not a PDF, JPEG or PNG, empty, or over 10 MB (the Expenses stage's sentences). A picked file shows as a File card with View and Remove, and the saved one says "replaced when you save";
+   - the description over 300 characters, at once;
+   - a line saved with a supplier can't lose it (the API never clears one): emptied, at once, "The supplier is still empty. Choose a supplier from the list to save it."; a name that is not a supplier, when the field is left. A line saved with none may stay without, and then its Supplier and Account are not required;
+   - a refused Save with two or more problems shows the error summary, which takes focus; one problem focuses its field.
+
+   **The PATCH carries each field only when it changed** (`lineChanges`): `remarks` (an emptied description is a change), `supplier_id`, `account_id`, `receipt`. Closing with changes asks first, inline ("These changes aren't saved yet" / **Discard them**).
+
+The rules, all three:
+- **Save with nothing changed sends nothing** and closes, with no toast.
+- **A report that has been to Xero** (`was_published`) says so first, as a Warning inside the dialog: "It will need publishing to Xero again" / "Saving takes this report out of Xero. Publish it again afterwards. The entries in Xero now are not removed: void them in Xero by hand." After the save, the API's answer is Submitted again (`mark_diverged_from_xero`), and the pill and the **Publish to Xero** Primary follow.
+- **A refusal** (400, 403, 404, 409, 422, or no answer) is the API's sentence as a Danger inline alert inside the dialog, which stays open with Save back. It is never a toast and never a false success. A 401 goes back through the hand-off.
+- **A save that went through** closes the dialog, redraws the page and confirms with a toast: "The reason is saved.", "Where the cash came from is saved." (Flask's words) or "The expense is saved."
+
+Wave 2a-2h files touched for this wave:
+- `lib/report.ts`: the read's `permissions.edit_details` and `options`. `lib/__tests__/report.test.ts`: the fixture carries them.
+- `components/closing/ExpenseForm.tsx`: `ReceiptField` and `SupplierPicker` are exported, with optional `required` (both), `prompt` and `note` (the receipt). The Expenses stage passes none and is unchanged.
+- `components/closing/DailyReport.tsx`: the three Edit links and the dialogs; the page redraws from an edit's answer.
+
+Against Flask's page, deliberately:
+- The edits are on the Daily Report itself. Flask's "Edit details" opened two Daily Closing pages in a locked mode, and the Expenses page for a line.
+- A refusal is inline in the dialog, where Flask showed an error toast.
+- Where the cash came from is offered only when cash was added; Flask always showed the radios.
+- The Xero notice is said before the save.
+
+Known gaps of Wave 2i:
+- **No "Edited after submission" banner** (15.7): the read carries no edit history, as in Wave 2f.
+- **One receipt per line here.** A replacement is one file (the API's rule), so a line saved with several receipts loses them all to the new one; the Drawer lists them as "replaced when you save".
+- **No new supplier from an edit:** the read's `options` has no `create_supplier`. New suppliers are made in the Expenses stage.
+
 ## Not here yet
 
-- **Xero publish** is next, once it is confirmed. The Daily Closing's five stages and its outcome page are this app's since Wave 2e, the Daily Report since Wave 2f, the report history since Wave 2g, and Petty Cash settings without its Xero parts since Wave 2h.
+- **Xero publish** is next, once it is confirmed. The Daily Closing's five stages and its outcome page are this app's since Wave 2e, the Daily Report since Wave 2f (its detail edits since Wave 2i), the report history since Wave 2g, and Petty Cash settings without its Xero parts since Wave 2h.
 - **Settings' Xero parts** (the account mapping and the account codes) stay on Flask's page (the owner, 2026-10-16); another session is on Xero.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

@@ -17,7 +17,7 @@ import { ApiError, pettyCashBlob, pettyCashFetch } from "@/lib/apiClient";
 import { salesRows } from "@/lib/close";
 import { pettyCashHome } from "@/lib/companyPages";
 import { formatWeekdayDay } from "@/lib/dates";
-import { receiptKind } from "@/lib/expenses";
+import { receiptKind, type ExpenseLine } from "@/lib/expenses";
 import { setFlash } from "@/lib/flash";
 import { publishUrl } from "@/lib/flaskPages";
 import { formatMoney } from "@/lib/money";
@@ -35,11 +35,16 @@ import {
   reportReceipts,
   type DailyReport as Report,
 } from "@/lib/report";
+import { canEditLines, canEditReason, canEditWithdrawal } from "@/lib/reportEdits";
 import { useAuth } from "@/lib/useAuth";
 import { historyHref, stepHref } from "@/lib/wizardPages";
 
 // The full-screen receipt view loads when first opened (the app's one viewer).
 const ReceiptViewer = dynamic(() => import("@/components/closing/ReceiptViewer"), { ssr: false });
+// The detail edits (Wave 2i) load when first opened.
+const EditReasonDialog = dynamic(() => import("@/components/closing/ReportEdits").then((m) => m.EditReasonDialog), { ssr: false });
+const EditWithdrawalDialog = dynamic(() => import("@/components/closing/ReportEdits").then((m) => m.EditWithdrawalDialog), { ssr: false });
+const EditLineDrawer = dynamic(() => import("@/components/closing/ReportEdits").then((m) => m.EditLineDrawer), { ssr: false });
 
 const TITLE = "Daily Report";
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
@@ -47,6 +52,7 @@ const NO_LINK = "We couldn't make the link. Check your connection, then try agai
 const NOT_COPIED = "We couldn't copy the link. Select it above, then copy it yourself.";
 
 type Load = { kind: "loading" } | { kind: "ready"; report: Report } | { kind: "failed"; message: string };
+type Editing = { kind: "reason" } | { kind: "withdrawal" } | { kind: "line"; line: ExpenseLine };
 type Share = { kind: "making" } | { kind: "ready"; url: string } | { kind: "failed"; message: string };
 
 /**
@@ -61,6 +67,11 @@ type Share = { kind: "making" } | { kind: "ready"; url: string } | { kind: "fail
  * is `POST /reports/<id>/share-link` (Minty `petty_cash_api/routes/report.py`). Each action shows
  * only while the API's `permissions` allow it. Publish to Xero is not ported: it is Flask's page.
  * The rules are lib/report.ts.
+ *
+ * While `permissions.edit_details` allows it (any submitted report, not only the latest), the
+ * details that move no balance are edited in place (Wave 2i, ReportEdits.tsx): Edit reason on the
+ * difference, Edit where the cash came from in Cash, Edit on each expense. Each save answers the
+ * whole Daily Report, which this page redraws from.
  */
 export function DailyReport({ reportId }: { reportId: string }) {
   const auth = useAuth();
@@ -93,7 +104,14 @@ export function DailyReport({ reportId }: { reportId: string }) {
       <main className="px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pt-8">
         <div className="mx-auto flex w-full min-w-0 max-w-[720px] flex-col gap-6">
           {load.kind === "ready" && auth ? (
-            <ReportBody report={load.report} entityId={entityId} entityName={entityName} home={home} reports={reports} />
+            <ReportBody
+              report={load.report}
+              onReport={(report) => setLoad({ kind: "ready", report })}
+              entityId={entityId}
+              entityName={entityName}
+              home={home}
+              reports={reports}
+            />
           ) : load.kind === "failed" ? (
             <>
               <ReportHeader reports={reports} />
@@ -182,12 +200,15 @@ function ReportHeader({
 
 function ReportBody({
   report,
+  onReport,
   entityId,
   entityName,
   home,
   reports,
 }: {
   report: Report;
+  /** A detail edit's answer: the whole Daily Report again. */
+  onReport: (report: Report) => void;
   entityId: string;
   entityName: string;
   home: string;
@@ -195,6 +216,7 @@ function ReportBody({
 }) {
   const router = useRouter();
   const [dialog, setDialog] = useState<"edit" | "delete" | null>(null);
+  const [editing, setEditing] = useState<Editing | null>(null);
   const [share, setShare] = useState<Share | null>(null);
   const [viewing, setViewing] = useState<ViewerFile | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -210,6 +232,13 @@ function ReportBody({
   const lines = report.expenses.lines;
   const receipts = reportReceipts(report);
   const dialogReport = { id: report.report_id, day, was_published: report.was_published };
+  const editLines = canEditLines(report);
+  // A detail edit went through: redraw from the API's answer (out of Xero, so Submitted again), then say so.
+  const onSaved = (answer: Report, message: string) => {
+    onReport(answer);
+    setEditing(null);
+    setToast({ id: Date.now(), message });
+  };
 
   async function makeLink() {
     const call = ++shareCall.current;
@@ -296,7 +325,17 @@ function ReportBody({
 
       {difference ? (
         // 15.7: the difference as a fact, not blame - Warning tone, in words, never a red number.
-        <InlineAlert tone="warning" title={difference.title}>
+        <InlineAlert
+          tone="warning"
+          title={difference.title}
+          action={
+            canEditReason(report) ? (
+              <Button kind="link" onClick={() => setEditing({ kind: "reason" })}>
+                Edit reason
+              </Button>
+            ) : null
+          }
+        >
           {difference.body}
         </InlineAlert>
       ) : null}
@@ -325,6 +364,17 @@ function ReportBody({
                   </div>
                   <p className="min-w-0 break-words text-body-s text-text-secondary">{expenseMeta(line)}</p>
                   {line.remarks ? <p className="min-w-0 break-words text-body-s text-text-muted">{line.remarks}</p> : null}
+                  {editLines ? (
+                    <Button
+                      kind="link"
+                      className="w-fit"
+                      icon={<Icon name="edit" size="sm" />}
+                      aria-label={`Edit expense ${expenseTitle(line)}, ${money(line.amount)}`}
+                      onClick={() => setEditing({ kind: "line", line })}
+                    >
+                      Edit
+                    </Button>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -377,6 +427,11 @@ function ReportBody({
               <Row key={row.label} {...row} />
             ))}
           </Rows>
+          {canEditWithdrawal(report) ? (
+            <Button kind="link" className="w-fit" onClick={() => setEditing({ kind: "withdrawal" })}>
+              Edit where the cash came from
+            </Button>
+          ) : null}
         </Disclosure>
       </div>
 
@@ -423,6 +478,11 @@ function ReportBody({
             setToast({ id: Date.now(), message: `The link to the Daily Report for ${formatWeekdayDay(day)} is copied.` });
           }}
         />
+      ) : null}
+      {editing?.kind === "reason" ? <EditReasonDialog report={report} onCancel={() => setEditing(null)} onSaved={onSaved} /> : null}
+      {editing?.kind === "withdrawal" ? <EditWithdrawalDialog report={report} onCancel={() => setEditing(null)} onSaved={onSaved} /> : null}
+      {editing?.kind === "line" ? (
+        <EditLineDrawer report={report} line={editing.line} onCancel={() => setEditing(null)} onSaved={onSaved} onView={setViewing} />
       ) : null}
       {viewing ? <ReceiptViewer file={viewing} onClose={() => setViewing(null)} /> : null}
       <ToastRegion toast={toast} onDismiss={() => setToast(null)} />

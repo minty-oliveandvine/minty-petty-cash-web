@@ -22,11 +22,12 @@ import {
   type Home,
 } from "@/lib/dashboard";
 import { formatDay, formatDayWithWeekday } from "@/lib/dates";
-import { resumeUrl, settingsUrl } from "@/lib/flaskPages";
+import { resumeUrl } from "@/lib/flaskPages";
 import { takeFlash, takeNextDay } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
 import { historyHref } from "@/lib/history";
 import { formatMoney } from "@/lib/money";
+import { settingsHref } from "@/lib/settings";
 import { useAuth } from "@/lib/useAuth";
 import { stepHref } from "@/lib/wizardPages";
 
@@ -42,7 +43,7 @@ type Load = { kind: "loading" } | { kind: "ready"; home: Home; nextDay: string |
  * The Petty Cash dashboard - a pixel-faithful port of Flask's `entity/entity_dashboard_v2.html`:
  * the same phone card, sections, wording, colours and destinations. Its rules are lib/dashboard.ts
  * (the same ones the payments-look port on `port/prw-look` uses); what it reads is `GET /home`.
- * Settings, which it links to, is still Flask's page.
+ * Settings, which it links to, is this app's page (Xero's part of it links on to Flask's).
  */
 export function Dashboard() {
   const toast = useToast();
@@ -201,7 +202,7 @@ function DashboardBody({
           currencyCode={code}
           blockedBy={home.latest.deposit_correction_missing_settings}
           mayCorrect={home.permissions.correct_deposit}
-          settingsHref={settingsUrl(entityId)}
+          settingsHref={settingsHref(entityId, entityName)}
           onProceed={proceed}
         />
       ) : null}
@@ -214,7 +215,7 @@ function DashboardBody({
           onProceed={proceedAmount}
         />
       ) : null}
-      {!home.xero_settings.complete ? <SetupRequiredModal missing={home.xero_settings.missing} settingsHref={settingsUrl(entityId)} /> : null}
+      {!home.xero_settings.complete ? <SetupRequiredModal missing={home.xero_settings.missing} settingsHref={settingsHref(entityId, entityName)} /> : null}
     </>
   );
 
@@ -362,7 +363,7 @@ function DashboardBody({
                   />
                 </svg>
               </div>
-              <a href={settingsUrl(entityId)} className="flex-1">
+              <a href={settingsHref(entityId, entityName)} className="flex-1">
                 <h3 className="text-xs font-semibold text-flask-gray-900 sm:text-sm">Entity Settings</h3>
                 <p className="text-xs text-flask-gray-500">Edit Sales Method</p>
               </a>

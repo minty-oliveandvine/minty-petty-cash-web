@@ -17,13 +17,13 @@ import { mintyFetch } from "@/lib/apiClient";
 import { clearAuth, getAuth, moduleClaims } from "@/lib/auth";
 import { pettyCashHome } from "@/lib/companyPages";
 import { env } from "@/lib/env";
-import { settingsUrl } from "@/lib/flaskPages";
 import { leaveTo, withReturnOrigin } from "@/lib/handoff";
 import { historyHref } from "@/lib/history";
 import { siblingUrl } from "@/lib/previewSibling";
+import { settingsHref } from "@/lib/settings";
 
-/** This app's settings page: `/entity/<shortid>/<name>/petty-cash/settings`. */
-const SETTINGS_PAGE = /^\/entity\/[^/]+\/[^/]+\/petty-cash\/settings\/?$/;
+/** This app's settings page, at Flask's address for it: `/entity/<shortid>/<name>/settings/petty-cash`. */
+const SETTINGS_PAGE = /^\/entity\/[^/]+\/[^/]+\/settings\/petty-cash\/?$/;
 
 function home(): string {
   const auth = getAuth();
@@ -49,8 +49,8 @@ export const sidebarHost: SidebarHost = {
   moduleAccess: () => moduleClaims(),
 
   /**
-   * Petty Cash's dashboard and Reports (report history) are this app's own pages; Settings is
-   * still Flask's (lib/flaskPages.ts) until it is ported. The entity list, Subscriptions and My Profile are
+   * Petty Cash's dashboard, Reports (report history) and Settings are this app's own pages
+   * (Settings links on to Flask's page for Xero). The entity list, Subscriptions and My Profile are
    * minty-web's, reached through Flask's hand-offs; Bills is the payments app, through Flask's
    * `/entity/<id>/payment-request` (which hands over with that app's own token).
    */
@@ -65,7 +65,7 @@ export const sidebarHost: SidebarHost = {
       // In a branch preview set, the same set's payments app.
       return `${siblingUrl(env.PAYMENT_REQUEST_WEB_URL, "payment-request", typeof window === "undefined" ? null : window.location.host)}/`;
     },
-    settings: () => settingsUrl(getAuth()?.entityId ?? ""),
+    settings: () => settingsHref(getAuth()?.entityId ?? "", getAuth()?.entityName ?? ""),
     profile: () => {
       const id = getAuth()?.entityId;
       return accounts(id ? `/profile?${new URLSearchParams({ entity_id: id }).toString()}` : "/profile");

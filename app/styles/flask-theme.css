@@ -113,6 +113,30 @@
   --color-flask-day-hover: #f1fbfc;
   --shadow-flask-calendar: 0 8px 24px rgb(0 0 0 / 0.12);
 
+  /* Petty Cash Settings (entity/settings_entity.html, static/css/settings_page.css): that page
+     wrote minty-web's Tailwind v4 values out by hand, so its greys and reds are v4's, not the
+     v3 ones above; the combo's chevron strip, the row menu's inks, the Xero-less notice's red */
+  --color-flask-set-gray-300: #d1d5dc;
+  --color-flask-set-gray-400: #99a1af;
+  --color-flask-set-gray-500: #6a7282;
+  --color-flask-set-gray-600: #4a5565;
+  --color-flask-set-gray-700: #364153;
+  --color-flask-set-gray-800: #1e2939;
+  --color-flask-set-red-500: #fb2c36;
+  --color-flask-set-red-600: #e7000b;
+  --color-flask-set-strip: #ededed;
+  --color-flask-set-dots: #8c949e;
+  --color-flask-set-menu-ink: #16202e;
+  --color-flask-set-menu-off: #a0a8b2;
+  /* minty-web's modal (components/minty_dialog.html, static/css/minty_dialog.css) */
+  --color-flask-dialog-body: #757575;
+  --color-flask-dialog-edge: #737a87;
+  --color-flask-dialog-teal: #4fc7c7;
+  --color-flask-dialog-red: #dc5a5a;
+  --shadow-flask-dialog: 0 4px 8px 0 rgb(15 23 42 / 0.08), 0 12px 32px 0 rgb(0 0 0 / 0.1);
+  --shadow-flask-row-menu: 0 2px 8px 0 rgb(0 0 0 / 0.1);
+  --shadow-flask-suggest: 0 0 0 1px rgb(0 0 0 / 0.05), 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
   /* Quick Actions icons */
   --color-flask-purple-bg: #f3e8ff;
   --color-flask-purple: #9333ea;

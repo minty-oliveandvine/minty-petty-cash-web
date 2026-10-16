@@ -70,7 +70,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`), report history's (`lib/history.ts`: the filters in the address, Flask's pager, the CSV link, a row's badge, time and figures, the range calendar's picks), the flash and the next-day hand-over, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`), report history's (`lib/history.ts`: the filters in the address, Flask's pager, the CSV link, a row's badge, time and figures, the range calendar's picks), settings' (`lib/settings.ts`: the address, the pickers' filter, what the country Save sends, the catalogue, a method name's live checks, a shared method's rename sentence, Move up / down, view-only), the flash and the next-day hand-over, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -114,9 +114,11 @@ Behaviour is Flask's, minus its bugs:
 - **View Report opens the report's own view in this app** (by the day's `id` in `published`), no longer Flask's summary.
 - **"Continue to next day report" starts the day here.** The Submitted page leaves the next day for the dashboard (Flask's `autoStartNextDay`, `takeNextDay` in `lib/flash.ts`). The dashboard selects it and runs Start New Report for it, date rules and deposit check included.
 
+- **Every settings link opens this app's settings page** (Entity Settings, Setup Required's Set Up Settings, Before You Start's "Settings → Petty Cash"). Its Xero card leads on to Flask's page for the Xero mapping, which is what Setup Required and the deposit check are about.
+
 Not ported yet:
 - **The subscription notice.**
-- **The "Congratulations!" modal**, which comes with the settings page.
+- **The "Congratulations!" modal.** Flask shows it after the first Xero mapping save, which stays on Flask's settings page.
 
 ### Report wizard, Opening: `/entity/<shortid>/<name>/petty-cash/reports/new/opening?transaction_date=`
 
@@ -326,7 +328,32 @@ Where the app differs:
 - **Flask's own sizes below the workspace rules, kept:** the 8-10px dates, figures and times on a phone, the 9px badge and the calendar's 42px days.
 - **Not yet:** "Edit" on an older report (Flask's "Edit Details" mode of the summary) has no API, so the menu leaves it out.
 
+### Petty Cash Settings: `/entity/<shortid>/<name>/settings/petty-cash`
+
+This is Flask's ORIGINAL `entity/settings_entity.html`, with `partials/electronic_delivery_section.html` and `static/js/petty_cash_settings.js` (Minty `1c25b35^1`), at Flask's own address for it, for the cards that need no Xero. It is built from `components/settings/PettyCashSettings.tsx` (the page and Country & currency), `SalesMethodsCard.tsx` (Electronic and Delivery) and `SettingsParts.tsx` (the card, the picker, the confirm dialog, the busy overlay), with its rules in `lib/settings.ts`. It reads `GET /settings` and writes through `PUT /settings/country` and `POST`/`PUT`/`DELETE /sales-methods...` (Minty `petty_cash_api/routes/settings.py`). The dashboard's Entity Settings, its two modals' settings links and the sidebar's Settings open it.
+
+Flask drew this page in minty-web's look (Tailwind v4 values written out in `settings_page.css`), not in the phone card, so its greys and reds have their own `flask-set-*` tokens in `app/styles/flask-theme.css`.
+
+What it keeps from Flask:
+- **The header:** ‹ Back and "Settings", the company's icon and name, the person's initials (My Profile) and the ≡ (the shared sidebar).
+- **The settings tabs:** Users, Entity & Integration, **Petty Cash Settings** (this page), Payment Request Settings (when the token says Payments is on) and Modules. The others are Flask's addresses (`settingsTabUrl` in `lib/flaskPages.ts`), which hand over to the app that holds them.
+- **The view-only notice** ("You have view-only access to these settings…") when the person may change nothing. A card they cannot change is grey and its controls are off, as in Flask.
+- **Country & currency:** "Select Country" and "Select Currency", Flask's searchable pickers (focus lists everything, typing filters, "No matches", ↑/↓/Enter/Escape, leaving the box puts the choice back), then **Save Changes** ("Saving…" and Flask's busy overlay, "Saving changes…").
+- **Electronic and Delivery**, a card each: the methods in order; the name to click for a rename (Enter or leaving the box saves, Escape puts it back); the ⋮ with Move up, Move down and Delete; **Add New Method** with the catalogue picker ("No matching payment method found", "+ Other (type a new name)" opening the Name box) and Cancel / Add.
+- **Delete asks first**, in Flask's minty-web dialog: "Delete Electronic Method", 'Are you sure you want to delete "<name>"? This action cannot be undone.', Go back / Delete.
+- Each card folds under its heading.
+
+Where the app differs:
+- **The Xero mapping and the account codes stay on Flask's page** (the owner, 2026-10-16). Where Flask drew them there is one card, "Xero account mapping and account codes", with a sentence and **Open Xero settings**, a full-page link to Flask's own settings page (`settingsUrl`). It shows only while `xero_connected`; Flask's "Xero isn't connected" notice is not drawn.
+- **Each change is saved at once.** Flask held every change for one Save Changes at the bottom. The API takes one change a call, so an add, a rename, a move or a delete goes as it is made, the list is drawn from the API's answer, and its sentence shows as Flask's success toast ("Octopus added.", "Name saved.", "Order saved.", "Method removed. Reports that used it keep their amounts."). A refusal (403, 404, 409, 422) shows the API's sentence and keeps what was there. Save Changes sits in the Country & currency card, because that card is all it saves.
+- **The country goes alone.** A changed country is sent without the currency, so it brings its own (the API's rule); a currency picked by hand goes too. Flask posted both, so a new country kept the old currency.
+- **A name's own rules as it is typed** (CLAUDE.md): over 100 characters ("That name is too long. Keep it to 100 characters or fewer.") or already on that list in any case ("visa is already on the list."), said under the Name or rename box. An Add with no name says "The method's name is still empty. Type a name to add it." under the box. Flask only toasted, and checked names across both lists; the API checks one type's list, and so does the page.
+- **A shared method says so at once.** A method another company has too (`shared` in the read) cannot be renamed (the API's 409), so clicking its name opens no box and says under it: "Other companies use Visa too, so it can't be renamed here. Delete it and add a new method instead." Flask let the person type, then refused on Save.
+- **Back goes to the dashboard.** Flask's went back to whatever page came before the settings area.
+- **A person who may not see the sales methods** (no `view_sales_methods`) is told so in each card.
+- **Left out:** Flask's "Leave without saving?" guard (only the two pickers can hold an unsaved change now) and its reveal of a collapsed card on a refused save.
+
 ## Not here yet
 
-- **The other pages.** Settings and Xero publish are next, in that order. Until Xero publish is ported, the Submitted page's Publish to Xero opens Flask's Submitted page.
+- **The other pages.** Next: Xero publish, after confirmation. Until it is ported, the Submitted page's Publish to Xero opens Flask's Submitted page. The Xero mapping and the account codes stay on Flask's settings page (the owner, 2026-10-16).
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

@@ -166,6 +166,7 @@ test("a deposit the company cannot correct offers only 'as stated'", async ({ pa
   await page.getByRole("button", { name: "Start New Report" }).click();
   const dialog = page.getByRole("dialog", { name: "Before You Start" });
   await expect(dialog).toContainText("Deposit cannot be corrected");
+  await expect(dialog.getByRole("link", { name: "Settings → Petty Cash" })).toHaveAttribute("href", /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/);
   await expect(dialog.getByRole("radio", { name: "No, there was no deposit" })).toBeDisabled();
   await dialog.getByText("Yes, amount deposited as stated").click();
   await dialog.getByRole("button", { name: "Proceed" }).click();
@@ -234,7 +235,8 @@ test("missing Xero settings hold the page with the way to set them up", async ({
   await expect(dialog).toContainText("Main Bank Account");
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("link", { name: "Set Up Settings" })).toHaveAttribute("href", /\/settings\/petty-cash$/);
+  // this app's settings page, whose Xero card leads on to Flask's
+  await expect(dialog.getByRole("link", { name: "Set Up Settings" })).toHaveAttribute("href", /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/);
 });
 
 test("read-only access cannot start a report", async ({ page }) => {

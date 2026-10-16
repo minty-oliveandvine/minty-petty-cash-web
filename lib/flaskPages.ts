@@ -52,7 +52,18 @@ export function csvUrl(entityId: string, start: string, end: string): string | n
   return `${company(entityId)}/petty-cash/reports/download-csv?${new URLSearchParams({ start_date: start, end_date: end })}`;
 }
 
-/** Petty Cash settings (Flask `entity_settings_entity`). */
+/**
+ * Flask's own Petty Cash settings page (`entity_settings_entity`), for the Xero mapping and the
+ * account codes, which stay there (the owner, 2026-10-16). Only this app's settings page links to
+ * it, from its Xero card; every other settings link is this app's page (`settingsHref`).
+ */
 export function settingsUrl(entityId: string): string {
   return `${company(entityId)}/settings/petty-cash`;
+}
+
+/** The settings page's other tabs, Flask's addresses (each hands over to the app that holds it). */
+export type SettingsTab = "users" | "integration" | "payment-request" | "modules";
+
+export function settingsTabUrl(entityId: string, tab: SettingsTab): string {
+  return `${company(entityId)}/settings/${tab}`;
 }

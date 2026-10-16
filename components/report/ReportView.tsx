@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { PhoneCard } from "@/components/flask/PhoneCard";
 import { useToast } from "@/components/flask/Toasts";
-import { DeleteReportModal, ShareButton, ShareModal, useShareLink } from "@/components/report/ReportActions";
+import { DeleteReportModal, ShareButton, ShareModal, useEditReport, useShareLink } from "@/components/report/ReportActions";
 import { LoadingOverlay, ReportBadge } from "@/components/report/ReportChrome";
 import { ReportSummary } from "@/components/report/ReportSummary";
 import { entityAcronym } from "@/lib/acronym";
@@ -13,14 +13,13 @@ import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { getAuth } from "@/lib/auth";
 import { pettyCashHome } from "@/lib/companyPages";
 import { setFlash } from "@/lib/flash";
+import { historyHref } from "@/lib/history";
 import { datePill } from "@/lib/opening";
-import { DELETED, EDIT_PUBLISHED_CONFIRM, summarySales, type DailyReport } from "@/lib/report";
+import { DELETED, summarySales, type DailyReport } from "@/lib/report";
 import { useAuth } from "@/lib/useAuth";
 import { stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
-
-type Reopened = { report_id: string; transaction_date: string; status: "draft"; next: "opening" };
 
 /** Flask's big action buttons under the summary (`w-full mt-6`, the icon growing on hover). */
 const ACTION = "group mt-6 flex w-full items-center justify-center gap-2 rounded-flask-xl px-4 py-3 font-medium text-flask-white shadow-flask-md transition-colors";
@@ -39,7 +38,7 @@ const ICON_GROW = "transition-transform duration-300 group-hover:scale-[1.2]";
  * - Delete: Flask's modal (warning first that the report is in Xero, the owner's rule of 2026-10-15),
  *   `DELETE /reports/<id>`, then the dashboard with "That report's deleted.".
  * - Share: `POST /reports/<id>/share-link` into Flask's Share Report modal.
- * - Close: the dashboard.
+ * - Close: report history, as Flask's did.
  *
  * Every refusal shows the API's sentence and keeps the page. Flask's per-field edits of a submitted
  * report have no API yet, so they are not here.
@@ -96,26 +95,13 @@ function ReportViewBody({ report, entityId, entityName, acronym }: { report: Dai
   const [busy, setBusy] = useState<string | null>(null);
   // a ref, not state: a second click in the same frame must see the first one
   const acting = useRef(false);
+  const edit = useEditReport(entityId, entityName, acting);
 
   function refused(err: unknown) {
     acting.current = false;
     if (err instanceof ApiError && err.status === 401) return;
     setBusy(null);
     toast(err instanceof ApiError ? err.message : UNREACHABLE, "error");
-  }
-
-  async function edit() {
-    if (acting.current) return;
-    if (report.was_published && !window.confirm(EDIT_PUBLISHED_CONFIRM)) return;
-    acting.current = true;
-    toast("Converting report to draft...", "info");
-    try {
-      const answer = await pettyCashFetch<Reopened>(`${path}/reopen`, { method: "POST" });
-      toast("Back to draft — opening it for you now.", "success");
-      router.push(stepHref(entityId, entityName, "opening", answer.transaction_date));
-    } catch (err) {
-      refused(err);
-    }
   }
 
   async function remove() {
@@ -189,7 +175,7 @@ function ReportViewBody({ report, entityId, entityName, acronym }: { report: Dai
       ) : null}
 
       {may.edit ? (
-        <button type="button" onClick={() => void edit()} disabled={busy !== null} className={`${ACTION} bg-flask-olive hover:bg-flask-olive/80`}>
+        <button type="button" onClick={() => void edit(report.report_id, report.was_published)} disabled={busy !== null} className={`${ACTION} bg-flask-olive hover:bg-flask-olive/80`}>
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={`size-6 ${ICON_GROW}`} aria-hidden="true">
             <path
               strokeLinecap="round"
@@ -201,7 +187,7 @@ function ReportViewBody({ report, entityId, entityName, acronym }: { report: Dai
         </button>
       ) : null}
 
-      <button type="button" onClick={() => router.push(home)} className={`${ACTION} bg-flask-teal hover:bg-flask-teal/80`}>
+      <button type="button" onClick={() => router.push(historyHref(entityId, entityName))} className={`${ACTION} bg-flask-teal hover:bg-flask-teal/80`}>
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={`size-6 ${ICON_GROW}`} aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
         </svg>

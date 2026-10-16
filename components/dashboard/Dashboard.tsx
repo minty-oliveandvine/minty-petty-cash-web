@@ -22,9 +22,10 @@ import {
   type Home,
 } from "@/lib/dashboard";
 import { formatDay, formatDayWithWeekday } from "@/lib/dates";
-import { historyUrl, resumeUrl, settingsUrl } from "@/lib/flaskPages";
+import { resumeUrl, settingsUrl } from "@/lib/flaskPages";
 import { takeFlash, takeNextDay } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
+import { historyHref } from "@/lib/history";
 import { formatMoney } from "@/lib/money";
 import { useAuth } from "@/lib/useAuth";
 import { stepHref } from "@/lib/wizardPages";
@@ -41,7 +42,7 @@ type Load = { kind: "loading" } | { kind: "ready"; home: Home; nextDay: string |
  * The Petty Cash dashboard - a pixel-faithful port of Flask's `entity/entity_dashboard_v2.html`:
  * the same phone card, sections, wording, colours and destinations. Its rules are lib/dashboard.ts
  * (the same ones the payments-look port on `port/prw-look` uses); what it reads is `GET /home`.
- * History and settings, which it links to, are still Flask's pages.
+ * Settings, which it links to, is still Flask's page.
  */
 export function Dashboard() {
   const toast = useToast();
@@ -345,7 +346,7 @@ function DashboardBody({
                   <path d="M2.38956 11.291H3.55581V16.541H2.38956V11.291ZM11.7196 8.95768H12.8858V16.541H11.7196V8.95768ZM7.05456 5.45768H8.22081V16.541H7.05456V5.45768Z" className="fill-flask-purple" />
                 </svg>
               </div>
-              <a href={historyUrl(entityId)} className="flex-1">
+              <a href={historyHref(entityId, entityName)} className="flex-1">
                 <h3 className="text-xs font-semibold text-flask-gray-900 sm:text-sm">View History</h3>
                 <p className="text-xs text-flask-gray-500">Reports &amp; Summary</p>
               </a>

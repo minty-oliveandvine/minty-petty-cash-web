@@ -56,6 +56,9 @@ function HeaderButtons() {
  * A report step's header (`report/*.html`) adds the day's date pill before the initials and the
  * report's status badge after them, sets the initials a weight lighter, and carries the stepper
  * under the header (`stepper`), outside the scrolling content.
+ *
+ * Report history (`report_history/report_history.html`) puts its date filter there instead
+ * (`toolbar`, drawn as given), and pads its own content (`flush`).
  */
 export function PhoneCard({
   acronym,
@@ -64,6 +67,8 @@ export function PhoneCard({
   datePill,
   badge,
   stepper,
+  toolbar,
+  flush = false,
   backHref,
 }: {
   acronym: string;
@@ -74,6 +79,10 @@ export function PhoneCard({
   /** A report step: its Draft / Submitted / Published badge. */
   badge?: ReactNode;
   stepper?: ReactNode;
+  /** Report history: its date filter under the header, outside the scrolling content. */
+  toolbar?: ReactNode;
+  /** The content pads itself: only Flask's room at the bottom (`pb-40`). */
+  flush?: boolean;
   /** Where the chevron goes; the company list by default (the dashboard's). */
   backHref?: string;
 }) {
@@ -114,7 +123,8 @@ export function PhoneCard({
           </div>
         </div>
         {stepper ? <div className="relative flex-shrink-0 bg-flask-gray-50 px-4 py-2 sm:px-6 sm:py-2">{stepper}</div> : null}
-        <div className="relative flex-1 overflow-y-auto overflow-x-hidden bg-flask-gray-50 p-6 pb-40">{children}</div>
+        {toolbar}
+        <div className={`relative flex-1 overflow-y-auto overflow-x-hidden bg-flask-gray-50 ${flush ? "" : "p-6"} pb-40`}>{children}</div>
         {overlays}
       </div>
     </div>

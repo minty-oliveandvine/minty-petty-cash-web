@@ -17,8 +17,9 @@ import { mintyFetch } from "@/lib/apiClient";
 import { clearAuth, getAuth, moduleClaims } from "@/lib/auth";
 import { pettyCashHome } from "@/lib/companyPages";
 import { env } from "@/lib/env";
-import { historyUrl, settingsUrl } from "@/lib/flaskPages";
+import { settingsUrl } from "@/lib/flaskPages";
 import { leaveTo, withReturnOrigin } from "@/lib/handoff";
+import { historyHref } from "@/lib/history";
 import { siblingUrl } from "@/lib/previewSibling";
 
 /** This app's settings page: `/entity/<shortid>/<name>/petty-cash/settings`. */
@@ -48,8 +49,8 @@ export const sidebarHost: SidebarHost = {
   moduleAccess: () => moduleClaims(),
 
   /**
-   * Petty Cash's dashboard is this app's own page; Reports and Settings are still Flask's
-   * (lib/flaskPages.ts) until they are ported. The entity list, Subscriptions and My Profile are
+   * Petty Cash's dashboard and Reports (report history) are this app's own pages; Settings is
+   * still Flask's (lib/flaskPages.ts) until it is ported. The entity list, Subscriptions and My Profile are
    * minty-web's, reached through Flask's hand-offs; Bills is the payments app, through Flask's
    * `/entity/<id>/payment-request` (which hands over with that app's own token).
    */
@@ -57,7 +58,7 @@ export const sidebarHost: SidebarHost = {
     entities: () => hub("/entities"),
     subscriptions: () => hub("/subscription"),
     pettyCashDashboard: () => home(),
-    pettyCashReports: (id) => historyUrl(id || getAuth()?.entityId || ""),
+    pettyCashReports: (id) => historyHref(id || getAuth()?.entityId || "", getAuth()?.entityName ?? ""),
     bills: () => {
       const id = getAuth()?.entityId;
       if (id) return accounts(`/entity/${encodeURIComponent(id)}/payment-request`);

@@ -43,9 +43,13 @@ export function submittedUrl(entityId: string, reportId: string): string {
   return `${company(entityId)}/petty-cash/reports/${encodeURIComponent(reportId)}/submitted`;
 }
 
-/** Report history (Flask `report.entity_report_history`). */
-export function historyUrl(entityId: string): string {
-  return `${company(entityId)}/petty-cash/reports`;
+/**
+ * The reports between two days as CSV (Flask `report.download_reports_csv`), from report history.
+ * Flask's rule: both dates, the start on or before the end - null otherwise.
+ */
+export function csvUrl(entityId: string, start: string, end: string): string | null {
+  if (!start || !end || start > end) return null;
+  return `${company(entityId)}/petty-cash/reports/download-csv?${new URLSearchParams({ start_date: start, end_date: end })}`;
 }
 
 /** Petty Cash settings (Flask `entity_settings_entity`). */

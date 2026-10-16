@@ -324,7 +324,7 @@ for (const [badge, over] of [
   });
 }
 
-test("View: an older report shows only what the person may do - Share and Close", async ({ page }) => {
+test("View: an older report shows only what the person may do - Share and Close (to report history)", async ({ page }) => {
   await openView(page, {
     report: reportAnswer({ is_latest: false, xero_integrated: true, publishing_status: "completed", permissions: { edit: false, delete: false, publish: true, share: true } }),
   });
@@ -332,8 +332,12 @@ test("View: an older report shows only what the person may do - Share and Close"
   await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Delete Report" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Edit Report" })).toHaveCount(0);
+  await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/reports(\?.*)?$/, (route) =>
+    route.fulfill({ json: { reports: [], page: 1, per_page: 10, total_pages: 1, total_count: 0, latest_report_id: null, currency_code: "HKD", can_publish: true } }),
+  );
   await page.getByRole("button", { name: "Close" }).click();
-  await expect(page.getByRole("heading", { name: "Report Calendar" })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`${BASE}/reports$`));
+  await expect(page.getByRole("heading", { name: "Report Results" })).toBeVisible();
 });
 
 test("View: Edit Report reopens the day and opens its Opening step, in this app", async ({ page }) => {

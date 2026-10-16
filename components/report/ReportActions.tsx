@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { useToast } from "@/components/flask/Toasts";
 import { Modal } from "@/components/report/ReportChrome";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
-import { DELETE_IN_XERO, DELETE_WARNING } from "@/lib/report";
+import { DELETE_IN_XERO, DELETE_WARNING, EDIT_PUBLISHED_CONFIRM } from "@/lib/report";
+import { stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const COPY_FAILED = "Failed to copy link";
+
+type Reopened = { report_id: string; transaction_date: string; status: "draft"; next: "opening" };
 
 const CLOSE_ICON = (
   <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -45,6 +49,32 @@ export function ShareButton({ onClick }: { onClick: () => void }) {
       </span>
     </div>
   );
+}
+
+/**
+ * Edit Report (a report's view) and Edit (report history), as Flask's `handleEditReport`: its
+ * confirm first for a report that has been to Xero, "Converting report to draft...", `POST
+ * /reports/<id>/reopen`, "Back to draft — opening it for you now.", then this app's Opening for
+ * the day. A refusal says the API's sentence. `actingRef` is the page's one-action-at-a-time guard.
+ */
+export function useEditReport(entityId: string, entityName: string, actingRef: RefObject<boolean>) {
+  const toast = useToast();
+  const router = useRouter();
+  return async function edit(reportId: string, wasPublished: boolean) {
+    if (actingRef.current) return;
+    if (wasPublished && !window.confirm(EDIT_PUBLISHED_CONFIRM)) return;
+    actingRef.current = true;
+    toast("Converting report to draft...", "info");
+    try {
+      const answer = await pettyCashFetch<Reopened>(`/reports/${encodeURIComponent(reportId)}/reopen`, { method: "POST" });
+      toast("Back to draft — opening it for you now.", "success");
+      router.push(stepHref(entityId, entityName, "opening", answer.transaction_date));
+    } catch (err) {
+      actingRef.current = false;
+      if (err instanceof ApiError && err.status === 401) return;
+      toast(err instanceof ApiError ? err.message : UNREACHABLE, "error");
+    }
+  };
 }
 
 /**

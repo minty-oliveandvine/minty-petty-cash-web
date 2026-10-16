@@ -70,7 +70,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`), the flash and the next-day hand-over, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`), report history's (`lib/history.ts`: the filters in the address, Flask's pager, the CSV link, a row's badge, time and figures, the range calendar's picks), the flash and the next-day hand-over, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -293,13 +293,40 @@ What it keeps from Flask:
 
 Where the app differs:
 - **Every refusal keeps the page and says the API's sentence** (400 not the latest, 403, 404, 409 while publishing or a draft). Flask's delete went to the dashboard as if it had worked ("Failed, Redirecting to Dashboard...").
-- **Close goes to the dashboard.** Flask's went to report history, which is not ported.
+- **Close goes to report history**, as Flask's did.
 - **A draft opens its Ending step:** a draft's summary is the wizard's.
 - **No stepper.** Flask drew the six steps, all done, each leading to that step's read-only view of the submitted report. Those views are not ported (the steps here open only a draft); Edit Report is the way back into the wizard.
 - **Not yet (no API):** Flask's per-field edits of a submitted report (the difference reason, the withdrawal and an expense line) and older reports' "Edit Details" mode.
 - **Known, shared with every report page:** at 360px the header's centred group (date, initials, badge) runs about 6px under the person's initials with a four-letter company acronym and the longer Submitted / Published badge. Flask's header has the same geometry; `PhoneCard` needs a narrower centre to fix it.
 
+### Report history: `/entity/<shortid>/<name>/petty-cash/reports?start_date=&end_date=&page=`
+
+This is Flask's ORIGINAL `report_history/report_history.html` (Minty `1c25b35^1`, route `report/routes/history.py`), at Flask's own address for it. It is built from `components/history/ReportHistory.tsx` and `RangeCalendar.tsx`, with its rules in `lib/history.ts`, and reads `GET /reports` (Minty `petty_cash_api/routes/history.py`) with the address's dates and page only: ten a page and no status, as the original offers. The dashboard's View History, the sidebar's Reports and a report view's Close open it.
+
+What it keeps from Flask:
+- **The header:** the chevron (to the dashboard), the company's initials, the person's initials and the ≡.
+- **The date filter**, fixed under the header: Start Date and End Date ("DD/MMM/YYYY", read-only) open Flask's range calendar - one month on a phone, two side by side from 640px across both fields; a click picks the start, the next the end (in order), the next starts again; one day picked is that day at both ends; the range in teal, the days between in pale teal, today ringed. Its footer: **Clear** (back to every report) and **Search Report** ("Please choose or enter a valid date range" / "Start date cannot be after end date"). Enter in a field searches too. A page with dates says Flask's "Filter applied".
+- **CSV**, Flask's own export (`csvUrl` in `lib/flaskPages.ts`, `report.download_reports_csv`): a full-page link for the dates in the fields, greyed until both are chosen; "Exporting..." for a second, then "Your CSV export is on its way!".
+- **"Report Results":** a card per day, newest first - the date and the weekday in its circle (yellow on a weekend), Sales (green) and Expenses (red) as Flask's `amount()` writes them ("-" for nothing, smaller as the figure grows), the badge (Published, Publish failed, Draft, Submitted - a publish under way reads Submitted, as the original drew it), the time in Hong Kong by Flask's rule (when it went to Xero; else when it was submitted; for a draft, when the day was started, which is also the fallback when either time is missing - the API's `created_at`) and "by <first name>".
+- **A failed publish's reasons:** the badge's ⓘ and Flask's dark "Publish issues:" box, a cross per open reason and a resolved one struck through in green, on hover as in Flask.
+- **The ⋮ menu**, one open at a time: **Edit** and **Delete** (only the latest report, never a draft - the API's `permissions`), **View**, and **Publish** / **Republish** (with `can_publish`; greyed on a draft, "Please finish the report before publishing"). The chevron is View too.
+- **Flask's pager** when there is more than a page: "Showing 11 to 20 of 23 reports" ("11-20/23" on a phone), Previous, the first two and last two pages and those beside the current one with "..." between, Next.
+- **The filters and the page live in the address**, so Back and a reload keep them.
+
+Where the app differs:
+- **View** opens the report's view in this app. A draft opens its own wizard step here, by the row's `current_section` (Opening when it has none, Flask's `resume_report` rule; `draftStep` in `lib/history.ts`); Flask's went through its resume page.
+- **Edit** is the report view's (`useEditReport` in `ReportActions.tsx`): Flask's confirm for a report that has been to Xero, `POST /reports/<id>/reopen`, then this app's Opening.
+- **Delete** is the report view's modal, with the owner's "It is in Xero" warning when `was_published`; `DELETE /reports/<id>`, then the list is read again in place with Flask's "That report is deleted." (Flask reloaded the page). A refusal says the API's sentence and keeps the list.
+- **Publish / Republish** is a full-page link to Flask's Submitted page for the report (`submittedUrl`), where the person publishes. The history page's own publishing (its republish modal, overlay and polling) is not ported.
+- **The empty state shows.** Flask's "No reports found" was in the page but never revealed.
+- **Refusals:** a bad filter in the address (the API's 422) says its sentence; any other failure says so with **Try again**.
+- **The calendar is drawn here**, as Flask themed Flatpickr (this app carries no Flatpickr): its month and year are text, not Flatpickr's month dropdown and year field, and there is no hover preview of a range. Clear and Search Report are 44px on a phone.
+- **A tap shows a failed publish's reasons:** Tailwind v4 applies hover only where there is one, so on a phone the badge is a button that opens and closes them (and keyboard focus shows them).
+- **Layout, at a phone's width** (the only layout change): below 640px Sales sits over Expenses - side by side, Flask's row ran past its card with a "Publish failed" badge or a six-figure amount. The amount columns keep Flask's widths as minimums, so a long figure widens its column instead of running into the next one; the page numbers wrap on the 640px card, where Flask's ran off its edge. The ⋮, the chevron and the page links reach 44px for a finger without moving Flask's layout.
+- **Flask's own sizes below the workspace rules, kept:** the 8-10px dates, figures and times on a phone, the 9px badge and the calendar's 42px days.
+- **Not yet:** "Edit" on an older report (Flask's "Edit Details" mode of the summary) has no API, so the menu leaves it out.
+
 ## Not here yet
 
-- **The other pages.** History, settings and Xero publish are next, in that order. Until Xero publish is ported, the Submitted page's Publish to Xero opens Flask's Submitted page.
+- **The other pages.** Settings and Xero publish are next, in that order. Until Xero publish is ported, the Submitted page's Publish to Xero opens Flask's Submitted page.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

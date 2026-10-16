@@ -51,7 +51,12 @@ export function csvUrl(entityId: string, start: string, end: string): string {
   return `${company(entityId)}/petty-cash/reports/download-csv?${new URLSearchParams({ start_date: start, end_date: end })}`;
 }
 
-/** Petty Cash settings (Flask `entity_settings_entity`). */
+/**
+ * Flask's Petty Cash settings page (`entity_settings_entity`), for the Xero parts that stay there
+ * (the account mapping and the account codes): this app's settings page links here while Xero is
+ * connected, and so do the launch page's Setup Required and a deposit correction's missing
+ * accounts. The rest of the page is this app's (`settingsHref`, lib/companyPages.ts).
+ */
 export function settingsUrl(entityId: string): string {
   return `${company(entityId)}/settings/petty-cash`;
 }

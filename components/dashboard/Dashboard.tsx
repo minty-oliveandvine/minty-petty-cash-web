@@ -56,8 +56,9 @@ const FLASH_TONE = { error: "danger", warning: "warning", success: "success", in
  * (today's Daily Closing over its five stages, Part 15.15), the business-rule gate when an earlier
  * day is unfinished, and the recent reports. No calendar, no Quick Actions, no KPIs (15.6).
  * Its rules live in lib/dashboard.ts and lib/dailyClosing.ts; what it reads is `GET /home`. The
- * stages, the Daily Report and the report history it opens are this app's; settings is still
- * Flask's (lib/flaskPages.ts).
+ * stages, the Daily Report and the report history it opens are this app's. Its two settings links
+ * (Setup Required, a deposit correction's missing accounts) name Xero mappings, so they go to
+ * Flask's settings page, where the Xero parts stay (lib/flaskPages.ts).
  */
 export function Dashboard() {
   const [load, setLoad] = useState<Load>({ kind: "loading" });

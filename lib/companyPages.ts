@@ -28,3 +28,12 @@ export function companyRefFromPath(path: string): string {
 export function pettyCashHome(entityId: string, entityName: string): string {
   return `/entity/${companyRef(entityId, entityName)}/petty-cash`;
 }
+
+/**
+ * The company's Petty Cash settings (`/entity/<shortid>/<name>/settings/petty-cash`) - Flask's
+ * address for the page, so a link into one app works in the other. The Xero parts stay on Flask's
+ * page (`settingsUrl`, lib/flaskPages.ts).
+ */
+export function settingsHref(entityId: string, entityName: string): string {
+  return `/entity/${companyRef(entityId, entityName)}/settings/petty-cash`;
+}

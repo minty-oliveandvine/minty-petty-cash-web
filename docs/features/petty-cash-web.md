@@ -47,7 +47,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 ## The sidebar
 
 `@minty/shared/sidebar`, with this app's host in `components/ui/sidebarHost.ts`. That file is the only app-specific part.
-- **This app's own pages:** Dashboard and Reports (the report history, since Wave 2g). Settings is still Flask's (`lib/flaskPages.ts`) until it is ported.
+- **This app's own pages:** Dashboard, Reports (the report history, since Wave 2g) and Settings (Petty Cash settings, since Wave 2h; its Xero parts link on to Flask's page).
 - **minty-web's pages, through Flask's hand-offs:** the entity list, Subscriptions and My Profile.
 - **Through Flask's `/entity/<id>/payment-request`:** Bills.
 - **No profile slot.** My Profile is minty-web's page.
@@ -63,7 +63,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the Daily Report's facts and warnings, the report history's rules (address and filters, the pager, "Showing a–b of n", the date range, the CSV link and its gate, a row's meta and actions), the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the Daily Report's facts and warnings, the report history's rules (address and filters, the pager, "Showing a–b of n", the date range, the CSV link and its gate, a row's meta and actions), the settings rules (the country body, the sales-method list on the page, the name checks, the waiting changes and how Save sends them, stopping at a refusal), the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -504,7 +504,67 @@ Known gaps of Wave 2g:
 - **A phone has no numbered pages**, only Previous / Next and "Page n of m" (Part 14 Pagination: "Phone: prev/next or Load more"). There is no Load more.
 - **No polling while Xero publishes**, as on the Daily Report.
 
+### Wave 2h: Petty Cash settings, without Xero (Part 15.20 / 15.20b)
+
+`/entity/<shortid>/<name>/settings/petty-cash` replaces the parts of Flask's Petty Cash settings that need no Xero, at Flask's own address (`settingsHref`, `lib/companyPages.ts`). It reads `GET /settings` and writes through `PUT /settings/country` and the sales-method routes (Minty `petty_cash_api/routes/settings.py`), unchanged. Its order and content are those of Flask's redesigned page (`entity/settings_entity.html`, `partials/electronic_delivery_section.html`, `static/js/petty_cash_settings.js`).
+
+The page, top to bottom (`components/settings/PettyCashSettings.tsx`, rules in `lib/settings.ts`, a centred 720 column):
+1. **The Standard header** (15.1): "‹ Petty Cash" back to the launch page, "Petty Cash settings" (the h1). No intro text (2.9.10).
+2. **Country & currency** (one card, its own Save): **Country** and **Currency**, native selects in Part 14 Input geometry.
+   - A country alone brings its currency: choosing another country puts Currency on "The country's own currency" with "Saving sets the currency that goes with the country. Choose one here to use another." Choosing the saved country again puts the saved pair back.
+   - Save sends only what changed (`{country_code}`, `{currency_id}` or both).
+3. **Sales methods** (one card, its own Save): **Electronic** and **Delivery**, each a group (h3 + why) with its methods in list order (an ordered list), then **Add electronic method** / **Add delivery method** (Secondary).
+   - **Add** opens a panel in place with one field, **Method** (required: the red `*`, sr-only "(required)", `aria-required`). It is an ARIA combobox over the catalogue methods not on the list (`available`, plus any removed on the page and not saved yet), narrowed as typed, A to Z, in the page's flow. A name the catalogue has (any case) is that catalogue method under its own spelling (`sale_info_id`); any other name is a new one (`name`). ↑ ↓ Enter choose; Enter with nothing highlighted is Add; Escape closes the list.
+   - **Each row's More menu** (`components/ui/MoreMenu.tsx`; a bottom sheet on a phone): **Rename**, **Move up**, **Move down**, then **Remove** in Danger. Move up / Move down are the non-drag reorder, by keyboard (Enter opens the menu, ↓ Enter chooses) and by touch. After a move the focus stays on that row's More button and "AlipayHK moved to 2 of 3." is said (polite).
+   - **Rename** is a Part 14 modal with **Name** (required), checked as typed.
+   - A row not saved yet says "Added · not saved yet" or "Renamed from Octopus · not saved yet". Removals are listed under the lists: "Removed when you save: Visa. Reports that used them keep their amounts."
+4. **Xero**, only while `xero_connected`: one sentence ("The Xero account mapping and the Petty Cash account codes are set on the Xero settings page, which reads them from Xero.") and **Go to Xero settings**, a full-page link to Flask's page (`settingsUrl`, `lib/flaskPages.ts`). No Xero behaviour is ported (the owner, 2026-10-16).
+
+The rules:
+- **One Save per card** (15.20b), Primary, first and full width on a phone. It is disabled with its reason beside it (`aria-describedby`): "No changes to save yet." until the card changed, and "Only Accountants and Admins can change these." (Flask's words) for someone who may change nothing in it.
+- **The sales methods wait for Save**, as on Flask's page. The API takes one change per call, so Save sends them one by one (`saveMethods`): removals, additions, renames, then each touched list's order (`PUT /sales-methods/order` with that list in full). The order goes only when the API's order differs from the page's, and only for someone who may reorder.
+- **A save stops at the first refusal.** A Danger inline alert in the card names what wasn't saved ("Octopus wasn't renamed") with the API's sentence, plus "The changes before it are saved; the rest are still waiting for Save." when some went through. What went through is kept, and the rest stays on the page.
+- **A save that went through** is a toast: the API's `message` for one change ("WeChat Pay added.", "Name saved.", "Order saved.", "Method removed. Reports that used it keep their amounts.", "Country and currency saved."), or "Sales methods saved." for several. A refusal (403, 404, 409, 422, or no answer) is never a toast and never a false success.
+- **Names are checked as typed** (CLAUDE.md; the API refuses the same):
+  - over 100 characters, at once: "The name is 101 characters. Shorten it to 100 characters or fewer.";
+  - a name already on that list (any case), at once: "visa is already on the list. Type another name.";
+  - a new name for a method other companies use too (the read's `shared`: renaming it would rename the shared catalogue method, which the API refuses with a 409), as soon as the name differs from its own: "Other companies use Visa too, so it can't be renamed here. Remove it and add a new method instead." Rename stays in the menu for it, so the person learns why in place; a menu item can't carry a reason beside it, so it is neither hidden nor disabled;
+  - empty, only after a refused Add or Rename: "The method's name is still empty. Choose a method or type a new name to add it."
+- **Permissions** (`permissions.*`):
+  - the pickers only with `edit_country`, otherwise the country and currency as facts;
+  - Add only with `add_sales_method`;
+  - Rename and Remove only with `rename_sales_method` and `remove_sales_method` (a method not saved yet is the person's own addition and needs only `add_sales_method`);
+  - Move up and Move down only with `reorder_sales_methods`.
+  - A cashier sees the page read-only: facts, plain lists, no menus, and both Saves disabled with the reason. Without `view_sales_methods` the card says "Your role can't see the sales methods. Ask an Accountant or an Admin."
+- **Unsaved changes ask first** (`@minty/shared/leaveGuard`, minty-web's words). A link out of the page (the back link, the sidebar, Go to Xero settings) opens "Leave without saving?" with **Go Back** (focused) and **Discard changes**. A reload or a closed tab gets the browser's own prompt.
+
+The ways in:
+- **The sidebar's Settings** is this page now (`components/ui/sidebarHost.ts`; `currentOf` marks this address as current). The package draws it as a plain link, so it is a full page load.
+- **The launch page's two settings links stay Flask's page.** Setup Required (the Xero account and contact slots not mapped) and a deposit correction's missing Deposit Bank Account / Petty Cash Account are all Xero mappings. Wave 1 had already removed the launch page's other settings link (Quick Actions' Entity Settings).
+
+Wave 1 and 2a-2g files touched for this wave:
+- `components/ui/sidebarHost.ts` (and its test): Settings is this page; the current-page pattern is its address.
+- `lib/companyPages.ts`: `settingsHref`. `lib/flaskPages.ts`: `settingsUrl` is now for the Xero parts (a comment).
+- `components/dashboard/Dashboard.tsx`: a comment only.
+
+Against Flask's page, deliberately:
+- Electronic and Delivery are **one card with one Save** (15.20b, two cards on the page), where Flask has a card and a Save for each.
+- **Rename** is in the row's menu with a modal, where Flask renamed by clicking the name.
+- **Remove asks nothing**: it only waits for Save, and the method can be added back. Flask's pending delete asked first.
+- **A refusal stops the save** and says which change it was, where Flask sent every change and reported the first failure as "Nothing else was saved".
+- Country and currency are native selects, where Flask has searchable pickers.
+- Without Xero connected there is **no Xero card**, where Flask's mapping and account-code cards say "Xero isn't connected. Connect it in Entity & Integration".
+
+Not yet:
+- **The Xero parts** (the account mapping and the account codes): Flask's page.
+- **The "Congratulations!" modal** (`?success=true`) Flask showed after a settings save, which the faithful port listed as coming with this page. Part 14 confirms a save with a toast.
+
+Known gaps of Wave 2h:
+- **No drag to reorder**: Move up / Move down only.
+- **Every Save sends one call per change**, so many changes are several round trips. Two people editing at once can stale the order (the API's 409, shown with its sentence).
+
 ## Not here yet
 
-- **The other pages.** Settings and Xero publish are next, in that order. The Daily Closing's five stages and its outcome page are this app's since Wave 2e, the Daily Report since Wave 2f, and the report history since Wave 2g.
+- **Xero publish** is next, once it is confirmed. The Daily Closing's five stages and its outcome page are this app's since Wave 2e, the Daily Report since Wave 2f, the report history since Wave 2g, and Petty Cash settings without its Xero parts since Wave 2h.
+- **Settings' Xero parts** (the account mapping and the account codes) stay on Flask's page (the owner, 2026-10-16); another session is on Xero.
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

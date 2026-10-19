@@ -69,7 +69,7 @@ function full(over: Partial<SharedReport> = {}): SharedReport {
 
 describe("the Share dialog's link", () => {
   it("is this app's /share page for the API's path, on this origin", () => {
-    expect(shareLinkUrl("https://petty-cash.dailyminty.com", PATH)).toBe(`https://petty-cash.dailyminty.com/share/${PATH}`);
+    expect(shareLinkUrl("https://pettycash.dailyminty.com", PATH)).toBe(`https://pettycash.dailyminty.com/share/${PATH}`);
     expect(shareLinkUrl("http://localhost:3010", `/${PATH}/`)).toBe(`http://localhost:3010/share/${PATH}`);
   });
 

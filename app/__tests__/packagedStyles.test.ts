@@ -74,7 +74,7 @@ describe("@minty/shared reaches the stylesheet", () => {
   it("emits the packaged sidebar's own utilities", () => {
     // Declarations, not class selectors. Each arbitrary value appears in the package's sidebar
     // and nowhere in this app's own source, so if Tailwind stops scanning node_modules they go.
-    expect(compiled).toMatch(/width:\s*min\(100%,\s*280px\)/); // the drawer's menu panel
+    expect(compiled).toMatch(/width:\s*min\(100%,\s*353px\)/); // the drawer's menu panel (v0.4+)
     expect(compiled).toMatch(/height:\s*31px/); // SideMenu
   });
 });

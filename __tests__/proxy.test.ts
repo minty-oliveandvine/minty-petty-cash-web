@@ -55,7 +55,7 @@ describe("without a token", () => {
   });
 
   it("starts the trip on a page of its own on a preview-set host", async () => {
-    const res = proxy(request(HOME, {}, "pr-development-petty-cash.dailyminty.com"));
+    const res = proxy(request(HOME, {}, "pr-development-pettycash.dailyminty.com"));
     expect(res.status).toBe(200);
     expect(await res.text()).toContain('http-equiv="refresh"');
   });

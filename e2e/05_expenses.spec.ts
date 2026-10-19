@@ -93,17 +93,39 @@ function multipart(route: Route): Json {
   return fields;
 }
 
-type Calls = { adds: Json[]; deletes: string[]; saves: Json[]; suppliers: Json[]; receipts: string[] };
+type Calls = { adds: Json[]; edits: { id: string; fields: Json }[]; extracts: Json[]; deletes: string[]; saves: Json[]; suppliers: Json[]; receipts: string[] };
 type Handler = (route: Route, calls: Calls) => Promise<void>;
-type Setup = { onAdd?: Handler; onDelete?: Handler; onSave?: Handler; onSupplier?: Handler; home?: Json; read?: Handler };
+type Setup = { onAdd?: Handler; onEdit?: Handler; onExtract?: Handler; onDelete?: Handler; onSave?: Handler; onSupplier?: Handler; home?: Json; read?: Handler };
+
+/** The receipt reader switched off - the API's default (`EXPENSE_AI_ENABLED` unset). */
+const READER_OFF = { suggestions: null, reason: "disabled" };
 
 async function stub(page: Page, answer: Json, setup: Setup = {}): Promise<Calls> {
-  const calls: Calls = { adds: [], deletes: [], saves: [], suppliers: [], receipts: [] };
+  const calls: Calls = { adds: [], edits: [], extracts: [], deletes: [], saves: [], suppliers: [], receipts: [] };
   let total = answer.total as number;
+  const lines = [...(answer.lines as Json[])];
   await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/(reports\/expenses|expense-lines|suppliers)/, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace(/^.*\/companies\/[^/]+/, "");
     const method = request.method();
+    if (path === "/reports/expenses/extract" && method === "POST") {
+      calls.extracts.push(multipart(route));
+      if (setup.onExtract) return setup.onExtract(route, calls);
+      return route.fulfill({ json: READER_OFF });
+    }
+    if (path.startsWith("/expense-lines/") && method === "PATCH") {
+      const id = path.split("/")[2];
+      const fields = multipart(route);
+      calls.edits.push({ id, fields });
+      if (setup.onEdit) return setup.onEdit(route, calls);
+      const before = lines.find((l) => l.id === id) as Json;
+      const amount = fields.amount !== undefined ? Number(fields.amount) : (before.amount as number);
+      total = Math.round((total - (before.amount as number) + amount) * 100) / 100;
+      const account = fields.account_id ? ACCOUNTS.find((a) => a.id === fields.account_id) : (before.account as Json);
+      const supplier = fields.supplier_id ? SUPPLIERS.find((x) => x.id === fields.supplier_id) : (before.supplier as Json);
+      const saved = { ...before, amount, account, supplier, item: (account as Json).name, remarks: fields.remarks ?? before.remarks };
+      return route.fulfill({ json: { line: saved, total } });
+    }
     if (path === "/reports/expenses/lines" && method === "POST") {
       calls.adds.push(multipart(route));
       if (setup.onAdd) return setup.onAdd(route, calls);
@@ -221,7 +243,6 @@ test("the day's entries, their total and the Workflow header", async ({ page }) 
   await expect(stages(page).getByRole("link")).toHaveCount(2);
 
   await expect(page.getByRole("heading", { level: 2, name: "2 expenses" })).toBeVisible();
-  await expect(page.getByText("To change an expense, delete it and add it again.")).toBeVisible();
   await expect(entries(page)).toHaveCount(2);
   const first = entries(page).first();
   await expect(first).toContainText("General Expenses");
@@ -229,6 +250,7 @@ test("the day's entries, their total and the Workflow header", async ({ page }) 
   await expect(first).toContainText("ParknShop · Account 429");
   await expect(first).toContainText("Printer paper and toner for the front desk");
   await expect(first.getByRole("button", { name: "View receipt receipt-l1.png" })).toBeVisible();
+  await expect(first.getByRole("button", { name: "Edit expense: General Expenses, HKD120.50" })).toBeVisible();
   await expect(first.getByRole("button", { name: "Delete expense: General Expenses, HKD120.50" })).toBeVisible();
   await expect(row(page, "Total expenses")).toContainText("HKD158.50");
   // amounts are plain text, never coloured: the same ink as the title
@@ -563,4 +585,190 @@ test("the stage reloads with no console error", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Expenses" })).toBeVisible();
   await expect(entries(page)).toHaveCount(2);
   expect(errors).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------------------------
+// Edit (PATCH /expense-lines/<id>) and the receipt reader (POST /reports/expenses/extract)
+
+const editor = (page: Page) => page.getByRole("dialog", { name: "Edit expense" });
+
+test("Edit opens the same form prefilled; Save sends only what changed and updates the row and the total in place", async ({ page }) => {
+  const calls = await openWith(page, expensesAnswer());
+  const edit = entries(page).first().getByRole("button", { name: "Edit expense: General Expenses, HKD120.50" });
+  await edit.click();
+  const d = editor(page);
+  await expect(d).toBeVisible();
+  const box = await d.boundingBox();
+  const width = page.viewportSize()!.width;
+  if (width < 640) expect(Math.round(box!.width)).toBe(width);
+  else expect(Math.round(box!.width)).toBe(480);
+  await expect(d).toContainText("General Expenses · HKD120.50");
+  const amount = d.getByRole("textbox", { name: /Amount/ });
+  await expect(amount).toHaveValue("120.50");
+  await expect(d.getByRole("combobox", { name: /Supplier/ })).toHaveValue("ParknShop");
+  await expect(d.getByRole("combobox", { name: /Account/ })).toHaveValue("a1");
+  await expect(d.getByRole("textbox", { name: "Description" })).toHaveValue("Printer paper and toner for the front desk");
+  await expect(d.getByRole("button", { name: "View receipt receipt-l1.png" })).toBeVisible();
+  // the only saved receipt can't be removed - a new one replaces it
+  await expect(d.getByRole("button", { name: /Remove saved receipt/ })).toHaveCount(0);
+  await expect(d.getByText("Optional. A new receipt replaces the saved one.")).toBeVisible();
+
+  // checked as it is typed, as the add is
+  await amount.fill("0");
+  await d.getByRole("textbox", { name: "Description" }).focus();
+  await expect(amount).toHaveAccessibleDescription("The amount is 0. Enter an amount above 0.");
+  await amount.fill("130");
+  await d.getByRole("combobox", { name: /Account/ }).selectOption("a2");
+  await d.getByRole("button", { name: "Save" }).click();
+  await expect(editor(page)).toHaveCount(0);
+  expect(calls.edits).toEqual([{ id: "l1", fields: { amount: "130", account_id: "a2" } }]);
+  expect(calls.adds).toEqual([]);
+  await expect(entries(page)).toHaveCount(2);
+  await expect(entries(page).first()).toContainText("Printing & Stationery");
+  await expect(entries(page).first()).toContainText("HKD130.00");
+  await expect(row(page, "Total expenses")).toContainText("HKD168.00");
+  await expect(entries(page).first().getByRole("button", { name: "Edit expense: Printing & Stationery, HKD130.00" })).toBeFocused();
+  await expectNoHorizontalScroll(page);
+});
+
+test("Edit with nothing changed just closes; with a change, closing asks first", async ({ page }) => {
+  const calls = await openWith(page, expensesAnswer());
+  await entries(page).first().getByRole("button", { name: /^Edit expense/ }).click();
+  await editor(page).getByRole("button", { name: "Save" }).click();
+  await expect(editor(page)).toHaveCount(0);
+  await entries(page).first().getByRole("button", { name: /^Edit expense/ }).click();
+  await editor(page).getByRole("textbox", { name: "Description" }).fill("Toner");
+  await page.keyboard.press("Escape");
+  const ask = editor(page).locator("[data-tone=warning]").filter({ hasText: "These changes aren't saved yet" });
+  await ask.getByRole("button", { name: "Discard them" }).click();
+  await expect(editor(page)).toHaveCount(0);
+  expect(calls.edits).toEqual([]);
+});
+
+test("a second saved receipt can be removed, never the last; a refused edit says why and keeps the sheet", async ({ page }) => {
+  const why = "This report isn't a draft anymore, so I can't change its expenses.";
+  const two = line("l1", 120.5, { receipts: [{ id: "r1", name: "front.png", mime_type: "image/png" }, { id: "r2", name: "back.png", mime_type: "image/png" }] });
+  const calls = await openWith(page, expensesAnswer({ lines: [two], total: 120.5 }), { onEdit: (route) => route.fulfill({ status: 409, json: { error: why } }) });
+  await entries(page).first().getByRole("button", { name: /^Edit expense/ }).click();
+  const d = editor(page);
+  await d.getByRole("button", { name: "Remove saved receipt back.png" }).click();
+  await expect(d.getByRole("button", { name: "View receipt back.png" })).toHaveCount(0);
+  await expect(d.getByRole("button", { name: /Remove saved receipt/ })).toHaveCount(0);
+  await d.getByRole("button", { name: "Save" }).click();
+  await expect(d.getByRole("alert").filter({ hasText: why })).toHaveAttribute("data-tone", "danger");
+  expect(calls.edits).toEqual([{ id: "l1", fields: { remove_receipt_ids: "r2" } }]);
+  await expect(d.getByRole("button", { name: "Save" })).toBeEnabled();
+  await expect(row(page, "Total expenses")).toContainText("HKD120.50");
+});
+
+const SUGGESTIONS = {
+  supplier: { value: "Wellcome", confidence: 0.93, band: "high", applied: true, contact_id: "c3" },
+  account: { value: "461 Printing & Stationery", confidence: 0.7, band: "medium", applied: true, account_id: "a2", code: "461", name: "Printing & Stationery" },
+  amount: { value: "48.80", confidence: 0.97, band: "high", applied: true },
+  description: { value: "Copy paper", confidence: 0.4, band: "low", applied: false },
+  document_date: { value: DAY, confidence: 0.9, band: "high", applied: true },
+  currency: "HKD",
+  entity_currency: "HKD",
+};
+
+test("the receipt reader: a calm reading notice, then suggestions in the empty fields, marked - nothing saved until Add", async ({ page }) => {
+  let answer: () => void = () => undefined;
+  const answered = new Promise<void>((resolve) => (answer = resolve));
+  const calls = await openWith(page, expensesAnswer(), {
+    onExtract: async (route) => {
+      await answered;
+      await route.fulfill({ json: { suggestions: SUGGESTIONS, reason: null } });
+    },
+  });
+  await openDrawer(page);
+  const d = drawer(page);
+  await attach(page, "taxi.png", "image/png");
+  const notice = d.getByRole("status").filter({ hasText: "Minty is reading the receipt…" });
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText("You can start typing now if you prefer.");
+  // the form stays usable meanwhile, and nothing is red
+  await d.getByRole("textbox", { name: "Description" }).fill("Taxi");
+  await expect(d.getByRole("alert")).toHaveCount(0);
+  answer();
+  await expect(notice).toHaveCount(0);
+  expect(calls.extracts).toHaveLength(1);
+  expect(calls.extracts[0].receipt).toMatchObject({ filename: "taxi.png" });
+
+  const amount = d.getByRole("textbox", { name: /Amount/ });
+  await expect(amount).toHaveValue("48.80");
+  await expect(amount).toHaveAccessibleDescription("Suggested from the receipt.");
+  await expect(d.getByRole("combobox", { name: /Supplier/ })).toHaveValue("Wellcome");
+  const account = d.getByRole("combobox", { name: /Account/ });
+  await expect(account).toHaveValue("a2");
+  await expect(account).toHaveAccessibleDescription("Suggested from the receipt. Check it before you go on.");
+  // the low band and the typed description: never overwritten
+  await expect(d.getByRole("textbox", { name: "Description" })).toHaveValue("Taxi");
+  await expect(d.getByRole("button", { name: "Clear the suggested amount" })).toBeVisible();
+  expect(calls.adds).toEqual([]);
+
+  await d.getByRole("button", { name: "Add expense" }).click();
+  await expect(drawer(page)).toHaveCount(0);
+  expect(calls.adds).toEqual([
+    { transaction_date: DAY, amount: "48.8", remarks: "Taxi", supplier_id: "c3", account_id: "a2", receipt: { filename: "taxi.png", type: "image/png" } },
+  ]);
+  await expectNoHorizontalScroll(page);
+});
+
+test("the reader offers an unknown supplier for New supplier, and a different reading only on request", async ({ page }) => {
+  const calls = await openWith(page, expensesAnswer(), {
+    onExtract: (route) =>
+      route.fulfill({
+        json: {
+          suggestions: { ...SUGGESTIONS, supplier: { value: "", confidence: 0, band: "low", applied: false, contact_id: "", detected_name: "Kwok Transport" } },
+          reason: null,
+        },
+      }),
+  });
+  await openDrawer(page);
+  const d = drawer(page);
+  const amount = d.getByRole("textbox", { name: /Amount/ });
+  await amount.fill("45");
+  await attach(page, "taxi.png", "image/png");
+  await expect(d.getByText("The receipt reads HKD48.80, not HKD45.00.")).toBeVisible();
+  // never overwritten: the typed value stays as typed (grouping waits for the field to be left,
+  // which pressing the offer below does - and that must not withdraw the offer)
+  await expect(amount).toHaveValue("45");
+  await d.getByRole("button", { name: "Use the amount from the receipt" }).click();
+  await expect(amount).toHaveValue("48.80");
+
+  await expect(d.getByText('The receipt says "Kwok Transport", which is not in your supplier list.')).toBeVisible();
+  await d.getByRole("button", { name: 'Add "Kwok Transport" as a new supplier' }).click();
+  await expect(d.getByRole("group", { name: "New supplier" }).getByRole("textbox", { name: /Supplier's name/ })).toHaveValue("Kwok Transport");
+  expect(calls.suppliers).toEqual([]);
+  await expectNoHorizontalScroll(page);
+});
+
+test("the reader switched off gets quietly out of the way, and is not asked again", async ({ page }) => {
+  const calls = await openWith(page, expensesAnswer());
+  await openDrawer(page);
+  const d = drawer(page);
+  await attach(page, "taxi.png", "image/png");
+  await expect.poll(() => calls.extracts.length).toBe(1);
+  await expect(d.getByText("Minty is reading the receipt…")).toHaveCount(0);
+  await expect(d.getByRole("alert")).toHaveCount(0);
+  await expect(d.getByRole("textbox", { name: /Amount/ })).toHaveValue("");
+  await d.getByRole("button", { name: "Remove taxi.png" }).click();
+  await attach(page, "other.png", "image/png");
+  await expect(d.getByText("other.png", { exact: true })).toBeVisible();
+  expect(calls.extracts).toHaveLength(1);
+});
+
+test("a reader that fails says nothing", async ({ page }) => {
+  const calls = await openWith(page, expensesAnswer(), { onExtract: (route) => route.fulfill({ status: 500, json: { error: "Something went wrong on our side. Please try again." } }) });
+  await openDrawer(page);
+  const d = drawer(page);
+  // fillValid attaches the receipt (which is read, and fails) and fills the rest by hand
+  await fillValid(page);
+  await expect.poll(() => calls.extracts.length).toBe(1);
+  await expect(d.getByText("Minty is reading the receipt…")).toHaveCount(0);
+  await expect(d.getByRole("alert")).toHaveCount(0);
+  await expect(d.getByText("Something went wrong")).toHaveCount(0);
+  await d.getByRole("button", { name: "Add expense" }).click();
+  await expect(drawer(page)).toHaveCount(0);
+  expect(calls.adds).toMatchObject([{ amount: "45.5", supplier_id: "c1", account_id: "a1" }]);
 });

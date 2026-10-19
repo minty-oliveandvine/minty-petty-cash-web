@@ -5,6 +5,11 @@
    so --font-brand falls through to Inter here. Adding a text lockup means adding the next/font
    call in app/layout.tsx too, not just a class. */
 @import "@minty/shared/theme.css";
+/* Part 13's tokens. The v0.4 sidebar draws in their names (surfaces, text roles, the avatar
+   pair), so without this sheet the menu draws in Tailwind's defaults - transparent. It also
+   redefines rounded-sm/md/lg/xl to Part 13's 4/8/12/16 px; the ported pages are unaffected
+   because they draw only with the `flask-*` radii in ./styles/flask-theme.css. */
+@import "@minty/shared/tokens.css";
 /* Part 13 D-20: Material Symbols ROUNDED. */
 @import "material-symbols/rounded.css";
 /* Flask's exact palette and Tailwind v3 sizes, for the pixel-faithful port of its pages. */
@@ -15,19 +20,11 @@
    Guarded by app/__tests__/packagedStyles.test.ts - do not delete either. */
 @source "../node_modules/@minty/shared/src";
 
-/* @minty/shared is pinned at v0.1 on this branch - the sidebar before its Part 13 restyle, the
-   menu Flask's pages show (the user, 2026-10-14). Its classes read these, as every app's
-   stylesheet declared them at v0.1: the avatar pair and the menu button's grey. */
+/* @minty/shared is pinned at v0.4 (the owner, 2026-10-19: every app on the latest sidebar). Only
+   the menu takes Part 13's look; every page keeps Flask's through ./styles/flask-theme.css. */
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --primary: #656565;
-  --avatar-bg: #ffe6b1;
-  --avatar-fg: #6b3a12;
-}
-
-@theme {
-  --color-primary: var(--primary);
 }
 
 html {

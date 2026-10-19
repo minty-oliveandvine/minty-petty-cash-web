@@ -1,7 +1,7 @@
 /**
- * A copy of `@minty/shared/previewSibling` (v0.3): this branch pins `@minty/shared#v0.1` for its
- * pre-Part 13 sidebar (Flask's look), and v0.1 has no previewSibling - minty-web keeps a copy the
- * same way. Change it in the package first, then here.
+ * A copy of `@minty/shared/previewSibling`, kept from when this branch pinned v0.1 (which had
+ * none). The pin is v0.4 since 2026-10-19 and its code is identical; moving the imports to the
+ * package is a separate change. Until then: change it in the package first, then here.
  *
  * Preview sets: one branch, one host per app - `pr-<slug>-<app>.dailyminty.com` (2026-10-13).
  *

@@ -46,9 +46,10 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 ## The sidebar
 
-**On `development`, `@minty/shared` is pinned at `v0.1`** (the user, 2026-10-14). That is the sidebar from before its Part 13 restyle, the menu Flask's pages show, so it matches the pixel-faithful port. The cost:
-- v0.1 has no `previewSibling`, so `lib/previewSibling.ts` is a copy of v0.3's (minty-web keeps one the same way). Change the package first, then the copy.
-- v0.1 has no Part 13 `tokens.css`, so the colours the sidebar reads (`--avatar-bg`, `--avatar-fg`, `--primary`) are declared in `app/globals.css`.
+**On `development`, `@minty/shared` is pinned at `v0.4`**, moved from `v0.1` on 2026-10-19 at the owner's request (every app on the latest shared sidebar). Only the menu takes v0.4's Minty v2 look; every page keeps Flask's. What that rests on:
+- `app/globals.css` imports `@minty/shared/tokens.css`, because the v0.4 sidebar draws in its names (without it the menu draws in Tailwind's defaults, transparent). The v0.1-only colours (`--avatar-bg`, `--avatar-fg`, `--primary`) are gone.
+- tokens.css makes `rounded-sm/md/lg/xl` Part 13's 4/8/12/16 px. The ported pages draw only with the `flask-*` radii (`app/styles/flask-theme.css`), so their corners did not move, and `app/__tests__/packagedStyles.test.ts` fails on a plain `rounded-md`..`4xl` in this app's source and on any local `--radius-*`, `--text-*` or tokens.css colour name.
+- `lib/previewSibling.ts` is still a copy of the package's (identical in code to v0.4's `@minty/shared/previewSibling`); switching the imports to the package is a separate change.
 
 `port/prw-look` pins `v0.3`.
 

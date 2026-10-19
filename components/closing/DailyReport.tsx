@@ -10,6 +10,7 @@ import { Button, buttonClass, Icon, InlineAlert, inputClass, Modal, PageBanner, 
 import type { ViewerFile } from "@/components/closing/ReceiptViewer";
 import { PublishDialog, PublishProgress, usePublish } from "@/components/closing/Publish";
 import { DeleteReportDialog, EditReportDialog } from "@/components/closing/ReportDialogs";
+import { AuditFacts, ClosingBalance, Disclosure, KpiCards, Row, Rows } from "@/components/closing/ReportParts";
 import { AppBar } from "@/components/layout/AppBar";
 import { MoreMenu, type MoreItem } from "@/components/ui/MoreMenu";
 import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
@@ -38,6 +39,7 @@ import {
   type DailyReport as Report,
 } from "@/lib/report";
 import { canEditLines, canEditReason, canEditWithdrawal } from "@/lib/reportEdits";
+import { shareLinkUrl } from "@/lib/share";
 import { useAuth } from "@/lib/useAuth";
 import { historyHref, stepHref } from "@/lib/wizardPages";
 
@@ -266,8 +268,16 @@ function ReportBody({
     const call = ++shareCall.current;
     setShare({ kind: "making" });
     try {
-      const answer = await pettyCashFetch<{ url: string }>(`/reports/${encodeURIComponent(report.report_id)}/share-link`, { method: "POST" });
-      if (call === shareCall.current) setShare({ kind: "ready", url: answer.url });
+      const answer = await pettyCashFetch<{ path?: string }>(`/reports/${encodeURIComponent(report.report_id)}/share-link`, { method: "POST" });
+      if (call !== shareCall.current) return;
+      // This app's public page (app/share), on this origin - never the API's `url` (Flask's page).
+      const url = shareLinkUrl(window.location.origin, answer.path);
+      if (url) setShare({ kind: "ready", url });
+      else {
+        // Loud, but never the answer itself: it holds the link's secret.
+        console.error("Share link: the Petty Cash API's answer had no usable path");
+        setShare({ kind: "failed", message: NO_LINK });
+      }
     } catch (err) {
       // A 401 has already gone back through the hand-off.
       if (call !== shareCall.current || (err instanceof ApiError && err.status === 401)) return;
@@ -335,17 +345,7 @@ function ReportBody({
       <PublishProgress state={publishing.state} onCheckAgain={publishing.begin} onRetry={canPublish ? () => setDialog("publish") : undefined} />
 
       {/* 15.7: exactly three KPIs - stacked on a phone, in a row from 640. Each value is read with its label. */}
-      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {reportKpis(report).map((kpi) => (
-          <div key={kpi.label} className="flex min-w-0 flex-col gap-1 rounded-xl border border-border-subtle bg-surface-card p-4">
-            <dt className="text-body-s text-text-secondary">{kpi.label}</dt>
-            <dd className="min-w-0 break-all text-title-l text-text-primary" translate="no">
-              {kpi.value}
-            </dd>
-            {kpi.meta ? <dd className="text-body-s text-text-muted">{kpi.meta}</dd> : null}
-          </div>
-        ))}
-      </dl>
+      <KpiCards kpis={reportKpis(report)} />
 
       {difference ? (
         // 15.7: the difference as a fact, not blame - Warning tone, in words, never a red number.
@@ -460,23 +460,10 @@ function ReportBody({
       </div>
 
       {/* The day's closing balance, plain text, never coloured - the server's figure. */}
-      <dl className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-xl bg-surface-sunk p-4 sm:px-6">
-        <dt className="min-w-0 text-title-m text-text-primary">Closing balance</dt>
-        <dd className="min-w-0 break-all text-right text-title-m text-text-primary" translate="no">
-          {signedMoney(report.closing_balance, code)}
-        </dd>
-        <dd className="basis-full text-body-s text-text-secondary">What the drawer and the safe box held at the end of the day.</dd>
-      </dl>
+      <ClosingBalance value={signedMoney(report.closing_balance, code)} />
 
       {/* Part 14 Audit meta, at the bottom (15.1: administrative facts never in the header). */}
-      <div className="flex flex-col gap-1 text-body-s text-text-muted">
-        {auditFacts(report).map((fact) => (
-          <p key={fact} className="flex min-w-0 items-start gap-1.5 break-words">
-            <Icon name="history" size="sm" className="mt-0.5" />
-            {fact}
-          </p>
-        ))}
-      </div>
+      <AuditFacts facts={auditFacts(report)} />
 
       {dialog === "edit" ? (
         <EditReportDialog report={dialogReport} entityId={entityId} entityName={entityName} onCancel={() => setDialog(null)} />
@@ -527,43 +514,9 @@ function ReportBody({
   );
 }
 
-/** A collapsed breakdown (15.7: "collapsible sections as disclosures") - a native disclosure. */
-function Disclosure({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <details className="group min-w-0 rounded-xl border border-border-subtle bg-surface-card">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-title-m text-text-primary hover:bg-state-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus sm:px-6 [&::-webkit-details-marker]:hidden">
-        <span className="min-w-0 break-words">{title}</span>
-        <Icon name="expand_more" size="lg" className="text-text-secondary transition-transform group-open:rotate-180 motion-reduce:transition-none" />
-      </summary>
-      <div className="flex min-w-0 flex-col gap-3 px-4 pb-4 sm:px-6 sm:pb-6">{children}</div>
-    </details>
-  );
-}
-
-function Rows({ children }: { children: ReactNode }) {
-  return <dl className="flex flex-col gap-2">{children}</dl>;
-}
-
 /**
- * A Description row: the term, then its value at the right - an amount wraps under the term
- * before it is ever clipped. A total is bold over a rule; `words` is a value in words ("None").
- */
-function Row({ label, value, total = false, words = false }: { label: string; value: string; total?: boolean; words?: boolean }) {
-  return (
-    <div className={`flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 ${total ? "border-t border-border-subtle pt-2" : ""}`}>
-      <dt className={`min-w-0 break-words text-body-m ${total ? "font-semibold text-text-primary" : "text-text-secondary"}`}>{label}</dt>
-      <dd
-        className={`min-w-0 text-right text-body-m text-text-primary ${words ? "break-words" : "break-all"} ${total ? "font-semibold" : ""}`}
-        translate="no"
-      >
-        {value}
-      </dd>
-    </div>
-  );
-}
-
-/**
- * Share - Flask's page's "Share this report": the read-only link (made by `POST share-link`) and
+ * Share - Flask's page's "Share this report": the read-only link (made by `POST share-link`: this
+ * app's public `/share/<path>`, Wave 2l) and
  * Copy link, which copies it and confirms with a toast. A link that can't be made shows the API's
  * sentence; a copy the browser refuses says so, and the link stays there to copy by hand.
  */

@@ -51,3 +51,15 @@ describe("logging out", () => {
     expect(go).toHaveBeenCalledWith("http://localhost:8000/logout");
   });
 });
+
+describe("the viewer's token", () => {
+  afterEach(() => window.history.replaceState(null, "", "/"));
+
+  it("is the cookie's on this app's pages, and none on the public share page (no profile read there)", () => {
+    setAuth("tok", ENTITY, "Olive & Vine");
+    window.history.replaceState(null, "", "/entity/360812e1/olive-and-vine/petty-cash");
+    expect(sidebarHost.currentToken()).toBe("tok");
+    window.history.replaceState(null, "", "/share/OV/13_Oct_2026/AbCdEfGhIjKlMnOpQrStUvWxYz012-_9");
+    expect(sidebarHost.currentToken()).toBe("");
+  });
+});

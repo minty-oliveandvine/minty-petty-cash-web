@@ -84,7 +84,7 @@ The sidebar's Bills still goes through Flask's `/entity/<id>/payment-request`: i
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the Daily Report's facts and warnings, its detail edits (what may be edited and when, the reason and supplier checks as typed, only the changed fields in the PATCH, the Xero notice, the toasts), the report history's rules (address and filters, the pager, "Showing a–b of n", the date range, Export CSV's request, file name and gate, a row's meta and actions), the settings rules (the country body, the sales-method list on the page, the name checks, the waiting changes and how Save sends them, stopping at a refusal), the Xero cards' rules (the mapping on the page from the read, typing, choosing and leaving a picker, the same-bank, not-in-the-list and empty checks and when each shows, the eight ids sent, a new contact's checks and where it is offered, the first save's toast; the account codes' search, Select all and its mixed state, the at-least-one rule and when the card changed), the Xero publish (how a status settles, a refused start and `reconnect`, the republish warning, the toast, and the poller: its interval, the cap, a retried read, a refusal, a 401, and nothing read after it is stopped), which history rows are watched on arrival, the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the Daily Report's facts and warnings, its detail edits (what may be edited and when, the reason and supplier checks as typed, only the changed fields in the PATCH, the Xero notice, the toasts), the report history's rules (address and filters, the pager, "Showing a–b of n", the date range, Export CSV's request, file name and gate, a row's meta and actions), the settings rules (the country body, the sales-method list on the page, the name checks, the waiting changes and how Save sends them, stopping at a refusal), the Xero cards' rules (the mapping on the page from the read, typing, choosing and leaving a picker, the same-bank, not-in-the-list and empty checks and when each shows, the eight ids sent, a new contact's checks and where it is offered, the first save's toast; the account codes' search, Select all and its mixed state, the at-least-one rule and when the card changed), the Xero publish (how a status settles, a refused start and `reconnect`, the republish warning, the toast, and the poller: its interval, the cap, a retried read, a refusal, a 401, and nothing read after it is stopped), which history rows are watched on arrival, the public share page (the Share dialog's link, the page's address, a read that sends nothing of the reader's, 404 / 410 / anything else, only the figures that arrived), the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -430,7 +430,6 @@ Against Flask's page, deliberately: Publish to Xero is on the report (Flask's re
 
 Not yet (no API):
 - **Download PDF** (15.7's header names it) and **revoking a share link** (15.7: "read-only and revocable").
-- **The shared (public) variant**: a share link still opens Flask's page.
 - **"Edited after submission"** (15.7's Info banner "Edited by … · see history"): the read carries no edit history.
 - **Charts** (15.7: optional) with their table alternative.
 
@@ -727,8 +726,55 @@ Known gaps of Wave 2k:
 - ~~The launch page's Setup Required and a deposit correction's missing accounts still link to Flask's settings page~~ - they open this app's settings at its Xero cards since 2026-10-16 ("No Flask pages").
 - **Flask's "couldn't refresh these lists from Xero" note** has no field in the read (`refresh_from_xero` logs and carries on), so the page can't say the lists may be stale.
 
+### Wave 2l: the public share page (Part 15.7, shared variant)
+
+A shared Daily Report no longer opens Flask's `/Minty_Report/<initials>/<day>/<secret>/` page (the user's rule: Flask becomes a backend only). This app serves it at **`/share/<initials>/<day>/<secret>`** (`app/share/[...path]/page.tsx`, `components/closing/SharedReport.tsx`, rules in `lib/share.ts`). Anyone with the link reads it without signing in.
+
+The API (the Petty Cash API, built in parallel; the specs stub it):
+- `POST /reports/<id>/share-link` (bearer) answers `{url, path, expires_at}`. `path` is `<initials>/<day>/<secret>`, in Flask's form: `OV/13_Oct_2026/<32 url-safe characters>`.
+- `GET /api/petty-cash/v1/public/share/<initials>/<day>/<secret>` (no auth) answers the report's figures: `company_name`, `transaction_date`, `currency_code`, `status_label` / `status_tone`, `kpis`, `sales`, `expenses.lines` (`item`, `supplier`, `remarks`, `amount`, `receipts: [{name}]`), `cash`, `closing_balance`, `submitted_at` / `submitted_by` and `expires_at`. Any of them may be left out.
+- A refusal is `{error}` with **404** (no such link) or **410** (expired).
+
+**The Share dialog** builds the link from the answer's `path` on this app's origin: `${window.location.origin}/share/${path}` (`shareLinkUrl`). It no longer reads the API's `url`. An answer with no usable path (not three url-safe parts) shows "We couldn't make the link. Check your connection, then try again." with Copy link disabled. It logs that the path was missing, never the answer.
+
+**The page**, in this app's look (Flask's `is_shared_link` branches of `report/ending.html`):
+1. A bare App bar: the Minty mark and the company. No back, no initials, no menu, no sidebar (Flask's `pc_bare`). Part 15 has no footer pattern for a public view, so there is none.
+2. "Daily Report" (the h1) with the API's Status pill, and under it the day and the company ("Tue 13 Oct 2026 · Olive & Vine", as Flask's).
+3. The KPIs, the difference as a Warning fact, Sales by method / Expenses (n) / Receipts (n) / Cash as collapsed disclosures, the closing balance, then the audit facts: "Submitted by … · <time>" and "This link works until <time>".
+4. **Nothing to do.** No Share, Publish, More, Edit or Delete, and none of the detail edits. A receipt is a File card with its name and expense and no View: a shared page never opens a receipt. The page has no link at all.
+5. **Only what arrived is drawn.** A missing KPI, row or section is left out, never shown as zero. Receipts shows only when a line carried `receipts`. An expense row is its description, then its supplier ("No supplier").
+
+The read-only parts are one implementation for both pages. `KpiCards`, `Disclosure`, `Rows`, `Row`, `ClosingBalance` and `AuditFacts` moved from `DailyReport.tsx` to `components/closing/ReportParts.tsx`. The rules are shared too: `lib/report.ts`'s `kpiCards`, `cashRowsOf` and `differenceAlertOf` take whichever figures arrived. `reportKpis`, `cashRows` and `differenceAlert` call them and return what they did before.
+
+Refusals are an Outcome state (15.7 "shared link expired") in Part 11's words, with no link and no API text:
+- **404**, or an address that is not a share link (not three url-safe parts; nothing is read): "This link doesn't work" / "It may be mistyped, or a newer link replaced it. Ask the person who shared it for a fresh link."
+- **410**: "This link has expired" / "Shared links work for a limited time. Ask the person who shared it for a fresh link."
+- Anything else (5xx, no answer, not JSON): "We couldn't open this report" / "Check your connection, then reload the page. If it keeps happening, ask for a fresh link." It is logged by its status alone.
+
+Security decisions (the secret is the address's last segment):
+- **Public by exactly one prefix.** `proxy.ts` lets `/share/...` through with no token and whatever cookie: no hand-off, no renewal, no company check. `/share` alone, `/shared/...`, `/sharex/...`, `/Share/...` and a `/share/../` path still go to the hand-off (`__tests__/proxy.test.ts`; `e2e/13_share.spec.ts` asks the server directly).
+- **Nothing of the reader's is sent.** The read is a plain `fetch` (`readSharedReport`), not `lib/apiClient.ts`: no Authorization even with this app's token in a cookie, `credentials: "omit"`, `referrerPolicy: "no-referrer"`, `cache: "no-store"`. The sidebar host gives no viewer token on a `/share/` page (`isSharePage`), so no `/api/me/profile` read is made there either.
+- **No referrer, no indexing.** The page's metadata is `<meta name="robots" content="noindex, nofollow">` and `<meta name="referrer" content="no-referrer">`. The proxy also answers `/share/...` with `Referrer-Policy: no-referrer` (it replaces the app-wide `same-origin`; checked on the dev server), `X-Robots-Tag: noindex, nofollow` and `Cache-Control: no-store` (the dev server overrides that last one with its own).
+- **No secret in logs or error text.** Nothing logs a URL, a path or an answer body. Refusals are this app's own sentences, never the API's.
+- **The path is checked before it is sent**: exactly three segments of `[A-Za-z0-9_-]`, so nothing else reaches the API.
+
+Files touched for this wave:
+- New: `app/share/[...path]/page.tsx`, `components/closing/SharedReport.tsx`, `components/closing/ReportParts.tsx`, `lib/share.ts`, `lib/__tests__/share.test.ts`, `e2e/13_share.spec.ts`.
+- `proxy.ts` and `__tests__/proxy.test.ts`; `components/closing/DailyReport.tsx` (the Share dialog's link, the parts moved out); `lib/report.ts` (the partial-figure rules); `components/ui/sidebarHost.ts` and its test; `e2e/08_daily_report.spec.ts` (Share's link is `<origin>/share/<path>`; an answer without a path).
+
+Against Flask's page, deliberately:
+- A refusal is an Outcome state on the page. Flask flashed and redirected to the company list, a sign-in page for a reader with no account.
+- Reading an expired link does not delete it here: that is the API's business.
+- The audit facts add until when the link works.
+
+Known gaps of Wave 2l:
+- **Revoking a link** (15.7: "read-only and revocable") has no API yet.
+- **Not checked against a real API.** The public route is being built in parallel; only the stubbed contract above is tested.
+- **The audit facts are on the reader's device clock**, as on the Daily Report.
+- In development React runs the read twice (Strict Mode); a build reads once.
+
 ## Not here yet
 
-The Daily Closing's five stages and its outcome page are this app's since Wave 2e, the Daily Report since Wave 2f (its detail edits since Wave 2i), the report history since Wave 2g, Petty Cash settings since Wave 2h (its Xero cards since Wave 2k), and Publish to Xero since Wave 2j. Connecting to Xero stays Flask's.
+The Daily Closing's five stages and its outcome page are this app's since Wave 2e, the Daily Report since Wave 2f (its detail edits since Wave 2i), the report history since Wave 2g, Petty Cash settings since Wave 2h (its Xero cards since Wave 2k), Publish to Xero since Wave 2j, and the public share page since Wave 2l. Connecting to Xero stays Flask's.
 
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

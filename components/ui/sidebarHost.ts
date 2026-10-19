@@ -19,6 +19,7 @@ import { clearAuth, getAuth, moduleClaims } from "@/lib/auth";
 import { pettyCashHome, settingsHref } from "@/lib/companyPages";
 import { env } from "@/lib/env";
 import { leaveTo } from "@/lib/handoff";
+import { isSharePage } from "@/lib/share";
 import { billsUrl, hubUrl, logoutUrl } from "@/lib/hub";
 import { historyHref } from "@/lib/wizardPages";
 
@@ -98,7 +99,11 @@ export const sidebarHost: SidebarHost = {
       leaveTo(logoutUrl());
     }),
 
-  currentToken: () => getAuth()?.token ?? "",
+  /**
+   * The public share page has no viewer: a signed-in person's token never leaves on it, so no
+   * profile read is made there (lib/share.ts).
+   */
+  currentToken: () => (typeof window !== "undefined" && isSharePage(window.location.pathname) ? "" : (getAuth()?.token ?? "")),
 
   /**
    * Flask's hub surface. DECORATION: a read that fails must never move the page, so a 401 only

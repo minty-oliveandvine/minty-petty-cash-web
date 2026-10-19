@@ -14,7 +14,9 @@ const BASE = `/entity/${companyRef(ENTITY, NAME)}/petty-cash`;
 const DAY = "2026-10-13";
 const REPORT = "5d6e7f80-0000-4000-8000-000000000001";
 const REPORT_URL = `${BASE}/reports/${REPORT}/summary`;
-const SHARE_URL = "http://localhost:5012/report/share/abc123secret";
+// The API's answer: `url` is Flask's old page, which the dialog no longer shows; `path` is this app's /share page.
+const SHARE_PATH = "EPCS/13_Oct_2026/AbCdEfGhIjKlMnOpQrStUvWxYz012-_9";
+const SHARE_ANSWER = { url: `http://localhost:5012/Minty_Report/${SHARE_PATH}/`, path: SHARE_PATH, expires_at: "2026-11-12T10:12:00+00:00" };
 const stageUrl = (path: string, day = DAY) => `${BASE}/reports/new/${path}?transaction_date=${day}`;
 const exact = (url: string) => new RegExp(`${url.replace(/[?.]/g, "\\$&")}$`);
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
@@ -144,7 +146,7 @@ async function stub(page: Page, answer: Json, { read, onReopen, onDelete, onShar
   await page.route(`${api}/reports/${REPORT}/share-link`, async (route) => {
     calls.shares += 1;
     if (onShare) await onShare(route);
-    else await route.fulfill({ json: { url: SHARE_URL } });
+    else await route.fulfill({ json: SHARE_ANSWER });
   });
   await page.route(`${api}/expense-lines/*/receipts/*`, (route) => {
     calls.receipts.push(new URL(route.request().url()).pathname.replace(/^.*\/companies\/[^/]+/, ""));
@@ -436,9 +438,10 @@ test("a refused delete shows the API's sentence inside the dialog, and the repor
   expect(calls.deletes).toBe(1);
 });
 
-test("Share makes the link; Copy link copies it and a toast confirms it", async ({ page, context }) => {
+test("Share makes the link - this app's /share page; Copy link copies it and a toast confirms it", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const calls = await openWith(page, reportAnswer());
+  const SHARE_URL = `${new URL(page.url()).origin}/share/${SHARE_PATH}`;
   await page.getByRole("button", { name: "Share" }).click();
   const dialog = page.getByRole("dialog", { name: "Share this report" });
   await expect(dialog).toContainText("Anyone with the link can read the Daily Report for Tue 13 Oct 2026, without signing in, until it expires.");
@@ -453,11 +456,25 @@ test("Share makes the link; Copy link copies it and a toast confirms it", async 
   await expect(toast).toHaveCount(0);
 });
 
+test("Share: an answer with no usable path shows no link and says so", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+  await openWith(page, reportAnswer(), { onShare: (route) => route.fulfill({ json: { url: SHARE_ANSWER.url, expires_at: SHARE_ANSWER.expires_at } }) });
+  await page.getByRole("button", { name: "Share" }).click();
+  const dialog = page.getByRole("dialog", { name: "Share this report" });
+  await expect(dialog.getByRole("alert").filter({ hasText: "We couldn't make the link. Check your connection, then try again." })).toHaveAttribute("data-tone", "danger");
+  await expect(dialog.getByRole("textbox", { name: "Link" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Copy link" })).toBeDisabled();
+  // said loudly on the console - never with the link's secret
+  expect(errors.some((e) => e.includes("no usable path"))).toBe(true);
+  expect(errors.join(" ")).not.toContain(SHARE_PATH.split("/")[2]);
+});
+
 test("Share: a link the API refuses shows its sentence; a copy the browser refuses leaves the link to copy by hand", async ({ page }) => {
   const why = "A draft can't be shared. Submit the day first.";
   let refuse = true;
   await openWith(page, reportAnswer(), {
-    onShare: (route) => (refuse ? route.fulfill({ status: 409, json: { error: why } }) : route.fulfill({ json: { url: SHARE_URL } })),
+    onShare: (route) => (refuse ? route.fulfill({ status: 409, json: { error: why } }) : route.fulfill({ json: SHARE_ANSWER })),
   });
   await page.getByRole("button", { name: "Share" }).click();
   const dialog = page.getByRole("dialog", { name: "Share this report" });
@@ -472,7 +489,7 @@ test("Share: a link the API refuses shows its sentence; a copy the browser refus
   await page.getByRole("button", { name: "Share" }).click();
   await dialog.getByRole("button", { name: "Copy link" }).click();
   await expect(dialog.getByRole("status").filter({ hasText: "We couldn't copy the link. Select it above, then copy it yourself." })).toHaveAttribute("data-tone", "warning");
-  await expect(dialog.getByRole("textbox", { name: "Link" })).toHaveValue(SHARE_URL);
+  await expect(dialog.getByRole("textbox", { name: "Link" })).toHaveValue(`${new URL(page.url()).origin}/share/${SHARE_PATH}`);
   await expect(page.locator("[data-toast-type]")).toHaveCount(0);
 });
 

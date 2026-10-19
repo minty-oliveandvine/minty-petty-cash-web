@@ -80,15 +80,26 @@ export function isDraft(report: DailyReport): boolean {
   return report.status === "draft";
 }
 
+export type Kpi = { label: string; value: string; meta: string | null };
+
 /** The three KPIs (15.7: exactly these), each a label, the server's figure and one line of meta. */
-export function reportKpis(report: DailyReport): { label: string; value: string; meta: string | null }[] {
-  const code = report.currency_code;
-  const count = report.expenses.lines.length;
-  return [
-    { label: "Total sales", value: formatMoney(report.kpis.total_sales, code), meta: null },
-    { label: "Total expenses", value: formatMoney(report.kpis.total_expenses, code), meta: `${count} ${count === 1 ? "expense" : "expenses"}` },
-    { label: "Cash position", value: signedMoney(report.kpis.cash_position, code), meta: "Counted, with the safe box" },
-  ];
+export function reportKpis(report: DailyReport): Kpi[] {
+  return kpiCards(report.kpis, report.expenses.lines.length, report.currency_code);
+}
+
+/**
+ * The KPI cards from whichever figures arrived - all three on the Daily Report, only those sent on
+ * a shared one (lib/share.ts). `expenseCount` null: the expenses' meta line is left out.
+ */
+export function kpiCards(kpis: Partial<DailyReport["kpis"]>, expenseCount: number | null, code: string | null): Kpi[] {
+  const cards: Kpi[] = [];
+  if (typeof kpis.total_sales === "number") cards.push({ label: "Total sales", value: formatMoney(kpis.total_sales, code), meta: null });
+  if (typeof kpis.total_expenses === "number") {
+    const meta = expenseCount === null ? null : `${expenseCount} ${expenseCount === 1 ? "expense" : "expenses"}`;
+    cards.push({ label: "Total expenses", value: formatMoney(kpis.total_expenses, code), meta });
+  }
+  if (typeof kpis.cash_position === "number") cards.push({ label: "Cash position", value: signedMoney(kpis.cash_position, code), meta: "Counted, with the safe box" });
+  return cards;
 }
 
 /**
@@ -96,10 +107,16 @@ export function reportKpis(report: DailyReport): { label: string; value: string;
  * stated as a fact, any cent counting (the owner, 2026-10-15) - or null when the count matched.
  */
 export function differenceAlert(report: DailyReport): { title: string; body: string } | null {
-  const diff = differenceOf(report.cash.difference.amount);
+  return differenceAlertOf(report.cash.difference, report.currency_code);
+}
+
+/** `differenceAlert` from the difference alone (a shared report's may come without its reason). */
+export function differenceAlertOf(difference: { amount?: number; reason?: string | null } | null | undefined, code: string | null): { title: string; body: string } | null {
+  if (typeof difference?.amount !== "number") return null;
+  const diff = differenceOf(difference.amount);
   if (diff.kind === "none") return null;
-  const reason = report.cash.difference.reason.trim();
-  return { title: `Cash was ${differenceText(diff, report.currency_code)}`, body: reason ? `Note: ${reason}` : "No reason was given." };
+  const reason = (difference.reason ?? "").trim();
+  return { title: `Cash was ${differenceText(diff, code)}`, body: reason ? `Note: ${reason}` : "No reason was given." };
 }
 
 /** An expense row's title: the account's name, as the Expenses stage shows it. */
@@ -120,27 +137,37 @@ export function reportReceipts(report: DailyReport): { line: ExpenseLine; receip
 /** Where the cash added came from, in the Addition to Drawer stage's words. */
 const ADDITION_SOURCE: Record<string, string> = { company: "Company bank", personal: "Personal" };
 
+export type CashRow = { label: string; value: string; total?: boolean; words?: boolean };
+
 /** The Cash section's rows, in the order the day ran; `total` is the last, bold row; `words` a value in words. */
-export function cashRows(report: DailyReport): { label: string; value: string; total?: boolean; words?: boolean }[] {
-  const code = report.currency_code;
-  const cash = report.cash;
-  const money = (amount: number) => formatMoney(amount, code);
-  const source = cash.cash_addition > 0 && cash.cash_addition_type ? (ADDITION_SOURCE[cash.cash_addition_type] ?? cash.cash_addition_type) : null;
-  return [
-    { label: "Starting cash balance", value: money(cash.opening_balance) },
-    { label: "Added to the drawer", value: money(cash.cash_addition) },
-    ...(source ? [{ label: "Where the cash came from", value: source, words: true }] : []),
-    { label: "Cash sales", value: money(cash.cash_sales) },
-    { label: "Expenses", value: money(cash.expenses) },
-    { label: "Cash taken for bank deposit", value: money(cash.bank_deposit) },
-    { label: "Expected in drawer", value: signedMoney(cash.expected, code) },
-    { label: "Counted in the drawer", value: money(cash.counted) },
-    { label: "In the safe box", value: money(cash.safe_box) },
-    { label: "Difference", value: differenceText(differenceOf(cash.difference.amount), code), total: true, words: true },
-  ];
+export function cashRows(report: DailyReport): CashRow[] {
+  return cashRowsOf(report.cash, report.currency_code);
 }
 
-function moment(iso: string | null): string | null {
+/** `cashRows` from whichever figures arrived: a figure a shared report leaves out has no row. */
+export function cashRowsOf(cash: Partial<DailyReport["cash"]>, code: string | null): CashRow[] {
+  const money = (amount: number) => formatMoney(amount, code);
+  const has = (n: unknown): n is number => typeof n === "number";
+  const added = cash.cash_addition;
+  const source = has(added) && added > 0 && cash.cash_addition_type ? (ADDITION_SOURCE[cash.cash_addition_type] ?? cash.cash_addition_type) : null;
+  const rows: (CashRow | null)[] = [
+    has(cash.opening_balance) ? { label: "Starting cash balance", value: money(cash.opening_balance) } : null,
+    has(added) ? { label: "Added to the drawer", value: money(added) } : null,
+    source ? { label: "Where the cash came from", value: source, words: true } : null,
+    has(cash.cash_sales) ? { label: "Cash sales", value: money(cash.cash_sales) } : null,
+    has(cash.expenses) ? { label: "Expenses", value: money(cash.expenses) } : null,
+    has(cash.bank_deposit) ? { label: "Cash taken for bank deposit", value: money(cash.bank_deposit) } : null,
+    has(cash.expected) ? { label: "Expected in drawer", value: signedMoney(cash.expected, code) } : null,
+    has(cash.counted) ? { label: "Counted in the drawer", value: money(cash.counted) } : null,
+    has(cash.safe_box) ? { label: "In the safe box", value: money(cash.safe_box) } : null,
+    has(cash.difference?.amount)
+      ? { label: "Difference", value: differenceText(differenceOf(cash.difference.amount), code), total: true, words: true }
+      : null,
+  ];
+  return rows.filter((row): row is CashRow => row !== null);
+}
+
+export function isoMoment(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const at = new Date(iso);
   return Number.isNaN(at.getTime()) ? null : momentText(at);
@@ -151,7 +178,7 @@ export function auditFacts(report: DailyReport): string[] {
   const facts: string[] = [];
   if (!isDraft(report)) {
     const by = report.submitted_by ? ` by ${report.submitted_by}` : "";
-    const at = moment(report.submitted_at);
+    const at = isoMoment(report.submitted_at);
     facts.push(`Submitted${by}${at ? ` · ${at}` : ""}`);
   }
   facts.push(xeroFact(report));
@@ -161,7 +188,7 @@ export function auditFacts(report: DailyReport): string[] {
 /** Where the report stands with Xero: "Sent to Xero · <when>", "Publishing to Xero", "Xero publish failed", "Not in Xero yet". */
 export function xeroFact(report: DailyReport): string {
   if (report.xero_integrated) {
-    const at = moment(report.published_at);
+    const at = isoMoment(report.published_at);
     return at ? `Sent to Xero · ${at}` : "Sent to Xero";
   }
   if (report.publishing_status === "publishing") return "Publishing to Xero";

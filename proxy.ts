@@ -13,6 +13,15 @@ import { handoffUrl } from "@/lib/handoff";
 const OPEN_PATHS = new Set(["/landing"]);
 
 /**
+ * The public share page, `/share/<initials>/<day>/<secret>` (app/share/[...path]): read without
+ * signing in, so it is let through with no token and whatever cookie - exactly this prefix, nothing
+ * else (__tests__/proxy.test.ts). The secret is in the address, so the answer also says: send no
+ * referrer, keep it out of search engines, never cache it (the page's metadata says the same).
+ */
+const SHARE_PREFIX = "/share/";
+const SHARE_HEADERS = { "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow", "Cache-Control": "no-store" };
+
+/**
  * A token this close to its `exp` is renewed on the way to the next page rather than lapsing in
  * the middle of one: a Daily Closing is long, and a lapse mid-stage costs the person a re-entry.
  */
@@ -31,6 +40,11 @@ export const RENEW_WITHIN_SECONDS = 5 * 60;
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   if (OPEN_PATHS.has(pathname)) return NextResponse.next();
+  if (pathname.startsWith(SHARE_PREFIX)) {
+    const res = NextResponse.next();
+    for (const [name, value] of Object.entries(SHARE_HEADERS)) res.headers.set(name, value);
+    return res;
+  }
 
   const origin = request.nextUrl.origin;
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;

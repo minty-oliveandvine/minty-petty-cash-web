@@ -83,3 +83,40 @@ describe("with a token", () => {
     expect(new URL(res.headers.get("location") ?? "").pathname).toBe(HOME);
   });
 });
+
+describe("the public share page (/share/<initials>/<day>/<secret>)", () => {
+  const SHARE = "/share/OV/13_Oct_2026/AbCdEfGhIjKlMnOpQrStUvWxYz012-_9";
+  const through = (res: Response) => res.headers.get("x-middleware-next") === "1";
+
+  it("opens without a token, and with any company's token, never renewing or redirecting", () => {
+    expect(through(proxy(request(SHARE)))).toBe(true);
+    expect(through(proxy(request(SHARE, signedIn(OTHER))))).toBe(true);
+    expect(through(proxy(request(SHARE, signedIn(ENTITY, 10))))).toBe(true);
+  });
+
+  it("tells the browser to send no referrer and search engines to keep out - the secret is in the address", () => {
+    const res = proxy(request(SHARE));
+    expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(res.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("makes nothing else public: every other page still needs a token", () => {
+    for (const path of [
+      "/share",
+      "/sharex/OV/13_Oct_2026/s",
+      "/shared/OV/13_Oct_2026/s",
+      "/Share/OV/13_Oct_2026/s",
+      "/landing/share/OV",
+      `/share/../${HOME.slice(1)}`,
+      `/share/%2e%2e/${HOME.slice(1)}`,
+      HOME,
+      `${HOME}/reports/r1/summary`,
+      "/",
+    ]) {
+      const res = proxy(request(path));
+      expect(res.status, path).toBe(307);
+      expect(new URL(res.headers.get("location") ?? "").pathname, path).toBe("/handoff/petty-cash-web");
+    }
+  });
+});

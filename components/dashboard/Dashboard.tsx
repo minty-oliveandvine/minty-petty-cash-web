@@ -11,6 +11,7 @@ import { AppBar } from "@/components/layout/AppBar";
 import { BeforeYouStartModal, DepositModal, SetupRequiredModal, type Confirmation } from "@/components/dashboard/DepositModals";
 import { StepProgress, type StepProgressStep } from "@/components/ui/StepProgress";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
+import { xeroSettingsHref } from "@/lib/companyPages";
 import { useAuth } from "@/lib/useAuth";
 import {
   notStartedProgress,
@@ -33,12 +34,11 @@ import {
   type Launch,
 } from "@/lib/dashboard";
 import { formatWeekdayDay, formatWeekdayShort, savedText } from "@/lib/dates";
-import { resumeUrl, settingsUrl } from "@/lib/flaskPages";
 import { takeFlash, type FlashKind } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
 import { formatMoney } from "@/lib/money";
 import { takeStartRequest } from "@/lib/outcome";
-import { historyHref, isPorted, reportHref, stepHref } from "@/lib/wizardPages";
+import { historyHref, reportHref, resumeHref, stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const READ_ONLY = "Read-only access";
@@ -57,8 +57,8 @@ const FLASH_TONE = { error: "danger", warning: "warning", success: "success", in
  * day is unfinished, and the recent reports. No calendar, no Quick Actions, no KPIs (15.6).
  * Its rules live in lib/dashboard.ts and lib/dailyClosing.ts; what it reads is `GET /home`. The
  * stages, the Daily Report and the report history it opens are this app's. Its two settings links
- * (Setup Required, a deposit correction's missing accounts) name Xero mappings, so they go to
- * Flask's settings page, where the Xero parts stay (lib/flaskPages.ts).
+ * (Setup Required, a deposit correction's missing accounts) name Xero mappings, so they open this
+ * app's settings at its Xero cards (`xeroSettingsHref`) - never a Flask page.
  */
 export function Dashboard() {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -261,7 +261,7 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
             currencyCode={code}
             blockedBy={home.latest.deposit_correction_missing_settings}
             mayCorrect={home.permissions.correct_deposit}
-            settingsHref={settingsUrl(entityId)}
+            settingsHref={xeroSettingsHref(entityId, entityName)}
             busy={busy}
             problem={correctionProblem}
             onProceed={proceed}
@@ -281,7 +281,7 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
         </>
       ) : null}
 
-      <SetupRequiredModal open={!home.xero_settings.complete} missing={home.xero_settings.missing} settingsHref={settingsUrl(entityId)} />
+      <SetupRequiredModal open={!home.xero_settings.complete} missing={home.xero_settings.missing} settingsHref={xeroSettingsHref(entityId, entityName)} />
     </>
   );
 }
@@ -337,17 +337,13 @@ function ClosingCard({
   const title = launch.day === today ? "Today's Daily Closing" : `Daily Closing · ${formatWeekdayShort(launch.day)}`;
 
   // Done and current stages open where they were left (Part 14: free navigation) - this app's
-  // own stage page once it is redesigned, Flask's wizard until then; never for read-only.
+  // own stage page; never for read-only.
   const stageHref = (index: number): string | undefined => {
     if (readOnly || launch.kind !== "in-progress") return undefined;
     return stepHref(entityId, entityName, stageSection(STAGES[index], launch.draft.current_section), launch.day);
   };
-  // Continue: Flask's resume opens the report's section, or `opening` when it has none - this
-  // app's own stage page when that section is redesigned (every stage since Wave 2e, Close included).
-  const resumeHref = (draft: NonNullable<Home["draft"]>, day: string): string => {
-    const section = draft.current_section ?? "opening";
-    return isPorted(section) ? stepHref(entityId, entityName, section, day) : resumeUrl(entityId, day);
-  };
+  // Continue: the report's section's stage in this app, or Addition to Drawer when it has none.
+  const continueHref = (draft: NonNullable<Home["draft"]>, day: string): string => resumeHref(entityId, entityName, draft.current_section, day);
   const steps: StepProgressStep[] = progress.stages.map(({ stage, state }, i) => ({ label: stage.short, state, href: stageHref(i) }));
 
   const reason = readOnly ? READ_ONLY : blockedBy ? `Finish ${formatWeekdayShort(blockedBy)} first.` : null;
@@ -358,7 +354,7 @@ function ClosingCard({
         View report
       </Link>
     ) : launch.kind === "in-progress" ? (
-      <Button kind="primary" className="w-full sm:w-auto" disabled={readOnly} onClick={() => leaveTo(resumeHref(launch.draft, launch.day))}>
+      <Button kind="primary" className="w-full sm:w-auto" disabled={readOnly} onClick={() => leaveTo(continueHref(launch.draft, launch.day))}>
         Continue Daily Closing
       </Button>
     ) : (

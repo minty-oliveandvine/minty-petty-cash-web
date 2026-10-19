@@ -1,7 +1,7 @@
 // The Daily Report of a submitted day (components/closing/DailyReport.tsx, Part 15.7), against a
 // STUBBED Petty Cash API. Needs only `npm run dev`. The pages it opens are this app's own (stubbed
-// quietly); Flask's pages (Publish to Xero, by the company's full id) are caught, so nothing
-// leaves the app. Refusals are inline alerts, never toasts; the one toast is Share's "copied".
+// quietly); Flask's pages (by the company's full id) are caught, so nothing leaves the app.
+// Publishing itself is e2e/12_publish.spec.ts. Refusals are inline alerts, never toasts; the one toast is Share's "copied".
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
@@ -155,7 +155,7 @@ async function stub(page: Page, answer: Json, { read, onReopen, onDelete, onShar
       json: {
         report_id: REPORT, transaction_date: DAY, currency_code: "HKD", company_name: NAME, status: "submitted", submitted: true,
         submitted_at: "2026-10-13T10:12:00+00:00", submitted_by: "Olive", cash_counted: 760, difference: { amount: -20, kind: "short", has_reason: true },
-        xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false }, can_publish: true, is_today: false, next_day: "2026-10-14",
+        xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false, was_published: false }, can_publish: true, is_today: false, next_day: "2026-10-14",
       },
     }),
   );
@@ -255,9 +255,9 @@ test("the view: header and pill, three KPIs, the difference as a fact, the break
   // amounts are plain text, never coloured
   for (const term of ["Cash position", "Closing balance"]) await expect(value(page, term)).toHaveClass(/text-text-primary/);
 
-  // the actions: Share, Publish to Xero (Flask's page, not ported), More: Edit report / Delete report
+  // the actions: Share, Publish to Xero (in the app, e2e/12_publish.spec.ts), More: Edit report / Delete report
   await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Publish to Xero" })).toHaveAttribute("href", new RegExp(`/entity/${ENTITY}/petty-cash/reports/${REPORT}/submitted$`));
+  await expect(page.getByRole("button", { name: "Publish to Xero" })).toBeVisible();
   await more(page).click();
   const menu = page.getByRole("menu", { name: "More report actions" });
   // (the text carries each icon's ligature first)
@@ -274,19 +274,15 @@ test("a published report: Published to Xero in Success, Sent to Xero with its ti
   await openWith(page, reportAnswer(PUBLISHED));
   await expect(page.locator("main [data-tone]").filter({ hasText: "Published to Xero" }).first()).toHaveAttribute("data-tone", "success");
   await expect(page.getByText("Sent to Xero · Tue 13 Oct 2026, 6:15 pm")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Publish to Xero" })).toHaveCount(0);
-  await more(page).click();
-  const again = page.getByRole("menuitem", { name: "Publish to Xero again" });
-  await expect(again).toHaveAttribute("href", new RegExp(`/entity/${ENTITY}/petty-cash/reports/${REPORT}/submitted$`));
-  await again.click();
-  await expect(page).toHaveURL(new RegExp(`/entity/${ENTITY}/petty-cash/reports/${REPORT}/submitted$`));
-  await expect(page.getByText("Flask page")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Publish to Xero" })).toHaveCount(0);
+  await choose(page, "Publish to Xero again");
+  await expect(page.getByRole("alertdialog", { name: "Publish to Xero again?" })).toBeVisible();
 });
 
 test("each action shows only while the API allows it", async ({ page }) => {
   await openWith(page, reportAnswer({ permissions: { edit: false, delete: false, publish: false, share: false } }));
   await expect(page.getByRole("button", { name: "Share" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: /Publish/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Publish/ })).toHaveCount(0);
   await expect(more(page)).toHaveCount(0);
   // an earlier report may be shared, but not edited or deleted
   await page.unroute(new RegExp(`/api/petty-cash/v1/companies/[^/]+/reports/${REPORT}$`));
@@ -487,7 +483,7 @@ test("a reopened report says it isn't submitted yet, with the way back to Close 
   await expect(banner).toContainText("Check the day in Close, then submit it.");
   await expect(banner.getByRole("link", { name: "Go to Close" })).toHaveAttribute("href", stageUrl("ending"));
   await expect(page.getByRole("button", { name: "Share" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: /Publish/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Publish/ })).toHaveCount(0);
   await expect(more(page)).toHaveCount(0);
 });
 

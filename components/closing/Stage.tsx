@@ -15,10 +15,9 @@ import { sanitizeMoney, groupMoney } from "@/lib/currencyInput";
 import { stageOf, stageSection, stagesOnPage, type StageKey } from "@/lib/dailyClosing";
 import { formatWeekdayDay } from "@/lib/dates";
 import { setFlash, takeFlash, type FlashKind } from "@/lib/flash";
-import type { WizardStep } from "@/lib/flaskPages";
 import { leaveTo } from "@/lib/handoff";
 import { useAuth } from "@/lib/useAuth";
-import { isPorted, outcomeHref, stepHref } from "@/lib/wizardPages";
+import { outcomeHref, stepHref, type WizardStep } from "@/lib/wizardPages";
 
 /**
  * What every Daily Closing stage page shares (Part 15.9 / 15.15): the frame (App bar, a centred
@@ -265,11 +264,9 @@ export function useLeaveHold(dirty: boolean, saving: boolean) {
 
 type Push = (href: string) => void;
 
-/** Open a section of the day's report: in this app when it is redesigned, else Flask's page. */
+/** Open a section of the day's report - every one is this app's own stage page. */
 export function openStep(push: Push, entityId: string, entityName: string, step: WizardStep, day: string) {
-  const href = stepHref(entityId, entityName, step, day);
-  if (isPorted(step)) push(href);
-  else leaveTo(href);
+  push(stepHref(entityId, entityName, step, day));
 }
 
 /**

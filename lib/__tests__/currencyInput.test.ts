@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
-import { isPorted, outcomeHref, reportHref, stepHref } from "@/lib/wizardPages";
+import { isWizardStep, outcomeHref, reportHref, resumeHref, stepHref } from "@/lib/wizardPages";
 
 describe("money inputs (Flask's currency.js)", () => {
   it.each([
@@ -69,8 +69,18 @@ describe("step addresses", () => {
     expect(reportHref(ID, "Olive & Vine", "a/b")).toBe("/entity/360812e1/olive-and-vine/petty-cash/reports/a%2Fb/summary");
   });
 
-  it("know which steps are this app's own - and that a key that is no step is not", () => {
-    expect(["opening", "sales", "expenses", "deposit", "cash_count", "ending"].filter(isPorted)).toEqual(["opening", "sales", "expenses", "deposit", "cash_count", "ending"]);
-    expect(isPorted("constructor")).toBe(false);
+  it("know the report's sections - and that a key that is no section is not", () => {
+    expect(["opening", "sales", "expenses", "deposit", "cash_count", "ending"].filter(isWizardStep)).toEqual(["opening", "sales", "expenses", "deposit", "cash_count", "ending"]);
+    expect(isWizardStep("constructor")).toBe(false);
+    expect(isWizardStep("review")).toBe(false);
+  });
+
+  it("continue a draft at its section's stage in this app, Addition to Drawer when it names none - never a Flask page", () => {
+    expect(resumeHref(ID, "Olive & Vine", "expenses", "2026-10-14")).toBe("/entity/360812e1/olive-and-vine/petty-cash/reports/new/expense?transaction_date=2026-10-14");
+    expect(resumeHref(ID, "Olive & Vine", "deposit", "2026-10-14")).toBe("/entity/360812e1/olive-and-vine/petty-cash/reports/new/cash-count?transaction_date=2026-10-14");
+    expect(resumeHref(ID, "Olive & Vine", "ending", "2026-10-14")).toBe("/entity/360812e1/olive-and-vine/petty-cash/reports/new/ending?transaction_date=2026-10-14");
+    for (const none of [null, "", "review"]) {
+      expect(resumeHref(ID, "Olive & Vine", none, "2026-10-14")).toBe("/entity/360812e1/olive-and-vine/petty-cash/reports/new/opening?transaction_date=2026-10-14");
+    }
   });
 });

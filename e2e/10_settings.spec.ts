@@ -1,6 +1,7 @@
 // Petty Cash settings (components/settings/PettyCashSettings.tsx, Part 15.20 / 15.20b), against a
 // STUBBED Petty Cash API that applies each change the way Flask's does. Needs only `npm run dev`.
-// Flask's own settings page (the Xero parts) is caught, so nothing leaves the app. Refusals are
+// Connecting Xero is minty-web's Entity & Integration, through Flask's hand-off (caught) - never a
+// Flask page. Refusals are
 // inline alerts, never toasts; a save that went through is a toast.
 
 import { expect, test, type Page, type Request, type Route } from "@playwright/test";
@@ -55,25 +56,112 @@ function settings(over: Partial<State> = {}): State {
   };
 }
 
+// --- The Xero cards' read (`GET /settings/xero`) -------------------------------------------------
+
+type Option = { id: string; name: string; code?: string };
+type XeroField = { key: string; label: string; kind: "account" | "contact"; options: Option[]; selected: string | null };
+type XeroState = {
+  live: boolean;
+  organisation: string | null;
+  mapping: XeroField[] | null;
+  mapping_saved: boolean;
+  account_codes: { code: string; name: string; selected: boolean }[] | null;
+  permissions: { edit_mapping: boolean; edit_account_codes: boolean };
+};
+
+const BANKS: Option[] = [{ id: "b-pc", name: "Petty Cash", code: "091" }, { id: "b-hsbc", name: "HSBC Current", code: "" }];
+const CONTACTS: Option[] = [{ id: "c-cash", name: "Cash Customer" }, { id: "c-olive", name: "Olive Tan" }];
+const REVENUE: Option[] = [{ id: "a-200", name: "Sales", code: "200" }, { id: "a-260", name: "Other Revenue", code: "260" }];
+const OWNERS: Option[] = [{ id: "a-880", name: "Owner Funds Introduced", code: "880" }, { id: "a-881", name: "Director Loan", code: "881" }];
+const COSTS: Option[] = [{ id: "a-429", name: "General Expenses", code: "429" }, { id: "a-480", name: "Cash Discrepancy", code: "480" }];
+/** Flask's labels and order (`xero_mapping.FIELDS`), each with its options and saved choice. */
+const FIELDS: [string, string, "account" | "contact", Option[], string][] = [
+  ["main_bank", "Petty Cash Account", "account", BANKS, "b-pc"],
+  ["deposit_bank", "Deposit Bank Account", "account", BANKS, "b-hsbc"],
+  ["cashsale_account", "Cash Sales account code", "account", REVENUE, "a-200"],
+  ["cashsale_contact", "Cash Sales contact", "contact", CONTACTS, "c-cash"],
+  ["owners_account", "Director Personal Account code", "account", OWNERS, "a-880"],
+  ["owners_contact", "Director / Responsible person", "contact", CONTACTS, "c-olive"],
+  ["discrepancy_account", "Discrepancy account code", "account", COSTS, "a-480"],
+  ["discrepancy_contact", "Discrepancy contact", "contact", CONTACTS, "c-olive"],
+];
+const SAVED_IDS = Object.fromEntries(FIELDS.map(([key, , , , id]) => [key, id]));
+const XERO_ALL = { edit_mapping: true, edit_account_codes: true };
+
+/** A live company's read: saved (every choice made) or not saved yet. */
+function xeroRead(saved = true, over: Partial<XeroState> = {}): XeroState {
+  return {
+    live: true,
+    organisation: "E2E Demo Org",
+    mapping: FIELDS.map(([key, label, kind, options, id]) => ({ key, label, kind, options, selected: saved ? id : null })),
+    mapping_saved: saved,
+    account_codes: [
+      { code: "400", name: "Advertising", selected: false },
+      { code: "429", name: "General Expenses", selected: true },
+      { code: "453", name: "Office Expenses", selected: false },
+    ],
+    permissions: XERO_ALL,
+    ...over,
+  };
+}
+
+const NOT_LIVE: XeroState = { live: false, organisation: null, mapping: null, mapping_saved: false, account_codes: null, permissions: XERO_ALL };
+
 type Call = { method: string; path: string; body: Json | null };
 /** Refuse a call: return [status, sentence], or null to let it through. */
 type Refuse = (call: Call) => [number, string] | null;
+/** How often this test's page asked for the Xero read (one test at a time per worker). */
+let xeroReads = 0;
 
-/** The settings routes over one state, applied as Flask does; every call is recorded. */
-async function stub(page: Page, start: State, refuse: Refuse = () => null): Promise<Call[]> {
+/**
+ * The settings routes over one state, applied as Flask does; every write is recorded. The Xero
+ * read is `xero` (not live by default), or `[status, sentence]` for a refused read. New contacts
+ * (`POST /suppliers`) are made here too - nothing reaches Xero.
+ */
+async function stub(page: Page, start: State, refuse: Refuse = () => null, xero: XeroState | [number, string] = NOT_LIVE): Promise<Call[]> {
   const state: State = structuredClone(start);
+  const xstate: XeroState | null = Array.isArray(xero) ? null : structuredClone(xero);
   const calls: Call[] = [];
+  xeroReads = 0;
   let next = 0;
   const answer = (route: Route, message: string, status = 200) => route.fulfill({ status, json: { ...structuredClone(state), message } });
+
+  await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/suppliers$/, async (route) => {
+    const call: Call = { method: route.request().method(), path: "/suppliers", body: route.request().postDataJSON() ?? null };
+    calls.push(call);
+    const no = refuse(call);
+    if (no) return route.fulfill({ status: no[0], json: { error: no[1] } });
+    next += 1;
+    const made = { id: `c-new${next}`, name: String(call.body?.name) };
+    // Kept as a synced contact: the read offers it in every contact field from now on.
+    if (xstate?.mapping) xstate.mapping = xstate.mapping.map((f) => (f.kind === "contact" ? { ...f, options: [...f.options, made] } : f));
+    return route.fulfill({ status: 201, json: made });
+  });
 
   await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/(settings|sales-methods)(\/.*)?$/, async (route) => {
     const req = route.request();
     const path = new URL(req.url()).pathname.replace(/^.*\/companies\/[^/]+/, "");
     if (req.method() === "GET" && path === "/settings") return route.fulfill({ json: structuredClone(state) });
+    if (req.method() === "GET" && path === "/settings/xero") {
+      xeroReads += 1;
+      return xstate ? route.fulfill({ json: structuredClone(xstate) }) : route.fulfill({ status: (xero as [number, string])[0], json: { error: (xero as [number, string])[1] } });
+    }
     const call: Call = { method: req.method(), path, body: req.postDataJSON() ?? null };
     calls.push(call);
     const no = refuse(call);
     if (no) return route.fulfill({ status: no[0], json: { error: no[1] } });
+    if (path === "/settings/xero/mapping" && xstate) {
+      const firstSave = !xstate.mapping_saved;
+      xstate.mapping = xstate.mapping!.map((f) => ({ ...f, selected: String(call.body?.[f.key] ?? "") || null }));
+      xstate.mapping_saved = true;
+      return route.fulfill({ json: { ...structuredClone(xstate), message: "Xero account mapping saved.", first_save: firstSave } });
+    }
+    if (path === "/settings/xero/account-codes" && xstate) {
+      const codes = (call.body?.codes ?? []) as string[];
+      if (!codes.length) return route.fulfill({ status: 422, json: { error: "Pick at least one account code." } });
+      xstate.account_codes = xstate.account_codes!.map((c) => ({ ...c, selected: codes.includes(c.code) }));
+      return route.fulfill({ json: { ...structuredClone(xstate), message: "Account codes saved." } });
+    }
     const body = (call.body ?? {}) as { type?: Kind; name?: string; sale_info_id?: string; method_ids?: string[]; country_code?: string; currency_id?: string };
     if (path === "/settings/country") {
       if (body.country_code) state.country = { ...state.country, country_code: body.country_code, currency_id: body.currency_id ?? "cur-sgd", selected_country: "Singapore", selected_currency: "SGD" };
@@ -100,8 +188,8 @@ async function stub(page: Page, start: State, refuse: Refuse = () => null): Prom
     return answer(route, call.method === "DELETE" ? "Method removed. Reports that used it keep their amounts." : "Name saved.");
   });
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's settings page (the Xero parts, by the company's full id): caught.
-  await page.route(/\/entity\/[0-9a-f-]{36}\/settings\/petty-cash$/, (route) => route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask settings</p>" }));
+  // Flask's hand-off to minty-web (Connect Xero): caught.
+  await page.route(/\/handoff\/minty-web\?/, (route) => route.fulfill({ contentType: "text/html", body: "<title>Hand-off</title><p>minty-web hand-off</p>" }));
   return calls;
 }
 
@@ -110,8 +198,8 @@ async function arrive(page: Page, next: string) {
   await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next })}`);
 }
 
-async function openWith(page: Page, start: State = settings(), refuse?: Refuse): Promise<Call[]> {
-  const calls = await stub(page, start, refuse);
+async function openWith(page: Page, start: State = settings(), refuse?: Refuse, xero?: XeroState | [number, string]): Promise<Call[]> {
+  const calls = await stub(page, start, refuse, xero);
   await arrive(page, SETTINGS);
   await expect(page.getByRole("heading", { level: 1, name: "Petty Cash settings" })).toBeVisible();
   await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
@@ -142,9 +230,12 @@ test("the read: both cards, the lists in order, each Save waiting for a change",
     await expect(save).toBeDisabled();
     await expect(save).toHaveAccessibleDescription("No changes to save yet.");
   }
-  // Xero is not connected: no Xero card.
-  await expect(page.getByRole("region", { name: "Xero" })).toHaveCount(0);
+  // Xero is not live: one Xero card (see below), no mapping or codes cards.
+  await expect(page.getByRole("region", { name: "Xero", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Xero account mapping" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Petty Cash account codes" })).toHaveCount(0);
   expect(calls).toEqual([]);
+  expect(xeroReads).toBe(1);
   await expectNoHorizontalScroll(page);
 });
 
@@ -375,15 +466,319 @@ test("a cashier sees the page read-only, each Save with its reason beside it", a
   }
 });
 
-test("while Xero is connected, one card links to Flask's page for the Xero parts", async ({ page }) => {
+// --- The Xero cards (Wave 2k) -------------------------------------------------------------------
+
+const mappingCard = (page: Page) => page.getByRole("region", { name: "Xero account mapping" });
+const codesCard = (page: Page) => page.getByRole("region", { name: "Petty Cash account codes" });
+const picker = (page: Page, label: string) => mappingCard(page).getByRole("combobox", { name: label });
+const saveOf = (card: ReturnType<typeof mappingCard>) => card.getByRole("button", { name: "Save", exact: true });
+const SAME = "The Petty Cash Account and the Deposit Bank Account can't be the same. Choose a different one for each.";
+const LABELS = FIELDS.map(([, label]) => label);
+
+/** Type into a picker and choose an option from its list. */
+async function choose(page: Page, label: string, typed: string, option: string) {
+  await picker(page, label).fill(typed);
+  await mappingCard(page).getByRole("option", { name: option }).click();
+}
+
+test("Xero not live: one card linking through the hand-off to minty-web's Entity & Integration, where Xero is connected", async ({ page }) => {
   await openWith(page, settings({ xero_connected: true }));
-  const card = page.getByRole("region", { name: "Xero" });
-  await expect(card).toContainText("The Xero account mapping and the Petty Cash account codes are set on the Xero settings page");
-  const link = card.getByRole("link", { name: "Go to Xero settings" });
-  await expect(link).toHaveAttribute("href", new RegExp(`/entity/${ENTITY}/settings/petty-cash$`));
+  const card = page.getByRole("region", { name: "Xero", exact: true });
+  await expect(card).toContainText("Xero isn't connected for this company. Connect it in Entity & Integration");
+  const link = card.getByRole("link", { name: "Connect Xero in Entity & Integration" });
+  const href = new URL((await link.getAttribute("href"))!);
+  expect(href.pathname).toBe("/handoff/minty-web");
+  expect(href.searchParams.get("next")).toBe(`/entity/${companyRef(ENTITY, NAME)}/settings/integration`);
+  expect(href.searchParams.get("entity_id")).toBe(ENTITY);
   await expect(link).not.toHaveAttribute("target", /.+/);
   await link.click();
-  await expect(page.getByText("Flask settings")).toBeVisible();
+  await expect(page).toHaveURL(/\/handoff\/minty-web\?/);
+  await expect(page.getByText("minty-web hand-off")).toBeVisible();
+});
+
+test("Xero live: the mapping's eight choices in Flask's order with the saved ones, the codes ticked, read once", async ({ page }) => {
+  const calls = await openWith(page, settings({ xero_connected: true }), undefined, xeroRead());
+  // the order on the page: Country, the mapping, the sales methods, the codes (Flask's)
+  await expect(page.getByRole("main").getByRole("heading", { level: 2 })).toHaveText(["Country & currency", "Xero account mapping", "Sales methods", "Petty Cash account codes"]);
+  await expect(mappingCard(page)).toContainText("Xero organisation: E2E Demo Org");
+  await expect(mappingCard(page).getByRole("combobox")).toHaveCount(8);
+  for (const [i, label] of LABELS.entries()) {
+    const box = mappingCard(page).getByRole("combobox").nth(i);
+    await expect(box).toHaveAccessibleName(`${label} (required)`);
+    await expect(box).toHaveAttribute("aria-required", "true");
+  }
+  await expect(picker(page, "Petty Cash Account")).toHaveValue("091 — Petty Cash");
+  await expect(picker(page, "Deposit Bank Account")).toHaveValue("HSBC Current");
+  await expect(picker(page, "Cash Sales account code")).toHaveValue("200 — Sales");
+  await expect(picker(page, "Director / Responsible person")).toHaveValue("Olive Tan");
+  await expect(mappingCard(page).getByText("Not set up yet")).toHaveCount(0);
+  const codes = codesCard(page).getByRole("checkbox");
+  await expect(codes).toHaveCount(4);
+  await expect(codesCard(page).getByRole("checkbox", { name: "429 — General Expenses" })).toBeChecked();
+  await expect(codesCard(page).getByRole("checkbox", { name: "400 — Advertising" })).not.toBeChecked();
+  await expect(codesCard(page).getByText("1 of 3 picked")).toBeVisible();
+  for (const card of [mappingCard(page), codesCard(page)]) {
+    await expect(saveOf(card)).toBeDisabled();
+    await expect(saveOf(card)).toHaveAccessibleDescription("No changes to save yet.");
+  }
+  // the list opens with every option, the saved one marked
+  await picker(page, "Petty Cash Account").click();
+  await expect(mappingCard(page).getByRole("option")).toHaveCount(2);
+  await expect(mappingCard(page).getByRole("option", { name: "091 — Petty Cash" })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Escape");
+  await expect(mappingCard(page).getByRole("listbox")).toHaveCount(0);
+  expect(xeroReads).toBe(1);
+  expect(calls).toEqual([]);
+  await expectNoHorizontalScroll(page);
+});
+
+test("the mapping: a choice by typing, by keyboard and from the list, then Save sends the eight ids, with a toast", async ({ page }) => {
+  const calls = await openWith(page, settings({ xero_connected: true }), undefined, xeroRead());
+  // narrowed by code as typed, chosen with the keyboard
+  await picker(page, "Discrepancy account code").fill("42");
+  await expect(mappingCard(page).getByRole("option")).toHaveText([/429 — General Expenses$/]);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(picker(page, "Discrepancy account code")).toHaveValue("429 — General Expenses");
+  // by name, from the list
+  await choose(page, "Cash Sales contact", "oli", "Olive Tan");
+  // typed in full and left: that option
+  await picker(page, "Director Personal Account code").fill("director loan");
+  await picker(page, "Director Personal Account code").press("Tab");
+  await expect(picker(page, "Director Personal Account code")).toHaveValue("881 — Director Loan");
+  await expect(saveOf(mappingCard(page))).toBeEnabled();
+  await saveOf(mappingCard(page)).click();
+  await expect(toast(page)).toContainText("Xero account mapping saved.");
+  await expect(toast(page)).not.toContainText("can be published");
+  expect(calls).toEqual([
+    { method: "PUT", path: "/settings/xero/mapping", body: { ...SAVED_IDS, discrepancy_account: "a-429", cashsale_contact: "c-olive", owners_account: "a-881" } },
+  ]);
+  // the Discrepancy Bank Account is the API's: never sent
+  expect(Object.keys(calls[0].body!)).not.toContain("discrepancy_bank");
+  await expect(saveOf(mappingCard(page))).toHaveAccessibleDescription("No changes to save yet.");
+  await expect(picker(page, "Cash Sales contact")).toHaveValue("Olive Tan");
+});
+
+test("the mapping is checked as typed: the same bank at once, a name not in the list when left, an emptied choice at once", async ({ page }) => {
+  const calls = await openWith(page, settings({ xero_connected: true }), undefined, xeroRead());
+  await choose(page, "Deposit Bank Account", "petty", "091 — Petty Cash");
+  await expect(picker(page, "Deposit Bank Account")).toHaveAccessibleDescription(SAME);
+  await expect(picker(page, "Deposit Bank Account")).toHaveAttribute("aria-invalid", "true");
+  await expect(picker(page, "Petty Cash Account")).not.toHaveAttribute("aria-invalid", "true");
+
+  // not finished yet: said once the field is left
+  await picker(page, "Director / Responsible person").fill("Nobody");
+  await expect(picker(page, "Director / Responsible person")).not.toHaveAttribute("aria-invalid", "true");
+  await picker(page, "Director / Responsible person").press("Tab");
+  await expect(picker(page, "Director / Responsible person")).toHaveAccessibleDescription(
+    "Nobody isn't in the list. Choose the Director / Responsible person from the list.",
+  );
+
+  // a saved choice emptied: at once
+  await picker(page, "Cash Sales account code").fill("");
+  await expect(picker(page, "Cash Sales account code")).toHaveAccessibleDescription("The Cash Sales account code is still empty. Choose one from the list to save.");
+
+  // Save: three problems, the summary takes the focus and links to each; nothing is sent
+  await saveOf(mappingCard(page)).click();
+  const summary = mappingCard(page).getByRole("alert").filter({ hasText: "3 details need a look" });
+  await expect(summary).toBeFocused();
+  await expect(summary.getByRole("link")).toHaveText([
+    SAME,
+    "The Cash Sales account code is still empty. Choose one from the list to save.",
+    "Nobody isn't in the list. Choose the Director / Responsible person from the list.",
+  ]);
+  await summary.getByRole("link").first().click();
+  await expect(picker(page, "Deposit Bank Account")).toBeFocused();
+  expect(calls).toEqual([]);
+
+  // fixed: the messages clear as the choices are made
+  await choose(page, "Deposit Bank Account", "hsbc", "HSBC Current");
+  await expect(picker(page, "Deposit Bank Account")).not.toHaveAttribute("aria-invalid", "true");
+  await choose(page, "Director / Responsible person", "cash", "Cash Customer");
+  await choose(page, "Cash Sales account code", "260", "260 — Other Revenue");
+  await expect(summary).toHaveCount(0);
+});
+
+test("first use: nothing saved yet - a refused Save names each empty choice, then the first save says what it unlocks", async ({ page }) => {
+  const calls = await openWith(page, settings({ xero_connected: true }), undefined, xeroRead(false));
+  await expect(mappingCard(page).getByText("Not set up yet")).toBeVisible();
+  await expect(mappingCard(page)).toContainText("Daily Reports can be published to Xero once these choices are saved.");
+  // the red * from the start, and no field red before a Save
+  await expect(mappingCard(page).locator('[aria-invalid="true"]')).toHaveCount(0);
+  await expect(saveOf(mappingCard(page))).toHaveAccessibleDescription("No changes to save yet.");
+
+  await choose(page, "Petty Cash Account", "petty", "091 — Petty Cash");
+  await saveOf(mappingCard(page)).click();
+  const summary = mappingCard(page).getByRole("alert").filter({ hasText: "7 details need a look" });
+  await expect(summary).toBeFocused();
+  await expect(summary.getByRole("link").first()).toHaveText("The Deposit Bank Account is still empty. Choose one from the list to save.");
+  await expect(mappingCard(page).locator('input[aria-invalid="true"]')).toHaveCount(7);
+
+  for (const [label, typed, option] of [
+    ["Deposit Bank Account", "hsbc", "HSBC Current"],
+    ["Cash Sales account code", "200", "200 — Sales"],
+    ["Cash Sales contact", "cash", "Cash Customer"],
+    ["Director Personal Account code", "880", "880 — Owner Funds Introduced"],
+    ["Director / Responsible person", "olive", "Olive Tan"],
+    ["Discrepancy account code", "480", "480 — Cash Discrepancy"],
+  ]) {
+    await choose(page, label, typed, option);
+  }
+  // one problem left: Save moves the focus to it (no summary)
+  await saveOf(mappingCard(page)).click();
+  await expect(picker(page, "Discrepancy contact")).toBeFocused();
+  await expect(mappingCard(page).getByRole("alert").filter({ hasText: "details need a look" })).toHaveCount(0);
+  expect(calls).toEqual([]);
+
+  await choose(page, "Discrepancy contact", "olive", "Olive Tan");
+  await saveOf(mappingCard(page)).click();
+  await expect(toast(page)).toContainText("Xero account mapping saved. Daily Reports can be published to Xero now.");
+  await expect(mappingCard(page).getByText("Not set up yet")).toHaveCount(0);
+  expect(calls).toHaveLength(1);
+  expect(calls[0].body).toEqual(SAVED_IDS);
+});
+
+test("the mapping: each refusal from the API is said in the card, never a toast, and the choices stay", async ({ page }) => {
+  let refusal: [number, string] = [422, ""];
+  const calls = await openWith(page, settings({ xero_connected: true }), (call) => (call.path === "/settings/xero/mapping" ? refusal : null), xeroRead());
+  await choose(page, "Cash Sales contact", "olive", "Olive Tan");
+  const refusals: [number, string][] = [
+    [422, "Choose the Cash Sales contact."],
+    [422, SAME],
+    [422, "Choose the Cash Sales contact from the list."],
+    [409, "Some choices haven't synced from Xero yet: Cash Sales contact (c-olive). Try again once the Xero sync has finished."],
+    [409, "Xero isn't connected for this company. Connect it in the company's settings first."],
+    [403, "Only Accountants and Admins can change these."],
+  ];
+  for (const [i, r] of refusals.entries()) {
+    refusal = r;
+    await saveOf(mappingCard(page)).click();
+    await expect(mappingCard(page).getByRole("alert").filter({ hasText: r[1] })).toHaveAttribute("data-tone", "danger");
+    expect(calls).toHaveLength(i + 1);
+    await expect(picker(page, "Cash Sales contact")).toHaveValue("Olive Tan");
+    await expect(saveOf(mappingCard(page))).toBeEnabled();
+  }
+  await expect(toast(page)).toHaveCount(0);
+  // a new choice clears the old refusal
+  await choose(page, "Cash Sales contact", "cash", "Cash Customer");
+  await expect(mappingCard(page).getByRole("alert")).toHaveCount(0);
+});
+
+test("adding a contact: offered when no contact has the name, made with POST /suppliers, then chosen and offered everywhere", async ({ page }) => {
+  let refuseContact = true;
+  const calls = await openWith(
+    page,
+    settings({ xero_connected: true }),
+    (call) => (call.path === "/suppliers" && refuseContact ? [403, "You do not have permission to create contacts for this entity."] : null),
+    xeroRead(),
+  );
+  // a name a contact has (any case, extra spaces): no Add
+  await picker(page, "Cash Sales contact").fill("  olive   tan ");
+  await expect(mappingCard(page).getByRole("option", { name: /as a new contact/ })).toHaveCount(0);
+  // the account fields never offer it
+  await picker(page, "Cash Sales account code").fill("Walk-in");
+  await expect(mappingCard(page).getByRole("option", { name: /as a new contact/ })).toHaveCount(0);
+  await picker(page, "Cash Sales account code").fill("200 — Sales");
+  await picker(page, "Cash Sales account code").press("Tab");
+
+  await picker(page, "Cash Sales contact").fill("Walk-in Customer");
+  await mappingCard(page).getByRole("option", { name: "Add “Walk-in Customer” as a new contact" }).click();
+  const panel = mappingCard(page).getByRole("group", { name: "New contact" });
+  const name = panel.getByRole("textbox", { name: "Contact's name" });
+  await expect(name).toBeFocused();
+  await expect(name).toHaveValue("Walk-in Customer");
+  // checked as typed
+  await name.fill("olive tan");
+  await expect(name).toHaveAccessibleDescription("Olive Tan is already a contact. Choose it from the list.");
+  await name.fill("");
+  await panel.getByRole("button", { name: "Add contact" }).click();
+  await expect(name).toHaveAccessibleDescription("The contact's name is still empty. Add the name to continue.");
+  expect(calls).toEqual([]);
+  // refused by the API: said in the panel
+  await name.fill("Walk-in Customer");
+  await panel.getByRole("button", { name: "Add contact" }).click();
+  await expect(panel.getByRole("alert")).toContainText("You do not have permission to create contacts for this entity.");
+  refuseContact = false;
+  await name.press("Enter");
+
+  await expect(panel).toHaveCount(0);
+  await expect(picker(page, "Cash Sales contact")).toHaveValue("Walk-in Customer");
+  await expect(picker(page, "Cash Sales contact")).toBeFocused();
+  expect(calls.map((c) => c.body)).toEqual([{ name: "Walk-in Customer" }, { name: "Walk-in Customer" }]);
+  // offered in the other contact fields too
+  await picker(page, "Discrepancy contact").fill("walk");
+  await expect(mappingCard(page).getByRole("option", { name: "Walk-in Customer" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await picker(page, "Discrepancy contact").fill("Olive Tan");
+  await picker(page, "Discrepancy contact").press("Tab");
+
+  await saveOf(mappingCard(page)).click();
+  await expect(toast(page)).toContainText("Xero account mapping saved.");
+  expect(calls.at(-1)).toEqual({ method: "PUT", path: "/settings/xero/mapping", body: { ...SAVED_IDS, cashsale_contact: "c-new1" } });
+  await expect(picker(page, "Cash Sales contact")).toHaveValue("Walk-in Customer");
+});
+
+test("the account codes: tick, search and Select all, then Save sends the ticked codes, with a toast", async ({ page }) => {
+  const calls = await openWith(page, settings({ xero_connected: true }), undefined, xeroRead());
+  const card = codesCard(page);
+  await card.getByRole("checkbox", { name: "400 — Advertising" }).check();
+  await expect(card.getByText("2 of 3 picked")).toBeVisible();
+  await card.getByRole("searchbox", { name: "Search account codes" }).fill("office");
+  await expect(card.getByRole("checkbox")).toHaveCount(2);
+  await card.getByRole("checkbox", { name: "Select all shown" }).check();
+  await card.getByRole("searchbox", { name: "Search account codes" }).fill("");
+  await expect(card.getByRole("checkbox", { name: "Select all" })).toBeChecked();
+  await card.getByRole("searchbox", { name: "Search account codes" }).fill("zzz");
+  await expect(card.getByText("No code matches that search.")).toBeVisible();
+  await card.getByRole("searchbox", { name: "Search account codes" }).fill("");
+  // unsaved: leaving asks first
+  await page.getByRole("main").getByRole("link", { name: "Petty Cash" }).click();
+  await page.getByRole("alertdialog", { name: "Leave without saving?" }).getByRole("button", { name: "Go Back" }).click();
+
+  await saveOf(card).click();
+  await expect(toast(page)).toContainText("Account codes saved.");
+  expect(calls).toEqual([{ method: "PUT", path: "/settings/xero/account-codes", body: { codes: ["400", "429", "453"] } }]);
+  await expect(saveOf(card)).toHaveAccessibleDescription("No changes to save yet.");
+});
+
+test("the account codes: at least one stays picked - said beside the gated Save as it happens", async ({ page }) => {
+  const calls = await openWith(page, settings({ xero_connected: true }), (call) => (call.path === "/settings/xero/account-codes" ? [422, "Pick at least one account code."] : null), xeroRead());
+  const card = codesCard(page);
+  const rule = "No account code is picked. Pick at least one to save: an expense can use only the picked codes.";
+  await card.getByRole("checkbox", { name: "429 — General Expenses" }).uncheck();
+  await expect(saveOf(card)).toBeDisabled();
+  await expect(saveOf(card)).toHaveAccessibleDescription(rule);
+  await expect(card.getByText(rule)).toBeVisible();
+  await card.getByRole("checkbox", { name: "Select all" }).check();
+  await card.getByRole("checkbox", { name: "Select all" }).uncheck();
+  await expect(saveOf(card)).toHaveAccessibleDescription(rule);
+  await card.getByRole("checkbox", { name: "453 — Office Expenses" }).check();
+  await expect(saveOf(card)).toBeEnabled();
+  await expect(card.getByText(rule)).toHaveCount(0);
+  // the API's own 422, should it disagree: inline, never a toast
+  await saveOf(card).click();
+  await expect(card.getByRole("alert")).toContainText("Pick at least one account code.");
+  await expect(toast(page)).toHaveCount(0);
+  expect(calls).toEqual([{ method: "PUT", path: "/settings/xero/account-codes", body: { codes: ["453"] } }]);
+});
+
+test("a cashier sees the Xero cards read-only, each Save with its reason", async ({ page }) => {
+  const calls = await openWith(page, settings({ permissions: CASHIER, xero_connected: true }), undefined, xeroRead(true, { permissions: { edit_mapping: false, edit_account_codes: false } }));
+  await expect(mappingCard(page).getByRole("combobox")).toHaveCount(0);
+  await expect(mappingCard(page).getByRole("definition")).toHaveText(["091 — Petty Cash", "HSBC Current", "200 — Sales", "Cash Customer", "880 — Owner Funds Introduced", "Olive Tan", "480 — Cash Discrepancy", "Olive Tan"]);
+  await expect(codesCard(page).getByRole("checkbox")).toHaveCount(0);
+  await expect(codesCard(page).getByRole("list", { name: "Picked account codes" }).getByRole("listitem")).toHaveText([/429 — General Expenses$/]);
+  for (const card of [mappingCard(page), codesCard(page)]) {
+    await expect(saveOf(card)).toBeDisabled();
+    await expect(saveOf(card)).toHaveAccessibleDescription("Only Accountants and Admins can change these.");
+  }
+  expect(calls).toEqual([]);
+});
+
+test("a role that can't see the Xero settings is told so, and the other cards still work", async ({ page }) => {
+  await openWith(page, settings({ xero_connected: true }), undefined, [403, "You don't have permission to see these settings."]);
+  await expect(page.getByRole("region", { name: "Xero", exact: true })).toContainText("Your role can't see the Xero settings. Ask an Accountant or an Admin.");
+  await expect(countryCard(page).getByLabel("Country")).toHaveValue("HK");
 });
 
 test("unsaved changes ask before the page is left", async ({ page }) => {
@@ -429,11 +824,14 @@ test("the sidebar's Settings opens this page, and its way back is the launch pag
 
 test("long names are never clipped, and the page never scrolls sideways", async ({ page }) => {
   const long = "A delivery platform with a very long trading name Limited Hong Kong Branch Office";
-  await openWith(page, settings({ sales_methods: { electronic: [m("e1", "x".repeat(100))], delivery: [m("d1", long)] }, xero_connected: true }));
+  const xero = xeroRead();
+  xero.mapping![0].options = [{ id: "b-pc", name: `${long} Petty Cash`, code: "091" }, BANKS[1]];
+  await openWith(page, settings({ sales_methods: { electronic: [m("e1", "x".repeat(100))], delivery: [m("d1", long)] }, xero_connected: true }), undefined, xero);
   await page.evaluate(() => document.fonts.ready);
   const clipped = await page.evaluate(() =>
     Array.from(document.querySelectorAll("main p, main span, main a, main button, main label, main h2, main h3"))
-      .filter((el) => el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== "auto")
+      // (the screen-reader-only "(required)" is 1px wide by design)
+      .filter((el) => !el.classList.contains("sr-only") && el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== "auto")
       .map((el) => el.textContent),
   );
   expect(clipped).toEqual([]);

@@ -245,7 +245,7 @@ test("a report in Xero says first it will need publishing again, and comes back 
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(pill(page)).toContainText("Submitted");
-  await expect(page.getByRole("link", { name: "Publish to Xero" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Publish to Xero" })).toBeVisible();
 });
 
 test("where the cash came from is saved; a refusal stays in the dialog", async ({ page }) => {

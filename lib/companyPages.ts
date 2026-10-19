@@ -30,10 +30,18 @@ export function pettyCashHome(entityId: string, entityName: string): string {
 }
 
 /**
- * The company's Petty Cash settings (`/entity/<shortid>/<name>/settings/petty-cash`) - Flask's
- * address for the page, so a link into one app works in the other. The Xero parts stay on Flask's
- * page (`settingsUrl`, lib/flaskPages.ts).
+ * The company's Petty Cash settings (`/entity/<shortid>/<name>/settings/petty-cash`) - Flask's old
+ * address for the page, so an old link still lands. Connecting Xero is minty-web's Entity &
+ * Integration (`integrationUrl`, lib/hub.ts).
  */
 export function settingsHref(entityId: string, entityName: string): string {
   return `/entity/${companyRef(entityId, entityName)}/settings/petty-cash`;
+}
+
+/** The anchor of the settings page's Xero cards (the mapping, or "not connected"). */
+export const XERO_ANCHOR = "xero";
+
+/** The settings page at its Xero cards - where the account mapping and the account codes are set. */
+export function xeroSettingsHref(entityId: string, entityName: string): string {
+  return `${settingsHref(entityId, entityName)}#${XERO_ANCHOR}`;
 }

@@ -169,7 +169,7 @@ export function xeroFact(report: DailyReport): string {
   return "Not in Xero yet";
 }
 
-/** The Publish to Xero link's label - Flask's own page publishes (it is not ported). */
+/** Publish to Xero's label - "again" once the report is in Xero (components/closing/Publish.tsx publishes). */
 export function publishLabel(report: Pick<DailyReport, "xero_integrated">): string {
   return report.xero_integrated ? "Publish to Xero again" : "Publish to Xero";
 }

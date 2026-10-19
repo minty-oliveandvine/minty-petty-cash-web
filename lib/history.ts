@@ -8,10 +8,9 @@
  * pages on the server; this file never cuts a list itself. Amounts are plain text, never coloured.
  */
 
-import { resumeUrl } from "@/lib/flaskPages";
 import { formatMoney } from "@/lib/money";
 import { publishLabel } from "@/lib/report";
-import { isPorted, reportHref, stepHref } from "@/lib/wizardPages";
+import { reportHref, resumeHref } from "@/lib/wizardPages";
 
 export type PublishReason = { text: string; resolved: boolean };
 
@@ -31,6 +30,8 @@ export type HistoryRow = {
   submitted_by: string | null;
   submitted_at: string | null;
   published_at: string | null;
+  /** "publishing" | "completed" | "failed" | "unpublished", or null for a report never sent. */
+  publishing_status: string | null;
   /** It has been to Xero, even if edited since: Delete warns. */
   was_published: boolean;
   /** Why a failed publish failed, each still open or resolved since. Empty unless it failed. */
@@ -167,6 +168,24 @@ export function csvGate(f: Filters): string | null {
   return f.start && f.end ? null : "To export, choose both dates and select Show.";
 }
 
+/**
+ * Export CSV's request: `GET /reports/export.csv?start_date=&end_date=` (Minty
+ * `petty_cash_api/routes/history.py`), read with the bearer - the shown dates only.
+ */
+export function csvRequest(f: Filters): { path: string; query: { start_date: string; end_date: string } } {
+  return { path: "/reports/export.csv", query: { start_date: f.start, end_date: f.end } };
+}
+
+/** The file's name when the server's `Content-Disposition` could not be read - the name it gives (`reports_<start>_to_<end>.csv`). */
+export function csvFallbackName(f: Filters): string {
+  return `reports_${f.start}_to_${f.end}.csv`;
+}
+
+/** Export CSV's confirmation toast. */
+export function csvSavedMessage(filename: string): string {
+  return `Reports exported to ${filename}.`;
+}
+
 /** A row's meta line: "Expenses HKD240.50 · Submitted by Olive", or a draft's "Daily Closing in progress". */
 export function rowMeta(row: HistoryRow, code: string | null): string {
   if (row.status === "draft") return "Daily Closing in progress";
@@ -175,7 +194,7 @@ export function rowMeta(row: HistoryRow, code: string | null): string {
 }
 
 /**
- * A row's More menu: Publish (Flask's page; with `can_publish`, never on a draft - "again" once the
+ * A row's More menu: Publish (asked first, in the app; with `can_publish`, never on a draft - "again" once the
  * pill says Published to Xero, its only Success tone), Edit report and Delete report as the row's
  * `permissions` say.
  */
@@ -185,12 +204,20 @@ export function rowActions(row: HistoryRow, canPublish: boolean): { publish: str
 }
 
 /**
+ * The publish a row watches from the moment the list loads: one already "publishing" is read until
+ * it settles, like one started from the row. A failed row already carries its reasons, so it is
+ * not read again.
+ */
+export function watchedOnArrival(row: HistoryRow): "publishing" | null {
+  return row.publishing_status === "publishing" ? "publishing" : null;
+}
+
+/**
  * Where a row opens: a submitted report's Daily Report; a draft's own Daily Closing stage for its
- * day, where it was left - the launch page's Continue rule (`current_section`, or Addition to
- * Drawer when it names none; Flask's resume for a section this app does not know).
+ * day, where it was left - the launch page's Continue rule (`resumeHref`: `current_section`'s
+ * stage, or Addition to Drawer when it names none).
  */
 export function rowHref(row: HistoryRow, entityId: string, entityName: string): string {
   if (row.status !== "draft") return reportHref(entityId, entityName, row.id);
-  const section = row.current_section ?? "opening";
-  return isPorted(section) ? stepHref(entityId, entityName, section, row.transaction_date) : resumeUrl(entityId, row.transaction_date);
+  return resumeHref(entityId, entityName, row.current_section, row.transaction_date);
 }

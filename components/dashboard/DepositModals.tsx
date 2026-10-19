@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useState } from "react";
 
 import { Button, buttonClass, Field, InlineAlert, inputClass, Modal } from "@minty/shared/ui";
@@ -111,9 +112,9 @@ export function BeforeYouStartModal({
       {blocked ? (
         <InlineAlert tone="danger" title="Deposit cannot be corrected" className="mt-4">
           The following entity setting(s) are not configured: <strong>{blockedBy.join(", ")}</strong>. Configure them in{" "}
-          <a href={settingsHref} className="underline">
+          <Link href={settingsHref} className="underline">
             Settings → Petty Cash
-          </a>{" "}
+          </Link>{" "}
           before changing or removing this deposit.
         </InlineAlert>
       ) : null}
@@ -267,9 +268,9 @@ export function SetupRequiredModal({ open, missing, settingsHref }: { open: bool
       title="Setup Required"
       description="Please complete your entity settings before proceeding."
       footer={
-        <a href={settingsHref} className={buttonClass("primary")}>
+        <Link href={settingsHref} className={buttonClass("primary")}>
           Set Up Settings
-        </a>
+        </Link>
       }
     >
       <InlineAlert tone="warning" title="Missing Settings:">

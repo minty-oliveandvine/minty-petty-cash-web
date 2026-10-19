@@ -12,7 +12,7 @@
 import { signedMoney } from "@/lib/addition";
 import { differenceText, type Difference } from "@/lib/cashCount";
 import { stageOf } from "@/lib/dailyClosing";
-import type { WizardStep } from "@/lib/flaskPages";
+import type { WizardStep } from "@/lib/wizardPages";
 import type { OpeningPage } from "@/lib/opening";
 import { shownMethods, type SalesMethod } from "@/lib/sales";
 

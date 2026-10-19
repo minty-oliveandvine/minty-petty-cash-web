@@ -14,7 +14,7 @@ function outcome(over: Partial<Outcome> = {}): Outcome {
     submitted_by: "Olive",
     cash_counted: 6470,
     difference: { amount: -20, kind: "short", has_reason: true },
-    xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false },
+    xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false, was_published: false },
     can_publish: true,
     is_today: true,
     next_day: "2026-10-14",
@@ -41,12 +41,12 @@ describe("the outcome sentence and facts (15.12e)", () => {
 
   it("says whether the report reached Xero", () => {
     expect(xeroFact(outcome())).toBe("Not yet");
-    expect(xeroFact(outcome({ xero: { publishing_status: "publishing", published_at: null, xero_integrated: false } }))).toBe("Pending");
-    expect(xeroFact(outcome({ xero: { publishing_status: "failed", published_at: null, xero_integrated: false } }))).toBe("Not yet: it failed");
-    expect(xeroFact(outcome({ xero: { publishing_status: "completed", published_at: null, xero_integrated: true } }))).toBe("Yes");
+    expect(xeroFact(outcome({ xero: { publishing_status: "publishing", published_at: null, xero_integrated: false, was_published: false } }))).toBe("Pending");
+    expect(xeroFact(outcome({ xero: { publishing_status: "failed", published_at: null, xero_integrated: false, was_published: false } }))).toBe("Not yet: it failed");
+    expect(xeroFact(outcome({ xero: { publishing_status: "completed", published_at: null, xero_integrated: true, was_published: true } }))).toBe("Yes");
     // the time on the device's clock
     const at = new Date(2026, 9, 13, 18, 12);
-    expect(xeroFact(outcome({ xero: { publishing_status: "completed", published_at: at.toISOString(), xero_integrated: true } }))).toBe("Yes · 6:12 pm");
+    expect(xeroFact(outcome({ xero: { publishing_status: "completed", published_at: at.toISOString(), xero_integrated: true, was_published: true } }))).toBe("Yes · 6:12 pm");
   });
 
   it("offers the next day only for an earlier day's submitted report", () => {

@@ -17,6 +17,7 @@
  */
 
 import { getAuth } from "@/lib/auth";
+import { attachmentName } from "@/lib/download";
 import { env } from "@/lib/env";
 import { redirectToHandoff } from "@/lib/handoff";
 
@@ -139,6 +140,20 @@ export async function pettyCashBlob(path: string, init: ApiRequest = {}): Promis
     throw new ApiError(res.status, errorSentence(body) ?? HOUSE_FALLBACK, body);
   }
   return res.blob();
+}
+
+/**
+ * A file download from Petty Cash's API (Export CSV's `GET /reports/export.csv`) for the cookie's
+ * company: its bytes and the server's file name (`Content-Disposition`; null when the header is
+ * absent or the browser was not let read it). A refusal rejects with the API's sentence.
+ */
+export async function pettyCashDownload(path: string, init: ApiRequest = {}): Promise<{ blob: Blob; filename: string | null }> {
+  const res = await send(companyBase(), path, init, "*/*");
+  if (!res.ok) {
+    const body = await readBody(res);
+    throw new ApiError(res.status, errorSentence(body) ?? HOUSE_FALLBACK, body);
+  }
+  return { blob: await res.blob(), filename: attachmentName(res.headers.get("Content-Disposition")) };
 }
 
 /** Flask's hub surface (`/api/me/profile`); a company travels as `?entity=`. */

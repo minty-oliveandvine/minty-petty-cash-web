@@ -13,7 +13,7 @@
  */
 
 import type { Home } from "@/lib/dashboard";
-import type { WizardStep } from "@/lib/flaskPages";
+import type { WizardStep } from "@/lib/wizardPages";
 
 export type StageKey = "drawer" | "sales" | "expenses" | "cash_count" | "close";
 

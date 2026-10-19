@@ -75,7 +75,7 @@ function outcomeAnswer(over: Json = {}): Json {
     submitted_by: "Olive",
     cash_counted: 760,
     difference: { amount: -20, kind: "short", has_reason: true },
-    xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false },
+    xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false, was_published: false },
     can_publish: true,
     is_today: false,
     next_day: "2026-10-14",
@@ -277,9 +277,9 @@ test("Submit opens the outcome page with the server's facts - and a double click
   await expect(value(page, "Cash counted")).toHaveText("HKD760.00");
   await expect(value(page, "Difference")).toHaveText("HKD20.00 short · note added");
   await expect(value(page, "Sent to Xero")).toHaveText("Not yet");
-  // this app's own Daily Report (e2e/08_daily_report.spec.ts)
+  // this app's own Daily Report (e2e/08_daily_report.spec.ts); not in Xero yet, so Publish to Xero leads (e2e/12_publish.spec.ts)
   await expect(page.getByRole("link", { name: "View report" })).toHaveAttribute("href", `${BASE}/reports/${REPORT}/summary`);
-  await expect(page.getByRole("button", { name: /Publish/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Publish to Xero" })).toBeVisible();
   expect(submits).toEqual([{ transaction_date: DAY }]);
 });
 
@@ -417,13 +417,20 @@ test("Start the next day asks Before You Start first when the day banked cash", 
 
 test("today's outcome offers no next day; a pending publish is an Info line; Xero's time shows once it is in", async ({ page }) => {
   await stub(page, closeAnswer(), {
-    outcome: (route) => route.fulfill({ json: outcomeAnswer({ is_today: true, xero: { publishing_status: "publishing", published_at: null, xero_integrated: false } }) }),
+    outcome: (route) => route.fulfill({ json: outcomeAnswer({ is_today: true, xero: { publishing_status: "publishing", published_at: null, xero_integrated: false, was_published: false } }) }),
   });
+  // the page watches the publish it opened on (e2e/12_publish.spec.ts): still publishing
+  await page.route("**/api/petty-cash/v1/companies/*/reports/*/publishing-status", (route) =>
+    route.fulfill({
+      json: { report_id: REPORT, publishing_status: "publishing", status_label: "Publishing to Xero", status_tone: "info", xero_integrated: false, was_published: false, published_at: null, reasons: [] },
+    }),
+  );
   await arrive(page, OUTCOME_URL);
   await expect(page.getByRole("heading", { level: 1, name: "Today's report is submitted" })).toBeFocused();
   await expect(page.getByRole("button", { name: "Start the next day" })).toHaveCount(0);
   await expect(value(page, "Sent to Xero")).toHaveText("Pending");
-  await expect(page.getByRole("status").filter({ hasText: "Xero is still working on it" })).toHaveAttribute("data-tone", "info");
+  await expect(page.getByRole("status").filter({ hasText: "Publishing to Xero" })).toHaveAttribute("data-tone", "info");
+  await expect(page.getByRole("button", { name: /Publish/ })).toHaveCount(0);
 });
 
 test("an outcome the API doesn't know says so, with the way home", async ({ page }) => {

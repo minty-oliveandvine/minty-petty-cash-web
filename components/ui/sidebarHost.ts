@@ -18,7 +18,8 @@ import { mintyFetch } from "@/lib/apiClient";
 import { clearAuth, getAuth, moduleClaims } from "@/lib/auth";
 import { pettyCashHome, settingsHref } from "@/lib/companyPages";
 import { env } from "@/lib/env";
-import { leaveTo, withReturnOrigin } from "@/lib/handoff";
+import { leaveTo } from "@/lib/handoff";
+import { billsUrl, hubUrl, logoutUrl } from "@/lib/hub";
 import { historyHref } from "@/lib/wizardPages";
 
 /** This app's settings page: `/entity/<shortid>/<name>/settings/petty-cash` (Flask's address for it). */
@@ -27,16 +28,6 @@ const SETTINGS_PAGE = /^\/entity\/[^/]+\/[^/]+\/settings\/petty-cash\/?$/;
 function home(): string {
   const auth = getAuth();
   return auth?.entityId ? pettyCashHome(auth.entityId, auth.entityName) : "/";
-}
-
-/** A Flask address (accounts), naming this app as where to hand back to in a preview set. */
-function accounts(path: string): string {
-  return withReturnOrigin(`${env.ACCOUNTS_API_URL}${path}`);
-}
-
-/** minty-web's page `next`, through Flask's login-gated re-handoff. */
-function hub(next: string): string {
-  return accounts(`/handoff/minty-web?${new URLSearchParams({ next }).toString()}`);
 }
 
 export const sidebarHost: SidebarHost = {
@@ -49,13 +40,13 @@ export const sidebarHost: SidebarHost = {
 
   /**
    * Petty Cash's dashboard, Reports (the report history) and Settings are this app's own pages
-   * (Settings links on to Flask's page for the Xero parts). The entity list, Subscriptions and My Profile are
+   * (Settings links on to Flask's page to connect Xero). The entity list, Subscriptions and My Profile are
    * minty-web's, reached through Flask's hand-offs; Bills is the payments app, through Flask's
    * `/entity/<id>/payment-request` (which hands over with that app's own token).
    */
   links: {
-    entities: () => hub("/entities"),
-    subscriptions: () => hub("/subscription"),
+    entities: () => hubUrl("/entities"),
+    subscriptions: () => hubUrl("/subscription"),
     pettyCashDashboard: () => home(),
     pettyCashReports: (id) => {
       const auth = getAuth();
@@ -63,7 +54,7 @@ export const sidebarHost: SidebarHost = {
     },
     bills: () => {
       const id = getAuth()?.entityId;
-      if (id) return accounts(`/entity/${encodeURIComponent(id)}/payment-request`);
+      if (id) return billsUrl(id);
       // In a branch preview set, the same set's payments app.
       return `${siblingUrl(env.PAYMENT_REQUEST_WEB_URL, "payment-request", typeof window === "undefined" ? null : window.location.host)}/`;
     },
@@ -71,10 +62,9 @@ export const sidebarHost: SidebarHost = {
       const auth = getAuth();
       return auth?.entityId ? settingsHref(auth.entityId, auth.entityName) : "/";
     },
-    profile: () => {
-      const id = getAuth()?.entityId;
-      return accounts(id ? `/profile?${new URLSearchParams({ entity_id: id }).toString()}` : "/profile");
-    },
+    // minty-web's My Profile, scoped to the company it was opened from (Flask's `/profile` page
+    // only redirected there).
+    profile: () => hubUrl("/profile", getAuth()?.entityId || undefined),
   },
 
   /**
@@ -105,7 +95,7 @@ export const sidebarHost: SidebarHost = {
     guardLeave(() => {
       onLeaving?.();
       clearAuth();
-      leaveTo(`${env.ACCOUNTS_API_URL}/logout`);
+      leaveTo(logoutUrl());
     }),
 
   currentToken: () => getAuth()?.token ?? "",

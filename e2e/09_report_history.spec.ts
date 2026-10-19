@@ -1,7 +1,7 @@
 // Report history (components/history/ReportHistory.tsx, Part 15.4b), against a STUBBED Petty Cash
-// API. Needs only `npm run dev`. The pages it opens are this app's own (stubbed quietly); Flask's
-// pages (Publish to Xero, Export CSV, by the company's full id) are caught, so nothing leaves the
-// app. Refusals are inline alerts, never toasts; the one toast is a delete's.
+// API. Needs only `npm run dev`. The pages it opens are this app's own (stubbed quietly) - none is
+// a Flask page; Export CSV is the API's file (stubbed). Publishing itself is e2e/12_publish.spec.ts.
+// Refusals are inline alerts, never toasts; a delete and an export are confirmed with one.
 
 import { expect, test, type Page, type Request, type Route } from "@playwright/test";
 
@@ -30,6 +30,7 @@ function row(id: string, day: string, over: Json = {}): Json {
     submitted_by: "Olive",
     submitted_at: `${day}T18:12:00+08:00`,
     published_at: null,
+    publishing_status: "unpublished",
     was_published: false,
     publish_reasons: [],
     permissions: { edit: false, delete: false },
@@ -115,10 +116,6 @@ async function stub(page: Page, answer: Json, setup: Setup = {}): Promise<Calls>
   await page.route(`${api}/reports/opening**`, (route) => route.fulfill({ json: OPENING }));
   await page.route(`${api}/reports/expenses**`, (route) => route.fulfill({ json: EXPENSES }));
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's pages (Publish to Xero, Export CSV, by the company's full id): caught.
-  await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports(?:[/?]|$)/, (route) =>
-    route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
-  );
   return calls;
 }
 
@@ -302,7 +299,33 @@ test("the date range: one date alone is said only on Show; an end before the sta
   await expect(page).toHaveURL(exact(`${HISTORY}?start_date=2026-10-13&end_date=2026-10-13`));
 });
 
-test("Export CSV waits for both dates with its reason beside it, then is Flask's download of them", async ({ page }) => {
+const EXPORT = /\/api\/petty-cash\/v1\/companies\/[^/]+\/reports\/export\.csv(\?.*)?$/;
+
+/** Show 1 Oct - 13 Oct, so Export CSV is offered. */
+async function showRange(page: Page) {
+  await from(page).fill("2026-10-01");
+  await to(page).fill("2026-10-13");
+  await page.getByRole("button", { name: "Show" }).click();
+  await expect(page).toHaveURL(/start_date=2026-10-01&end_date=2026-10-13/);
+}
+
+test("Export CSV waits for both dates with its reason beside it, then saves the API's file under the server's name", async ({ page }) => {
+  const asked: Request[] = [];
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route(EXPORT, async (route) => {
+    asked.push(route.request());
+    await held; // the button's progress can be read meanwhile
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": "attachment; filename=reports_2026-10-01_to_2026-10-13.csv",
+        "Access-Control-Expose-Headers": "Content-Disposition",
+      },
+      body: "Date,Account Code,Amount,Description,Reference,Check Number\r\n",
+    });
+  });
   await openWith(page, pageAnswer([LATEST]));
   const gated = page.getByRole("button", { name: "Export CSV" });
   await expect(gated).toBeDisabled();
@@ -313,9 +336,50 @@ test("Export CSV waits for both dates with its reason beside it, then is Flask's
   await to(page).fill("2026-10-13");
   await expect(gated).toBeDisabled();
   await page.getByRole("button", { name: "Show" }).click();
-  const link = page.getByRole("link", { name: "Export CSV" });
-  await expect(link).toHaveAttribute("href", new RegExp(`/entity/${ENTITY}/petty-cash/reports/download-csv\\?start_date=2026-10-01&end_date=2026-10-13$`));
   await expect(page.locator("#csv-reason")).toHaveCount(0);
+  // a button that reads the API with the bearer - never a link to a Flask page
+  await expect(page.getByRole("link", { name: "Export CSV" })).toHaveCount(0);
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  const busy = page.getByRole("button", { name: "Exporting…" });
+  await expect(busy).toBeDisabled();
+  await expect(busy).toHaveAttribute("aria-busy", "true");
+  release();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe("reports_2026-10-01_to_2026-10-13.csv");
+  expect(asked).toHaveLength(1);
+  const url = new URL(asked[0].url());
+  expect(asked[0].method()).toBe("GET");
+  expect(url.pathname).toBe(`/api/petty-cash/v1/companies/${ENTITY}/reports/export.csv`);
+  expect(url.searchParams.get("start_date")).toBe("2026-10-01");
+  expect(url.searchParams.get("end_date")).toBe("2026-10-13");
+  expect(await asked[0].headerValue("authorization")).toMatch(/^Bearer .+/);
+  await expect(page.locator("[data-toast-type]")).toContainText("Reports exported to reports_2026-10-01_to_2026-10-13.csv.");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeEnabled();
+});
+
+test("Export CSV refused: the API's sentence inline, no file and no toast; a retry that goes through clears it", async ({ page }) => {
+  let refuse = true;
+  await page.route(EXPORT, (route) =>
+    refuse
+      ? route.fulfill({ status: 422, json: { error: "The To date is before the From date. Choose a To date on or after it." } })
+      : route.fulfill({ status: 200, headers: { "Content-Type": "text/csv; charset=utf-8" }, body: "Date\r\n" }),
+  );
+  await openWith(page, pageAnswer([LATEST]));
+  await showRange(page);
+  let downloads = 0;
+  page.on("download", () => (downloads += 1));
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await expect(page.getByText("The To date is before the From date. Choose a To date on or after it.")).toBeVisible();
+  await expect(page.locator("[data-toast-type]")).toHaveCount(0);
+  expect(downloads).toBe(0);
+  await expectNoHorizontalScroll(page);
+  // without a readable Content-Disposition the file takes the name the server gives
+  refuse = false;
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  expect((await download).suggestedFilename()).toBe("reports_2026-10-01_to_2026-10-13.csv");
+  await expect(page.getByText("The To date is before the From date.", { exact: false })).toHaveCount(0);
 });
 
 test("no reports at all: the first-use empty state", async ({ page }) => {
@@ -392,7 +456,7 @@ test("a draft that names no section opens Addition to Drawer for its day", async
   await expect(page.getByRole("heading", { level: 1, name: "Addition to Drawer" })).toBeVisible();
 });
 
-test("row actions show only where the API allows; Publish to Xero is Flask's page", async ({ page }) => {
+test("row actions show only where the API allows; Publish to Xero asks first, in the app", async ({ page }) => {
   await openWith(page, pageAnswer([DRAFT_ROW, LATEST, PUBLISHED]));
   await expect(more(page, "Wed 14 Oct 2026")).toHaveCount(0);
   await more(page, "Tue 13 Oct 2026").click();
@@ -405,10 +469,9 @@ test("row actions show only where the API allows; Publish to Xero is Flask's pag
   await more(page, "Mon 12 Oct 2026").click();
   const again = page.getByRole("menu", { name: "More actions for Mon 12 Oct 2026" }).getByRole("menuitem");
   await expect(again).toHaveText([/Publish to Xero again$/]);
-  await expect(again).toHaveAttribute("href", new RegExp(`/entity/${ENTITY}/petty-cash/reports/r-12/submitted$`));
+  // publishing itself is e2e/12_publish.spec.ts
   await again.click();
-  await expect(page).toHaveURL(new RegExp(`/entity/${ENTITY}/petty-cash/reports/r-12/submitted$`));
-  await expect(page.getByText("Flask page")).toBeVisible();
+  await expect(page.getByRole("alertdialog", { name: "Publish to Xero again?" })).toBeVisible();
 });
 
 test("without can_publish, earlier reports have no More menu", async ({ page }) => {

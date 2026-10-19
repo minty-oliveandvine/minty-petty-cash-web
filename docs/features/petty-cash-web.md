@@ -47,10 +47,31 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 ## The sidebar
 
 `@minty/shared/sidebar`, with this app's host in `components/ui/sidebarHost.ts`. That file is the only app-specific part.
-- **This app's own pages:** Dashboard, Reports (the report history, since Wave 2g) and Settings (Petty Cash settings, since Wave 2h; its Xero parts link on to Flask's page).
+- **This app's own pages:** Dashboard, Reports (the report history, since Wave 2g) and Settings (Petty Cash settings, since Wave 2h; connecting Xero links on to minty-web's Entity & Integration).
 - **minty-web's pages, through Flask's hand-offs:** the entity list, Subscriptions and My Profile.
 - **Through Flask's `/entity/<id>/payment-request`:** Bills.
-- **No profile slot.** My Profile is minty-web's page.
+- **No profile slot.** My Profile is minty-web's page, reached through `/handoff/minty-web?next=/profile&entity_id=` (`hubUrl`, `lib/hub.ts`) - not Flask's `/profile`, which only redirected there.
+
+## No Flask pages
+
+The user's rule (2026-10-16): Flask's HTML frontend will be deleted and Flask becomes a backend only, so **no screen here sends a person to a Flask page**. Flask (`ACCOUNTS_API_URL`) is reached only through:
+- the login-gated hand-offs: `/handoff/petty-cash-web` (this app's token, `lib/handoff.ts`) and `/handoff/minty-web?next=<minty-web path>` (`hubUrl`, `lib/hub.ts`);
+- the payments app's token hand-off `/entity/<id>/payment-request` (`billsUrl`; a redirect, never a page) and `/logout` (`logoutUrl`; ends the session, then minty-web's sign-in);
+- the JSON APIs (`lib/apiClient.ts`). The Xero OAuth callback is Flask's too, but nothing here links it.
+
+`lib/__tests__/noFlaskPages.test.ts` fails when any other source file names `ACCOUNTS_API_URL`, or when those four files build a Flask address that is not a hand-off, an action or an API. `lib/flaskPages.ts` is gone (2026-10-16). Where its links went:
+
+| Was (Flask page) | Now |
+|---|---|
+| `wizardStepUrl` - a stage not yet ported | gone: every stage is this app's (`stepHref`; `WizardStep` lives in `lib/wizardPages.ts`) |
+| `resumeUrl` - the launch page's Continue and a history draft, for a section this app did not know | `resumeHref`: the section's own stage, Addition to Drawer when the draft names none (or an unknown key) |
+| `csvUrl` - history's Export CSV | `GET /reports/export.csv?start_date=&end_date=` with the bearer (`pettyCashDownload`), saved under the server's `Content-Disposition` name (`lib/download.ts`; `reports_<start>_to_<end>.csv` when the header can't be read) |
+| `settingsUrl` - Setup Required and a deposit correction's missing accounts | this app's settings at its Xero cards (`xeroSettingsHref`, `…/settings/petty-cash#xero`) |
+| `settingsUrl` - a publish answered `reconnect: true` (Daily Report, outcome page, history row) | **Reconnect Xero in Entity & Integration**: minty-web's `/entity/<shortid>/<name>/settings/integration` through `/handoff/minty-web` (`integrationUrl`) |
+| `settingsUrl` - the settings page's "not connected" Xero card | **Connect Xero in Entity & Integration**, the same hand-off |
+| sidebar's My Profile - Flask's `/profile` | `/handoff/minty-web?next=/profile&entity_id=` |
+
+The sidebar's Bills still goes through Flask's `/entity/<id>/payment-request`: it is a token hand-off (Minty `go_to_bills` mints the payments app's token and redirects), not a page.
 
 ## Design
 
@@ -63,7 +84,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the Daily Report's facts and warnings, its detail edits (what may be edited and when, the reason and supplier checks as typed, only the changed fields in the PATCH, the Xero notice, the toasts), the report history's rules (address and filters, the pager, "Showing a–b of n", the date range, the CSV link and its gate, a row's meta and actions), the settings rules (the country body, the sales-method list on the page, the name checks, the waiting changes and how Save sends them, stopping at a refusal), the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses, the sidebar host, the launch page's rules, the Daily Closing stage mapping, the Addition to Drawer, Sales, Expenses, Cash Count and Close rules (and the receipt read), the outcome page's facts, the Daily Report's facts and warnings, its detail edits (what may be edited and when, the reason and supplier checks as typed, only the changed fields in the PATCH, the Xero notice, the toasts), the report history's rules (address and filters, the pager, "Showing a–b of n", the date range, Export CSV's request, file name and gate, a row's meta and actions), the settings rules (the country body, the sales-method list on the page, the name checks, the waiting changes and how Save sends them, stopping at a refusal), the Xero cards' rules (the mapping on the page from the read, typing, choosing and leaving a picker, the same-bank, not-in-the-list and empty checks and when each shows, the eight ids sent, a new contact's checks and where it is offered, the first save's toast; the account codes' search, Select all and its mixed state, the at-least-one rule and when the card changed), the Xero publish (how a status settles, a refused start and `reconnect`, the republish warning, the toast, and the poller: its interval, the cap, a retried read, a refusal, a 401, and nothing read after it is stopped), which history rows are watched on arrival, the stage addresses, the money input and the flash, and the three guards (styles, assets, raw colours). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -72,7 +93,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 `development` is a **faithful port** of Flask's Petty Cash pages: the same sections, steps, wording, rules and destinations, drawn with minty-payment-request-web's design (Part 13 tokens, `@minty/shared/ui`, its App bar). The Part 15 redesign (five-stage Daily Closing, Action Dashboard) comes afterwards, on its own branch.
 
-The port order is dashboard, then the report wizard, then history, then settings, then Xero publish. Pages not ported yet are Flask's, linked from `lib/flaskPages.ts`. The person is already signed in to Flask, because this app's token came from Flask's login-gated hand-off.
+The port order is dashboard, then the report wizard, then history, then settings, then Xero publish. Pages not ported yet are Flask's, linked from `lib/flaskPages.ts` on that branch (on `redesign/part-15` that file is gone - see "No Flask pages"). The person is already signed in to Flask, because this app's token came from Flask's login-gated hand-off.
 
 ### Dashboard: `/entity/<shortid>/<name>/petty-cash`
 
@@ -125,7 +146,7 @@ The states (`launchState` and `gateDay`, `lib/dashboard.ts`):
 | State | When | The card |
 |---|---|---|
 | First use | nothing submitted and no open report | 15.11a empty state with Minty, "Your first Daily Closing", **Start today's Daily Closing** |
-| In progress | an open report (the newest draft; its day is `draft_date`, as Flask's Continue used it) | its stages, **Continue Daily Closing** to this app's own stage the report is on (every stage since Wave 2e; Flask's resume only for a section this app does not know) |
+| In progress | an open report (the newest draft; its day is `draft_date`, as Flask's Continue used it) | its stages, **Continue Daily Closing** to this app's own stage the report is on (every stage since Wave 2e; Addition to Drawer for a section this app does not know - never Flask's resume) |
 | Done | `published[server_today]` exists | all five done, "Today's report is submitted", **View report** to the day's report (this app's Daily Report since Wave 2f, by `published[server_today].id`) |
 | Not started | otherwise | five stages ahead, **Start today's Daily Closing** |
 | Gate | yesterday has no submitted report although earlier days do | the Start is disabled with "Finish Tue 13 Oct first." beside it, and the banner starts that day |
@@ -146,7 +167,7 @@ The states (`launchState` and `gateDay`, `lib/dashboard.ts`):
 | `cash_count` | Cash Count. The stage is done only once **this** section is done. |
 | `ending` | Close |
 
-- **"Next"** is the stage Continue lands on: Flask's resume opens `current_section`, or `opening` when it is empty. So it can be a stage already done, when the person went back to it.
+- **"Next"** is the stage Continue lands on: `current_section`'s stage, or Addition to Drawer when it is empty. So it can be a stage already done, when the person went back to it.
 - **The open stage.** Done and current stages link into that stage: this app's own page once it is redesigned (Addition to Drawer, Sales), Flask's wizard otherwise (`lib/wizardPages.ts`). Cash Count opens at the deposit, its first section, unless the report is in `cash_count`.
 
 **Step progress** (`components/ui/StepProgress.tsx`, Part 14) is built here because `@minty/shared/ui` has none yet:
@@ -190,7 +211,7 @@ The rules (`lib/addition.ts`, `lib/dailyClosing.ts`):
   - the last closing ended below zero: the form gives way to a warning Page banner, "Your last closing ended below zero", with why and **Go to Petty Cash** (Flask held the page the same way);
   - the opening cash would be below zero: "Opening cash is below zero. Add at least HKD120.50 to the drawer to continue." beside the summary, live; a save is not sent and the amount takes focus.
 - **Unsaved changes** hold the stage links and the back link: a warning inline alert under the stages says so, with **Leave without saving**. Putting the change back clears it. A reload or a typed address is not held.
-- **The launch page** now opens this stage: Start (after Before You Start and the correction), the Drawer stage link, and Continue when the open report is on `opening` (or names no section). Continue on any other stage is still Flask's resume.
+- **The launch page** now opens this stage: Start (after Before You Start and the correction), the Drawer stage link, and Continue when the open report is on `opening` (or names no section). Continue on any other stage was still Flask's resume then (every stage is in the app since Wave 2e; Flask's resume is never used since 2026-10-16).
 
 Against Flask's Opening, deliberately: the "Fix Negative Balance" modal became the gate above (15.10: "Fix Negative Balance -> section issue + gate"); the illustration is gone (15.D: no characters in active input); "Withdrawal from" is "Where the cash came from"; a negative amount reads "-HKD120.00", not "(HKD120.00)".
 
@@ -203,7 +224,7 @@ Known gaps of Wave 2a:
 
 `/entity/<shortid>/<name>/petty-cash/reports/new/sale?transaction_date=` replaces Flask's Sales page on this branch, at Flask's own address. It reads and saves through the existing `GET`/`PUT /reports/sales` (Minty `petty_cash_api/routes/sales.py`), unchanged.
 
-**One stage frame.** What both stages share moved out of `AdditionToDrawer.tsx` into `components/closing/Stage.tsx`: the frame and the read (`StagePage`: App bar, the 720 column, loading skeleton, a failed read as a Danger inline alert), the Workflow header, the stages (`stageSteps`), the unsaved-changes hold (`useLeaveHold`), the Amount input, Save & Next / Save & Exit (`StageActions`), where a refusal goes (`refused`) and where a section opens (`openStep`: a client-side move for this app's stages, Flask's page otherwise). Addition to Drawer draws only its own form now; its behaviour is unchanged.
+**One stage frame.** What both stages share moved out of `AdditionToDrawer.tsx` into `components/closing/Stage.tsx`: the frame and the read (`StagePage`: App bar, the 720 column, loading skeleton, a failed read as a Danger inline alert), the Workflow header, the stages (`stageSteps`), the unsaved-changes hold (`useLeaveHold`), the Amount input, Save & Next / Save & Exit (`StageActions`), where a refusal goes (`refused`) and where a section opens (`openStep`: a client-side move - every section is this app's). Addition to Drawer draws only its own form now; its behaviour is unchanged.
 
 The page, top to bottom (`components/closing/Sales.tsx`, rules in `lib/sales.ts`):
 1. **The Workflow header**, as Wave 2a: Sales is current, Drawer is a done link back to this app's Addition to Drawer; "Add the day's sales for each way your customers paid. Leave a method empty if it had no sales."
@@ -219,7 +240,7 @@ The rules:
 - **A day with no Daily Closing yet** (`draft: null` in the read; the owner, 2026-10-15): instead of the form, a warning Page banner says so on arrival - "This day's Daily Closing hasn't started" - with one action, **Go to Addition to Drawer**. There is nothing to type, so nothing is lost.
 - **A draft gone by the time of the save** (409 `to: "opening"`): the person is taken to this app's Addition to Drawer, which shows the API's sentence as a warning Page banner under its header, read once (`lib/flash.ts`). Any other refusal (422, 403, no answer) is a Danger inline alert above the actions, and the actions come back.
 - **Unsaved changes** are counted by amount: grouping does not count, an emptied field does (it saves as zero), and putting a value back clears the hold.
-- **The launch page's Continue** opens this stage when the report is on `sales` (and Expenses on `expenses`, Wave 2c); every later section still uses Flask's resume. Addition to Drawer's Save & Next opens it in-app.
+- **The launch page's Continue** opens this stage when the report is on `sales` (and Expenses on `expenses`, Wave 2c); every later section still used Flask's resume then (none does since Wave 2e). Addition to Drawer's Save & Next opens it in-app.
 
 Known gaps of Wave 2b:
 - **No autosave and no "Saved 6:02 pm"** (15.9f), as Wave 2a: the API saves only on Save & Next / Save & Exit and carries no saved time.
@@ -367,8 +388,7 @@ Wave 1 and 2a-2d files touched for this wave:
 Against Flask's pages, deliberately: Close's alerts are a gate with one action (the drawer below zero) and a section issue (the difference), with Submit disabled and its reason beside it - Flask only disabled Submit for the drawer; any rule the API reports now gates on arrival, not only after a refused submit; "Receipts" counts entries with a receipt, not receipt files (the same with the API's one-receipt rule); Close's Save & Exit is a link, as Flask's was.
 
 Known gaps of Wave 2e:
-- **Publish to Xero is left out** of the outcome page (the Xero API is not ported to the Petty Cash API). The Daily Report (Wave 2f) links to Flask's page for it. Part 15.12e names only View report and Back to home.
-- **No polling while Xero publishes**: "Pending" and the Info line stay until the page is reloaded (Flask's page polled its own publishing-status endpoint).
+- Publish to Xero and polling while Xero publishes: in the app since Wave 2j.
 - **Minty is the 2D cat** (`/cat-hole.png`), not the 3D happy pose 15.12e asks for, as everywhere.
 - **The no-draft sentence is the API's** ("...let's start with the opening entry."), as Waves 2b-2d.
 - **The gate's sentence is the API's** for every rule but the drawer below zero, and the API's below-zero sentence ("Hmm, it looks like your cash balance is negative...") is what a refused submit shows if the figures change between the read and the submit.
@@ -391,7 +411,7 @@ The actions:
 - **Edit report** asks first, as Flask's page does (a Part 14 Confirmation modal, Cancel focused): "Edit this report?" / "It goes back to a draft so every stage can be changed, then you submit it again." A report that has been to Xero (`was_published`) adds a Warning: "It is already in Xero" / "Publishing it again adds new entries in Xero. The ones there now are not removed: void them in Xero by hand." **Edit report** sends `POST reopen` once (a ref guards it) and opens the first stage, Addition to Drawer, for the day (`openStep`, a client-side move).
 - **Delete report** is a Destructive Confirmation modal: "Delete this report?" / "**The Daily Report for Tue 13 Oct 2026 is deleted with its expenses and receipts.** This can't be undone.", Cancel focused, **Delete report** in Danger. **The owner's rule (2026-10-15):** a report that has been to Xero MAY be deleted, but the modal warns first: "It is in Xero" / "Deleting it here does not remove its entries in Xero, and publishing this day again adds a second copy. To change the report, use Edit report instead." After `DELETE`, the launch page opens **in place of** the report (`router.replace`) and says "The Daily Report for Tue 13 Oct 2026 is deleted." as a Success Page banner, read once (`lib/flash.ts`).
 - **Share** (Flask's "Share this report"): a modal - "Anyone with the link can read the Daily Report for Tue 13 Oct 2026, without signing in, until it expires." - makes the link with `POST share-link` and shows it read-only; **Copy link** copies it, closes the modal and confirms with a **toast**, "The link to the Daily Report for Tue 13 Oct 2026 is copied." (`components/ui/Toast.tsx`, minty-payment-request-web's Part 14 look: one raised card, "Success", bottom-left on a computer and bottom-centre on a phone, 5 s, paused on hover or focus - the branch's first toast). A copy the browser refuses says so (Warning) and leaves the link to copy by hand.
-- **Publish to Xero is not ported.** While `permissions.publish` is true the page links, full page, to Flask's page for it - its outcome page, `/entity/<id>/petty-cash/reports/<report id>/submitted`, through `ACCOUNTS_API_URL` (`publishUrl`, `lib/flaskPages.ts`) - which publishes with its own confirmation and polls the status.
+- **Publish to Xero** (while `permissions.publish` is true) publishes in the app since Wave 2j. Until then it linked to Flask's outcome page (`publishUrl`, now gone).
 
 Refusals are the API's sentence as an inline alert where the action was taken - never a false success and never a toast. A refused reopen or delete (400 not the latest, 403, 409 while Xero is publishing, 409 already a draft) shows inside its modal, which stays open with its action back; a refused share link (409 for a draft) inside the Share modal, with Copy link disabled. An id the API doesn't know (404, another company's included) shows the sentence and **Back to home**, as the outcome page does. **A reopened report** (still a draft) shows its Draft pill and an Info Page banner, "This report isn't submitted yet" / "Check the day in Close, then submit it." with **Go to Close**, and no actions (Flask's page offered only Continue).
 
@@ -415,7 +435,6 @@ Not yet (no API):
 - **Charts** (15.7: optional) with their table alternative.
 
 Known gaps of Wave 2f:
-- **No polling while Xero publishes**: "Publishing to Xero" stays until the page is reloaded, as on the outcome page.
 - **The audit facts are on the device's clock**, as the outcome page's "Sent to Xero" time.
 - **The toast and the More menu live in this app** until `@minty/shared/ui` has them.
 - **Recent reports still say Submitted** for a day already in Xero (`published[day].xero_integrated` is not read there yet); the Daily Report itself says Published to Xero.
@@ -461,16 +480,16 @@ The states:
 
 Opening a row:
 - **A submitted row** opens its Daily Report (`reportHref`), client-side.
-- **A draft** opens its Daily Closing where it was left, as the launch page's Continue does: the row's `current_section` (opening .. ending) through the app's section-to-stage mapping (`stepHref`; `deposit` and `cash_count` are both Cash Count), or Addition to Drawer when it names none. It is a plain link, so a new tab lands there too. A section this app did not know would go to Flask's resume (`resumeUrl`), as on the launch page.
+- **A draft** opens its Daily Closing where it was left, as the launch page's Continue does: the row's `current_section` (opening .. ending) through the app's section-to-stage mapping (`stepHref`; `deposit` and `cash_count` are both Cash Count), or Addition to Drawer when it names none. It is a plain link, so a new tab lands there too. A section this app does not know opens Addition to Drawer (`resumeHref`), as on the launch page.
 
 The row actions (Part 14 Menu, `components/ui/MoreMenu.tsx`), each only where the API allows (15.1: hidden, not disabled):
-- **Publish to Xero**, or "Publish to Xero again" once the pill says Published to Xero: with `can_publish`, never on a draft. It stays Flask's page, a full-page link (`publishUrl`).
+- **Publish to Xero**, or "Publish to Xero again" once the pill says Published to Xero: with `can_publish`, never on a draft. In the app since Wave 2j.
 - **Edit report** (`permissions.edit`: the latest report only, never a draft): the Daily Report's Confirmation modal (with "It is already in Xero" when it has been there). It reopens the report, then opens Addition to Drawer for the day.
 - **Delete report** (`permissions.delete`), last, in Danger: the Daily Report's Destructive modal, with the owner's "It is in Xero" warning when `was_published`.
   - On success the list is read again in place, a **toast** says "The Daily Report for Tue 13 Oct 2026 is deleted.", and the focus goes to the h1.
   - A refusal shows the API's sentence inside the dialog, which stays open.
 
-**Export CSV stays Flask's download**: a full-page link to `ACCOUNTS_API_URL` + `/entity/<entity id>/petty-cash/reports/download-csv?start_date=&end_date=` (`csvUrl`, `lib/flaskPages.ts`).
+**Export CSV** reads the API's `GET /reports/export.csv?start_date=&end_date=` with the bearer (`pettyCashDownload`) and saves the file under the server's `Content-Disposition` name through a temporary `<a download>` (`lib/download.ts`; `reports_<start>_to_<end>.csv` when the header can't be read). The button says "Exporting…" while it reads; a refusal (422 `{error}`) is its sentence inline under the dates, never a toast; a saved file is a toast, "Reports exported to <file>.". (Until 2026-10-16 it was a full-page link to Flask's `download-csv` page.)
 - It exports the dates the list **shows** (the address's), not what the fields hold while typed.
 - Until both are shown it is a disabled button with its reason beside it (`aria-describedby`): "To export, choose both dates and select Show."
 
@@ -501,7 +520,6 @@ Known gaps of Wave 2g:
 - **"Publish to Xero again" is chosen by the pill's tone** (Success is only ever Published to Xero): the rows carry no `xero_integrated`.
 - **The date fields are the browser's own pickers**, in the device's date order. Part 14's Date field wants a calendar popover on a computer, and its Date range is a future component.
 - **A phone has no numbered pages**, only Previous / Next and "Page n of m" (Part 14 Pagination: "Phone: prev/next or Load more"). There is no Load more.
-- **No polling while Xero publishes**, as on the Daily Report.
 
 ### Wave 2h: Petty Cash settings, without Xero (Part 15.20 / 15.20b)
 
@@ -517,7 +535,7 @@ The page, top to bottom (`components/settings/PettyCashSettings.tsx`, rules in `
    - **Each row's More menu** (`components/ui/MoreMenu.tsx`; a bottom sheet on a phone): **Rename**, **Move up**, **Move down**, then **Remove** in Danger. Move up / Move down are the non-drag reorder, by keyboard (Enter opens the menu, ↓ Enter chooses) and by touch. After a move the focus stays on that row's More button and "AlipayHK moved to 2 of 3." is said (polite).
    - **Rename** is a Part 14 modal with **Name** (required), checked as typed.
    - A row not saved yet says "Added · not saved yet" or "Renamed from Octopus · not saved yet". Removals are listed under the lists: "Removed when you save: Visa. Reports that used them keep their amounts."
-4. **Xero**, only while `xero_connected`: one sentence ("The Xero account mapping and the Petty Cash account codes are set on the Xero settings page, which reads them from Xero.") and **Go to Xero settings**, a full-page link to Flask's page (`settingsUrl`, `lib/flaskPages.ts`). No Xero behaviour is ported (the owner, 2026-10-16).
+4. **Xero**, only while `xero_connected`: one sentence and **Go to Xero settings**, a full-page link to Flask's page (`settingsUrl`, `lib/flaskPages.ts`). Replaced by Wave 2k's two Xero cards.
 
 The rules:
 - **One Save per card** (15.20b), Primary, first and full width on a phone. It is disabled with its reason beside it (`aria-describedby`): "No changes to save yet." until the card changed, and "Only Accountants and Admins can change these." (Flask's words) for someone who may change nothing in it.
@@ -535,11 +553,11 @@ The rules:
   - Rename and Remove only with `rename_sales_method` and `remove_sales_method` (a method not saved yet is the person's own addition and needs only `add_sales_method`);
   - Move up and Move down only with `reorder_sales_methods`.
   - A cashier sees the page read-only: facts, plain lists, no menus, and both Saves disabled with the reason. Without `view_sales_methods` the card says "Your role can't see the sales methods. Ask an Accountant or an Admin."
-- **Unsaved changes ask first** (`@minty/shared/leaveGuard`, minty-web's words). A link out of the page (the back link, the sidebar, Go to Xero settings) opens "Leave without saving?" with **Go Back** (focused) and **Discard changes**. A reload or a closed tab gets the browser's own prompt.
+- **Unsaved changes ask first** (`@minty/shared/leaveGuard`, minty-web's words). A link out of the page (the back link, the sidebar, Connect Xero in Entity & Integration) opens "Leave without saving?" with **Go Back** (focused) and **Discard changes**. A reload or a closed tab gets the browser's own prompt.
 
 The ways in:
 - **The sidebar's Settings** is this page now (`components/ui/sidebarHost.ts`; `currentOf` marks this address as current). The package draws it as a plain link, so it is a full page load.
-- **The launch page's two settings links stay Flask's page.** Setup Required (the Xero account and contact slots not mapped) and a deposit correction's missing Deposit Bank Account / Petty Cash Account are all Xero mappings. Wave 1 had already removed the launch page's other settings link (Quick Actions' Entity Settings).
+- **The launch page's two settings links open this page at its Xero cards** (`xeroSettingsHref`, `#xero`; since 2026-10-16, before that Flask's page). Setup Required (the Xero account and contact slots not mapped) and a deposit correction's missing Deposit Bank Account / Petty Cash Account are all Xero mappings. Wave 1 had already removed the launch page's other settings link (Quick Actions' Entity Settings).
 
 Wave 1 and 2a-2g files touched for this wave:
 - `components/ui/sidebarHost.ts` (and its test): Settings is this page; the current-page pattern is its address.
@@ -552,10 +570,9 @@ Against Flask's page, deliberately:
 - **Remove asks nothing**: it only waits for Save, and the method can be added back. Flask's pending delete asked first.
 - **A refusal stops the save** and says which change it was, where Flask sent every change and reported the first failure as "Nothing else was saved".
 - Country and currency are native selects, where Flask has searchable pickers.
-- Without Xero connected there is **no Xero card**, where Flask's mapping and account-code cards say "Xero isn't connected. Connect it in Entity & Integration".
+- Without Xero connected there is **no Xero card**, where Flask's mapping and account-code cards say "Xero isn't connected. Connect it in Entity & Integration". (Wave 2k: one card; since 2026-10-16 it links to minty-web's Entity & Integration.)
 
 Not yet:
-- **The Xero parts** (the account mapping and the account codes): Flask's page.
 - **The "Congratulations!" modal** (`?success=true`) Flask showed after a settings save, which the faithful port listed as coming with this page. Part 14 confirms a save with a toast.
 
 Known gaps of Wave 2h:
@@ -616,8 +633,102 @@ Known gaps of Wave 2i:
 - **One receipt per line here.** A replacement is one file (the API's rule), so a line saved with several receipts loses them all to the new one; the Drawer lists them as "replaced when you save".
 - **No new supplier from an edit:** the read's `options` has no `create_supplier`. New suppliers are made in the Expenses stage.
 
+### Wave 2j: Publish to Xero, in the app (Part 15.12 / 15.9h)
+
+Publish to Xero no longer leaves for Flask's outcome page. It publishes in the app from three places, through the Petty Cash API's publish routes (Flask's `petty_cash_api/routes/report.py`: `publish_answer`, `publishing_status`; minty-petty-cash-api serves the same paths):
+- `POST /reports/<id>/publish` answers **202** `{publishing_status: "publishing", message}` while Xero's worker runs in the background. A refusal is `{error}`: 400 (Xero settings incomplete, a system account on a line - the sentence names it), **400 with `reconnect: true`** (no usable Xero token), 409 (a draft, or one already publishing), 403, 404.
+- `GET /reports/<id>/publishing-status` answers `{report_id, publishing_status, status_label, status_tone, xero_integrated, was_published, published_at, reasons: [{text, resolved}]}`.
+
+The three places:
+- **The Daily Report**: the Primary **Publish to Xero** while the report is not in Xero; **Publish to Xero again** under More once it is. A button now, no longer a link.
+- **The outcome page**: with `can_publish`, **Publish to Xero** is the Primary (full width) and **View report** steps back to Secondary under it. Once the report is in Xero, View report leads again and **Publish to Xero again** (Secondary) is under it.
+- **A report history row's** More menu: **Publish to Xero** / "again", as before - now the dialog, and the publish is watched in the row.
+
+The flow (`components/closing/Publish.tsx`, rules in `lib/publish.ts`):
+1. **It asks first** (15.9h: the consequence is external) - a Part 14 Confirmation modal, Cancel focused: "Publish to Xero?" / "The day's sales, expenses with their receipts and the bank deposit are sent to this company's Xero organisation." (Flask's words), **Publish to Xero**. Once the report is in Xero it is "Publish to Xero again?" with **Publish again**.
+   - **A report that has been to Xero** (`was_published`: in Xero now, sent before an edit, or partly sent by a failed publish) adds a Warning, and the dialog becomes an `alertdialog`: "Xero gets a second copy" / "Publishing again adds new entries in Xero. The ones there now are not removed: void them in Xero by hand, or the day is counted twice."
+   - Every read carries `was_published` - the outcome's too since Wave 2k (`xero.was_published`), so the dialog reads nothing first.
+2. **A refused start** is the API's sentence as a Danger inline alert **inside the dialog**, which stays open with its action back. With `reconnect: true` the alert also carries **Reconnect Xero in Entity & Integration**, a full-page link through Flask's `/handoff/minty-web` to minty-web's Entity & Integration (`integrationUrl`), where Xero is connected again. Never a toast, never a false success. A ref sends the POST once.
+3. **While it runs** (after the 202): the dialog closes, and the status is read at once and then every **3 s** (`POLL_MS`) until it leaves `publishing`. Each read redraws the place from the API: the Daily Report's pill and audit fact ("Publishing to Xero"), the outcome's "Sent to Xero" ("Pending"), the row's pill. An Info inline alert says "Publishing to Xero" / "This can take a few minutes. You can leave this page; Xero carries on." (15.12 partial success). Publish is not offered meanwhile.
+   - A read that got no answer is tried again; a refused one (403, 404) stops with its sentence in the Danger alert; a 401 goes back through the hand-off.
+   - **The cap**: after 40 reads (two minutes) it stops and says "Xero is still working on it" / "The report is submitted. Check again in a few minutes; it shows here once Xero has it." with **Check again**, which watches once more.
+   - **Polling stops on unmount** (leaving the page) and when the status leaves `publishing`.
+4. **When it finishes**:
+   - `xero_integrated`: the pill turns **Published to Xero** (Success) and a toast says "The Daily Report for Tue 13 Oct 2026 is published to Xero."
+   - Anything else (failed, a partial publish, put back): a **Danger** inline alert, "Publishing to Xero failed", listing the API's reasons - a resolved one with its icon and "· Resolved" in words; "Nothing more was sent. Check the Xero connection, then try again." when there are none - and **Try again**, which opens the confirmation again. The pill is the API's (Publish failed, Danger). In a history row the alert replaces the row's own "Why it didn't reach Xero" list while it shows.
+5. **Arriving** on a Daily Report or an outcome that is `publishing` watches it the same way; one that `failed` reads its reasons once and shows the Danger alert with Try again. A history row that is `publishing` when the list loads is watched too (Wave 2k); a failed row already carries its reasons.
+
+Every change is said in a polite live region that is always in the page ("Publishing to Xero.", "Xero is still working on it.", "Published to Xero.", "Publishing to Xero failed.").
+
+Files touched for this wave:
+- New: `lib/publish.ts`, `components/closing/Publish.tsx` (`usePublish`, `PublishDialog`, `PublishProgress`, `PublishReasons`), `lib/__tests__/publish.test.ts`, `e2e/12_publish.spec.ts`.
+- `components/closing/DailyReport.tsx`; `components/closing/ReportOutcome.tsx` (with its own toast region now); `components/history/ReportHistory.tsx` (its reasons list is the shared `PublishReasons`).
+- `lib/flaskPages.ts`: `publishUrl` is gone. `lib/report.ts`, `lib/history.ts`: comments. `lib/__tests__/report.test.ts`: the `publishUrl` case.
+- `e2e/07_close.spec.ts`, `e2e/08_daily_report.spec.ts`, `e2e/09_report_history.spec.ts`, `e2e/11_report_edits.spec.ts`: Publish to Xero is a button or the dialog, no longer Flask's page.
+
+Against Flask's page, deliberately:
+- Publishing is offered on the Daily Report and in history as well as on the outcome page.
+- A refused start stays in the dialog, where Flask closed it and showed the failure on the page. A 409 "already publishing" is a refusal, where Flask's page started polling.
+- Success is a toast and the pill, where Flask's page reloaded with a flash.
+- Try again asks again, where Flask's published at once.
+- Two minutes of polling every 3 s, where Flask's page polled every 2 s for three minutes.
+
+Known gaps of Wave 2j: both closed in Wave 2k (the outcome's `xero.was_published`, the rows' `publishing_status`).
+
+### Wave 2k: Petty Cash settings' Xero cards (Part 15.20b)
+
+The settings page's Xero parts are this app's: the **Xero account mapping** and the **Petty Cash account codes**, each a Part 15.20b card with its own Save, in the place Flask's redesigned page has them (Country & currency, the mapping, Sales methods, the codes). Content and words are Flask's (`entity/settings_entity.html`, `partials/xero_account_mapping_cards_classic.html`, `static/js/petty_cash_settings.js`). Connecting Xero is minty-web's Entity & Integration (through Flask's hand-off); no screen here opens a Flask page.
+
+The API (Minty `petty_cash_api/routes/settings.py`, `xero_settings_answer`; minty-petty-cash-api serves the same paths):
+- `GET /settings/xero` -> `{live, organisation, mapping, mapping_saved, account_codes, permissions: {edit_mapping, edit_account_codes}}`. `mapping` is `[{key, label, kind, options: [{id, name, code?}], selected}]` for the eight keys; `mapping` and `account_codes` are null unless live. **It asks Xero on the server**, so the page reads it **once**: beside `GET /settings`, never after it, and one request even when React runs the effect twice in development (a ref keeps it). The other cards draw first; the Xero cards show a skeleton until it answers.
+- `PUT /settings/xero/mapping` with the eight Xero ids -> the read + `{message, first_save}`. The Discrepancy Bank Account mirrors the Petty Cash Account and is set by the API, never sent.
+- `PUT /settings/xero/account-codes` `{codes}` -> the read + `{message}`.
+- A new contact is `POST /suppliers` `{name}` -> `{id, name}`, the Expenses stage's route.
+
+The cards (`components/settings/XeroCards.tsx`, rules in `lib/xeroSettings.ts`; `Card` and `CardSave` moved to `components/settings/SettingsCard.tsx` so both files draw them):
+1. **Not live** (`live` false): one card, "Xero", with "Xero isn't connected for this company. Connect it in Entity & Integration, then the account mapping and the account codes can be set here." and **Connect Xero in Entity & Integration**, a full-page link through Flask's `/handoff/minty-web` to minty-web's Entity & Integration (`integrationUrl`). A 403 on the read says "Your role can't see the Xero settings. Ask an Accountant or an Admin."; any other failure is the API's sentence in that card, and the rest of the page still works.
+2. **Xero account mapping**: "Xero organisation: …", then eight required pickers in Flask's labels and order, in pairs from 640 (Petty Cash Account, Deposit Bank Account; Cash Sales account code, Cash Sales contact; Director Personal Account code, Director / Responsible person; Discrepancy account code, Discrepancy contact), each with Flask's why as its helper. An account shows as "429 — General Expenses" (Part 14: the accounting value stays visible).
+   - Each picker is the Part 14 Supplier picker's ARIA combobox: narrowed as typed by code or name, ↑ ↓ Enter, Escape closes the list, the count said. Its list lies **over** the page, not in its flow, so closing it on a blur never moves the Save under a click. A text typed in full (label or name, any case) is that option when the field is left.
+   - A contact picker ends its list with 'Add "…" as a new contact' when no contact has the name. It opens a **New contact** panel (name checked as typed: empty after Add, over 150 at once, a contact's name at once); **Add contact** (or Enter) makes it in Xero at once, chooses it here and offers it in the other contact fields. A refusal is the API's sentence in the panel. The mapping itself still waits for Save.
+   - Until a mapping is saved (`mapping_saved` false) an Info alert says "Not set up yet" / "Daily Reports can be published to Xero once these choices are saved." **The first save** (`first_save`) says what it unlocked, as a toast: "Xero account mapping saved. Daily Reports can be published to Xero now."
+3. **Petty Cash account codes**: "Only the picked account codes appear when adding an expense in Petty Cash." A search (code or name), "n of m picked" (polite), and a checklist of 44 px rows with **Select all** (or "Select all shown" while searching; mixed when some are ticked). A code without a code is not offered (Flask's rule).
+
+The checks, as typed (CLAUDE.md; Part 11 wording):
+- the Deposit Bank Account the same as the Petty Cash Account, at once, on the Deposit Bank Account: "The Petty Cash Account and the Deposit Bank Account can't be the same. Choose a different one for each." (the API's sentence);
+- a name that is not in the list, once the field is left: "Nobody isn't in the list. Choose the Director / Responsible person from the list.";
+- empty: at once when a saved choice is emptied, otherwise only after a refused Save: "The Cash Sales account code is still empty. Choose one from the list to save.";
+- a refused Save with two or more problems shows the error summary, which takes focus and links to each field; one problem focuses its field. Nothing is sent;
+- **the account codes keep at least one picked**: with none, Save is disabled and says why beside it, at once: "No account code is picked. Pick at least one to save: an expense can use only the picked codes." (the API's 422 is "Pick at least one account code.").
+
+The rules, both cards:
+- **One Save per card**, disabled with its reason beside it: "No changes to save yet.", the codes' rule, or "Only Accountants and Admins can change these." without `permissions.edit_mapping` / `edit_account_codes`.
+- **A cashier** sees the mapping as facts (each label and its choice, or "Not chosen yet") and the picked codes as a list - no pickers, no checkboxes - and both Saves disabled with the reason.
+- **A refusal** (422 with any of its sentences, 409 not live or not synced yet, 403, or no answer) is the API's sentence as a Danger inline alert in the card; the choices stay. Never a toast, never a false success.
+- **A save that went through** redraws the card from the answer and confirms with a toast ("Xero account mapping saved.", "Account codes saved."). The other Xero card keeps what is waiting on it.
+- **Unsaved changes** in either card ask before the page is left, as for the other cards; Discard puts both back to the read.
+
+Also in this wave, the two fields Wave 2j asked for:
+- `GET /reports/<id>/outcome`'s `xero.was_published`: the outcome page's Publish dialog warns from it, with no `publishing-status` read first (`lib/outcome.ts`, `components/closing/ReportOutcome.tsx`; `PublishDialog`'s `wasPublished` is always known now).
+- Each `GET /reports` row's `publishing_status`: a row already "publishing" when the list loads is watched (polled) like one started from the row (`watchedOnArrival`, `lib/history.ts`; `components/history/ReportHistory.tsx`).
+
+Files touched for this wave:
+- New: `lib/xeroSettings.ts`, `lib/__tests__/xeroSettings.test.ts`, `components/settings/XeroCards.tsx`, `components/settings/SettingsCard.tsx`.
+- `components/settings/PettyCashSettings.tsx`: the second read, the Xero cards in place, the old Xero card gone. `e2e/10_settings.spec.ts`.
+- `components/closing/Publish.tsx`, `components/closing/ReportOutcome.tsx`, `lib/outcome.ts`, `lib/history.ts`, `components/history/ReportHistory.tsx`, and their tests and stubs (`lib/__tests__/outcome.test.ts`, `lib/__tests__/history.test.ts`, `e2e/07_close.spec.ts`, `e2e/08_daily_report.spec.ts`, `e2e/09_report_history.spec.ts`, `e2e/12_publish.spec.ts`).
+
+Against Flask's page, deliberately:
+- Problems are said in the field as typed, where Flask's mapping script showed a toast on Save ("Please select: …").
+- A new contact is offered from the picker's list ('Add "…" as a new contact'), where Flask had a "+ New Contact" panel per field.
+- The first save is a toast that names what it unlocks; Flask's page reloaded.
+- Not connected is one card, where Flask kept both cards' headings with a notice in each.
+
+Known gaps of Wave 2k:
+- **The read has no "may create contacts"** (`CONTACT_CREATE`): Add as a new contact is offered to anyone who may change the mapping, and the API's 403 is said in the panel.
+- ~~The launch page's Setup Required and a deposit correction's missing accounts still link to Flask's settings page~~ - they open this app's settings at its Xero cards since 2026-10-16 ("No Flask pages").
+- **Flask's "couldn't refresh these lists from Xero" note** has no field in the read (`refresh_from_xero` logs and carries on), so the page can't say the lists may be stale.
+
 ## Not here yet
 
-- **Xero publish** is next, once it is confirmed. The Daily Closing's five stages and its outcome page are this app's since Wave 2e, the Daily Report since Wave 2f (its detail edits since Wave 2i), the report history since Wave 2g, and Petty Cash settings without its Xero parts since Wave 2h.
-- **Settings' Xero parts** (the account mapping and the account codes) stay on Flask's page (the owner, 2026-10-16); another session is on Xero.
+The Daily Closing's five stages and its outcome page are this app's since Wave 2e, the Daily Report since Wave 2f (its detail edits since Wave 2i), the report history since Wave 2g, Petty Cash settings since Wave 2h (its Xero cards since Wave 2k), and Publish to Xero since Wave 2j. Connecting to Xero stays Flask's.
+
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

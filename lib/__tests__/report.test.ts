@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ExpenseLine } from "@/lib/expenses";
-import { publishUrl } from "@/lib/flaskPages";
 import {
   auditFacts,
   cashRows,
@@ -94,8 +93,7 @@ describe("the Daily Report's header", () => {
     expect(isDraft(report({ status: "draft" }))).toBe(true);
   });
 
-  it("links Publish to Xero to Flask's page for it, by the company's full id", () => {
-    expect(publishUrl("3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c", "r/1")).toMatch(/\/entity\/3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c\/petty-cash\/reports\/r%2F1\/submitted$/);
+  it("names Publish to Xero, and \"again\" once the report is in Xero", () => {
     expect(publishLabel(report())).toBe("Publish to Xero");
     expect(publishLabel(report({ xero_integrated: true }))).toBe("Publish to Xero again");
   });

@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HOUSE_FALLBACK, mintyFetch, pettyCashBlob, pettyCashFetch } from "@/lib/apiClient";
+import { HOUSE_FALLBACK, mintyFetch, pettyCashBlob, pettyCashDownload, pettyCashFetch } from "@/lib/apiClient";
 import { setAuth } from "@/lib/auth";
 import { _resetHandoffForTests } from "@/lib/handoff";
 
@@ -83,6 +83,29 @@ describe("pettyCashFetch", () => {
     await expect(pettyCashFetch("")).rejects.toMatchObject({ status: 401 });
     expect(fetchMock).not.toHaveBeenCalled();
     expect(go).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("pettyCashDownload", () => {
+  it("reads a file with the bearer and the query, with the server's file name", async () => {
+    setAuth("tok", ENTITY, "n");
+    fetchMock.mockResolvedValue(
+      new Response("Date,Amount", { status: 200, headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": "attachment; filename=reports_a_to_b.csv" } }),
+    );
+    const file = await pettyCashDownload("/reports/export.csv", { query: { start_date: "2026-10-01", end_date: "2026-10-13" } });
+    expect(file.filename).toBe("reports_a_to_b.csv");
+    expect(await file.blob.text()).toBe("Date,Amount");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`http://localhost:8010/api/petty-cash/v1/companies/${ENTITY}/reports/export.csv?start_date=2026-10-01&end_date=2026-10-13`);
+    expect((init.headers as Headers).get("Authorization")).toBe("Bearer tok");
+  });
+
+  it("has no name when the header can't be read, and rejects with a refusal's sentence", async () => {
+    setAuth("tok", ENTITY, "n");
+    fetchMock.mockResolvedValueOnce(new Response("x", { status: 200 }));
+    expect((await pettyCashDownload("/reports/export.csv")).filename).toBeNull();
+    fetchMock.mockResolvedValueOnce(answer(422, { error: "The To date is before the From date." }));
+    await expect(pettyCashDownload("/reports/export.csv")).rejects.toMatchObject({ status: 422, message: "The To date is before the From date." });
   });
 });
 

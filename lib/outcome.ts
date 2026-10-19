@@ -22,7 +22,8 @@ export type Outcome = {
   /** The drawer and the safebox together. */
   cash_counted: number;
   difference: { amount: number; kind: string; has_reason: boolean };
-  xero: { publishing_status: string | null; published_at: string | null; xero_integrated: boolean };
+  /** `was_published`: it has been to Xero, even if changed since - publishing again warns. */
+  xero: { publishing_status: string | null; published_at: string | null; xero_integrated: boolean; was_published: boolean };
   can_publish: boolean;
   /** The report is for today (the server's Hong Kong date). */
   is_today: boolean;

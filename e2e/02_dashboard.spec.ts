@@ -1,7 +1,7 @@
 // The launch page (components/dashboard, Part 15.6a Action Dashboard), against a STUBBED Petty
 // Cash API: every state - first use, not started, in progress, the gate, done - and the start
 // rules it keeps (Before You Start, read-only), without a database. Needs only `npm run dev`.
-// Navigations into Flask's pages are caught and answered here, so nothing leaves the app.
+// Every page it opens is this app's own (stubbed quietly) - none is a Flask page.
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
@@ -111,9 +111,21 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock }: Enter 
   await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/reports(\?.*)?$/, (route) =>
     route.fulfill({ json: { reports: [], page: 1, per_page: 10, total_pages: 1, total_count: 0, latest_report_id: null, currency_code: "HKD", can_publish: true } }),
   );
-  // Flask's wizard pages: caught, so the spec can read where the app went.
-  await page.route(/\/entity\/[^/]+\/petty-cash\/reports(?:[/?]|$)/, (route) =>
-    route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
+  // This app's own settings page (e2e/10_settings.spec.ts covers it), where the Xero settings are
+  // set up: quiet stubs, Xero not live.
+  await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/settings$/, (route) =>
+    route.fulfill({
+      json: {
+        country: { country_code: "HK", currency_id: "cur-hkd", countries: [{ code: "HK", name: "Hong Kong" }], currencies: [{ id: "cur-hkd", name: "HKD" }], selected_country: "Hong Kong", selected_currency: "HKD" },
+        sales_methods: { electronic: [], delivery: [] },
+        available: { electronic: [], delivery: [] },
+        xero_connected: true,
+        permissions: { edit_country: true, view_sales_methods: true, add_sales_method: true, rename_sales_method: true, remove_sales_method: true, reorder_sales_methods: true },
+      },
+    }),
+  );
+  await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/settings\/xero$/, (route) =>
+    route.fulfill({ json: { live: false, organisation: null, mapping: null, mapping_saved: false, account_codes: null, permissions: { edit_mapping: true, edit_account_codes: true } } }),
   );
   let overrides: Record<string, unknown> = {};
   if (clock) {
@@ -129,6 +141,18 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock }: Enter 
 }
 
 const card = (page: Page) => page.getByRole("region", { name: /Daily Closing/ });
+
+/** This app's settings page, opened at its Xero cards (`#xero`). */
+const SETTINGS_XERO = `/entity/${companyRef(ENTITY, NAME)}/settings/petty-cash#xero`;
+
+/** Landed on this app's settings page at its Xero cards - not a Flask page. */
+async function expectXeroSettings(page: Page) {
+  await expect(page).toHaveURL(new RegExp(`${SETTINGS_XERO}$`));
+  await expect(page.getByRole("heading", { level: 1, name: "Petty Cash settings" })).toBeVisible();
+  const xero = page.getByRole("region", { name: "Xero", exact: true });
+  await expect(xero).toBeVisible();
+  await expect(xero).toBeInViewport();
+}
 
 /** This app's own Addition to Drawer stage for `day`, in the company's address. */
 const addition = (day: string) => new RegExp(`${HOME_PATH}/reports/new/opening\\?transaction_date=${day}$`);
@@ -232,6 +256,21 @@ test("a deposit the company cannot correct offers only 'as stated'", async ({ pa
   await expect(page).toHaveURL(addition(TODAY));
 });
 
+test("a deposit correction's missing accounts link to this app's settings, at its Xero cards", async ({ page }) => {
+  await enterWith(
+    page,
+    homeAnswer({
+      latest: { ...(homeAnswer().latest as Json), deposit_correction_missing_settings: ["Deposit Bank Account"], can_correct_deposit: false },
+    }),
+  );
+  await page.getByRole("button", { name: "Start today's Daily Closing" }).click();
+  const dialog = page.getByRole("dialog", { name: "Before You Start" });
+  const link = dialog.getByRole("link", { name: "Settings → Petty Cash" });
+  await expect(link).toHaveAttribute("href", SETTINGS_XERO);
+  await link.click();
+  await expectXeroSettings(page);
+});
+
 test("in progress: 3 of 5 done, the next stage, when it was saved, and Continue opens this app's Cash Count", async ({ page }) => {
   await enterWith(
     page,
@@ -289,6 +328,12 @@ test("in progress on Addition to Drawer: Continue opens this app's own stage", a
   const c = card(page);
   await expect(c).toContainText("Next: Addition to Drawer");
   await c.getByRole("button", { name: "Continue Daily Closing" }).click();
+  await expect(page).toHaveURL(addition(TODAY));
+});
+
+test("in progress with no section named: Continue opens this app's Addition to Drawer", async ({ page }) => {
+  await enterWith(page, homeAnswer({ draft: { id: "d", current_section: null, completed_sections: [], last_edit_seconds: 60 }, draft_date: TODAY }));
+  await card(page).getByRole("button", { name: "Continue Daily Closing" }).click();
   await expect(page).toHaveURL(addition(TODAY));
 });
 
@@ -358,7 +403,10 @@ test("missing Xero settings hold the page with the way to set them up", async ({
   await expect(dialog).toContainText("Main Bank Account");
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("link", { name: "Set Up Settings" })).toHaveAttribute("href", /\/settings\/petty-cash$/);
+  const link = dialog.getByRole("link", { name: "Set Up Settings" });
+  await expect(link).toHaveAttribute("href", SETTINGS_XERO);
+  await link.click();
+  await expectXeroSettings(page);
 });
 
 test("read-only access cannot start, and says why beside the button", async ({ page }) => {

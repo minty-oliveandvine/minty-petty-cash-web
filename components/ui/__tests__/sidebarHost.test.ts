@@ -27,8 +27,10 @@ describe("the menu's links", () => {
     expect(entities.searchParams.get("next")).toBe("/entities");
     expect(new URL(sidebarHost.links.subscriptions()).searchParams.get("next")).toBe("/subscription");
     expect(new URL(sidebarHost.links.bills()).pathname).toBe(`/entity/${ENTITY}/payment-request`);
+    // My Profile is minty-web's, through the hand-off - never Flask's /profile page
     const profile = new URL(sidebarHost.links.profile());
-    expect(profile.pathname).toBe("/profile");
+    expect(profile.pathname).toBe("/handoff/minty-web");
+    expect(profile.searchParams.get("next")).toBe("/profile");
     expect(profile.searchParams.get("entity_id")).toBe(ENTITY);
   });
 

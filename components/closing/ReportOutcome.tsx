@@ -7,11 +7,16 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button, buttonClass, InlineAlert, Skeleton } from "@minty/shared/ui";
 
+import { PublishDialog, PublishProgress, usePublish } from "@/components/closing/Publish";
 import { AppBar } from "@/components/layout/AppBar";
+import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
 import { formatWeekdayDay } from "@/lib/dates";
+import { integrationUrl } from "@/lib/hub";
 import { countedFact, differenceFact, offersNextDay, outcomeTitle, requestStart, xeroFact, type Outcome } from "@/lib/outcome";
+import { isWorking, publishedMessage } from "@/lib/publish";
+import { publishLabel } from "@/lib/report";
 import { useAuth } from "@/lib/useAuth";
 import { reportHref, stepHref } from "@/lib/wizardPages";
 
@@ -26,8 +31,9 @@ type Load = { kind: "loading" } | { kind: "ready"; outcome: Outcome } | { kind: 
  * action - View report - and Back to home / Start the next day. The focus moves to the title.
  *
  * Reads `GET /reports/<report id>/outcome` (Minty `petty_cash_api/routes/close.py`); its rules are
- * lib/outcome.ts. Publish to Xero is not here yet: the Xero API is not ported; View report opens
- * this app's Daily Report (DailyReport.tsx), which links to Flask's page for it.
+ * lib/outcome.ts. View report opens this app's Daily Report (DailyReport.tsx). Publish to Xero
+ * (with `can_publish`) asks first, then watches the publish here (Wave 2j, Publish.tsx); while Xero
+ * works on it, an Info line says so (15.12 partial success).
  */
 export function ReportOutcome({ reportId }: { reportId: string }) {
   const auth = useAuth();
@@ -58,7 +64,13 @@ export function ReportOutcome({ reportId }: { reportId: string }) {
       <main className="px-4 pb-16 pt-8 sm:px-6 lg:px-8 lg:pt-12">
         <div className="mx-auto flex w-full min-w-0 max-w-[440px] flex-col items-center gap-5 text-center">
           {load.kind === "ready" && auth ? (
-            <Done outcome={load.outcome} entityId={entityId} entityName={entityName} home={home} />
+            <Done
+              outcome={load.outcome}
+              onXero={(xero) => setLoad((l) => (l.kind === "ready" ? { kind: "ready", outcome: { ...l.outcome, xero } } : l))}
+              entityId={entityId}
+              entityName={entityName}
+              home={home}
+            />
           ) : load.kind === "failed" ? (
             <>
               <h1 className="text-display-m text-text-primary">Daily Report</h1>
@@ -86,11 +98,35 @@ export function ReportOutcome({ reportId }: { reportId: string }) {
   );
 }
 
-function Done({ outcome, entityId, entityName, home }: { outcome: Outcome; entityId: string; entityName: string; home: string }) {
+function Done({
+  outcome,
+  onXero,
+  entityId,
+  entityName,
+  home,
+}: {
+  outcome: Outcome;
+  /** A publishing-status read: "Sent to Xero" as the API has it now. */
+  onXero: (xero: Outcome["xero"]) => void;
+  entityId: string;
+  entityName: string;
+  home: string;
+}) {
   const router = useRouter();
   const title = useRef<HTMLHeadingElement>(null);
   const day = outcome.transaction_date;
   const company = outcome.company_name || entityName;
+  const [asking, setAsking] = useState(false);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+  const publishing = usePublish({
+    reportId: outcome.report_id,
+    initial: outcome.xero.publishing_status,
+    onStatus: (s) => onXero({ publishing_status: s.publishing_status, published_at: s.published_at, xero_integrated: s.xero_integrated, was_published: s.was_published }),
+    onPublished: () => setToast({ id: Date.now(), message: publishedMessage(day) }),
+  });
+  const inXero = outcome.xero.xero_integrated;
+  // Not while Xero works on it; never for a report that isn't submitted.
+  const canPublish = outcome.submitted && outcome.can_publish && !isWorking(publishing.state) && outcome.xero.publishing_status !== "publishing";
 
   // 15.12 Accessibility: the focus moves to the outcome title.
   useEffect(() => {
@@ -126,15 +162,30 @@ function Done({ outcome, entityId, entityName, home }: { outcome: Outcome; entit
             <Fact label="Difference" value={differenceFact(outcome)} />
             <Fact label="Sent to Xero" value={xeroFact(outcome)} />
           </dl>
-          {outcome.xero.publishing_status === "publishing" && !outcome.xero.xero_integrated ? (
-            // 15.12 partial success: submitted, Xero pending - an Info line.
-            <InlineAlert tone="info" title="Xero is still working on it" className="w-full text-left">
-              The report is submitted. Check back in a few minutes; it shows here once Xero has it.
-            </InlineAlert>
+          {/* 15.12 partial success: submitted, Xero pending - an Info line; a failure says why. */}
+          <PublishProgress
+            state={publishing.state}
+            onCheckAgain={publishing.begin}
+            onRetry={canPublish ? () => setAsking(true) : undefined}
+            className="w-full text-left"
+          />
+          {/* Not yet in Xero: Publish to Xero is the next action, and View report steps back to Secondary. */}
+          {canPublish && !inXero ? (
+            <Button kind="primary" full onClick={() => setAsking(true)}>
+              {publishLabel(outcome.xero)}
+            </Button>
           ) : null}
-          <Link href={reportHref(entityId, entityName, outcome.report_id)} className={buttonClass("primary", { full: true })}>
+          <Link
+            href={reportHref(entityId, entityName, outcome.report_id)}
+            className={buttonClass(canPublish && !inXero ? "secondary" : "primary", { full: true })}
+          >
             View report
           </Link>
+          {canPublish && inXero ? (
+            <Button kind="secondary" full onClick={() => setAsking(true)}>
+              {publishLabel(outcome.xero)}
+            </Button>
+          ) : null}
         </>
       ) : (
         <>
@@ -155,6 +206,20 @@ function Done({ outcome, entityId, entityName, home }: { outcome: Outcome; entit
           </Button>
         ) : null}
       </div>
+      {asking ? (
+        <PublishDialog
+          reportId={outcome.report_id}
+          again={inXero}
+          wasPublished={outcome.xero.was_published}
+          reconnectHref={integrationUrl(entityId, entityName)}
+          onCancel={() => setAsking(false)}
+          onStarted={() => {
+            setAsking(false);
+            publishing.begin();
+          }}
+        />
+      ) : null}
+      <ToastRegion toast={toast} onDismiss={() => setToast(null)} />
     </>
   );
 }

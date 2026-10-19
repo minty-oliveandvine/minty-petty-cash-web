@@ -6,18 +6,23 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Button, buttonClass, EmptyState, Field, FilterChip, Icon, InlineAlert, inputClass, Skeleton, StatusPill } from "@minty/shared/ui";
 
+import { PublishDialog, PublishProgress, PublishReasons, usePublish } from "@/components/closing/Publish";
 import { DeleteReportDialog, EditReportDialog, type DialogReport } from "@/components/closing/ReportDialogs";
 import { AppBar } from "@/components/layout/AppBar";
 import { MoreMenu, type MoreItem } from "@/components/ui/MoreMenu";
 import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
-import { ApiError, pettyCashFetch } from "@/lib/apiClient";
+import { ApiError, pettyCashDownload, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
 import { formatWeekdayDay } from "@/lib/dates";
-import { csvUrl, publishUrl } from "@/lib/flaskPages";
+import { saveBlob } from "@/lib/download";
+import { integrationUrl } from "@/lib/hub";
 import {
   apiQuery,
   changeFilters,
+  csvFallbackName,
   csvGate,
+  csvRequest,
+  csvSavedMessage,
   dateRangeProblem,
   filtersOf,
   historyQuery,
@@ -30,15 +35,18 @@ import {
   rowHref,
   rowMeta,
   STATUS_CHIPS,
+  watchedOnArrival,
   type Filters,
   type HistoryPage,
   type HistoryRow,
 } from "@/lib/history";
 import { formatMoney } from "@/lib/money";
+import { isWorking, publishedMessage } from "@/lib/publish";
 import { deletedMessage, reportPill } from "@/lib/report";
 import { useAuth } from "@/lib/useAuth";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then try again.";
+const NOT_EXPORTED = "We couldn't reach Petty Cash, so nothing was exported. Check your connection, then try again.";
 
 /** One answer of `GET /reports`, for the address (`query`) and the attempt it was asked with. */
 type Load =
@@ -49,15 +57,15 @@ type Load =
 /**
  * Report history - Part 15.4b, the historical retrieval list (Flask's
  * `report_history/report_history.html`, drawn with this app's components): the Standard header,
- * the date range (with Export CSV, Flask's download), the status chips, the reports as Record rows
+ * the date range (with Export CSV, the API's file), the status chips, the reports as Record rows
  * newest day first, and the pager ("Showing 1–10 of 41", rows per page 10/25/50/100). No counts and
  * no trends (15.4b, 15.7).
  *
  * Every filter is in the address (`?status=&start_date=&end_date=&page=&per_page=`), so Back and a
  * reload keep it; a filter change goes back to page 1. Reads `GET /reports` with the address as it
  * stands (Minty `petty_cash_api/routes/history.py`) - a filter the API refuses (422) shows its
- * sentence. A row's More menu offers Publish to Xero (Flask's page), Edit report and Delete report
- * only where the API allows. The rules are lib/history.ts.
+ * sentence. A row's More menu offers Publish to Xero (asked first, then watched in the row - Wave
+ * 2j), Edit report and Delete report only where the API allows. The rules are lib/history.ts.
  */
 export function ReportHistory() {
   const auth = useAuth();
@@ -171,7 +179,8 @@ export function ReportHistory() {
           <DateRange
             key={`${filters.start}|${filters.end}`}
             filters={filters}
-            csv={gate ? { reason: gate } : { href: csvUrl(entityId, filters.start, filters.end) }}
+            csvGate={gate}
+            onExported={(filename) => setToast({ id: Date.now(), message: csvSavedMessage(filename) })}
             onShow={(start, end) => go(changeFilters(filters, { start, end }))}
           />
 
@@ -230,6 +239,7 @@ export function ReportHistory() {
                     entityId={entityId}
                     entityName={entityName}
                     onDeleted={deleted}
+                    onPublished={(day) => setToast({ id: Date.now(), message: publishedMessage(day) })}
                   />
                 ))}
               </ul>
@@ -272,22 +282,29 @@ export function ReportHistory() {
 
 /**
  * The date range (Part 14 has no Date range yet: two Date fields, native pickers): From, To, Show,
- * and Export CSV - Flask's download of the dates the list shows, a gated button with its reason
- * beside it until both are shown. An end before the start is said at once; one date alone is "not
+ * and Export CSV - the API's `GET /reports/export.csv` of the dates the list shows, read with the
+ * bearer and saved under the server's file name; a gated button with its reason beside it until
+ * both are shown, "Exporting…" while it is read, a refusal's sentence inline and a toast once saved. An end before the start is said at once; one date alone is "not
  * finished yet", said only when Show is pressed. Enter in a field is Show.
  */
 function DateRange({
   filters,
-  csv,
+  csvGate,
+  onExported,
   onShow,
 }: {
   filters: Filters;
-  csv: { href: string } | { reason: string };
+  /** Why Export CSV waits, or null once the list shows a date range. */
+  csvGate: string | null;
+  onExported: (filename: string) => void;
   onShow: (start: string, end: string) => void;
 }) {
   const [start, setStart] = useState(filters.start);
   const [end, setEnd] = useState(filters.end);
   const [tried, setTried] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportProblem, setExportProblem] = useState<string | null>(null);
+  const exportInFlight = useRef(false);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
 
@@ -309,6 +326,27 @@ function DateRange({
     onShow(start, end);
   }
 
+  /** The shown dates' CSV from the API, saved under the server's name (or the name it gives). */
+  async function exportCsv() {
+    if (exportInFlight.current || csvGate) return;
+    exportInFlight.current = true;
+    setExporting(true);
+    setExportProblem(null);
+    try {
+      const { path, query } = csvRequest(filters);
+      const file = await pettyCashDownload(path, { query });
+      const filename = file.filename ?? csvFallbackName(filters);
+      saveBlob(file.blob, filename);
+      onExported(filename);
+    } catch (err) {
+      // A 401 has already gone back through the hand-off.
+      if (!(err instanceof ApiError && err.status === 401)) setExportProblem(err instanceof ApiError ? err.message : NOT_EXPORTED);
+    } finally {
+      exportInFlight.current = false;
+      setExporting(false);
+    }
+  }
+
   return (
     <form onSubmit={submit} noValidate aria-label="Date range" className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
@@ -324,22 +362,26 @@ function DateRange({
         <Button kind="secondary" type="submit">
           Show
         </Button>
-        {"href" in csv ? (
-          <a href={csv.href} className={buttonClass("ghost")}>
-            <Icon name="download" />
-            Export CSV
-          </a>
-        ) : (
+        {csvGate ? (
           <>
             <Button kind="ghost" icon={<Icon name="download" />} disabled aria-describedby="csv-reason">
               Export CSV
             </Button>
             <p id="csv-reason" className="text-body-s text-text-secondary">
-              {csv.reason}
+              {csvGate}
             </p>
           </>
+        ) : (
+          <Button kind="ghost" icon={<Icon name="download" />} processing={exporting} processingLabel="Exporting…" onClick={() => void exportCsv()}>
+            Export CSV
+          </Button>
         )}
       </div>
+      {exportProblem ? (
+        <InlineAlert tone="danger" className="sm:basis-full">
+          {exportProblem}
+        </InlineAlert>
+      ) : null}
     </form>
   );
 }
@@ -348,7 +390,9 @@ function DateRange({
  * One report as a Part 14 Record row: the day (the row's link - the whole card opens it), the meta
  * line (expenses, who submitted it), Total sales as plain text, the Status pill, and the row's More
  * menu where the API allows anything. A failed publish lists its reasons, each saying whether it is
- * resolved. Mobile = a stacked card; from 768 the amount and the pill sit in their own columns.
+ * resolved. A publish started here is watched in the row: its pill follows the API's, an Info line
+ * while Xero works, a Danger alert with the reasons and Try again when it fails. Mobile = a stacked
+ * card; from 768 the amount and the pill sit in their own columns.
  */
 function ReportRow({
   row,
@@ -357,6 +401,7 @@ function ReportRow({
   entityId,
   entityName,
   onDeleted,
+  onPublished,
 }: {
   row: HistoryRow;
   code: string | null;
@@ -364,18 +409,35 @@ function ReportRow({
   entityId: string;
   entityName: string;
   onDeleted: (day: string) => void;
+  onPublished: (day: string) => void;
 }) {
-  const [dialog, setDialog] = useState<"edit" | "delete" | null>(null);
+  const [dialog, setDialog] = useState<"edit" | "delete" | "publish" | null>(null);
+  // A publishing-status read for this row, while the list still shows this row as read.
+  const [live, setLive] = useState<{ of: HistoryRow; patch: Partial<HistoryRow> } | null>(null);
+  const shown = live && live.of === row ? { ...row, ...live.patch } : row;
   const day = row.transaction_date;
-  const pill = reportPill(row);
-  const can = rowActions(row, canPublish);
-  const dialogReport: DialogReport = { id: row.id, day, was_published: row.was_published };
+  const publishing = usePublish({
+    reportId: row.id,
+    // A row already publishing when the list loads is watched too.
+    initial: watchedOnArrival(row),
+    onStatus: (s) =>
+      setLive({
+        of: row,
+        patch: { status_label: s.status_label, status_tone: s.status_tone, was_published: s.was_published, published_at: s.published_at, publish_reasons: s.reasons },
+      }),
+    onPublished: () => onPublished(day),
+  });
+  const working = isWorking(publishing.state);
+  const pill = reportPill(shown);
+  const can = rowActions(shown, canPublish && !working);
+  const again = shown.status_tone === "success";
+  const dialogReport: DialogReport = { id: row.id, day, was_published: shown.was_published };
   // (a section this app does not know is Flask's resume, a full-page address: Link navigates to it in full)
   const href = rowHref(row, entityId, entityName);
 
   // D15-14: the rare and destructive actions in More, Delete last as Danger.
   const more: MoreItem[] = [
-    ...(can.publish ? [{ key: "publish", label: can.publish, icon: "cloud_upload", href: publishUrl(entityId, row.id) }] : []),
+    ...(can.publish ? [{ key: "publish", label: can.publish, icon: "cloud_upload", onSelect: () => setDialog("publish") }] : []),
     ...(can.edit ? [{ key: "edit", label: "Edit report", icon: "edit", onSelect: () => setDialog("edit") }] : []),
     ...(can.delete ? [{ key: "delete", label: "Delete report", icon: "delete", danger: true, onSelect: () => setDialog("delete") }] : []),
   ];
@@ -414,28 +476,34 @@ function ReportRow({
         {more.length ? <MoreMenu label={`More actions for ${formatWeekdayDay(day)}`} items={more} /> : <span className="hidden w-11 shrink-0 md:block" aria-hidden />}
       </div>
 
-      {row.publish_reasons.length ? (
+      {/* A publish started here: above the card's link, so its actions keep their own click. A failure
+          carries its reasons, so the read's own list steps aside meanwhile. */}
+      <PublishProgress
+        state={publishing.state}
+        onCheckAgain={publishing.begin}
+        onRetry={can.publish ? () => setDialog("publish") : undefined}
+        className="relative"
+      />
+      {publishing.state.kind !== "failed" && shown.publish_reasons.length ? (
         <div className="flex min-w-0 flex-col gap-1 rounded-md bg-surface-sunk p-3">
           <p className="text-body-s font-semibold text-text-primary">Why it didn&apos;t reach Xero</p>
-          <ul className="flex min-w-0 flex-col gap-1">
-            {row.publish_reasons.map((reason, i) => (
-              <li key={i} className="flex min-w-0 items-start gap-1.5 text-body-s text-text-secondary">
-                <Icon
-                  name={reason.resolved ? "check_circle" : "error"}
-                  size="sm"
-                  className={`mt-0.5 ${reason.resolved ? "text-status-success-ink" : "text-status-danger-ink"}`}
-                />
-                <span className="min-w-0 break-words">
-                  {reason.text}
-                  {/* In words, not only the icon's colour. */}
-                  {reason.resolved ? <span className="font-semibold text-text-primary"> · Resolved</span> : null}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <PublishReasons reasons={shown.publish_reasons} />
         </div>
       ) : null}
 
+      {dialog === "publish" ? (
+        <PublishDialog
+          reportId={row.id}
+          again={again}
+          wasPublished={shown.was_published}
+          reconnectHref={integrationUrl(entityId, entityName)}
+          onCancel={() => setDialog(null)}
+          onStarted={() => {
+            setDialog(null);
+            publishing.begin();
+          }}
+        />
+      ) : null}
       {dialog === "edit" ? <EditReportDialog report={dialogReport} entityId={entityId} entityName={entityName} onCancel={() => setDialog(null)} /> : null}
       {dialog === "delete" ? (
         <DeleteReportDialog

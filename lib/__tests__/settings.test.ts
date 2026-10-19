@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ApiError } from "@/lib/apiClient";
-import { settingsHref } from "@/lib/companyPages";
+import { settingsHref, xeroSettingsHref } from "@/lib/companyPages";
 import {
   addMethod,
   catalogueOptions,
@@ -54,6 +54,10 @@ const names = (draft: ReturnType<typeof draftOf>, type: "electronic" | "delivery
 describe("settingsHref", () => {
   it("is Flask's address for the page, in the company's readable form", () => {
     expect(settingsHref("360812e1-9f94-46a3-aa31-347e21afde8e", "Olive & Vine")).toBe("/entity/360812e1/olive-and-vine/settings/petty-cash");
+  });
+
+  it("opens at its Xero cards for setting up the mapping and the codes", () => {
+    expect(xeroSettingsHref("360812e1-9f94-46a3-aa31-347e21afde8e", "Olive & Vine")).toBe("/entity/360812e1/olive-and-vine/settings/petty-cash#xero");
   });
 });
 

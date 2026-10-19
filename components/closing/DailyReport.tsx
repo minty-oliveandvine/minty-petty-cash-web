@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, buttonClass, Icon, InlineAlert, inputClass, Modal, PageBanner, Skeleton, StatusPill } from "@minty/shared/ui";
 
 import type { ViewerFile } from "@/components/closing/ReceiptViewer";
+import { PublishDialog, PublishProgress, usePublish } from "@/components/closing/Publish";
 import { DeleteReportDialog, EditReportDialog } from "@/components/closing/ReportDialogs";
 import { AppBar } from "@/components/layout/AppBar";
 import { MoreMenu, type MoreItem } from "@/components/ui/MoreMenu";
@@ -19,8 +20,9 @@ import { pettyCashHome } from "@/lib/companyPages";
 import { formatWeekdayDay } from "@/lib/dates";
 import { receiptKind, type ExpenseLine } from "@/lib/expenses";
 import { setFlash } from "@/lib/flash";
-import { publishUrl } from "@/lib/flaskPages";
+import { integrationUrl } from "@/lib/hub";
 import { formatMoney } from "@/lib/money";
+import { isWorking, publishedMessage } from "@/lib/publish";
 import {
   auditFacts,
   cashRows,
@@ -65,8 +67,8 @@ type Share = { kind: "making" } | { kind: "ready"; url: string } | { kind: "fail
  * Reads `GET /reports/<report id>`; Edit report is `POST /reports/<id>/reopen` (then the first
  * stage, Addition to Drawer), Delete is `DELETE /reports/<id>` (then the launch page) and Share
  * is `POST /reports/<id>/share-link` (Minty `petty_cash_api/routes/report.py`). Each action shows
- * only while the API's `permissions` allow it. Publish to Xero is not ported: it is Flask's page.
- * The rules are lib/report.ts.
+ * only while the API's `permissions` allow it. Publish to Xero asks first, then watches the publish
+ * in place (Wave 2j, Publish.tsx). The rules are lib/report.ts.
  *
  * While `permissions.edit_details` allows it (any submitted report, not only the latest), the
  * details that move no balance are edited in place (Wave 2i, ReportEdits.tsx): Edit reason on the
@@ -107,6 +109,7 @@ export function DailyReport({ reportId }: { reportId: string }) {
             <ReportBody
               report={load.report}
               onReport={(report) => setLoad({ kind: "ready", report })}
+              onPatch={(patch) => setLoad((l) => (l.kind === "ready" ? { kind: "ready", report: { ...l.report, ...patch } } : l))}
               entityId={entityId}
               entityName={entityName}
               home={home}
@@ -201,6 +204,7 @@ function ReportHeader({
 function ReportBody({
   report,
   onReport,
+  onPatch,
   entityId,
   entityName,
   home,
@@ -209,13 +213,15 @@ function ReportBody({
   report: Report;
   /** A detail edit's answer: the whole Daily Report again. */
   onReport: (report: Report) => void;
+  /** A publishing-status read: the pill and the Xero facts as the API has them now. */
+  onPatch: (patch: Partial<Report>) => void;
   entityId: string;
   entityName: string;
   home: string;
   reports: string;
 }) {
   const router = useRouter();
-  const [dialog, setDialog] = useState<"edit" | "delete" | null>(null);
+  const [dialog, setDialog] = useState<"edit" | "delete" | "publish" | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [share, setShare] = useState<Share | null>(null);
   const [viewing, setViewing] = useState<ViewerFile | null>(null);
@@ -233,6 +239,22 @@ function ReportBody({
   const receipts = reportReceipts(report);
   const dialogReport = { id: report.report_id, day, was_published: report.was_published };
   const editLines = canEditLines(report);
+  const publishing = usePublish({
+    reportId: report.report_id,
+    initial: report.publishing_status,
+    onStatus: (s) =>
+      onPatch({
+        publishing_status: s.publishing_status,
+        status_label: s.status_label,
+        status_tone: s.status_tone,
+        xero_integrated: s.xero_integrated,
+        was_published: s.was_published,
+        published_at: s.published_at,
+      }),
+    onPublished: () => setToast({ id: Date.now(), message: publishedMessage(day) }),
+  });
+  // While Xero works on it, there is nothing to publish.
+  const canPublish = !draft && can.publish && !isWorking(publishing.state) && report.publishing_status !== "publishing";
   // A detail edit went through: redraw from the API's answer (out of Xero, so Submitted again), then say so.
   const onSaved = (answer: Report, message: string) => {
     onReport(answer);
@@ -263,18 +285,18 @@ function ReportBody({
   const more: MoreItem[] = draft
     ? []
     : [
-        ...(can.publish && report.xero_integrated
-          ? [{ key: "publish", label: publishLabel(report), icon: "cloud_upload", href: publishUrl(entityId, report.report_id) }]
+        ...(canPublish && report.xero_integrated
+          ? [{ key: "publish", label: publishLabel(report), icon: "cloud_upload", onSelect: () => setDialog("publish") }]
           : []),
         ...(can.edit ? [{ key: "edit", label: "Edit report", icon: "edit", onSelect: () => setDialog("edit") }] : []),
         ...(can.delete ? [{ key: "delete", label: "Delete report", icon: "delete", danger: true, onSelect: () => setDialog("delete") }] : []),
       ];
-  // Not yet in Xero: publishing is the one way on, so it is the Primary - Flask's page (not ported).
+  // Not yet in Xero: publishing is the one way on, so it is the Primary.
   const publish =
-    !draft && can.publish && !report.xero_integrated ? (
-      <a href={publishUrl(entityId, report.report_id)} className={buttonClass("primary")}>
+    canPublish && !report.xero_integrated ? (
+      <Button kind="primary" onClick={() => setDialog("publish")}>
         {publishLabel(report)}
-      </a>
+      </Button>
     ) : null;
   const shareButton =
     !draft && can.share ? (
@@ -309,6 +331,8 @@ function ReportBody({
           Check the day in Close, then submit it.
         </PageBanner>
       ) : null}
+
+      <PublishProgress state={publishing.state} onCheckAgain={publishing.begin} onRetry={canPublish ? () => setDialog("publish") : undefined} />
 
       {/* 15.7: exactly three KPIs - stacked on a phone, in a row from 640. Each value is read with its label. */}
       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -465,6 +489,19 @@ function ReportBody({
             // The launch page says so (a Page banner, read once) - in place of this page, which shows a report that is gone.
             setFlash(deletedMessage(answer.transaction_date), "success");
             router.replace(home);
+          }}
+        />
+      ) : null}
+      {dialog === "publish" ? (
+        <PublishDialog
+          reportId={report.report_id}
+          again={report.xero_integrated}
+          wasPublished={report.was_published}
+          reconnectHref={integrationUrl(entityId, entityName)}
+          onCancel={() => setDialog(null)}
+          onStarted={() => {
+            setDialog(null);
+            publishing.begin();
           }}
         />
       ) : null}

@@ -4,14 +4,16 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 
 import { useLeaveGuard } from "@minty/shared/leaveGuard";
-import { Button, buttonClass, Field, Icon, InlineAlert, inputClass, Modal, Skeleton } from "@minty/shared/ui";
+import { Button, Field, Icon, InlineAlert, inputClass, Modal, Skeleton } from "@minty/shared/ui";
 
 import { AppBar } from "@/components/layout/AppBar";
+import { Card, CardSave, NOT_SAVED } from "@/components/settings/SettingsCard";
+import { CodesCard, MappingCard, NotConnectedCard } from "@/components/settings/XeroCards";
 import { MoreMenu, type MoreItem } from "@/components/ui/MoreMenu";
 import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
-import { pettyCashHome } from "@/lib/companyPages";
-import { settingsUrl } from "@/lib/flaskPages";
+import { pettyCashHome, XERO_ANCHOR } from "@/lib/companyPages";
+import { integrationUrl } from "@/lib/hub";
 import {
   addMethod,
   catalogueOptions,
@@ -39,12 +41,9 @@ import {
   type SettingsAnswer,
 } from "@/lib/settings";
 import { useAuth } from "@/lib/useAuth";
+import { codesDirty, mappingDirty, mappingDraftOf, mappingSavedMessage, readOf, tickedOf, withContact, type MappingDraft, type XeroSettings } from "@/lib/xeroSettings";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
-const NOT_SAVED = "We couldn't reach Petty Cash, so this wasn't saved. Check your connection, then try again.";
-/** Flask's page, word for word: the reason beside a Save this person may not press. */
-const NO_RIGHT = "Only Accountants and Admins can change these.";
-const NOTHING_YET = "No changes to save yet.";
 
 const GROUP_SUB: Record<MethodType, string> = {
   electronic: "Card and wallet payments a Daily Closing can record.",
@@ -52,6 +51,8 @@ const GROUP_SUB: Record<MethodType, string> = {
 };
 
 type Load = { kind: "loading" } | { kind: "ready"; settings: Settings } | { kind: "failed"; message: string };
+/** `GET /settings/xero`, read once: it asks Xero on the server. */
+type XeroLoad = { kind: "loading" } | { kind: "ready"; xero: XeroSettings } | { kind: "failed"; message: string; forbidden: boolean };
 
 /**
  * Petty Cash settings - Part 15.20 (Business setup) as 15.20b's grouped forms with one Save per
@@ -60,11 +61,17 @@ type Load = { kind: "loading" } | { kind: "ready"; settings: Settings } | { kind
  *
  * 1. **Country & currency** - two pickers, `PUT /settings/country`; a country alone brings its
  *    currency.
- * 2. **Sales methods** - Electronic and Delivery, in list order: add (from the catalogue, or a new
+ * 2. **Xero account mapping** - the eight Xero choices (components/settings/XeroCards.tsx).
+ * 3. **Sales methods** - Electronic and Delivery, in list order: add (from the catalogue, or a new
  *    name), rename, remove and move (a row's More menu - the way that works by keyboard and on a
  *    phone). Every change waits for the card's Save, which sends them one by one (lib/settings.ts).
- * 3. **Xero**, only while Xero is connected: one sentence and a full-page link to Flask's page,
- *    where the account mapping and the account codes stay (the owner, 2026-10-16).
+ * 4. **Petty Cash account codes** - the checklist (XeroCards.tsx).
+ *
+ * The two Xero cards read `GET /settings/xero` once, beside `GET /settings` (it asks Xero, so it is
+ * the slow one and never holds up the other cards). Without a live Xero connection they are one
+ * card linking to minty-web's Entity & Integration (through Flask's hand-off), where Xero is
+ * connected. The Xero cards' place is `#xero` (`xeroSettingsHref`): the launch page's Setup
+ * Required and a deposit correction's missing accounts open the page there.
  *
  * Each control shows only where `permissions` allows it; a Save the person may not press is
  * disabled with the reason beside it. A refusal is the API's sentence inline in its card - never a
@@ -74,15 +81,28 @@ type Load = { kind: "loading" } | { kind: "ready"; settings: Settings } | { kind
 export function PettyCashSettings() {
   const auth = useAuth();
   const [load, setLoad] = useState<Load>({ kind: "loading" });
+  const [xeroLoad, setXeroLoad] = useState<XeroLoad>({ kind: "loading" });
+  const xeroRequest = useRef<Promise<XeroSettings> | null>(null);
 
   useEffect(() => {
     let live = true;
+    // A 401 has already gone back through the hand-off.
+    const signedOut = (err: unknown) => err instanceof ApiError && err.status === 401;
     pettyCashFetch<Settings>("/settings")
       .then((settings) => live && setLoad({ kind: "ready", settings }))
       .catch((err: unknown) => {
-        // A 401 has already gone back through the hand-off.
-        if (!live || (err instanceof ApiError && err.status === 401)) return;
+        if (!live || signedOut(err)) return;
         setLoad({ kind: "failed", message: err instanceof ApiError ? err.message : UNREACHABLE });
+      });
+    // Side by side with the read above, never after it - and once: it asks Xero on the server, so
+    // a second run of this effect (React's dev double run) reuses the same request.
+    xeroRequest.current ??= pettyCashFetch<XeroSettings>("/settings/xero");
+    xeroRequest.current
+      .then((xero) => live && setXeroLoad({ kind: "ready", xero }))
+      .catch((err: unknown) => {
+        if (!live || signedOut(err)) return;
+        const forbidden = err instanceof ApiError && err.status === 403;
+        setXeroLoad({ kind: "failed", message: err instanceof ApiError ? err.message : UNREACHABLE, forbidden });
       });
     return () => {
       live = false;
@@ -116,7 +136,7 @@ export function PettyCashSettings() {
           </div>
 
           {load.kind === "ready" && auth ? (
-            <SettingsCards initial={load.settings} entityId={entityId} />
+            <SettingsCards initial={load.settings} xeroLoad={xeroLoad} entityId={entityId} entityName={entityName} />
           ) : load.kind === "failed" ? (
             <InlineAlert tone="danger">{load.message}</InlineAlert>
           ) : (
@@ -131,21 +151,48 @@ export function PettyCashSettings() {
   );
 }
 
-/** The cards, over one read: each card's answer is the whole read again. */
-function SettingsCards({ initial, entityId }: { initial: Settings; entityId: string }) {
+/** The Xero cards' read and what waits on them: the mapping's pickers and the ticked codes. */
+type XeroCardsState = { read: XeroSettings; mapping: MappingDraft; ticked: string[] };
+
+const xeroStateOf = (read: XeroSettings): XeroCardsState => ({ read, mapping: mappingDraftOf(read), ticked: tickedOf(read) });
+
+/**
+ * The cards, over the two reads: each card's answer is its whole read again. The Xero read may
+ * arrive after the others are drawn; the Xero cards start from it then.
+ */
+function SettingsCards({ initial, xeroLoad, entityId, entityName }: { initial: Settings; xeroLoad: XeroLoad; entityId: string; entityName: string }) {
   const [settings, setSettings] = useState(initial);
   const [choice, setChoice] = useState<CountryChoice>(() => countryChoiceOf(initial));
   const [draft, setDraft] = useState<Draft>(() => draftOf(initial));
+  const [xero, setXero] = useState<XeroCardsState | null>(null);
+  const [xeroFrom, setXeroFrom] = useState<XeroSettings | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const goBack = useRef<HTMLButtonElement>(null);
 
-  const dirty = countryBody(settings, choice) !== null || pendingOps(draft, settings).length > 0;
+  // React's "adjust state when a prop changes": the read, once it arrives.
+  if (xeroLoad.kind === "ready" && xeroLoad.xero !== xeroFrom) {
+    setXeroFrom(xeroLoad.xero);
+    setXero(xeroStateOf(xeroLoad.xero));
+  }
+  const live = xero?.read.live ? xero : null;
+
+  const xeroDirty = live !== null && (mappingDirty(live.read, live.mapping) || codesDirty(live.read, live.ticked));
+  const dirty = countryBody(settings, choice) !== null || pendingOps(draft, settings).length > 0 || xeroDirty;
   const leave = useLeaveGuard(dirty, () => {
     setChoice(countryChoiceOf(settings));
     setDraft(draftOf(settings));
+    setXero((x) => (x ? xeroStateOf(x.read) : x));
   });
 
+  // Opened at `#xero` (Setup Required, a deposit correction's missing accounts): the cards are drawn
+  // after the reads, so the browser's own jump to the anchor found nothing - go there once they are.
+  const xeroSettled = xeroLoad.kind !== "loading";
+  useEffect(() => {
+    if (xeroSettled && window.location.hash === `#${XERO_ANCHOR}`) document.getElementById(XERO_ANCHOR)?.scrollIntoView({ block: "start" });
+  }, [xeroSettled]);
+
   const say = (message: string) => setToast({ id: Date.now(), message });
+  const patchXero = (patch: Partial<XeroCardsState>) => setXero((x) => (x ? { ...x, ...patch } : x));
 
   return (
     <>
@@ -159,6 +206,37 @@ function SettingsCards({ initial, entityId }: { initial: Settings; entityId: str
           say(message);
         }}
       />
+      {/* `#xero`: the place a link to the Xero cards opens at, whatever state they are in. */}
+      <div id={XERO_ANCHOR} className="min-w-0 scroll-mt-20">
+        {xeroLoad.kind === "loading" ? (
+          <div role="status" aria-busy="true" aria-label="Loading the Xero settings">
+            <Skeleton className="h-72 w-full rounded-lg" />
+          </div>
+        ) : xeroLoad.kind === "failed" ? (
+          <Card id="xero" title="Xero" sub="The Xero accounts, contacts and account codes a Daily Report is published to.">
+            {xeroLoad.forbidden ? (
+              <p className="text-body-m text-text-secondary">Your role can&apos;t see the Xero settings. Ask an Accountant or an Admin.</p>
+            ) : (
+              <InlineAlert tone="danger">{xeroLoad.message}</InlineAlert>
+            )}
+          </Card>
+        ) : live ? (
+          <MappingCard
+            xero={live.read}
+            draft={live.mapping}
+            onDraft={(mapping) => patchXero({ mapping })}
+            onContact={(contact) => setXero((x) => (x ? { ...x, read: withContact(x.read, contact) } : x))}
+            onSaved={(answer) => {
+              const read = readOf(answer);
+              // The codes card keeps what is waiting on it.
+              setXero((x) => ({ read, mapping: mappingDraftOf(read), ticked: x ? x.ticked : tickedOf(read) }));
+              say(mappingSavedMessage(answer));
+            }}
+          />
+        ) : (
+          <NotConnectedCard href={integrationUrl(entityId, entityName)} />
+        )}
+      </div>
       <MethodsCard
         settings={settings}
         draft={draft}
@@ -169,7 +247,19 @@ function SettingsCards({ initial, entityId }: { initial: Settings; entityId: str
           if (out.message) say(out.message);
         }}
       />
-      {settings.xero_connected ? <XeroCard href={settingsUrl(entityId)} /> : null}
+      {live ? (
+        <CodesCard
+          xero={live.read}
+          ticked={live.ticked}
+          onTicked={(ticked) => patchXero({ ticked })}
+          onSaved={(answer) => {
+            const read = readOf(answer);
+            // The mapping card keeps what is waiting on it.
+            setXero((x) => ({ read, mapping: x ? x.mapping : mappingDraftOf(read), ticked: tickedOf(read) }));
+            say(answer.message);
+          }}
+        />
+      ) : null}
       <ToastRegion toast={toast} onDismiss={() => setToast(null)} />
       <Modal
         open={leave.open}
@@ -190,50 +280,6 @@ function SettingsCards({ initial, entityId }: { initial: Settings; entityId: str
         }
       />
     </>
-  );
-}
-
-/** A settings card (15.20b): a Section header (h2 + why), its fields, then its own Save. */
-function Card({ id, title, sub, children }: { id: string; title: string; sub: string; children: ReactNode }) {
-  return (
-    <section aria-labelledby={`${id}-title`} className="flex min-w-0 flex-col gap-4 rounded-lg border border-border-subtle bg-surface-card p-4 sm:p-6">
-      <div className="flex flex-col gap-1">
-        <h2 id={`${id}-title`} className="text-title-l text-text-primary">
-          {title}
-        </h2>
-        <p className="text-body-m text-text-secondary">{sub}</p>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/**
- * A card's Save (Part 14 Button, Primary): first and full width on a phone, at the right from 640.
- * Disabled with its reason beside it while the person may not change the card, or nothing changed.
- */
-function CardSave({ id, may, dirty, saving, onSave }: { id: string; may: boolean; dirty: boolean; saving: boolean; onSave: () => void }) {
-  const reason = !may ? NO_RIGHT : !dirty && !saving ? NOTHING_YET : null;
-  const reasonId = `${id}-save-reason`;
-  return (
-    <div className="flex flex-col gap-2 border-t border-border-subtle pt-4 sm:flex-row-reverse sm:items-center sm:justify-start sm:gap-3">
-      <Button
-        kind="primary"
-        className="w-full sm:w-auto"
-        onClick={onSave}
-        disabled={reason !== null}
-        processing={saving}
-        processingLabel="Saving…"
-        aria-describedby={reason ? reasonId : undefined}
-      >
-        Save
-      </Button>
-      {reason ? (
-        <p id={reasonId} className="text-body-s text-text-secondary">
-          {reason}
-        </p>
-      ) : null}
-    </div>
   );
 }
 
@@ -745,17 +791,5 @@ function RenameDialog({
         </Field>
       </form>
     </Modal>
-  );
-}
-
-/** Xero, while connected: the mapping and the account codes stay on Flask's page (a full-page link). */
-function XeroCard({ href }: { href: string }) {
-  return (
-    <Card id="xero" title="Xero" sub="The Xero account mapping and the Petty Cash account codes are set on the Xero settings page, which reads them from Xero.">
-      <a href={href} className={`${buttonClass("secondary")} w-full sm:w-auto sm:self-start`}>
-        Go to Xero settings
-        <Icon name="arrow_forward" />
-      </a>
-    </Card>
   );
 }

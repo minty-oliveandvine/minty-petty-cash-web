@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { csvUrl } from "@/lib/flaskPages";
 import {
   apiQuery,
   changeFilters,
+  csvFallbackName,
   csvGate,
+  csvRequest,
+  csvSavedMessage,
   dateRangeProblem,
   filtersOf,
   historyQuery,
@@ -16,6 +18,7 @@ import {
   rowHref,
   rowMeta,
   STATUS_CHIPS,
+  watchedOnArrival,
   type Filters,
   type HistoryRow,
 } from "@/lib/history";
@@ -37,6 +40,7 @@ function row(over: Partial<HistoryRow> = {}): HistoryRow {
     submitted_by: "Olive",
     submitted_at: "2026-10-13T18:12:00+08:00",
     published_at: null,
+    publishing_status: "unpublished",
     was_published: false,
     publish_reasons: [],
     permissions: { edit: true, delete: true },
@@ -150,10 +154,16 @@ describe("the date range", () => {
 });
 
 describe("Export CSV", () => {
-  it("is Flask's download of the shown dates", () => {
-    expect(csvUrl(ENTITY, "2026-10-01", "2026-10-13")).toBe(
-      `http://localhost:8000/entity/${ENTITY}/petty-cash/reports/download-csv?start_date=2026-10-01&end_date=2026-10-13`,
-    );
+  it("asks the API for the shown dates, never a Flask page", () => {
+    expect(csvRequest({ ...NONE, start: "2026-10-01", end: "2026-10-13", status: "draft", page: 3 })).toEqual({
+      path: "/reports/export.csv",
+      query: { start_date: "2026-10-01", end_date: "2026-10-13" },
+    });
+  });
+
+  it("names the file as the server does when its name can't be read, and says where it went", () => {
+    expect(csvFallbackName({ ...NONE, start: "2026-10-01", end: "2026-10-13" })).toBe("reports_2026-10-01_to_2026-10-13.csv");
+    expect(csvSavedMessage("reports_2026-10-01_to_2026-10-13.csv")).toBe("Reports exported to reports_2026-10-01_to_2026-10-13.csv.");
   });
 
   it("waits for both dates, and says why beside the button", () => {
@@ -186,6 +196,17 @@ describe("a row", () => {
   });
 });
 
+describe("a row's publish on arrival", () => {
+  it("watches a row already publishing, and no other", () => {
+    expect(watchedOnArrival(row({ publishing_status: "publishing", status_label: "Publishing to Xero" }))).toBe("publishing");
+    expect(watchedOnArrival(row())).toBeNull();
+    expect(watchedOnArrival(row({ publishing_status: null }))).toBeNull();
+    expect(watchedOnArrival(row({ publishing_status: "completed", status_tone: "success" }))).toBeNull();
+    // a failed row already carries its reasons: not read again
+    expect(watchedOnArrival(row({ publishing_status: "failed", publish_reasons: [{ text: "Account 429 is archived.", resolved: false }] }))).toBeNull();
+  });
+});
+
 describe("where a row opens", () => {
   const BASE = "/entity/360812e1/olive-and-vine/petty-cash";
   const draft = (current_section: string | null) => row({ id: "d1", status: "draft", status_label: "Draft", status_tone: "neutral", current_section });
@@ -201,9 +222,9 @@ describe("where a row opens", () => {
     expect(rowHref(draft("ending"), ENTITY, "Olive & Vine")).toBe(`${BASE}/reports/new/ending?transaction_date=2026-10-13`);
   });
 
-  it("opens Addition to Drawer for a draft that names no section, and Flask's resume for one this app doesn't know", () => {
+  it("opens Addition to Drawer for a draft that names no section, or one this app doesn't know - never a Flask page", () => {
     expect(rowHref(draft(null), ENTITY, "Olive & Vine")).toBe(`${BASE}/reports/new/opening?transaction_date=2026-10-13`);
-    expect(rowHref(draft("review"), ENTITY, "Olive & Vine")).toBe(`http://localhost:8000/entity/${ENTITY}/petty-cash/reports/resume?transaction_date=2026-10-13`);
+    expect(rowHref(draft("review"), ENTITY, "Olive & Vine")).toBe(`${BASE}/reports/new/opening?transaction_date=2026-10-13`);
   });
 });
 

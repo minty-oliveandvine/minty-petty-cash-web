@@ -82,10 +82,11 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 ## The sidebar
 
-**On `development`, `@minty/shared` is pinned at `v0.1`** (the user, 2026-10-14). That is the sidebar from before its Part 13 restyle, the menu Flask's pages show, so it matches the pixel-faithful port. The cost:
-- v0.1 has no `previewSibling`, so `lib/previewSibling.ts` is a copy of v0.3's (minty-web keeps one the same way). Change the package first, then the copy.
-- **The preview label is `pettycash`** (2026-10-19, Step 5): a branch preview of this app is `pr-<slug>-pettycash.dailyminty.com`, matching its production host `pettycash.dailyminty.com`. The copy is ahead of the package here, which still says `petty-cash`. So do Flask's `PREVIEW_ORIGIN_REGEX` and `preview_origin.py` (which hands back to `pr-<slug>-petty-cash`), minty-infra and the `.github` repo's `vercel-preview-set.yml`. Until those follow, a preview set's Flask round trip does not come back to this app's preview. The repo name `minty-petty-cash-web` and the sidebar's app id are unchanged.
-- v0.1 has no Part 13 `tokens.css`, so the colours the sidebar reads (`--avatar-bg`, `--avatar-fg`, `--primary`) are declared in `app/globals.css`.
+**On `development`, `@minty/shared` is pinned at `v0.5`**, moved from `v0.1` on 2026-10-19 at the owner's request (every app on the latest shared sidebar; v0.5 is v0.4 plus the `pettycash` preview label and a closed sidebar that casts no shadow). Only the menu takes the Minty v2 look; every page keeps Flask's. What that rests on:
+- `app/globals.css` imports `@minty/shared/tokens.css`, because the sidebar draws in its names (without it the menu draws in Tailwind's defaults, transparent). The v0.1-only colours (`--avatar-bg`, `--avatar-fg`, `--primary`) are gone.
+- tokens.css makes `rounded-sm/md/lg/xl` Part 13's 4/8/12/16 px. The ported pages draw only with the `flask-*` radii (`app/styles/flask-theme.css`), so their corners did not move, and `app/__tests__/packagedStyles.test.ts` fails on a plain `rounded-md`..`4xl` in this app's source and on any local `--radius-*`, `--text-*` or tokens.css colour name.
+- **The preview label is `pettycash`** (2026-10-19, Step 5): a branch preview of this app is `pr-<slug>-pettycash.dailyminty.com`, matching its production host `pettycash.dailyminty.com`. The package says the same from v0.5. Flask's `PREVIEW_ORIGIN_REGEX` / `preview_origin.py`, minty-infra and the `.github` repo's `vercel-preview-set.yml` must say it too, or a preview set's Flask round trip does not come back to this app's preview. The repo name `minty-petty-cash-web` and the sidebar's app id are unchanged.
+- `lib/previewSibling.ts` is still a local copy, identical in code to the package's `@minty/shared/previewSibling`; switching the imports to the package is a separate change.
 
 `port/prw-look` pins `v0.3`.
 

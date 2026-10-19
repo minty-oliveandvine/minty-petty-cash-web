@@ -11,6 +11,9 @@
  *   reconnected, through that hand-off.
  * - `subscriptionSettingsUrl` - minty-web's Module page, where the subscription is managed (the
  *   launch page's subscription notice), through that hand-off.
+ * - `settingsSectionUrl` / `paymentRequestSettingsUrl` - the settings pills' other sections:
+ *   minty-web's Users, Entity & Integration and Modules through that hand-off, and the payments
+ *   app's settings through Flask's `/entity/<id>/settings/payment-request` hand-off.
  * - `billsUrl` - the payments app, through Flask's `/entity/<id>/payment-request`: a hand-off that
  *   mints the payments app's token and redirects (Minty `go_to_bills`), never a page.
  * - `logoutUrl` - Flask's `/logout`: ends the session everywhere, then redirects to minty-web's
@@ -45,6 +48,23 @@ export function integrationUrl(entityId: string, entityName: string): string {
  */
 export function subscriptionSettingsUrl(entityId: string, entityName: string): string {
   return hubUrl(`/entity/${companyRef(entityId, entityName)}/settings/modules`, entityId);
+}
+
+/** minty-web's settings sections - the settings pills' Users, Entity & Integration and Modules. */
+export type HubSettingsSection = "users" | "integration" | "modules";
+
+/** One of minty-web's settings sections for the company (`/entity/<shortid>/<name>/settings/<section>`), through the hand-off. */
+export function settingsSectionUrl(entityId: string, entityName: string, section: HubSettingsSection): string {
+  return hubUrl(`/entity/${companyRef(entityId, entityName)}/settings/${section}`, entityId);
+}
+
+/**
+ * The payments app's settings for the company, through Flask's `/entity/<id>/settings/payment-request`
+ * (Minty `entity_settings_payments`): login-gated, it mints the payments app's token and redirects -
+ * never a page. The settings pills' Payment Request Settings, as minty-web's pills use it.
+ */
+export function paymentRequestSettingsUrl(entityId: string): string {
+  return accounts(`/entity/${encodeURIComponent(entityId)}/settings/payment-request`);
 }
 
 /** The payments app for the company, through Flask's token hand-off (`/entity/<id>/payment-request`). */

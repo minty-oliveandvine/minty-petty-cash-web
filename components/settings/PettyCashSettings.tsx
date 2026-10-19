@@ -8,10 +8,12 @@ import { Button, Field, Icon, InlineAlert, inputClass, Modal, Skeleton } from "@
 
 import { AppBar } from "@/components/layout/AppBar";
 import { Card, CardSave, NOT_SAVED } from "@/components/settings/SettingsCard";
+import { SettingsTabs } from "@/components/settings/SettingsTabs";
 import { CodesCard, MappingCard, NotConnectedCard } from "@/components/settings/XeroCards";
 import { MoreMenu, type MoreItem } from "@/components/ui/MoreMenu";
 import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
+import { moduleClaims } from "@/lib/auth";
 import { pettyCashHome, XERO_ANCHOR } from "@/lib/companyPages";
 import { integrationUrl } from "@/lib/hub";
 import {
@@ -132,6 +134,12 @@ export function PettyCashSettings() {
             ) : (
               <span className="min-h-11" aria-hidden />
             )}
+            {/* The settings pills, as on every other settings page (minty-web's SettingsShell): above the title. */}
+            {auth ? (
+              <div className="pb-3 pt-1">
+                <SettingsTabs entityId={entityId} entityName={entityName} billing={moduleClaims().billing} />
+              </div>
+            ) : null}
             <h1 className="text-display-m text-text-primary">Petty Cash settings</h1>
           </div>
 

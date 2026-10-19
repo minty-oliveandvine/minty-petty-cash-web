@@ -2,7 +2,15 @@
 
 import { describe, expect, it } from "vitest";
 
-import { billsUrl, hubUrl, integrationUrl, logoutUrl, subscriptionSettingsUrl } from "@/lib/hub";
+import {
+  billsUrl,
+  hubUrl,
+  integrationUrl,
+  logoutUrl,
+  paymentRequestSettingsUrl,
+  settingsSectionUrl,
+  subscriptionSettingsUrl,
+} from "@/lib/hub";
 
 const ENTITY = "360812e1-9f94-46a3-aa31-347e21afde8e";
 
@@ -32,6 +40,22 @@ describe("Flask's hand-offs", () => {
     expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
     expect(url.searchParams.get("next")).toBe("/entity/360812e1/olive-and-vine/settings/modules");
     expect(url.searchParams.get("entity_id")).toBe(ENTITY);
+  });
+
+  it("opens each of minty-web's settings sections at the company's address, through the hand-off", () => {
+    for (const section of ["users", "integration", "modules"] as const) {
+      const url = new URL(settingsSectionUrl(ENTITY, "Olive & Vine", section));
+      expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
+      expect(url.searchParams.get("next")).toBe(`/entity/360812e1/olive-and-vine/settings/${section}`);
+      expect(url.searchParams.get("entity_id")).toBe(ENTITY);
+      expect(url.searchParams.has("token")).toBe(false);
+    }
+  });
+
+  it("opens the payments app's settings through Flask's settings hand-off, never a page", () => {
+    const url = new URL(paymentRequestSettingsUrl(ENTITY));
+    expect(url.origin + url.pathname).toBe(`http://localhost:8000/entity/${ENTITY}/settings/payment-request`);
+    expect(url.searchParams.has("token")).toBe(false);
   });
 
   it("hands the payments app over through Flask's token hand-off, and logs out at Flask", () => {

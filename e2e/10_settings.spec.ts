@@ -851,3 +851,49 @@ test("the page reloads with no console error", async ({ page }) => {
   await expect(rowsOf(page, "Electronic")).toHaveCount(3);
   expect(errors).toEqual([]);
 });
+
+// --- the settings pills (the owner, 2026-10-19: "like the rest of the settings") ---------------
+
+const pills = (page: Page) => page.getByRole("navigation", { name: "Settings sections" });
+
+test("the settings pills: every section in the other apps' order, this page current, the rest through their hand-offs", async ({ page }) => {
+  await openWith(page);
+  const nav = pills(page);
+  await expect(nav.locator("a, span[aria-current]")).toHaveText([
+    "Users",
+    "Entity & Integration",
+    "Petty Cash Settings",
+    "Payment Request Settings",
+    "Modules",
+  ]);
+  await expect(nav.getByText("Petty Cash Settings")).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Petty Cash Settings" })).toHaveCount(0);
+
+  const next = async (name: string) => new URL((await nav.getByRole("link", { name }).getAttribute("href")) ?? "").searchParams.get("next");
+  const company = companyRef(ENTITY, NAME);
+  expect(await next("Users")).toBe(`/entity/${company}/settings/users`);
+  expect(await next("Entity & Integration")).toBe(`/entity/${company}/settings/integration`);
+  expect(await next("Modules")).toBe(`/entity/${company}/settings/modules`);
+  const payments = new URL((await nav.getByRole("link", { name: "Payment Request Settings" }).getAttribute("href")) ?? "");
+  expect(payments.pathname).toBe(`/entity/${ENTITY}/settings/payment-request`);
+  for (const href of await nav.getByRole("link").evaluateAll((links) => links.map((a) => a.getAttribute("href") ?? ""))) {
+    expect(new URL(href).searchParams.has("token")).toBe(false);
+  }
+});
+
+test("the settings pills leave Payment Request Settings out when the company doesn't have that module", async ({ page }) => {
+  await stub(page, settings());
+  const token = mintModuleToken({ secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME }, { billing_enabled: false });
+  await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: SETTINGS })}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Petty Cash settings" })).toBeVisible();
+  await expect(pills(page).locator("a, span[aria-current]")).toHaveText(["Users", "Entity & Integration", "Petty Cash Settings", "Modules"]);
+});
+
+test("the settings pills wrap on a phone: no sideways scroll, every pill a 44px target", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await openWith(page);
+  await expectNoHorizontalScroll(page);
+  for (const box of await pills(page).locator("a, span[aria-current]").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height))) {
+    expect(box).toBeGreaterThanOrEqual(44);
+  }
+});

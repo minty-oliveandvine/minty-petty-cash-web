@@ -20,7 +20,16 @@ const ALLOWED = new Set([
 ]);
 
 /** What a path built on `ACCOUNTS_API_URL` may start with: hand-offs, actions and APIs - never a page. */
-const ALLOWED_PATHS = [/^\/handoff\/(minty-web|petty-cash-web)\?/, /^\/entity\/\$\{[^}]+\}\/payment-request$/, /^\/logout$/, /^\/api\//];
+// `/entity/<id>/settings/payment-request` is Flask's `entity_settings_payments`: login-gated, it
+// mints the payments app's token and redirects to its settings (no page) - the settings pills'
+// Payment Request Settings, as minty-web's pills use it.
+const ALLOWED_PATHS = [
+  /^\/handoff\/(minty-web|petty-cash-web)\?/,
+  /^\/entity\/\$\{[^}]+\}\/payment-request$/,
+  /^\/entity\/\$\{[^}]+\}\/settings\/payment-request$/,
+  /^\/logout$/,
+  /^\/api\//,
+];
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

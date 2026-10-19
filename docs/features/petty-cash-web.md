@@ -545,7 +545,13 @@ Known gaps of Wave 2g:
 `/entity/<shortid>/<name>/settings/petty-cash` replaces the parts of Flask's Petty Cash settings that need no Xero, at Flask's own address (`settingsHref`, `lib/companyPages.ts`). It reads `GET /settings` and writes through `PUT /settings/country` and the sales-method routes (Minty `petty_cash_api/routes/settings.py`), unchanged. Its order and content are those of Flask's redesigned page (`entity/settings_entity.html`, `partials/electronic_delivery_section.html`, `static/js/petty_cash_settings.js`).
 
 The page, top to bottom (`components/settings/PettyCashSettings.tsx`, rules in `lib/settings.ts`, a centred 720 column):
-1. **The Standard header** (15.1): "‹ Petty Cash" back to the launch page, "Petty Cash settings" (the h1). No intro text (2.9.10).
+1. **The Standard header** (15.1): "‹ Petty Cash" back to the launch page, then **the settings pills** (the owner, 2026-10-19: "like the rest of the settings"), then "Petty Cash settings" (the h1). No intro text (2.9.10).
+   - The pills (`components/settings/SettingsTabs.tsx`) use the same sections, order and name (`nav` "Settings sections") as minty-web's `SettingsTabs`, the payments app's `SettingsPills` and Flask's `settings_entity.html`: Users · Entity & Integration · **Petty Cash Settings** (this page, `aria-current`, not a link) · Payment Request Settings · Modules.
+   - Payment Request Settings shows only when the token's `billing_enabled` is not false (`moduleClaims`).
+   - minty-web's look: 44px `rounded-lg` pills that wrap, in Part 13 tokens.
+   - Every other pill leaves the app through a hand-off (`lib/hub.ts`):
+     - Users, Entity & Integration and Modules use `settingsSectionUrl`, through `/handoff/minty-web`;
+     - Payment Request Settings uses `paymentRequestSettingsUrl`, through Flask's `/entity/<id>/settings/payment-request`, which mints the payments app's token and redirects. `noFlaskPages.test.ts` allows that path.
 2. **Country & currency** (one card, its own Save): **Country** and **Currency**, native selects in Part 14 Input geometry.
    - A country alone brings its currency: choosing another country puts Currency on "The country's own currency" with "Saving sets the currency that goes with the country. Choose one here to use another." Choosing the saved country again puts the saved pair back.
    - Save sends only what changed (`{country_code}`, `{currency_id}` or both).

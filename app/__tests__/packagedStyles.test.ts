@@ -5,7 +5,7 @@
 //    class inside the packaged sidebar is dropped from the generated CSS - it renders as unstyled
 //    stacked text, and nothing errors.
 // 2. THIS BRANCH'S LOOK: Flask's exact palette and Tailwind v3 sizes (app/styles/flask-theme.css)
-//    for every page, and @minty/shared at v0.4 (the owner, 2026-10-19) for the menu - drawn in
+//    for every page, and @minty/shared at v0.5 (the owner, 2026-10-19) for the menu - drawn in
 //    tokens.css's names, so without that sheet it draws in Tailwind's defaults (transparent).
 // 3. RADII: tokens.css redefines rounded-sm/md/lg/xl to Part 13's 4/8/12/16 px. The pages draw
 //    only with the `flask-*` radii, so a plain rounded-md..4xl in this app would silently change
@@ -89,7 +89,7 @@ describe("the stylesheet", () => {
   });
 
   it("emits the packaged sidebar's own utilities", () => {
-    // Declarations, not class selectors: no escaping to get wrong. Each appears in the v0.4
+    // Declarations, not class selectors: no escaping to get wrong. Each appears in the v0.5
     // sidebar and nowhere in this app's own source, so if Tailwind stops scanning node_modules
     // they disappear from the output.
     expect(compiled).toMatch(/width:\s*min\(100%,\s*353px\)/); // Sidebar's menu panel

@@ -1,6 +1,6 @@
 /**
  * A copy of `@minty/shared/previewSibling`, kept from when this branch pinned v0.1 (which had
- * none). The pin is v0.4 since 2026-10-19 and its code is identical; moving the imports to the
+ * none). The pin is v0.5 since 2026-10-19 and its code is identical; moving the imports to the
  * package is a separate change. Until then: change it in the package first, then here.
  *
  * Preview sets: one branch, one host per app - `pr-<slug>-<app>.dailyminty.com` (2026-10-13).

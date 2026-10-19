@@ -26,6 +26,15 @@ const ALLOWED: Record<string, { pattern: RegExp; why: string }[]> = {
     { pattern: /^ACCOUNTS_API_URL\}\/entity\/\$\{id\}\/payment-request`/, why: "mints the payments app's token and redirects to its home" },
     { pattern: /^ACCOUNTS_API_URL\}\/entity\/\$\{id\}\/settings\/payment-request`/, why: "mints the payments app's token and redirects to its settings" },
     { pattern: /^ACCOUNTS_API_URL\}\/logout`/, why: "ends the session" },
+    {
+      // flaskBackendUrl: after the host switch `pettycash.` is this app, so an old caller of one of
+      // Flask's BACKEND paths there (Xero's `/callback`, `/handoff/*`, `/api/*`, `/logout`, an email's
+      // sign-in or invitation link) is sent on to the same path on accounts-api. The function
+      // re-checks the path against isFlaskBackendPath's list and answers null for anything else, so
+      // it can never build a Flask page.
+      pattern: /^ACCOUNTS_API_URL\}\$\{backendPath\}\$\{search\}` : null;/,
+      why: "an old caller's backend path, passed on to accounts-api after the host switch",
+    },
   ],
   "lib/apiClient.ts": [{ pattern: /^ACCOUNTS_API_URL, path, init\)/, why: "mintyFetch - Flask's JSON hub API" }],
 };
@@ -73,6 +82,7 @@ describe("the guard itself", () => {
   it.each([
     ["lib/handoff.ts", "withReturnOrigin(`${env.ACCOUNTS_API_URL}/handoff/minty-web?${qs.toString()}`)"],
     ["lib/handoff.ts", "return `${env.ACCOUNTS_API_URL}/logout`;"],
+    ["lib/handoff.ts", "return isFlaskBackendPath(backendPath) ? `${env.ACCOUNTS_API_URL}${backendPath}${search}` : null;"],
     ["lib/apiClient.ts", "return requestJson<T>(env.ACCOUNTS_API_URL, path, init);"],
     ["lib/env.ts", 'ACCOUNTS_API_URL: url(process.env.ACCOUNTS_API_URL, "http://localhost:8000"),'],
   ])("lets the backend address in %s through", (rel, sample) => {

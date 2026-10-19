@@ -4,7 +4,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getAuth, setAuth } from "@/lib/auth";
-import { _resetHandoffForTests, handoffUrl, hubUrl, logoutUrl, paymentsUrl, redirectToHandoff, safeNext } from "@/lib/handoff";
+import {
+  _resetHandoffForTests,
+  flaskBackendUrl,
+  handoffUrl,
+  hubUrl,
+  logoutUrl,
+  paymentsUrl,
+  redirectToHandoff,
+  safeNext,
+} from "@/lib/handoff";
 
 const ENTITY = "360812e1-9f94-46a3-aa31-347e21afde8e";
 
@@ -45,6 +54,11 @@ describe("the other hand-offs (Flask as a backend only - no Flask page)", () => 
     expect(bare.searchParams.has("entity_id")).toBe(false);
   });
 
+  it("names the request's origin when the proxy gives one (no window on the server)", () => {
+    const url = new URL(hubUrl("/profile", undefined, "https://pr-x-pettycash.dailyminty.com"));
+    expect(url.searchParams.get("return_origin")).toBe("https://pr-x-pettycash.dailyminty.com");
+  });
+
   it("reaches the payments app through Flask's hand-offs that mint its token", () => {
     expect(new URL(paymentsUrl(ENTITY, "home")).pathname).toBe(`/entity/${ENTITY}/payment-request`);
     expect(new URL(paymentsUrl(ENTITY, "settings")).pathname).toBe(`/entity/${ENTITY}/settings/payment-request`);
@@ -67,5 +81,18 @@ describe("redirectToHandoff", () => {
     expect(go).toHaveBeenCalledTimes(1);
     expect(new URL(go.mock.calls[0][0]).searchParams.get("entity_id")).toBe(ENTITY);
     expect(getAuth()).toBeNull();
+  });
+});
+
+describe("flaskBackendUrl", () => {
+  it("is the same path and query on accounts-api, for a backend path only", () => {
+    expect(flaskBackendUrl("/callback", "?code=c&state=s")).toBe("http://localhost:8000/callback?code=c&state=s");
+    expect(flaskBackendUrl("/api/me/profile", "")).toBe("http://localhost:8000/api/me/profile");
+  });
+
+  it("refuses a page: Flask is a backend only", () => {
+    expect(flaskBackendUrl("/profile", "")).toBeNull();
+    expect(flaskBackendUrl("/entity/360812e1/olive-and-vine/petty-cash", "")).toBeNull();
+    expect(flaskBackendUrl("/login", "")).toBeNull();
   });
 });

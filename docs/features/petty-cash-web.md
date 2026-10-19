@@ -14,6 +14,39 @@ One company's Petty Cash lives at `/entity/<shortid>/<name>/petty-cash/...`. Thi
 
 `/` sends a signed-in person to their company's Petty Cash.
 
+## Old links after the host switch
+
+At the hosting switch (Step 5), `pettycash.dailyminty.com` stops being Flask and becomes this app, and Flask moves to `accounts-api.dailyminty.com`. The owner decided (2026-10-19) that old `pettycash.` links are mapped, not left to 404. The rules are in `lib/oldLinks.ts`. `proxy.ts` answers them **before the gate**, so they work the same with and without a token (someone opening an old share link is not signed in). No path is ever logged, because a share link carries its secret.
+
+| Old path on `pettycash.` | Goes to | How |
+|---|---|---|
+| `/Minty_Report/<initials>/<date>/<secret>/` (with or without the slash) | `/share/<initials>/<date>/<secret>` | 308, query dropped, `no-referrer` / `no-store` |
+| The same with a malformed secret, two parts or more than three | Next's 404 | |
+| `/entity/<shortid>/<name>/petty-cash`, `.../reports`, `.../reports/new/<step>`, `.../reports/<id>/summary`, `.../reports/<id>/submitted`, `/entity/<shortid>/<name>/settings/petty-cash` | unchanged: these are this app's pages | the gate |
+| `/entity/<shortid>/<name>` (Flask's way into the dashboard) | `.../petty-cash` | 308, query kept |
+| `/entity/<co>/reports[/...]` (before the module prefix) | `/entity/<co>/petty-cash/reports[/...]`, then the rows below | 308 |
+| `.../petty-cash/reports/<id>/<step>` (a submitted report's step views) | `.../petty-cash/reports/<id>/summary` | 308 |
+| `.../petty-cash/reports/resume`, `.../reports/summary`, `.../reports/new/submitted` | `.../petty-cash` (the dashboard; Continue Report resumes) | 308 |
+| `.../petty-cash/reports/download-csv` | `.../petty-cash/reports` (Export CSV is there) | 308, query kept |
+| `/entity/<co>/ending[/<id>]`, `/entity/<co>/report/opening` (Flask's oldest forms) | the dashboard, the report's view, `.../reports/new/opening` | 308 |
+| `/entity/<full uuid>/...` for any Petty Cash path above, `/entity/settings/entity/<uuid>` | the readable `/entity/<shortid>/<name>/...` | see below |
+| `/entity/<co>/settings/users`, `/settings/integration`, `/settings/modules` | minty-web's same page | Flask's `/handoff/minty-web` |
+| `/entity/<co>/settings/xero`, `/entity/<co>/xero-not-connected`, `/invitation/xero-not-connected/<uuid>` | minty-web's Entity & Integration | the same |
+| `/entity/<co>/modules` | minty-web's module choice, `/entity/<co>` | the same |
+| `/entity/settings/users/<uuid>`, `/entity/settings/module/<uuid>` | minty-web's Users, Modules | the same, scoped to the uuid |
+| `/profile` | minty-web's My Profile | the same |
+| `/subscription[/...]` | minty-web's Subscriptions | the same |
+| `/entity`, `/entities[/...]`, `/entity/create`, `/entity/success`, `/login`, `/register`, `/index`, `/reset_password[/<token>]`, `/no-permission`, `/admin[/...]`, `/admin_dashboard`, `/find_user`, `/create`, `/report/...`, `/payment-request[/...]`, `/payment_request[/...]` | minty-web's entity list | the same |
+| Flask's backend paths: `/handoff/*`, `/api/*`, `/minty/api/*`, `/auth/*`, `/callback`, `/logout`, `/xero_auth`, `/xero_connect`, `/xero_reconnect`, `/invitation/accept/<token>`, and the payments hand-offs `/entity/<co>/payment-request`, `/entity/<co>/settings/payment-request`, `/entity/<uuid>/bills`, `/entity/settings/payments/<uuid>` | the same path on `ACCOUNTS_API_URL` | 308, query kept |
+| Anything else | Next's 404 (after the gate, as before) | |
+
+`<co>` is `<shortid>/<name>` or a full uuid. A step is one of `opening`, `sale`, `expense`, `deposit`, `cash-count`, `ending`.
+
+- **A full company uuid** (Flask accepted one in place of `<shortid>/<name>` and redirected to the readable form). The readable address needs the company's name, and this app does no lookup: the only name it holds is the token's cookie. So, with that company's token, it is a 307 straight to `/entity/<shortid>/<name>/...`. Without one, or with another company's token, it goes through Flask's `/handoff/petty-cash-web` for that uuid with the uuid address as `next`. That comes back with the token, and the next request is the 307. minty-web's pages take a full id themselves, so a hub target becomes `/entity/<uuid>/company/...`, which minty-web corrects to the company's name.
+- **Backend paths are not page links.** An old OAuth or API caller still reaches Flask: Xero's registered `https://pettycash.dailyminty.com/callback`, sign-in and invitation emails already sent, and API clients. `flaskBackendUrl` in `lib/handoff.ts` builds the address and re-checks the path against `isFlaskBackendPath`, so it can never build a Flask page. The `no_flask_pages` guard allows exactly that one line, and says why. The proxy also runs on `/api/:path*` for this (this app has no API routes).
+- **Hub trips** go through `toFlask`, so a preview set starts them with a meta refresh and names its origin as `return_origin`, like every other trip to Flask.
+- **A trailing slash** is removed by Next first (its own 308), then the proxy redirects. That first hop is Next's own, so it does not carry the share headers.
+
 ## Sign-in: Flask mints, this app never refreshes
 
 Flask is the only thing that mints tokens. This app has no login and no refresh, the same model as minty-web.
@@ -25,6 +58,7 @@ Flask is the only thing that mints tokens. This app has no login and no refresh,
    - **No cookie:** back through the hand-off, naming the company from the address. Flask accepts a uuid or `<shortid>/<name>`.
    - **A cookie for another company than the address names:** the same. The token is for one company.
    - **Under 5 minutes left:** renewed on the way to the next page, never in the middle of a form.
+   - **Before the gate:** an old `pettycash.` link is redirected (see *Old links after the host switch*).
    - **Open without a token:** `/landing`, and exactly `/share/...` (the public share page, below). `__tests__/proxy.test.ts` checks that nothing else became public: `/share` alone, `/sharex/...`, a company page with `/share/` inside it and a `/share/../` climb all still go to the hand-off.
 5. **A 401 from any API call:** back through the hand-off, once (`lib/handoff.ts`).
 
@@ -50,6 +84,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 **On `development`, `@minty/shared` is pinned at `v0.1`** (the user, 2026-10-14). That is the sidebar from before its Part 13 restyle, the menu Flask's pages show, so it matches the pixel-faithful port. The cost:
 - v0.1 has no `previewSibling`, so `lib/previewSibling.ts` is a copy of v0.3's (minty-web keeps one the same way). Change the package first, then the copy.
+- **The preview label is `pettycash`** (2026-10-19, Step 5): a branch preview of this app is `pr-<slug>-pettycash.dailyminty.com`, matching its production host `pettycash.dailyminty.com`. The copy is ahead of the package here, which still says `petty-cash`. So do Flask's `PREVIEW_ORIGIN_REGEX` and `preview_origin.py` (which hands back to `pr-<slug>-petty-cash`), minty-infra and the `.github` repo's `vercel-preview-set.yml`. Until those follow, a preview set's Flask round trip does not come back to this app's preview. The repo name `minty-petty-cash-web` and the sidebar's app id are unchanged.
 - v0.1 has no Part 13 `tokens.css`, so the colours the sidebar reads (`--avatar-bg`, `--avatar-fg`, `--primary`) are declared in `app/globals.css`.
 
 `port/prw-look` pins `v0.3`.
@@ -72,7 +107,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-offs, the API client (a download and its `Content-Disposition` name included), company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`, Edit Details' among them: the reason's and a description's live checks, a receipt's check before it is sent, and what a line's edit sends - only what changed, never an empty supplier or account), publishing to Xero (`lib/publish.ts`: the start, a read every two seconds until the status leaves `publishing`, the 90-read cap, nothing asked after a cancel, how a status ends it - published, partial with its open reasons, failed - a refused start's sentence and `reconnect`, the bar), report history's (`lib/history.ts`: the filters in the address, Flask's pager, the CSV export's query and file name, a row's badge, time and figures, the range calendar's picks), settings' (`lib/settings.ts`: the address, the other tabs' hand-offs, the pickers' filter, what the country Save sends, the catalogue, a method name's live checks, a shared method's rename sentence, Move up / down, view-only), the Xero cards' (`lib/xeroSettings.ts`: Flask's groups and order, an account's "Name - Code", the pickers' filters, the other bank never offered, a contact offered as new, an empty field said only after a refused save and the two banks being one said at once, the fields an API sentence names, the eight keys sent, a new contact in every contact list; the codes' label, search, Select all's three states, at least one ticked, what changed and what is sent), the share link and the public share page (`lib/share.ts`: `<origin>/share/<path>` from the API's path, the path's three parts and its 32-character secret, the catch-all unescaped once, Flask's two refusal sentences by status, the public read trimmed to what the page draws, the badge; `pettyCashPublicFetch` sending no bearer, cookie or referrer and never handing off), the flash and the next-day hand-over, and the four guards (styles, assets, raw colours, no Flask pages). |
+| `npm test` | Vitest. Covers the proxy, the old `pettycash.` links (`lib/oldLinks.ts`: each kind, with and without a token), the preview label, auth, the hand-offs, the API client (a download and its `Content-Disposition` name included), company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`, Edit Details' among them: the reason's and a description's live checks, a receipt's check before it is sent, and what a line's edit sends - only what changed, never an empty supplier or account), publishing to Xero (`lib/publish.ts`: the start, a read every two seconds until the status leaves `publishing`, the 90-read cap, nothing asked after a cancel, how a status ends it - published, partial with its open reasons, failed - a refused start's sentence and `reconnect`, the bar), report history's (`lib/history.ts`: the filters in the address, Flask's pager, the CSV export's query and file name, a row's badge, time and figures, the range calendar's picks), settings' (`lib/settings.ts`: the address, the other tabs' hand-offs, the pickers' filter, what the country Save sends, the catalogue, a method name's live checks, a shared method's rename sentence, Move up / down, view-only), the Xero cards' (`lib/xeroSettings.ts`: Flask's groups and order, an account's "Name - Code", the pickers' filters, the other bank never offered, a contact offered as new, an empty field said only after a refused save and the two banks being one said at once, the fields an API sentence names, the eight keys sent, a new contact in every contact list; the codes' label, search, Select all's three states, at least one ticked, what changed and what is sent), the share link and the public share page (`lib/share.ts`: `<origin>/share/<path>` from the API's path, the path's three parts and its 32-character secret, the catch-all unescaped once, Flask's two refusal sentences by status, the public read trimmed to what the page draws, the badge; `pettyCashPublicFetch` sending no bearer, cookie or referrer and never handing off), the flash and the next-day hand-over, and the four guards (styles, assets, raw colours, no Flask pages). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -93,7 +128,8 @@ The same pages drawn in minty-payment-request-web's design are on the **`port/pr
 - `/handoff/petty-cash-web` - this app's own token (`handoffUrl`);
 - `/handoff/minty-web?next=<minty-web path>&entity_id=` - minty-web's pages: the entity list, Subscriptions, My Profile, and the settings tabs Users, Entity & Integration and Modules (`hubUrl`);
 - `/entity/<id>/payment-request` and `/entity/<id>/settings/payment-request` - hand-offs that mint the payments app's token and redirect to its home or its settings page (`paymentsUrl`);
-- `/logout` (`logoutUrl`).
+- `/logout` (`logoutUrl`);
+- an old caller's backend path, passed on unchanged after the host switch (`flaskBackendUrl`, re-checked against `isFlaskBackendPath`; see *Old links after the host switch*).
 
 `__tests__/no_flask_pages.test.ts` fails on any other Flask address in the source. The person is already signed in to Flask, because this app's token came from Flask's login-gated hand-off, so each hand-off is a silent round trip.
 

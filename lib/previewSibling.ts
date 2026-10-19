@@ -4,6 +4,9 @@
  * same way. Change it in the package first, then here.
  *
  * Preview sets: one branch, one host per app - `pr-<slug>-<app>.dailyminty.com` (2026-10-13).
+ * Petty Cash's label is `pettycash` (2026-10-19, Step 5: its production host is
+ * `pettycash.dailyminty.com`), not `petty-cash` - this copy is ahead of the package there until the
+ * package and Flask's `PREVIEW_ORIGIN_REGEX` follow.
  *
  * The shared `vercel-preview-set.yml` workflow (the `.github` repo) aliases every frontend onto
  * the branch's set - the branch's own build where the repo has that branch, the fallback build
@@ -19,10 +22,10 @@
  * `services.tf`): slug = 1-40 of [a-z0-9-], no leading or trailing hyphen. The app is read from
  * the END of the label, so a slug may itself contain an app's name.
  */
-export type PreviewApp = "my" | "payment-request" | "onboarding" | "petty-cash" | "www";
+export type PreviewApp = "my" | "payment-request" | "onboarding" | "pettycash" | "www";
 
 const SET_HOST =
-  /^pr-([a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?)-(?:my|payment-request|onboarding|petty-cash|www)\.dailyminty\.com$/;
+  /^pr-([a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?)-(?:my|payment-request|onboarding|pettycash|www)\.dailyminty\.com$/;
 
 /** The slug of the preview set `host` belongs to, or null when it is not a set host. */
 export function previewSetSlug(host: string | null | undefined): string | null {

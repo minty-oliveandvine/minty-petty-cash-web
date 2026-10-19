@@ -50,7 +50,7 @@ describe("decodeSegments - the page's catch-all, as Next hands it over (still es
 describe("shareUrl - what the Share modal shows", () => {
   it("is this app's own /share page on the page's origin, from the API's path", () => {
     expect(shareUrl("http://localhost:3010", PATH)).toBe(`http://localhost:3010/share/${PATH}`);
-    expect(shareUrl("https://pr-x-petty-cash.dailyminty.com", PATH)).toBe(`https://pr-x-petty-cash.dailyminty.com/share/${PATH}`);
+    expect(shareUrl("https://pr-x-pettycash.dailyminty.com", PATH)).toBe(`https://pr-x-pettycash.dailyminty.com/share/${PATH}`);
   });
 
   it("escapes a part that would not survive in an address", () => {

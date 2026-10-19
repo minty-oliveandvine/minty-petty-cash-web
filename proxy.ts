@@ -5,7 +5,8 @@ import { previewSetSlug } from "@/lib/previewSibling";
 
 import { AUTH_COOKIE_NAME, ENTITY_ID_COOKIE_NAME, ENTITY_NAME_COOKIE_NAME, decodeJwtPayload } from "@/lib/auth";
 import { companyRefFromPath, pettyCashHome } from "@/lib/companyPages";
-import { handoffUrl } from "@/lib/handoff";
+import { flaskBackendUrl, handoffUrl, hubUrl } from "@/lib/handoff";
+import { type OldLink, oldLink } from "@/lib/oldLinks";
 import { isSharePage } from "@/lib/share";
 
 // proxy.ts is Next 16's name for middleware (minty-web's file, the same convention).
@@ -28,6 +29,10 @@ export const RENEW_WITHIN_SECONDS = 5 * 60;
  *   one company, and Flask decides whether this person may have the other.
  * - A token about to lapse -> renewed now, on a navigation, never mid-form.
  * - `/` with a token -> the company's Petty Cash.
+ *
+ * Before the gate: an old `pettycash.` link from Flask's time on this host (lib/oldLinks.ts) is
+ * redirected with or without a token - a share link to `/share/...`, an older Petty Cash address
+ * to this app's, another Flask page to minty-web's hand-off, a backend path to accounts-api.
  */
 const SHARE_HEADERS = { "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow", "Cache-Control": "no-store" };
 
@@ -48,6 +53,10 @@ export function proxy(request: NextRequest) {
   const origin = request.nextUrl.origin;
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   const cookieEntity = request.cookies.get(ENTITY_ID_COOKIE_NAME)?.value ?? "";
+
+  const old = oldLink(pathname);
+  if (old) return toOldLinkTarget(request, old, token, cookieEntity);
+
   const addressCompany = companyRefFromPath(pathname);
 
   if (!token) {
@@ -72,8 +81,46 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
+/**
+ * An old `pettycash.` link after the host switch (lib/oldLinks.ts), answered before the gate - with
+ * or without a token - and never logged (a share link carries its secret).
+ */
+function toOldLinkTarget(request: NextRequest, old: OldLink, token: string | undefined, cookieEntity: string): NextResponse {
+  const { search, origin } = request.nextUrl;
+  switch (old.kind) {
+    case "share": {
+      // The query is dropped: the three parts are the whole link.
+      const res = NextResponse.redirect(new URL(old.to, request.url), 308);
+      for (const [name, value] of Object.entries(SHARE_HEADERS)) res.headers.set(name, value);
+      return res;
+    }
+    case "local":
+      return NextResponse.redirect(new URL(old.to + search, request.url), 308);
+    case "backend": {
+      const url = flaskBackendUrl(old.path, search);
+      if (url === null) throw new Error("oldLink named a backend path that lib/handoff.ts does not allow");
+      return NextResponse.redirect(url, 308);
+    }
+    case "hub":
+      return toFlask(request, hubUrl(old.next, old.entityId, origin));
+    case "company-uuid": {
+      // The readable address needs the company's name, and the only one this app holds is the
+      // cookie's - so with that company's token it is a redirect, and otherwise Flask's hand-off
+      // for that company, which comes back to this address with the token (and so the name).
+      if (token && cookieEntity.toLowerCase() === old.uuid) {
+        const name = request.cookies.get(ENTITY_NAME_COOKIE_NAME)?.value ?? "";
+        const company = pettyCashHome(old.uuid, name).replace(/\/petty-cash$/, "");
+        return NextResponse.redirect(new URL(company + old.tail + search, request.url), 307);
+      }
+      return toFlask(request, handoffUrl(request.nextUrl.pathname + search, old.uuid, origin));
+    }
+  }
+}
+
 export const config = {
-  matcher: ["/((?!_next|api|.*\\..*).*)"],
+  // `/api/...` too: this app has no API routes, and an old caller of Flask's API on this host is
+  // sent on to accounts-api (lib/oldLinks.ts).
+  matcher: ["/((?!_next|api|.*\\..*).*)", "/api/:path*"],
 };
 
 /**

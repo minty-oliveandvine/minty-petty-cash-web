@@ -9,6 +9,7 @@ import { Button, EmptyState, Icon, InlineAlert, Modal } from "@minty/shared/ui";
 import type { ViewerFile } from "@/components/closing/ReceiptViewer";
 import { openStep, refused, StageActions, StagePage, stageSteps, WorkflowHeader, type StageContext } from "@/components/closing/Stage";
 import { ApiError, pettyCashBlob, pettyCashFetch } from "@/lib/apiClient";
+import { withLine } from "@/lib/expenseEdit";
 import { canEditLines, expenseCount, receiptKind, withoutLine, type ExpenseLine, type ExpensesPage, type ExpensesSaved, type Supplier } from "@/lib/expenses";
 import { formatMoney } from "@/lib/money";
 import { reportStatus } from "@/lib/reportStatus";
@@ -24,15 +25,14 @@ const NOT_DELETED = "We couldn't delete this expense. Check your connection, the
 /**
  * The Daily Closing's third stage, "Expenses" (Part 15.15b/c; Flask's Expenses section): the
  * day's entries as Record rows - the account, the supplier, the description, the receipt (opened
- * full screen) and the amount as plain text - with Add expense (the entry form, a Drawer or a
- * full-screen sheet) and Delete (a Danger confirmation); then the day's total expenses as the
- * stage summary and Save & Next / Save & Exit, in Stage.tsx's frame.
+ * full screen) and the amount as plain text - with Add expense and Edit (the entry form, a Drawer
+ * or a full-screen sheet) and Delete (a Danger confirmation); then the day's total expenses as
+ * the stage summary and Save & Next / Save & Exit, in Stage.tsx's frame.
  *
- * Reads through `GET /reports/expenses`, adds and deletes one entry at a time
- * (`POST /reports/expenses/lines`, `DELETE /expense-lines/<id>`) - each saved at once, so the
- * stage itself never holds unsaved changes - and moves on with `PUT /reports/expenses`
- * (Minty `petty_cash_api/routes/expenses.py`). The API has no edit: an entry is changed by
- * deleting it and adding it again, and the list says so. Its rules are lib/expenses.ts.
+ * Reads through `GET /reports/expenses`, adds, edits and deletes one entry at a time
+ * (`POST /reports/expenses/lines`, `PATCH` / `DELETE /expense-lines/<id>`) - each saved at once,
+ * so the stage itself never holds unsaved changes - and moves on with `PUT /reports/expenses`
+ * (Minty `petty_cash_api/routes/expenses.py`). Its rules are lib/expenses.ts and lib/expenseEdit.ts.
  */
 export function Expenses({ day }: { day: string | null }) {
   return (
@@ -48,6 +48,7 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
   const [total, setTotal] = useState(page.total);
   const [suppliers, setSuppliers] = useState<Supplier[]>(page.suppliers);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<ExpenseLine | null>(null);
   const [deleting, setDeleting] = useState<ExpenseLine | null>(null);
   const [viewing, setViewing] = useState<ViewerFile | null>(null);
   const [announce, setAnnounce] = useState("");
@@ -101,14 +102,9 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
       {/* Part 15.15c: the day's entries, each a Record row (stacked on a phone). */}
       <section aria-labelledby="expenses-list" className="flex flex-col gap-4 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-3">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <h2 id="expenses-list" className="text-title-m text-text-primary">
-              {lines.length ? expenseCount(lines.length) : "Expenses added"}
-            </h2>
-            {lines.length && editable ? (
-              <p className="text-body-s text-text-secondary">To change an expense, delete it and add it again.</p>
-            ) : null}
-          </div>
+          <h2 id="expenses-list" className="min-w-0 text-title-m text-text-primary">
+            {lines.length ? expenseCount(lines.length) : "Expenses added"}
+          </h2>
           {editable && lines.length ? (
             <Button ref={addButton} kind="secondary" icon={<Icon name="add" />} className="w-full sm:w-auto" onClick={() => setAdding(true)}>
               Add expense
@@ -125,6 +121,7 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
                 code={code}
                 editable={editable}
                 onView={(receipt) => viewReceipt(line, receipt)}
+                onEdit={() => setEditing(line)}
                 onDelete={() => setDeleting(line)}
               />
             ))}
@@ -172,22 +169,28 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
         <StageActions saving={saving} onExit={() => void save("exit")} />
       </form>
 
-      {adding ? (
+      {adding || editing ? (
         <ExpenseForm
+          key={editing?.id ?? "new"}
           code={code}
           day={day}
+          line={editing}
           suppliers={suppliers}
           onSuppliers={setSuppliers}
           accounts={page.accounts}
           canCreateSupplier={page.permissions.create_supplier}
           route={route}
           onView={setViewing}
-          onClose={() => setAdding(false)}
-          onAdded={({ line, total: newTotal }) => {
-            setLines((all) => [...all, line]);
-            setTotal(newTotal);
+          onClose={() => {
             setAdding(false);
-            setAnnounce(`Expense added. Total expenses ${formatMoney(newTotal, code)}.`);
+            setEditing(null);
+          }}
+          onSaved={({ line, total: newTotal }) => {
+            setLines((all) => (editing ? withLine(all, line) : [...all, line]));
+            setTotal(newTotal);
+            setAnnounce(`${editing ? "Expense saved" : "Expense added"}. Total expenses ${formatMoney(newTotal, code)}.`);
+            setAdding(false);
+            setEditing(null);
           }}
         />
       ) : null}
@@ -216,19 +219,21 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
 /**
  * Part 14 Record row: the identity (the account, then the supplier and the description), the
  * amount as plain text - wrapping under the name before it is ever clipped - the receipt as a
- * File card that opens full screen, and Delete.
+ * File card that opens full screen, then Edit and Delete.
  */
 function ExpenseRow({
   line,
   code,
   editable,
   onView,
+  onEdit,
   onDelete,
 }: {
   line: ExpenseLine;
   code: string | null;
   editable: boolean;
   onView: (receipt: ExpenseLine["receipts"][number]) => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const title = line.account?.name || line.item || "Expense";
@@ -262,9 +267,14 @@ function ExpenseRow({
           ))}
         </div>
         {editable ? (
-          <Button kind="ghost" icon={<Icon name="delete" />} onClick={onDelete} aria-label={`Delete expense: ${line.account?.name || line.item}, ${amount}`}>
-            Delete
-          </Button>
+          <div className="flex shrink-0 gap-1">
+            <Button kind="ghost" icon={<Icon name="edit" />} onClick={onEdit} aria-label={`Edit expense: ${line.account?.name || line.item}, ${amount}`}>
+              Edit
+            </Button>
+            <Button kind="ghost" icon={<Icon name="delete" />} onClick={onDelete} aria-label={`Delete expense: ${line.account?.name || line.item}, ${amount}`}>
+              Delete
+            </Button>
+          </div>
         ) : null}
       </div>
     </li>

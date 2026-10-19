@@ -77,7 +77,8 @@ export type ReportOutcome = {
   submitted_by: string | null;
   cash_counted: number;
   difference: { amount: number; kind: DifferenceKind; has_reason: boolean };
-  xero: { publishing_status: string | null; published_at: string | null; xero_integrated: boolean };
+  /** `was_published`: it has been to Xero, even if changed since (Flask's `was_previously_published`) - a publish warns. */
+  xero: { publishing_status: string | null; published_at: string | null; xero_integrated: boolean; was_published: boolean };
   can_publish: boolean;
   is_today: boolean;
   /** The day after, for "Continue to next day report". */

@@ -22,14 +22,13 @@ import {
   type Home,
 } from "@/lib/dashboard";
 import { formatDay, formatDayWithWeekday } from "@/lib/dates";
-import { resumeUrl } from "@/lib/flaskPages";
 import { takeFlash, takeNextDay } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
 import { historyHref } from "@/lib/history";
 import { formatMoney } from "@/lib/money";
 import { settingsHref } from "@/lib/settings";
 import { useAuth } from "@/lib/useAuth";
-import { stepHref } from "@/lib/wizardPages";
+import { sectionStep, stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const READ_ONLY = "Read-only access";
@@ -286,7 +285,7 @@ function DashboardBody({
               </div>
               <button
                 type="button"
-                onClick={() => leaveTo(resumeUrl(entityId, home.draft_date ?? home.server_today))}
+                onClick={() => leaveTo(stepHref(entityId, entityName, sectionStep(draft.current_section), home.draft_date ?? home.server_today))}
                 disabled={readOnly}
                 title={readOnly ? READ_ONLY : undefined}
                 className={`${TEAL_BUTTON} mb-12`}

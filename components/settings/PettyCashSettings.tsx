@@ -7,27 +7,31 @@ import { useViewer } from "@minty/shared/viewer";
 
 import { useToast } from "@/components/flask/Toasts";
 import { SalesMethodsCard, type MethodActions } from "@/components/settings/SalesMethodsCard";
-import { BTN_OUTLINE, BusyOverlay, Combo, ConfirmDialog, Icon, LABEL, SettingsCard, type ComboRow } from "@/components/settings/SettingsParts";
+import { BTN_OUTLINE, BusyOverlay, Combo, ConfirmDialog, Icon, LABEL, SAVE_BTN, SettingsCard, type ComboRow } from "@/components/settings/SettingsParts";
+import { AccountCodesCard, XeroMappingCard, type Call, type XeroLoad } from "@/components/settings/XeroCards";
 import { useMounted, useSidebar } from "@/components/ui/Sidebar";
 import { sidebarHost } from "@/components/ui/sidebarHost";
-import { ApiError, pettyCashFetch } from "@/lib/apiClient";
+import { ApiError, pettyCashFetch, type ApiRequest } from "@/lib/apiClient";
 import { moduleClaims } from "@/lib/auth";
 import { pettyCashHome } from "@/lib/companyPages";
-import { settingsTabUrl, settingsUrl } from "@/lib/flaskPages";
+import { setFlash } from "@/lib/flash";
 import {
   KIND,
   METHOD_TYPES,
   countryChange,
   movedIds,
   registryOptions,
+  settingsTabUrl,
   viewOnly,
   type MethodType,
   type Option,
   type SalesMethod,
   type SettingsAnswer,
   type SettingsRead,
+  type SettingsTab,
 } from "@/lib/settings";
 import { useAuth } from "@/lib/useAuth";
+import type { XeroRead } from "@/lib/xeroSettings";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const SAVING = "Saving changes…";
@@ -44,13 +48,14 @@ function refusal(err: unknown): string | null {
 /**
  * Petty Cash Settings - a pixel-faithful port of Flask's ORIGINAL `entity/settings_entity.html`
  * (Minty `1c25b35^1`), at Flask's `/entity/<id>/settings/petty-cash`, for the cards that need no
- * Xero. Reads `GET /settings` (Minty `petty_cash_api/routes/settings.py`).
+ * Reads `GET /settings` and `GET /settings/xero` (Minty `petty_cash_api/routes/settings.py`).
  *
  * - Flask's chrome: Back and "Settings", the company, the person's initials and the ≡; then the
- *   settings tabs (the others are Flask's addresses, which hand over to their app).
+ *   settings tabs (the others are minty-web's and the payments app's, through Flask's hand-offs).
  * - Country & currency: the two pickers and their Save (`PUT /settings/country`).
- * - Where Flask drew the Xero mapping (and, below, the account codes), one card linking to Flask's
- *   own settings page, only while Xero is connected (the owner, 2026-10-16).
+ * - Xero account mapping and Petty Cash Account Code (`XeroCards.tsx`), read once per page load from
+ *   `GET /settings/xero` (it asks Xero), each with its own Save; Flask's "Xero isn't connected"
+ *   notice in both when the connection is not live.
  * - Electronic and Delivery: add (the catalogue or a new name), rename, Move up / down, Delete -
  *   each the API's at once, its answer drawn and its sentence shown.
  *
@@ -83,7 +88,7 @@ export function PettyCashSettings() {
       <SettingsHeader entityId={auth?.entityId ?? ""} entityName={auth?.entityName ?? ""} />
       <main className="min-w-0 pb-[env(safe-area-inset-bottom,0px)]">
         <div className="mx-auto w-full max-w-[1024px] px-4 sm:px-6">
-          <SettingsTabs entityId={auth?.entityId ?? ""} />
+          <SettingsTabs entityId={auth?.entityId ?? ""} entityName={auth?.entityName ?? ""} />
           <div className="w-full pb-8 pt-2 sm:pt-3">
             {load.kind === "loading" ? (
               <p className="m-0 text-sm text-flask-set-gray-500" role="status">
@@ -110,7 +115,7 @@ export function PettyCashSettings() {
                 </button>
               </div>
             ) : null}
-            {load.kind === "ready" && auth ? <SettingsBody initial={load.read} entityId={auth.entityId} /> : null}
+            {load.kind === "ready" && auth ? <SettingsBody initial={load.read} entityId={auth.entityId} entityName={auth.entityName} /> : null}
           </div>
         </div>
       </main>
@@ -176,13 +181,16 @@ function SettingsHeader({ entityId, entityName }: { entityId: string; entityName
   );
 }
 
-/** Flask's settings tabs (minty-web's SettingsTabs): Petty Cash Settings is this page; the rest are Flask's addresses. */
-function SettingsTabs({ entityId }: { entityId: string }) {
+/**
+ * Flask's settings tabs (minty-web's SettingsTabs): Petty Cash Settings is this page; the rest are
+ * minty-web's and the payments app's pages, through Flask's hand-offs (`settingsTabUrl`).
+ */
+function SettingsTabs({ entityId, entityName }: { entityId: string; entityName: string }) {
   const mounted = useMounted();
   const billing = mounted ? moduleClaims().billing : false;
   const PILL = "flex shrink-0 items-center justify-center rounded-full px-4 py-2 text-center text-sm font-medium no-underline transition-colors";
-  const link = (tab: Parameters<typeof settingsTabUrl>[1], label: string) => (
-    <a href={entityId ? settingsTabUrl(entityId, tab) : undefined} className={`${PILL} cursor-pointer bg-flask-gray-200 text-flask-set-gray-700 hover:bg-flask-set-gray-300`}>
+  const link = (tab: SettingsTab, label: string) => (
+    <a href={entityId ? settingsTabUrl(entityId, entityName, tab) : undefined} className={`${PILL} cursor-pointer bg-flask-gray-200 text-flask-set-gray-700 hover:bg-flask-set-gray-300`}>
       {label}
     </a>
   );
@@ -201,8 +209,9 @@ function SettingsTabs({ entityId }: { entityId: string }) {
   );
 }
 
-function SettingsBody({ initial, entityId }: { initial: SettingsRead; entityId: string }) {
+function SettingsBody({ initial, entityId, entityName }: { initial: SettingsRead; entityId: string; entityName: string }) {
   const toast = useToast();
+  const router = useRouter();
   const [read, setRead] = useState(initial);
   const [busy, setBusy] = useState<string | null>(null);
   const [menu, setMenu] = useState<string | null>(null);
@@ -227,22 +236,21 @@ function SettingsBody({ initial, entityId }: { initial: SettingsRead; entityId: 
     };
   }, [menu]);
 
-  /** One write: the busy overlay, the API's answer drawn and its sentence shown; true when it went through. */
-  const write = useCallback(
-    async (path: string, init: Parameters<typeof pettyCashFetch>[1]): Promise<boolean> => {
-      if (acting.current) return false;
+  /** One call: the busy overlay, and a refusal's sentence as Flask's error toast; null when it did not go through. */
+  const call: Call = useCallback(
+    async <T,>(path: string, init: ApiRequest, busyText = SAVING, onRefused?: (message: string) => void): Promise<T | null> => {
+      if (acting.current) return null;
       acting.current = true;
-      setBusy(SAVING);
+      setBusy(busyText);
       try {
-        const answer = await pettyCashFetch<SettingsAnswer>(path, init);
-        const { message, ...next } = answer;
-        setRead(next);
-        toast(message, "success");
-        return true;
+        return await pettyCashFetch<T>(path, init);
       } catch (err) {
         const message = refusal(err);
-        if (message !== null) toast(message, "error");
-        return false;
+        if (message !== null) {
+          toast(message, "error");
+          onRefused?.(message);
+        }
+        return null;
       } finally {
         acting.current = false;
         setBusy(null);
@@ -250,6 +258,51 @@ function SettingsBody({ initial, entityId }: { initial: SettingsRead; entityId: 
     },
     [toast],
   );
+
+  /** One write of the cards that need no Xero: the API's answer drawn and its sentence shown; true when it went through. */
+  const write = useCallback(
+    async (path: string, init: ApiRequest): Promise<boolean> => {
+      const answer = await call<SettingsAnswer>(path, init);
+      if (!answer) return false;
+      const { message, ...next } = answer;
+      setRead(next);
+      toast(message, "success");
+      return true;
+    },
+    [call, toast],
+  );
+
+  // The Xero cards' read: once per page load (each read asks Xero), and again only on Try again.
+  const [xero, setXero] = useState<XeroLoad>({ kind: "loading" });
+  const [xeroAttempt, setXeroAttempt] = useState(0);
+  // one request per attempt, even when an effect runs twice (React's dev check): each read asks Xero
+  const xeroAsk = useRef<{ attempt: number; answer: Promise<XeroRead> } | null>(null);
+  useEffect(() => {
+    let live = true;
+    if (xeroAsk.current?.attempt !== xeroAttempt) xeroAsk.current = { attempt: xeroAttempt, answer: pettyCashFetch<XeroRead>("/settings/xero") };
+    xeroAsk.current.answer.then(
+      (next) => {
+        if (live) setXero({ kind: "ready", read: next });
+      },
+      (err: unknown) => {
+        const message = refusal(err);
+        if (!live || message === null) return;
+        setXero({ kind: "failed", message, retry: !(err instanceof ApiError && err.status === 403) });
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [xeroAttempt]);
+  const retryXero = () => {
+    setXero({ kind: "loading" });
+    setXeroAttempt((n) => n + 1);
+  };
+  const xeroSaved = ({ message, ...next }: XeroRead & { message: string }) => {
+    setXero({ kind: "ready", read: next });
+    toast(message, "success");
+  };
+  const connectHref = settingsTabUrl(entityId, entityName, "integration");
 
   const actions: MethodActions = {
     add: (type, body) => write("/sales-methods", { method: "POST", json: { type, ...body } }),
@@ -278,14 +331,23 @@ function SettingsBody({ initial, entityId }: { initial: SettingsRead; entityId: 
       <div className="flex flex-col gap-3">
         <CountryCard key={`${read.country.country_code}|${read.country.currency_id}`} read={read} busy={busy !== null} onSave={(body) => write("/settings/country", { method: "PUT", json: body })} />
 
-        {read.xero_connected ? (
-          <SettingsCard title="Xero account mapping and account codes" sub="The Xero accounts and contacts a petty cash report posts to, and the account codes an expense can use." collapsible={false} testId="xero">
-            <p className="m-0 text-sm text-flask-set-gray-600">These read Xero as you set them, so they are on the Xero settings page.</p>
-            <a href={settingsUrl(entityId)} className={`${BTN_OUTLINE} w-full no-underline`}>
-              Open Xero settings
-            </a>
-          </SettingsCard>
-        ) : null}
+        <XeroMappingCard
+          load={xero}
+          busy={busy !== null}
+          call={call}
+          connectHref={connectHref}
+          onRetry={retryXero}
+          onAdded={(message) => toast(message, "success")}
+          onSaved={({ first_save, ...answer }) => {
+            if (!first_save) {
+              xeroSaved(answer);
+              return;
+            }
+            // Flask's first mapping save went on to the company's dashboard, the sentence with it
+            setFlash(answer.message, "success");
+            router.push(pettyCashHome(entityId, entityName));
+          }}
+        />
 
         {METHOD_TYPES.map((type) => (
           <SalesMethodsCard
@@ -300,6 +362,8 @@ function SettingsBody({ initial, entityId }: { initial: SettingsRead; entityId: 
             actions={actions}
           />
         ))}
+
+        <AccountCodesCard load={xero} busy={busy !== null} call={call} connectHref={connectHref} onRetry={retryXero} onSaved={xeroSaved} />
       </div>
 
       {busy ? <BusyOverlay text={busy} /> : null}
@@ -398,7 +462,7 @@ function CountryCard({ read, busy, onSave }: { read: SettingsRead; busy: boolean
             type="submit"
             disabled={!editable || !change || busy}
             title={editable ? undefined : NO_RIGHT_TITLE}
-            className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-flask-lg border-0 bg-flask-teal px-4 text-base font-bold text-flask-white shadow-flask transition-opacity enabled:hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flask-teal disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm"
+            className={SAVE_BTN}
           >
             {saving ? "Saving…" : "Save Changes"}
           </button>

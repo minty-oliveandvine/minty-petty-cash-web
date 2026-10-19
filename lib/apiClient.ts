@@ -138,6 +138,36 @@ export async function pettyCashBlob(path: string, init: ApiRequest = {}): Promis
   return res.blob();
 }
 
+/**
+ * The file name a `Content-Disposition` header gives (`filename*=UTF-8''...` first, then
+ * `filename=`, quoted or not), or null. Cross-origin, the browser shows the header only when the
+ * API lists it in `Access-Control-Expose-Headers`.
+ */
+export function filenameFromDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const extended = /filename\*\s*=\s*utf-8''([^;]+)/i.exec(header);
+  if (extended) {
+    try {
+      return decodeURIComponent(extended[1].trim().replace(/^"|"$/g, "")) || null;
+    } catch {
+      // a malformed escape: fall through to the plain name
+    }
+  }
+  const plain = /filename\s*=\s*("([^"]*)"|[^;]+)/.exec(header);
+  const name = plain ? (plain[2] ?? plain[1]).trim() : "";
+  return name || null;
+}
+
+/**
+ * A download from Petty Cash's API for the cookie's company - its bytes and the name its
+ * `Content-Disposition` gives (null when there is none or the browser hides it). Fails as
+ * `pettyCashFetch` does, so a refusal's sentence is the `ApiError`'s message.
+ */
+export async function pettyCashDownload(path: string, init: ApiRequest = {}): Promise<{ blob: Blob; filename: string | null }> {
+  const res = await send(companyBase(), path, init, "*/*");
+  return { blob: await res.blob(), filename: filenameFromDisposition(res.headers.get("Content-Disposition")) };
+}
+
 /** Flask's hub surface (`/api/me/profile`); a company travels as `?entity=`. */
 export function mintyFetch<T = unknown>(path: string, init: ApiRequest = {}): Promise<T> {
   return requestJson<T>(env.ACCOUNTS_API_URL, path, init);

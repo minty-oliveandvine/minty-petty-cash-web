@@ -1,6 +1,6 @@
 // The Submitted page and a submitted report's own view (components/report/SubmittedPage.tsx and
 // ReportView.tsx, Flask's ORIGINAL look), against a STUBBED Petty Cash API. Needs only
-// `npm run dev`. Flask's pages (Publish to Xero) are caught, so nothing leaves the app.
+// `npm run dev`. Flask's pages are caught, so nothing leaves the app. Publishing is 12_publish.
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
@@ -17,7 +17,6 @@ const REPORT = "8a1d3c55-0f8e-4f4e-9d55-2c4b7d1e0a77";
 const SUMMARY = `${BASE}/reports/${REPORT}/summary`;
 const SUBMITTED = `${BASE}/reports/${REPORT}/submitted`;
 const SHARE_URL = "http://localhost:5010/report/share/abc123";
-const FLASK_SUBMITTED = new RegExp(`/entity/${ENTITY}/petty-cash/reports/${REPORT}/submitted$`);
 
 type Json = Record<string, unknown>;
 
@@ -90,7 +89,7 @@ function outcomeAnswer(over: Json = {}): Json {
     submitted_by: "Tess",
     cash_counted: 1160.5,
     difference: { amount: -11, kind: "short", has_reason: true },
-    xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false },
+    xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false, was_published: false },
     can_publish: true,
     is_today: false,
     next_day: NEXT_DAY,
@@ -175,7 +174,7 @@ async function stub(page: Page, h: Handlers = {}) {
   });
   await page.route(`${API}/home`, (route) => route.fulfill({ json: HOME }));
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's pages: caught.
+  // a Flask page address: nothing here opens one (Flask is a backend only), so a regression lands on this stub, never Flask
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\//, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );
@@ -206,30 +205,26 @@ const card = (page: Page, title: string) => page.locator("div.shadow-flask-sm").
 
 // ---- the Submitted page ----
 
-test("Submitted: the tick, the heading, Share, Publish to Xero (Flask's), Back and the next day", async ({ page }) => {
+test("Submitted: the tick, the heading, Share, Publish to Xero, Back and the next day", async ({ page }) => {
   await openSubmitted(page);
   await expect(page.getByRole("heading", { name: "Report Submitted Successfully!" })).toBeVisible();
   await expect(page.getByText("Your daily petty cash report has been processed")).toBeVisible();
   await expect(page.getByText("Export Options")).toBeVisible();
   await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
-  const publish = page.getByRole("link", { name: "Publish to Xero" });
-  await expect(publish).toHaveAttribute("href", FLASK_SUBMITTED);
+  await expect(page.getByRole("button", { name: "Publish to Xero" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Back to Dashboard" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue to next day report" })).toBeVisible();
   await expectNoHorizontalScroll(page);
-  // publishing is Flask's: a full-page link to its Submitted page
-  await publish.click();
-  await page.waitForURL(FLASK_SUBMITTED);
 });
 
 test("Submitted: a report in Xero says so and offers Republish; no publish right, no button", async ({ page }) => {
-  await openSubmitted(page, { outcome: outcomeAnswer({ xero: { publishing_status: "completed", published_at: "2026-10-13T13:00:00+00:00", xero_integrated: true } }) });
+  await openSubmitted(page, { outcome: outcomeAnswer({ xero: { publishing_status: "completed", published_at: "2026-10-13T13:00:00+00:00", xero_integrated: true, was_published: true } }) });
   await expect(page.getByRole("heading", { name: "Report Published to Xero Successfully!" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Republish to Xero" })).toHaveAttribute("href", FLASK_SUBMITTED);
+  await expect(page.getByRole("button", { name: "Republish to Xero" })).toBeVisible();
 
   await page.unrouteAll({ behavior: "ignoreErrors" });
   await openSubmitted(page, { outcome: outcomeAnswer({ can_publish: false }) });
-  await expect(page.getByRole("link", { name: /Publish to Xero/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Publish to Xero/ })).toHaveCount(0);
 });
 
 test("Submitted: Back to Dashboard goes to the dashboard", async ({ page }) => {

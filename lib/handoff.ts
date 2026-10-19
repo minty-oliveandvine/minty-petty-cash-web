@@ -12,6 +12,10 @@
  * The company is the cookie's id when there is one, else the address's own `<shortid>/<name>`
  * (the cookie lapses with the token, so after a lapse the address is all this app knows) - Flask
  * accepts either.
+ *
+ * Flask is a backend only (the owner, 2026-10-16): no screen here links to a Flask PAGE. The
+ * Flask addresses this app may build are all here - the hand-offs below, which mint a token and
+ * redirect, and `/logout` - plus the APIs in lib/apiClient.ts (`no_flask_pages` guard test).
  */
 
 import { safeNextPath } from "@minty/shared/safeNext";
@@ -39,6 +43,33 @@ export function handoffUrl(next: string, company?: string, origin?: string): str
   const entity = company || companyRefFromPath(safe);
   if (entity) qs.set("entity_id", entity);
   return withReturnOrigin(`${env.ACCOUNTS_API_URL}/handoff/petty-cash-web?${qs.toString()}`, origin);
+}
+
+/**
+ * minty-web's page `next` through Flask's login-gated `GET /handoff/minty-web` (it mints
+ * minty-web's token and redirects), scoped to `entityId` when given.
+ */
+export function hubUrl(next: string, entityId?: string): string {
+  const qs = new URLSearchParams({ next });
+  if (entityId) qs.set("entity_id", entityId);
+  return withReturnOrigin(`${env.ACCOUNTS_API_URL}/handoff/minty-web?${qs.toString()}`);
+}
+
+/**
+ * The payments app (minty-payment-request-web) through Flask's hand-offs that mint its token and
+ * redirect: its home (`/entity/<id>/payment-request`) or its settings page
+ * (`/entity/<id>/settings/payment-request`). Neither is a Flask page.
+ */
+export function paymentsUrl(entityId: string, page: "home" | "settings"): string {
+  const id = encodeURIComponent(entityId);
+  return withReturnOrigin(
+    page === "home" ? `${env.ACCOUNTS_API_URL}/entity/${id}/payment-request` : `${env.ACCOUNTS_API_URL}/entity/${id}/settings/payment-request`,
+  );
+}
+
+/** Flask's `/logout`: ends the session everywhere. */
+export function logoutUrl(): string {
+  return `${env.ACCOUNTS_API_URL}/logout`;
 }
 
 /** `url` (a Flask address) naming this app's origin as `return_origin`; unchanged with none. */

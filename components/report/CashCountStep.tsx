@@ -36,13 +36,11 @@ import {
 } from "@/lib/cash";
 import { pettyCashHome } from "@/lib/companyPages";
 import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
-import type { WizardStep } from "@/lib/flaskPages";
-import { leaveTo } from "@/lib/handoff";
 import { formatMoney } from "@/lib/money";
 import { datePill } from "@/lib/opening";
 import { changed } from "@/lib/sales";
 import { useAuth } from "@/lib/useAuth";
-import { isPorted, stepHref } from "@/lib/wizardPages";
+import { stepHref, type WizardStep } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const UNSAVED = "You have unsaved changes. Please save your changes first.";
@@ -178,9 +176,7 @@ function CashCountForm({ page, entityId, entityName, acronym }: { page: CashCoun
   }
 
   function go(step: WizardStep) {
-    const href = stepHref(entityId, entityName, step, day);
-    if (isPorted(step)) router.push(href);
-    else leaveTo(href);
+    router.push(stepHref(entityId, entityName, step, day));
   }
 
   async function save(action: "next" | "exit") {

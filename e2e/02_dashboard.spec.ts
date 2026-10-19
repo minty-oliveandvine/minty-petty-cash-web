@@ -1,12 +1,12 @@
 // The dashboard (components/dashboard, Flask's look exactly), against a STUBBED Petty Cash API:
 // every state Flask's dashboard had - a draft, a deposit to confirm, days not submitted, setup
-// required - without a database. Needs only `npm run dev`. Navigations into Flask's pages are
-// caught and answered here, so nothing leaves the app.
+// required - without a database. Needs only `npm run dev`. Navigations into the report pages are
+// caught and answered here (their own specs cover them), so the spec reads where the app went.
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 import { companyRef } from "./companyRef";
-import { mintModuleToken } from "./helpers";
+import { expectHubHandoff, mintModuleToken } from "./helpers";
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -52,9 +52,9 @@ async function enterWith(page: Page, home: Json, onCorrection?: (body: Json, rou
       await onCorrection(route.request().postDataJSON() as Json, route);
     });
   }
-  // Flask's wizard and summary pages: caught, so the spec can read where the app went.
+  // the wizard's and a report's pages: caught, so the spec can read where the app went.
   await page.route(/\/entity\/[^/]+\/petty-cash\/reports\//, (route) =>
-    route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
+    route.fulfill({ contentType: "text/html", body: "<title>Report page</title><p>Report page</p>" }),
   );
   const token = mintModuleToken({ secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME });
   await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: HOME_PATH })}`);
@@ -76,7 +76,10 @@ test("the page loads with no console error - a hydration mismatch included", asy
   await expect(page.getByRole("heading", { name: "Report Calendar" })).toBeVisible();
   // the header's links read the cookie and the origin, so they are filled in after hydration
   await expect(page.getByRole("link", { name: "Back to your companies" })).toHaveAttribute("href", /\/handoff\/minty-web/);
-  await expect(page.getByRole("link", { name: "My Profile" })).toHaveAttribute("href", /\/profile\?entity_id=/);
+  // My Profile is minty-web's, through the hand-off - never Flask's /profile
+  const profile = page.getByRole("link", { name: "My Profile" });
+  await expect(profile).toHaveAttribute("href", /\/handoff\/minty-web\?/);
+  await expectHubHandoff(profile, "/profile", ENTITY);
   expect(errors).toEqual([]);
 });
 
@@ -197,8 +200,21 @@ test("a draft shows its progress and continues where it was left", async ({ page
   await expect(page.getByText("14 Oct 2026 Wed")).toBeVisible();
   await expect(page.getByText("Last edit 5 mins ago")).toBeVisible();
   await expect(page.getByRole("button", { name: "Start New Report" })).toHaveCount(0);
+  // the draft's own step, in this app - never Flask's resume page
   await page.getByRole("button", { name: "Continue Report" }).click();
-  await expect(page).toHaveURL(/\/petty-cash\/reports\/resume\?transaction_date=2026-10-14/);
+  await expect(page).toHaveURL((url) => url.pathname + url.search === `${HOME_PATH}/reports/new/expense?transaction_date=2026-10-14`);
+});
+
+test("a draft with no step yet continues at Opening, in this app", async ({ page }) => {
+  await enterWith(
+    page,
+    homeAnswer({
+      draft: { id: "d", current_section: null, completed_sections: [], last_edit_seconds: 60 },
+      draft_date: "2026-10-13",
+    }),
+  );
+  await page.getByRole("button", { name: "Continue Report" }).click();
+  await expect(page).toHaveURL((url) => url.pathname + url.search === `${HOME_PATH}/reports/new/opening?transaction_date=2026-10-13`);
 });
 
 test("a submitted day shows its balance and opens its report, in this app", async ({ page }) => {

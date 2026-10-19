@@ -11,12 +11,11 @@ import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
 import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
-import { leaveTo } from "@/lib/handoff";
 import { formatMoney } from "@/lib/money";
 import { datePill } from "@/lib/opening";
 import { changed, flaskLabel, salesTotals, sections, type SalesMethod, type SalesPage } from "@/lib/sales";
 import { useAuth } from "@/lib/useAuth";
-import { isPorted, stepHref } from "@/lib/wizardPages";
+import { stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const UNSAVED = "You have unsaved changes. Please save your changes first.";
@@ -116,9 +115,7 @@ function SalesForm({ page, entityId, entityName, acronym }: { page: SalesPage; e
         router.push(home);
         return;
       }
-      const next = stepHref(entityId, entityName, "expenses", answer.transaction_date);
-      if (isPorted("expenses")) router.push(next);
-      else leaveTo(next);
+      router.push(stepHref(entityId, entityName, "expenses", answer.transaction_date));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
       const body = err instanceof ApiError ? (err.body as { to?: string } | null) : null;

@@ -14,11 +14,10 @@ import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
 import { detailRows, receiptKind, type ExpenseLine, type ExpensesPage, type Supplier } from "@/lib/expenses";
-import { leaveTo } from "@/lib/handoff";
 import { formatMoney } from "@/lib/money";
 import { datePill } from "@/lib/opening";
 import { useAuth } from "@/lib/useAuth";
-import { isPorted, stepHref } from "@/lib/wizardPages";
+import { stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const UNSAVED = "You have an unsaved expense. Please save before navigating.";
@@ -110,9 +109,7 @@ function ExpensesForm({ page, entityId, entityName, acronym }: { page: ExpensesP
         router.push(home);
         return;
       }
-      const next = stepHref(entityId, entityName, "deposit", answer.transaction_date);
-      if (isPorted("deposit")) router.push(next);
-      else leaveTo(next);
+      router.push(stepHref(entityId, entityName, "deposit", answer.transaction_date));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
       setBusy(null);

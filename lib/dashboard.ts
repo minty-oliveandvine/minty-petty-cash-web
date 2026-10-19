@@ -11,7 +11,7 @@
  */
 
 import { addDays } from "@/lib/dates";
-import type { WizardStep } from "@/lib/flaskPages";
+import type { WizardStep } from "@/lib/wizardPages";
 
 export type PublishedDay = {
   id: string;

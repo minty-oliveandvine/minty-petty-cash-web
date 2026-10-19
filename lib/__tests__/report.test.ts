@@ -35,7 +35,7 @@ describe("a submitted report's Total Sales (GET /reports/<id>)", () => {
 });
 
 describe("Flask's Submitted page wording", () => {
-  const xero = (xero_integrated: boolean, publishing_status: string | null = null) => ({ xero_integrated, publishing_status, published_at: null });
+  const xero = (xero_integrated: boolean, publishing_status: string | null = null) => ({ xero_integrated, publishing_status, published_at: null, was_published: xero_integrated });
 
   it("says Submitted until the report is in Xero, then Published to Xero", () => {
     expect(submittedHeading(xero(false))).toEqual(["Report Submitted", "Successfully!"]);

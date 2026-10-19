@@ -15,10 +15,9 @@ import { getAuth } from "@/lib/auth";
 import { pettyCashHome, reportHref } from "@/lib/companyPages";
 import type { ClosePage } from "@/lib/ending";
 import { setFlash } from "@/lib/flash";
-import type { WizardStep } from "@/lib/flaskPages";
 import { datePill } from "@/lib/opening";
 import { useAuth } from "@/lib/useAuth";
-import { stepHref } from "@/lib/wizardPages";
+import { stepHref, type WizardStep } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const SUBMIT_FAILED = "I couldn't submit the report. Mind trying again?";

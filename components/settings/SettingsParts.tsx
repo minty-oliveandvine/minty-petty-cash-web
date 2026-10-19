@@ -27,6 +27,9 @@ export const BTN =
   "inline-flex h-11 items-center justify-center gap-1.5 rounded-flask-lg border px-4 text-sm font-semibold transition-[background-color,opacity] disabled:cursor-not-allowed disabled:opacity-50";
 export const BTN_OUTLINE = `${BTN} border-flask-teal bg-flask-white text-flask-teal enabled:hover:bg-flask-teal/10`;
 export const BTN_SOLID = `${BTN} border-transparent bg-flask-teal text-flask-white enabled:hover:opacity-90`;
+/** Flask's `.pcs-save-btn`: the full-width Save Changes. */
+export const SAVE_BTN =
+  "inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-flask-lg border-0 bg-flask-teal px-4 text-base font-bold text-flask-white shadow-flask transition-opacity enabled:hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flask-teal disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm";
 
 const INPUT =
   "block h-11 w-full rounded-flask-lg border border-flask-set-gray-300 bg-flask-white text-base text-flask-black outline-none transition-[border-color,box-shadow] placeholder:text-flask-set-gray-700 placeholder:opacity-100 focus:border-flask-teal focus:ring-2 focus:ring-flask-teal/25 disabled:cursor-not-allowed disabled:bg-flask-gray-200 disabled:text-flask-set-gray-500 sm:text-sm";
@@ -88,7 +91,8 @@ export function SettingsCard({
 }
 
 /** One row of a picker's list: pickable, or a line of information (`info`). */
-export type ComboRow = { key: string; label: string; info?: boolean; selected?: boolean; muted?: boolean };
+/** `sub`: a second, smaller line under the label (the Xero pickers' code); `divided`: a rule above it (Flask's "+ Add ... as a new contact"). */
+export type ComboRow = { key: string; label: string; info?: boolean; selected?: boolean; muted?: boolean; sub?: string; divided?: boolean };
 
 /**
  * Flask's searchable picker (`picker()` in petty_cash_settings.js, ThemedSelect's look): focus or a
@@ -108,6 +112,7 @@ export function Combo({
   rotateChevron = false,
   invalid = false,
   describedBy,
+  required = false,
 }: {
   id: string;
   value: string;
@@ -121,6 +126,7 @@ export function Combo({
   rotateChevron?: boolean;
   invalid?: boolean;
   describedBy?: string;
+  required?: boolean;
 }) {
   const listId = `${id}-suggestions`;
   const [query, setQuery] = useState<string | null>(null);
@@ -178,6 +184,7 @@ export function Combo({
         aria-controls={listId}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
+        aria-required={required || undefined}
         autoComplete="off"
         placeholder={placeholder}
         value={value}
@@ -232,9 +239,16 @@ export function Combo({
               }}
               className={`cursor-pointer px-3 py-2.5 text-sm transition-colors hover:bg-flask-teal/10 ${
                 row.selected ? "bg-flask-teal/15 font-semibold text-flask-teal" : i === active ? "bg-flask-teal/15" : ""
-              } ${row.selected ? "" : row.muted ? "text-flask-set-gray-600" : "text-flask-black"}`}
+              } ${row.selected ? "" : row.muted ? "text-flask-set-gray-600" : "text-flask-black"} ${row.divided ? "border-t border-flask-gray-200" : ""}`}
             >
-              {row.label}
+              {row.sub ? (
+                <>
+                  <span className="block font-medium">{row.label}</span>
+                  <span className="block text-xs font-normal text-flask-set-gray-500">{row.sub}</span>
+                </>
+              ) : (
+                row.label
+              )}
             </div>
           );
         })}

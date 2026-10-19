@@ -3,7 +3,7 @@
 import type { MouseEvent } from "react";
 
 import { stepStates, type Progress } from "@/lib/dashboard";
-import type { WizardStep } from "@/lib/flaskPages";
+import type { WizardStep } from "@/lib/wizardPages";
 
 const TICK = (
   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="8" viewBox="0 0 11 8" fill="none" aria-hidden="true">

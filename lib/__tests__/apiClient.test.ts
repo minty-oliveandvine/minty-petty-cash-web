@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HOUSE_FALLBACK, mintyFetch, pettyCashBlob, pettyCashFetch } from "@/lib/apiClient";
+import { HOUSE_FALLBACK, filenameFromDisposition, mintyFetch, pettyCashBlob, pettyCashDownload, pettyCashFetch } from "@/lib/apiClient";
 import { setAuth } from "@/lib/auth";
 import { _resetHandoffForTests } from "@/lib/handoff";
 
@@ -105,6 +105,44 @@ describe("pettyCashBlob", () => {
     fetchMock.mockResolvedValueOnce(answer(401, null));
     await expect(pettyCashBlob("/x")).rejects.toMatchObject({ status: 401 });
     expect(go).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("pettyCashDownload", () => {
+  it("reads a download with the bearer and the query, named by its Content-Disposition", async () => {
+    setAuth("tok", ENTITY, "n");
+    fetchMock.mockResolvedValue(
+      new Response("Date,Amount", {
+        status: 200,
+        headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": "attachment; filename=reports_2026-10-01_to_2026-10-13.csv" },
+      }),
+    );
+    const file = await pettyCashDownload("/reports/export.csv", { query: { start_date: "2026-10-01", end_date: "2026-10-13" } });
+    expect(file.filename).toBe("reports_2026-10-01_to_2026-10-13.csv");
+    expect(await file.blob.text()).toBe("Date,Amount");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`http://localhost:8010/api/petty-cash/v1/companies/${ENTITY}/reports/export.csv?start_date=2026-10-01&end_date=2026-10-13`);
+    expect((init.headers as Headers).get("Authorization")).toBe("Bearer tok");
+  });
+
+  it("has no name when the answer gives none, and a refusal is the API's sentence", async () => {
+    setAuth("tok", ENTITY, "n");
+    fetchMock.mockResolvedValueOnce(new Response("x", { status: 200 }));
+    expect((await pettyCashDownload("/x")).filename).toBeNull();
+    fetchMock.mockResolvedValueOnce(answer(422, { error: "Choose a start date on or before the end date." }));
+    await expect(pettyCashDownload("/x")).rejects.toMatchObject({ status: 422, message: "Choose a start date on or before the end date." });
+  });
+});
+
+describe("filenameFromDisposition", () => {
+  it.each([
+    ["attachment; filename=reports.csv", "reports.csv"],
+    ['attachment; filename="report one.csv"', "report one.csv"],
+    ["attachment; filename*=UTF-8''caf%C3%A9.csv; filename=cafe.csv", "café.csv"],
+    ["attachment", null],
+    [null, null],
+  ])("%s -> %s", (header, name) => {
+    expect(filenameFromDisposition(header)).toBe(name);
   });
 });
 

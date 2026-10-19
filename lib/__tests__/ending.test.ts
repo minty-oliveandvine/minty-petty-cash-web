@@ -15,7 +15,6 @@ import {
   salesSplit,
   versusYesterday,
 } from "@/lib/ending";
-import { submittedUrl } from "@/lib/flaskPages";
 
 describe("Compared to Yesterday (Flask's sales_percentage_abs, is_sales_increase)", () => {
   it("has nothing to compare without a day before: the green arrow alone", () => {
@@ -163,13 +162,5 @@ describe("Sales History (Flask's initializeBarChart, scrollable, seven to a view
     expect(barValue(0)).toBe("0");
     expect(barDate("2026-10-13")).toEqual({ day: "13 OCT", weekday: "TUE" });
     expect(barDate("2026-09-01")).toEqual({ day: "1 SEP", weekday: "TUE" });
-  });
-});
-
-describe("Flask's Submitted page", () => {
-  it("is addressed by the company's id and the report's", () => {
-    expect(submittedUrl("360812e1-9f94-46a3-aa31-347e21afde8e", "r-1")).toBe(
-      "http://localhost:8000/entity/360812e1-9f94-46a3-aa31-347e21afde8e/petty-cash/reports/r-1/submitted",
-    );
   });
 });

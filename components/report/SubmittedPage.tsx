@@ -2,16 +2,16 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { useToast } from "@/components/flask/Toasts";
+import { usePublish } from "@/components/report/Publish";
 import { ShareButton, ShareModal, useShareLink } from "@/components/report/ReportActions";
 import { LoadingOverlay } from "@/components/report/ReportChrome";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { getAuth } from "@/lib/auth";
 import { pettyCashHome } from "@/lib/companyPages";
 import { setNextDay } from "@/lib/flash";
-import { submittedUrl } from "@/lib/flaskPages";
 import { publishLabel, submittedHeading, type ReportOutcome } from "@/lib/report";
 import { useAuth } from "@/lib/useAuth";
 import { stepHref } from "@/lib/wizardPages";
@@ -43,9 +43,10 @@ function Frame({ children, overlays }: { children: ReactNode; overlays?: ReactNo
  * Export Options (Share), then Publish to Xero, Back to Dashboard and Continue to next day report.
  * Reads `GET /reports/<id>/outcome` (Minty `petty_cash_api/routes/close.py`).
  *
- * Publishing to Xero is not ported: its button is a full-page link to Flask's own Submitted page,
- * where the person publishes. "Continue to next day report" asks the dashboard to start the next
- * day (Flask's `autoStartNextDay`, lib/flash.ts).
+ * Publish to Xero is Flask's own (Publish.tsx, lib/publish.ts): the republish confirm for a report
+ * that has been to Xero, the overlay while it polls, then the outcome as Flask's toast and the page
+ * read again ("Report Published to Xero / Successfully!"). "Continue to next day report" asks the
+ * dashboard to start the next day (Flask's `autoStartNextDay`, lib/flash.ts).
  */
 export function SubmittedPage({ reportId }: { reportId: string }) {
   const toast = useToast();
@@ -54,25 +55,34 @@ export function SubmittedPage({ reportId }: { reportId: string }) {
   const [outcome, setOutcome] = useState<ReportOutcome | null>(null);
   const [failed, setFailed] = useState(false);
 
+  const read = useCallback(
+    (live: () => boolean) =>
+      pettyCashFetch<ReportOutcome>(`/reports/${encodeURIComponent(reportId)}/outcome`)
+        .then((answer) => {
+          if (!live()) return;
+          const company = getAuth();
+          // reopened since: nothing is submitted, so its own place is the wizard's Ending step
+          if (!answer.submitted && company) router.replace(stepHref(company.entityId, company.entityName, "ending", answer.transaction_date));
+          else setOutcome(answer);
+        })
+        .catch((err: unknown) => {
+          if (!live() || (err instanceof ApiError && err.status === 401)) return;
+          setFailed(true);
+          toast(err instanceof ApiError ? err.message : UNREACHABLE, "error");
+        }),
+    [reportId, toast, router],
+  );
+
   useEffect(() => {
     let live = true;
-    pettyCashFetch<ReportOutcome>(`/reports/${encodeURIComponent(reportId)}/outcome`)
-      .then((answer) => {
-        if (!live) return;
-        const company = getAuth();
-        // reopened since: nothing is submitted, so its own place is the wizard's Ending step
-        if (!answer.submitted && company) router.replace(stepHref(company.entityId, company.entityName, "ending", answer.transaction_date));
-        else setOutcome(answer);
-      })
-      .catch((err: unknown) => {
-        if (!live || (err instanceof ApiError && err.status === 401)) return;
-        setFailed(true);
-        toast(err instanceof ApiError ? err.message : UNREACHABLE, "error");
-      });
+    void read(() => live);
     return () => {
       live = false;
     };
-  }, [reportId, toast, router]);
+  }, [read]);
+
+  // after a publish: the heading and the button follow what Xero now has
+  const reread = useCallback(() => void read(() => true), [read]);
 
   if (!outcome || !auth) {
     return (
@@ -85,12 +95,13 @@ export function SubmittedPage({ reportId }: { reportId: string }) {
       </Frame>
     );
   }
-  return <Submitted outcome={outcome} entityId={auth.entityId} entityName={auth.entityName} />;
+  return <Submitted outcome={outcome} entityId={auth.entityId} entityName={auth.entityName} onPublished={reread} />;
 }
 
-function Submitted({ outcome, entityId, entityName }: { outcome: ReportOutcome; entityId: string; entityName: string }) {
+function Submitted({ outcome, entityId, entityName, onPublished }: { outcome: ReportOutcome; entityId: string; entityName: string; onPublished: () => void }) {
   const router = useRouter();
   const share = useShareLink(outcome.report_id);
+  const publish = usePublish({ place: "submitted", entityId, entityName, onChanged: onPublished });
   const [busy, setBusy] = useState<string | null>(null);
   const [first, second] = submittedHeading(outcome.xero);
   const home = pettyCashHome(entityId, entityName);
@@ -110,6 +121,7 @@ function Submitted({ outcome, entityId, entityName }: { outcome: ReportOutcome; 
     <>
       {busy ? <LoadingOverlay text={busy} /> : null}
       {share.link ? <ShareModal url={share.link.url} onClose={share.close} /> : null}
+      {publish.ui}
     </>
   );
 
@@ -135,13 +147,16 @@ function Submitted({ outcome, entityId, entityName }: { outcome: ReportOutcome; 
 
       <div className="w-full max-w-md space-y-3 pt-8">
         {outcome.can_publish ? (
-          <a
-            href={submittedUrl(entityId, outcome.report_id)}
+          <button
+            type="button"
+            // a report that has been to Xero goes through Flask's confirm: publishing again duplicates it
+            onClick={() => publish.ask({ reportId: outcome.report_id, confirm: outcome.xero.was_published ? { duplicate: true } : null })}
+            disabled={busy !== null || publish.busy}
             className="flex w-full items-center justify-center gap-3 rounded-flask-xl bg-flask-white px-4 py-3 text-flask-slate-700 shadow-flask-md ring-1 ring-flask-slate-200 transition hover:shadow-flask-lg"
           >
             <Image src="/img/xero-logo.webp" alt="Xero Logo" width={24} height={24} unoptimized className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="text-sm font-medium">{publishLabel(outcome.xero)}</span>
-          </a>
+          </button>
         ) : null}
 
         <button

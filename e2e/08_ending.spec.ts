@@ -115,7 +115,7 @@ const OUTCOME = {
   submitted_by: "Tess",
   cash_counted: 1160.5,
   difference: { amount: -11, kind: "short", has_reason: true },
-  xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false },
+  xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false, was_published: false },
   can_publish: true,
   is_today: false,
   next_day: "2026-10-14",
@@ -142,7 +142,7 @@ async function stub(page: Page, answer: Json, h: Handlers = {}) {
   await page.route(`${API}/home`, (route) => route.fulfill({ json: HOME }));
   await page.route(`${API}/reports/${REPORT}/outcome`, (route) => route.fulfill({ json: OUTCOME }));
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's pages: caught.
+  // a Flask page address: nothing here opens one (Flask is a backend only), so a regression lands on this stub, never Flask
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\//, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );

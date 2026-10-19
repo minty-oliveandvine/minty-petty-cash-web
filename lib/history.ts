@@ -6,8 +6,8 @@
 
 import { pettyCashHome } from "@/lib/companyPages";
 import { formatDay } from "@/lib/dates";
-import { WIZARD_STEP_PATH, type WizardStep } from "@/lib/flaskPages";
 import { formatMoney } from "@/lib/money";
+import { sectionStep, type WizardStep } from "@/lib/wizardPages";
 
 /** One report on the list. Edit and delete are only ever on the latest, never on a draft. */
 export type HistoryRow = {
@@ -52,6 +52,26 @@ export const HISTORY_DELETED = "That report is deleted.";
 
 /** Flask's page shows ten a page; the API's default, so it is never sent. */
 export const PER_PAGE = 10;
+
+/** The CSV export: `GET /reports/export.csv` (Minty `petty_cash_api/routes/history.py`). */
+export const CSV_EXPORT_PATH = "/reports/export.csv";
+
+/** Flask's success toast for the export, kept as it was. */
+export const CSV_EXPORTED = "Your CSV export is on its way!";
+
+/**
+ * The export's query for two days - Flask's rule: both dates, the start on or before the end;
+ * null otherwise (the button stays disabled).
+ */
+export function csvQuery(start: string, end: string): { start_date: string; end_date: string } | null {
+  if (!start || !end || start > end) return null;
+  return { start_date: start, end_date: end };
+}
+
+/** The file's name when the answer names none: the API's own pattern (`reports_<start>_to_<end>.csv`). */
+export function csvFileName(start: string, end: string): string {
+  return `reports_${start}_to_${end}.csv`;
+}
 
 export function filtersFromAddress(params: { get(name: string): string | null }): HistoryFilters {
   return { start: params.get("start_date") ?? "", end: params.get("end_date") ?? "", page: params.get("page") ?? "" };
@@ -142,8 +162,7 @@ export function historyAmount(value: number, currencyCode: string | null): { tex
 
 /** The wizard step a draft resumes at: its own, else Opening - Flask's `resume_report` rule. */
 export function draftStep(row: HistoryRow): WizardStep {
-  const section = row.current_section;
-  return section && Object.hasOwn(WIZARD_STEP_PATH, section) ? (section as WizardStep) : "opening";
+  return sectionStep(row.current_section);
 }
 
 /** The day's column: "13 OCT 2026", "TUE" in its circle, yellow on a weekend. */

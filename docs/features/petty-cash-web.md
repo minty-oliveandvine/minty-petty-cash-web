@@ -55,8 +55,8 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 `@minty/shared/sidebar`, with this app's host in `components/ui/sidebarHost.ts`. That file is the only app-specific part.
 - **This app's own pages:** Dashboard, Reports and Settings.
-- **minty-web's pages, through Flask's hand-offs:** the entity list, Subscriptions and My Profile.
-- **Through Flask's `/entity/<id>/payment-request`:** Bills.
+- **minty-web's pages, through Flask's `/handoff/minty-web`:** the entity list, Subscriptions and My Profile (scoped to the company it was opened from).
+- **Through Flask's `/entity/<id>/payment-request`** (a hand-off that mints the payments app's token, not a page): Bills.
 - **No profile slot.** My Profile is minty-web's page.
 
 ## Design
@@ -70,7 +70,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-off, the API client, company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`, Edit Details' among them: the reason's and a description's live checks, a receipt's check before it is sent, and what a line's edit sends - only what changed, never an empty supplier or account), report history's (`lib/history.ts`: the filters in the address, Flask's pager, the CSV link, a row's badge, time and figures, the range calendar's picks), settings' (`lib/settings.ts`: the address, the pickers' filter, what the country Save sends, the catalogue, a method name's live checks, a shared method's rename sentence, Move up / down, view-only), the flash and the next-day hand-over, and the three guards (styles, assets, raw colours). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-offs, the API client (a download and its `Content-Disposition` name included), company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`, Edit Details' among them: the reason's and a description's live checks, a receipt's check before it is sent, and what a line's edit sends - only what changed, never an empty supplier or account), publishing to Xero (`lib/publish.ts`: the start, a read every two seconds until the status leaves `publishing`, the 90-read cap, nothing asked after a cancel, how a status ends it - published, partial with its open reasons, failed - a refused start's sentence and `reconnect`, the bar), report history's (`lib/history.ts`: the filters in the address, Flask's pager, the CSV export's query and file name, a row's badge, time and figures, the range calendar's picks), settings' (`lib/settings.ts`: the address, the other tabs' hand-offs, the pickers' filter, what the country Save sends, the catalogue, a method name's live checks, a shared method's rename sentence, Move up / down, view-only), the Xero cards' (`lib/xeroSettings.ts`: Flask's groups and order, an account's "Name - Code", the pickers' filters, the other bank never offered, a contact offered as new, an empty field said only after a refused save and the two banks being one said at once, the fields an API sentence names, the eight keys sent, a new contact in every contact list; the codes' label, search, Select all's three states, at least one ticked, what changed and what is sent), the flash and the next-day hand-over, and the four guards (styles, assets, raw colours, no Flask pages). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -85,7 +85,15 @@ The same pages drawn in minty-payment-request-web's design are on the **`port/pr
 
 **How the look is kept exact.** Flask draws with Tailwind v3 (from a CDN) and hex values. This app uses Tailwind v4 and `@minty/shared`'s Part 13 tokens, where the scales differ: `rounded-lg` is 12px, the greys are oklch, and the shadows were renamed. So every value Flask uses is declared once, as `flask-*` theme tokens, in `app/styles/flask-theme.css`, and the ported pages draw only with those. No hex appears in a class, so `__tests__/no_raw_colours.test.ts` still holds. The phone card's widths are Flask's: full width, then 640, 768 and 1024 px.
 
-**Order.** Dashboard, then the report wizard, history, settings and Xero publish. Pages not ported yet are Flask's, linked from `lib/flaskPages.ts`. The person is already signed in to Flask, because this app's token came from Flask's login-gated hand-off.
+**Order.** Dashboard, then the report wizard, history, settings and Xero publish, all ported now.
+
+**No Flask pages** (the user, 2026-10-16: "The frontend/HTML in flask will not be used. flask will be an exclusive backend. its frontend must be deleted."). No screen here sends a person to a Flask page. Flask is reached only as a backend, and every Flask address this app builds is in `lib/handoff.ts` (plus the JSON calls in `lib/apiClient.ts`):
+- `/handoff/petty-cash-web` - this app's own token (`handoffUrl`);
+- `/handoff/minty-web?next=<minty-web path>&entity_id=` - minty-web's pages: the entity list, Subscriptions, My Profile, and the settings tabs Users, Entity & Integration and Modules (`hubUrl`);
+- `/entity/<id>/payment-request` and `/entity/<id>/settings/payment-request` - hand-offs that mint the payments app's token and redirect to its home or its settings page (`paymentsUrl`);
+- `/logout` (`logoutUrl`).
+
+`__tests__/no_flask_pages.test.ts` fails on any other Flask address in the source. The person is already signed in to Flask, because this app's token came from Flask's login-gated hand-off, so each hand-off is a silent round trip.
 
 ### Dashboard: `/entity/<shortid>/<name>/petty-cash`
 
@@ -95,6 +103,7 @@ The page is the same in every element:
 - Flask's header: the back chevron, the company's initials, the person's initials and the ≡. The two buttons open the shared sidebar.
 - The warning banner, "Today's report is submitted", and Report in Progress / Current balance.
 - "Pick up where you left off" with Flask's six-pill stepper. Its labels are 7.6px on a phone, as Flask draws them, which is below the workspace's 12px minimum, deliberately.
+- **Continue Report** opens the draft at its own wizard step in this app, by `GET /home`'s `draft.current_section` (Opening when it has none - `sectionStep` in `lib/wizardPages.ts`, the rule history's draft rows use). Flask's went through its resume page.
 - Start New Report / View Report.
 - Quick Actions.
 - The Report Calendar and its legend.
@@ -114,11 +123,11 @@ Behaviour is Flask's, minus its bugs:
 - **View Report opens the report's own view in this app** (by the day's `id` in `published`), no longer Flask's summary.
 - **"Continue to next day report" starts the day here.** The Submitted page leaves the next day for the dashboard (Flask's `autoStartNextDay`, `takeNextDay` in `lib/flash.ts`). The dashboard selects it and runs Start New Report for it, date rules and deposit check included.
 
-- **Every settings link opens this app's settings page** (Entity Settings, Setup Required's Set Up Settings, Before You Start's "Settings → Petty Cash"). Its Xero card leads on to Flask's page for the Xero mapping, which is what Setup Required and the deposit check are about.
+- **Every settings link opens this app's settings page** (Entity Settings, Setup Required's Set Up Settings, Before You Start's "Settings → Petty Cash"), whose Xero account mapping card is what Setup Required and the deposit check are about.
 
 Not ported yet:
 - **The subscription notice.**
-- **The "Congratulations!" modal.** Flask shows it after the first Xero mapping save, which stays on Flask's settings page.
+- **The "Congratulations!" modal.** Flask shows it after the first Xero mapping save (its `?success=true`). This app's first save lands on the dashboard with "Xero account mapping saved." as a toast instead.
 
 ### Report wizard, Opening: `/entity/<shortid>/<name>/petty-cash/reports/new/opening?transaction_date=`
 
@@ -270,15 +279,13 @@ What it keeps from Flask:
 - **The phone card with no header**, its content centred: the teal tick, **"Report Submitted / Successfully!"** ("Report Published to Xero / Successfully!" once the report is in Xero) and "Your daily petty cash report has been processed".
 - **"Export Options"** with **Share**. Flask's Save as Image and Detailed PDF were commented out, so they are not here either.
 - **"Share Report":** the modal opens saying "Generating link...", then `POST /reports/<id>/share-link` fills in the link. Copy, "Link copied to clipboard!" for three seconds, and Close, Escape or a click outside to close.
-- **Publish to Xero** ("Republish to Xero" once it is in Xero), only with `can_publish`.
+- **Publish to Xero** ("Republish to Xero" once it is in Xero), only with `can_publish`. Publishing is described below ("Publish to Xero").
 - **Back to Dashboard** ("Redirecting to Dashboard...") and **Continue to next day report** ("Starting next day report..."). The second leaves `next_day` for the dashboard to start, as Flask's `autoStartNextDay` did.
 
 Where the app differs:
-- **Publishing to Xero is still Flask's.** The button is a full-page link to Flask's own Submitted page for the report (`submittedUrl` in `lib/flaskPages.ts`), where the person publishes. Flask's publishing overlay, its republish warning and its polling are not ported.
 - **A refused share says the API's sentence** and closes the modal (a draft: "A draft can't be shared. Submit the day first.").
 - **A report reopened since** (`submitted: false`) has nothing submitted to show, so the page opens that day's Ending step instead of saying "Submitted".
 - **Content taller than the screen scrolls from its top** (a short phone, text at 200%); Flask's centring cut it off above.
-- **Left out:** Flask's "Report Successfully Published" toast after its own publish. It comes with Xero publish.
 
 ### A submitted report: `/entity/<shortid>/<name>/petty-cash/reports/<report id>/summary`
 
@@ -320,7 +327,7 @@ This is Flask's ORIGINAL `report_history/report_history.html` (Minty `1c25b35^1`
 What it keeps from Flask:
 - **The header:** the chevron (to the dashboard), the company's initials, the person's initials and the ≡.
 - **The date filter**, fixed under the header: Start Date and End Date ("DD/MMM/YYYY", read-only) open Flask's range calendar - one month on a phone, two side by side from 640px across both fields; a click picks the start, the next the end (in order), the next starts again; one day picked is that day at both ends; the range in teal, the days between in pale teal, today ringed. Its footer: **Clear** (back to every report) and **Search Report** ("Please choose or enter a valid date range" / "Start date cannot be after end date"). Enter in a field searches too. A page with dates says Flask's "Filter applied".
-- **CSV**, Flask's own export (`csvUrl` in `lib/flaskPages.ts`, `report.download_reports_csv`): a full-page link for the dates in the fields, greyed until both are chosen; "Exporting..." for a second, then "Your CSV export is on its way!".
+- **CSV**: `GET /reports/export.csv?start_date=&end_date=` with the bearer (`pettyCashDownload` in `lib/apiClient.ts`, `csvQuery` in `lib/history.ts`), for the dates in the fields; greyed until both are chosen, the start on or before the end (Flask's gate). "Exporting..." while it runs, then the file is saved under the name its `Content-Disposition` gives (a blob on a temporary `<a download>`) and "Your CSV export is on its way!"; a refusal (422 `{error}`) shows its sentence as a toast and saves nothing. Cross-origin, the browser shows `Content-Disposition` only when the API lists it in `Access-Control-Expose-Headers`; without it the file falls back to the API's own pattern, `reports_<start>_to_<end>.csv` (`csvFileName`).
 - **"Report Results":** a card per day, newest first - the date and the weekday in its circle (yellow on a weekend), Sales (green) and Expenses (red) as Flask's `amount()` writes them ("-" for nothing, smaller as the figure grows), the badge (Published, Publish failed, Draft, Submitted - a publish under way reads Submitted, as the original drew it), the time in Hong Kong by Flask's rule (when it went to Xero; else when it was submitted; for a draft, when the day was started, which is also the fallback when either time is missing - the API's `created_at`) and "by <first name>".
 - **A failed publish's reasons:** the badge's ⓘ and Flask's dark "Publish issues:" box, a cross per open reason and a resolved one struck through in green, on hover as in Flask.
 - **The ⋮ menu**, one open at a time: **Edit** and **Delete** (only the latest report, never a draft - the API's `permissions`), **View**, and **Publish** / **Republish** (with `can_publish`; greyed on a draft, "Please finish the report before publishing"). The chevron is View too.
@@ -328,10 +335,10 @@ What it keeps from Flask:
 - **The filters and the page live in the address**, so Back and a reload keep them.
 
 Where the app differs:
-- **View** opens the report's view in this app. A draft opens its own wizard step here, by the row's `current_section` (Opening when it has none, Flask's `resume_report` rule; `draftStep` in `lib/history.ts`); Flask's went through its resume page.
+- **View** opens the report's view in this app. A draft opens its own wizard step here, by the row's `current_section` (Opening when it has none, Flask's `resume_report` rule; `draftStep` in `lib/history.ts`, which reads `sectionStep` in `lib/wizardPages.ts`); Flask's went through its resume page.
 - **Edit** is the report view's (`useEditReport` in `ReportActions.tsx`): Flask's confirm for a report that has been to Xero, `POST /reports/<id>/reopen`, then this app's Opening.
 - **Delete** is the report view's modal, with the owner's "It is in Xero" warning when `was_published`; `DELETE /reports/<id>`, then the list is read again in place with Flask's "That report is deleted." (Flask reloaded the page). A refusal says the API's sentence and keeps the list.
-- **Publish / Republish** is a full-page link to Flask's Submitted page for the report (`submittedUrl`), where the person publishes. The history page's own publishing (its republish modal, overlay and polling) is not ported.
+- **Publish / Republish** is this app's (below, "Publish to Xero"); afterwards the list is read again in place, where Flask reloaded the page.
 - **The empty state shows.** Flask's "No reports found" was in the page but never revealed.
 - **Refusals:** a bad filter in the address (the API's 422) says its sentence; any other failure says so with **Try again**.
 - **The calendar is drawn here**, as Flask themed Flatpickr (this app carries no Flatpickr): its month and year are text, not Flatpickr's month dropdown and year field, and there is no hover preview of a range. Clear and Search Report are 44px on a phone.
@@ -340,23 +347,59 @@ Where the app differs:
 - **Flask's own sizes below the workspace rules, kept:** the 8-10px dates, figures and times on a phone, the 9px badge and the calendar's 42px days.
 - **"Edit" on an older report is not in the menu.** Flask's opened the summary's "Edit Details" mode; here it is View, then Edit Details on the report's view.
 
+### Publish to Xero: the Submitted page and report history
+
+This is the publishing of Flask's ORIGINAL `report/submitted.html` and `report_history/report_history.html` (Minty `1c25b35^1`), on the two pages that offered it. It is built from `components/report/Publish.tsx` (the confirm, the overlay, the reconnect dialog and `usePublish`), with the polling and its outcomes in `lib/publish.ts`. It starts with `POST /reports/<id>/publish` (202) and asks `GET /reports/<id>/publishing-status` (Minty `petty_cash_api/routes/report.py`, `xero/services/publish_start.py`).
+
+What it keeps from Flask:
+- **The republish confirm, each page's own words**, Flask's "Republish Report" with Cancel / Confirm:
+  - **Submitted page:** for a report in Xero ("Republish to Xero"), and for one edited after a publish (it reads "Publish to Xero"), as the outcome's `xero.was_published` says (Flask's `was_previously_published`, decided by the API): "This report was previously published. This action may create duplicate entries in Xero." and "Do you wish to continue?".
+  - **Report history:** Republish (a report in Xero, or a failed publish) always asks "Still want to go ahead?", and adds "I've already published this report — republishing may create duplicates in Xero." only for a report fully in Xero (a partly published one is re-sent selectively). Publish asks, with that warning, for a report edited after a publish (`was_published`).
+  - A report never in Xero publishes at once.
+- **The full-screen overlay:** the spinner, "Publishing to Xero..." ("Republishing to Xero..." after the confirm), the bar and its percentage (5% "Initiating...", 10% "Sending request to Xero...", 15%, then a step towards 85% at each read) and "Please do not close or navigate away.".
+- **The polling:** every 2 seconds until the status is no longer `publishing`, at most 90 times (three minutes) - Flask's interval and cap. A dropped connection or a server error keeps asking, as Flask's did.
+- **The outcome**, after the bar shows full for 600 ms ("Published successfully!" / "Partially published"), as Flask's toast:
+  - published: "Report Successfully Published" / "Report Successfully Republished" on the Submitted page, which is then read again, so it says "Report Published to Xero / Successfully!" and offers Republish; "Report published to Xero successfully!" on history;
+  - failed with open reasons: "Xero publish is done partially due to <the reasons, joined by ;>" (a warning);
+  - failed with none: "Publishing to Xero failed. Please try again.".
+- **A refused start says the API's sentence** (settings incomplete, a system account on a line, a draft, already publishing, no right, no report) as Flask's toast: a warning for a 409 on the Submitted page, an error everywhere else. Nothing is polled.
+
+Where the app differs:
+- **Xero must be connected again** (`reconnect: true`): the sentence comes in a "Reconnect Xero" dialog with Close and **Reconnect Xero in Entity & Integration**, a full-page link to minty-web's Entity & Integration tab through Flask's `/handoff/minty-web` (`settingsTabUrl` in `lib/settings.ts`), where connecting happens. Flask only toasted it.
+- **After the cap** the overlay says "Still publishing to Xero" with Flask's "Publishing is taking longer than expected. Please check again later." and offers **Check again** (it watches the same publish for another round and never starts a second one) and Close. Flask hid the overlay behind the toast.
+- **Nothing is left polling.** Leaving the page, in the app or not, stops the reads; Flask's interval ran until the page unloaded.
+- **Each read waits for the last answer**, then two seconds, so a slow answer never stacks reads.
+- **A failed or put-back answer ends it.** A status back at `unpublished` ends it as failed (Flask kept asking until its cap); a refused read (403, 404) ends it with the API's sentence.
+- **The Submitted page says a partial publish's reasons too.** Flask's Submitted page said only "Publishing to Xero failed"; history's toast, with the reasons, is used on both.
+- **No reload.** The Submitted page reads its outcome again and history its list; Flask reloaded the page and showed the toast from `sessionStorage`.
+- **A submitted report's own view has no publish**, as Flask's `ending.html` had none.
+
 ### Petty Cash Settings: `/entity/<shortid>/<name>/settings/petty-cash`
 
-This is Flask's ORIGINAL `entity/settings_entity.html`, with `partials/electronic_delivery_section.html` and `static/js/petty_cash_settings.js` (Minty `1c25b35^1`), at Flask's own address for it, for the cards that need no Xero. It is built from `components/settings/PettyCashSettings.tsx` (the page and Country & currency), `SalesMethodsCard.tsx` (Electronic and Delivery) and `SettingsParts.tsx` (the card, the picker, the confirm dialog, the busy overlay), with its rules in `lib/settings.ts`. It reads `GET /settings` and writes through `PUT /settings/country` and `POST`/`PUT`/`DELETE /sales-methods...` (Minty `petty_cash_api/routes/settings.py`). The dashboard's Entity Settings, its two modals' settings links and the sidebar's Settings open it.
+This is Flask's ORIGINAL `entity/settings_entity.html`, with `partials/electronic_delivery_section.html`, `partials/xero_account_mapping_cards_classic.html`, `partials/xero_mapping_classic_script_fragment.html` and `static/js/petty_cash_settings.js` (Minty `1c25b35^1`), at Flask's own address for it. It is built from `components/settings/PettyCashSettings.tsx` (the page and Country & currency), `SalesMethodsCard.tsx` (Electronic and Delivery), `XeroCards.tsx` (Xero account mapping and Petty Cash Account Code) and `SettingsParts.tsx` (the card, the picker, the confirm dialog, the busy overlay), with its rules in `lib/settings.ts` and `lib/xeroSettings.ts`. It reads `GET /settings` and `GET /settings/xero`, and writes through `PUT /settings/country`, `POST`/`PUT`/`DELETE /sales-methods...`, `PUT /settings/xero/mapping`, `PUT /settings/xero/account-codes` and `POST /suppliers` (Minty `petty_cash_api/routes/settings.py`). The dashboard's Entity Settings, its two modals' settings links and the sidebar's Settings open it.
 
 Flask drew this page in minty-web's look (Tailwind v4 values written out in `settings_page.css`), not in the phone card, so its greys and reds have their own `flask-set-*` tokens in `app/styles/flask-theme.css`.
 
 What it keeps from Flask:
 - **The header:** ‹ Back and "Settings", the company's icon and name, the person's initials (My Profile) and the ≡ (the shared sidebar).
-- **The settings tabs:** Users, Entity & Integration, **Petty Cash Settings** (this page), Payment Request Settings (when the token says Payments is on) and Modules. The others are Flask's addresses (`settingsTabUrl` in `lib/flaskPages.ts`), which hand over to the app that holds them.
+- **The settings tabs:** Users, Entity & Integration, **Petty Cash Settings** (this page), Payment Request Settings (when the token says Payments is on) and Modules. Users, Entity & Integration and Modules are minty-web's pages (`/entity/<shortid>/<name>/settings/<tab>`) through Flask's `/handoff/minty-web`; Payment Request Settings is the payments app's own settings page through Flask's `/entity/<id>/settings/payment-request` hand-off, which mints that app's token (`settingsTabUrl` in `lib/settings.ts`).
 - **The view-only notice** ("You have view-only access to these settings…") when the person may change nothing. A card they cannot change is grey and its controls are off, as in Flask.
 - **Country & currency:** "Select Country" and "Select Currency", Flask's searchable pickers (focus lists everything, typing filters, "No matches", ↑/↓/Enter/Escape, leaving the box puts the choice back), then **Save Changes** ("Saving…" and Flask's busy overlay, "Saving changes…").
 - **Electronic and Delivery**, a card each: the methods in order; the name to click for a rename (Enter or leaving the box saves, Escape puts it back); the ⋮ with Move up, Move down and Delete; **Add New Method** with the catalogue picker ("No matching payment method found", "+ Other (type a new name)" opening the Name box) and Cancel / Add.
 - **Delete asks first**, in Flask's minty-web dialog: "Delete Electronic Method", 'Are you sure you want to delete "<name>"? This action cannot be undone.', Go back / Delete.
+- **Xero account mapping:** Flask's five groups in its order - Petty Cash Account, Deposit Bank Account, Cash Sales (account code, contact), Director Personal Account (account code, Director or Responsible person) and Discrepancy - Other Expense (account code, contact) - each picker under Flask's line ("Select Petty Cash bank account from Xero", ...), showing the saved choice as Flask did ("Petty Cash - 090", a contact by name). The pickers are Flask's searchable ones: an account by name or code, each row the name with its code under it, the bank chosen for the other bank field never offered. The Discrepancy Bank Account is not shown: it mirrors the Petty Cash Account and the API sets it. Then **Save Changes**.
+- **A new contact** from any contact picker: "+ Add '<name>' as a new contact" (or "No Xero contact found" and "+ Add as a new contact"), Flask's New Contact box with the name in it, Cancel / **Create** ("Creating contact…", `POST /suppliers`, "That contact's added!"), and the new contact chosen - and offered in the other contact pickers.
+- **Petty Cash Account Code** (after Delivery, as in Flask): the search ("Search account code"), "Select all" for the rows shown (mixed when some are ticked), each row "<code> - <name>" with Flask's tick, "No codes match your search.", "No account codes yet - ...", then **Save Changes**. At least one stays ticked: unticking the last says "Pick at least one account code." beside Save at once and Save goes off; the API refuses it too.
+- **Xero isn't connected** (`live` false: never connected, disconnected or a dead token): both Xero cards keep their heading and show Flask's notice, "Xero isn't connected. Connect it in Entity & Integration to set these up.", its link a full-page one to minty-web's Entity & Integration, where Xero is connected, through Flask's `/handoff/minty-web` (`settingsTabUrl`).
 - Each card folds under its heading.
 
 Where the app differs:
-- **The Xero mapping and the account codes stay on Flask's page** (the owner, 2026-10-16). Where Flask drew them there is one card, "Xero account mapping and account codes", with a sentence and **Open Xero settings**, a full-page link to Flask's own settings page (`settingsUrl`). It shows only while `xero_connected`; Flask's "Xero isn't connected" notice is not drawn.
+- **The Xero cards save on their own.** Flask's one Save Changes saved the mapping and the ticks with everything else; here each Xero card has its own Save Changes (`PUT /settings/xero/mapping`, `PUT /settings/xero/account-codes`), on only once something changed. The answer is drawn and its sentence shown ("Xero account mapping saved.", "Account codes saved."). A refusal says the API's sentence as Flask's error toast and keeps the choices; a 422 also marks the fields it names in red ("Choose the <label>.", "Choose the <label> from the list.", the two banks being one). A 409 (not live, or not synced from Xero yet) says why.
+- **The first mapping save goes to the dashboard** (`first_save` in the answer), as Flask's did, with its sentence as the toast there.
+- **The Xero read is asked once per page load** (it asks Xero on the server), apart from the other cards: they show at once, the Xero cards show Flask's skeleton until it answers, and a failed read says the API's sentence in both cards with Try again (none for a 403).
+- **The mapping's own rules as it is filled in** (CLAUDE.md): nothing is red on open; a Save refused for empty fields says "Choose the <label>." under each, focusing the one field, or, with two or more, a summary at the top of the card that takes focus and links to each. The two banks being one is said at once. Flask toasted "Please select: ...". The pickers carry `aria-required` and a screen-reader "(required)"; Flask's mapping drew no red asterisks, so neither does this card.
+- **A cashier sees the Xero cards read-only:** the choices and ticks, the pickers and ticks off, no Save (Flask showed a greyed one), no "+ Add" offer; the code search still works.
+- **Left out:** Flask's "I couldn't refresh these lists from Xero just now" note (the API does not say when its refresh failed) and the account number under a bank (the API sends a bank's Xero code, not its masked number).
 - **Each change is saved at once.** Flask held every change for one Save Changes at the bottom. The API takes one change a call, so an add, a rename, a move or a delete goes as it is made, the list is drawn from the API's answer, and its sentence shows as Flask's success toast ("Octopus added.", "Name saved.", "Order saved.", "Method removed. Reports that used it keep their amounts."). A refusal (403, 404, 409, 422) shows the API's sentence and keeps what was there. Save Changes sits in the Country & currency card, because that card is all it saves.
 - **The country goes alone.** A changed country is sent without the currency, so it brings its own (the API's rule); a currency picked by hand goes too. Flask posted both, so a new country kept the old currency.
 - **A name's own rules as it is typed** (CLAUDE.md): over 100 characters ("That name is too long. Keep it to 100 characters or fewer.") or already on that list in any case ("visa is already on the list."), said under the Name or rename box. An Add with no name says "The method's name is still empty. Type a name to add it." under the box. Flask only toasted, and checked names across both lists; the API checks one type's list, and so does the page.
@@ -367,5 +410,5 @@ Where the app differs:
 
 ## Not here yet
 
-- **The other pages.** Next: Xero publish, after confirmation. Until it is ported, the Submitted page's Publish to Xero opens Flask's Submitted page. The Xero mapping and the account codes stay on Flask's settings page (the owner, 2026-10-16).
+- **Connecting Xero** stays on Entity & Integration (Flask's address, which hands over to the app that holds it).
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.

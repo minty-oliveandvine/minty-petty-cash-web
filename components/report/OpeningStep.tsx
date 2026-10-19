@@ -13,11 +13,10 @@ import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
 import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
 import { setFlash } from "@/lib/flash";
-import { leaveTo } from "@/lib/handoff";
 import { formatMoney } from "@/lib/money";
 import { datePill, type OpeningPage } from "@/lib/opening";
 import { useAuth } from "@/lib/useAuth";
-import { isPorted, stepHref } from "@/lib/wizardPages";
+import { stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const UNSAVED = "You have unsaved changes. Please save your changes first.";
@@ -109,8 +108,7 @@ function OpeningForm({ page, entityId, entityName, acronym }: { page: OpeningPag
         json: { transaction_date: day, cash_addition: parseMoney(addition), withdrawal, action },
       });
       if (answer.next !== "sales") router.push(home);
-      else if (isPorted("sales")) router.push(stepHref(entityId, entityName, "sales", answer.transaction_date));
-      else leaveTo(stepHref(entityId, entityName, "sales", answer.transaction_date));
+      else router.push(stepHref(entityId, entityName, "sales", answer.transaction_date));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
       const body = err instanceof ApiError ? (err.body as { to?: string } | null) : null;

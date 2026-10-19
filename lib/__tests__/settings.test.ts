@@ -8,6 +8,7 @@ import {
   movedIds,
   registryOptions,
   settingsHref,
+  settingsTabUrl,
   sharedRenameMessage,
   viewOnly,
   type SettingsPermissions,
@@ -50,6 +51,19 @@ const read = (over: Partial<SettingsRead["country"]> = {}): SettingsRead => ({
 describe("the page's address", () => {
   it("is Flask's own: /entity/<shortid>/<name>/settings/petty-cash", () => {
     expect(settingsHref(ENTITY, "Olive & Vine")).toBe("/entity/360812e1/olive-and-vine/settings/petty-cash");
+  });
+});
+
+describe("the other settings tabs - never a Flask page", () => {
+  it.each(["users", "integration", "modules"] as const)("%s is minty-web's page, through Flask's /handoff/minty-web", (tab) => {
+    const url = new URL(settingsTabUrl(ENTITY, "Olive & Vine", tab));
+    expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
+    expect(url.searchParams.get("next")).toBe(`/entity/360812e1/olive-and-vine/settings/${tab}`);
+    expect(url.searchParams.get("entity_id")).toBe(ENTITY);
+  });
+
+  it("Payment Request Settings is the payments app's page, through Flask's hand-off that mints its token", () => {
+    expect(new URL(settingsTabUrl(ENTITY, "Olive & Vine", "payment-request")).pathname).toBe(`/entity/${ENTITY}/settings/payment-request`);
   });
 });
 

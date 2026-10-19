@@ -7,13 +7,17 @@ import { PhoneCard } from "@/components/flask/PhoneCard";
 import { useToast } from "@/components/flask/Toasts";
 import { RangeCalendar } from "@/components/history/RangeCalendar";
 import { DeleteReportModal, useEditReport } from "@/components/report/ReportActions";
+import { usePublish, type PublishAsk } from "@/components/report/Publish";
 import { LoadingOverlay } from "@/components/report/ReportChrome";
 import { entityAcronym } from "@/lib/acronym";
-import { ApiError, pettyCashFetch } from "@/lib/apiClient";
+import { ApiError, pettyCashDownload, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome, reportHref } from "@/lib/companyPages";
-import { csvUrl, submittedUrl } from "@/lib/flaskPages";
 import {
+  CSV_EXPORTED,
+  CSV_EXPORT_PATH,
   HISTORY_DELETED,
+  csvFileName,
+  csvQuery,
   dayParts,
   draftStep,
   fieldDate,
@@ -34,6 +38,19 @@ import { useAuth } from "@/lib/useAuth";
 import { stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
+
+/** Hand a file to the browser's downloads: an object URL on a temporary `<a download>`. */
+function saveFile(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // after the click has started the download
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
 
 type Load = { kind: "loading" } | { kind: "ready"; page: HistoryPage } | { kind: "refused"; message: string } | { kind: "failed"; message: string };
 
@@ -67,12 +84,15 @@ const MENU_ITEM = "w-full px-4 py-3 hover:bg-flask-gray-50 transition-colors cur
  * `petty_cash_api/routes/history.py`) with the address's dates and page, ten a page.
  *
  * - The header (back to the dashboard), the Start / End Date fields over Flask's range calendar
- *   (Clear, Search Report) and the CSV export - Flask's own download, both dates needed.
+ *   (Clear, Search Report) and the CSV export - `GET /reports/export.csv` for both dates, saved
+ *   under the name the API gives; Flask's "Exporting..." and toast, a refusal's sentence as a toast.
  * - "Report Results": a row per day, newest first - the date and its weekday circle, Sales and
  *   Expenses, the badge (a failed publish's reasons on hover or a tap), when and by whom, the ⋮
  *   menu (Edit, Delete, View, Publish / Republish) and the chevron (View). Then the pager.
  * - Edit: `POST /reports/<id>/reopen` as on a report's view. Delete: the view's modal, then the
- *   list again in place with Flask's "That report is deleted.". Publish: Flask's Submitted page.
+ *   list again in place with Flask's "That report is deleted.". Publish / Republish: Flask's own
+ *   (Publish.tsx) - the republish confirm, the overlay while it polls, the outcome as Flask's toast,
+ *   then the list again in place.
  *
  * A bad filter in the address is the API's 422 sentence; any other failure says so with a retry.
  */
@@ -165,9 +185,10 @@ function HistoryBody({
   // a ref, not state: a second click in the same frame must see the first one
   const acting = useRef(false);
   const edit = useEditReport(entityId, entityName, acting);
+  const publish = usePublish({ place: "history", entityId, entityName, onChanged: () => void reload() });
   const closeCalendar = useCallback(() => setCalendar(false), []);
   const range = pickedRange(picked);
-  const csv = csvUrl(entityId, range.start, range.end);
+  const csv = csvQuery(range.start, range.end);
 
   useEffect(() => {
     if (menu === null) return;
@@ -211,12 +232,19 @@ function HistoryBody({
     if (filters.start || filters.end) router.push(historyHref(entityId, entityName));
   }
 
-  function exported() {
+  /** The API's CSV for both dates, saved under the name it gives; a refusal shows its sentence. */
+  async function exportCsv() {
+    if (!csv || exporting) return;
     setExporting(true);
-    window.setTimeout(() => {
+    try {
+      const file = await pettyCashDownload(CSV_EXPORT_PATH, { query: csv });
+      saveFile(file.blob, file.filename ?? csvFileName(csv.start_date, csv.end_date));
+      toast(CSV_EXPORTED, "success");
+    } catch (err) {
+      if (!(err instanceof ApiError && err.status === 401)) toast(err instanceof ApiError ? err.message : UNREACHABLE, "error");
+    } finally {
       setExporting(false);
-      toast("Your CSV export is on its way!", "success");
-    }, 1000);
+    }
   }
 
   async function remove(row: HistoryRow) {
@@ -277,13 +305,11 @@ function HistoryBody({
         </div>
 
         <div className="flex space-x-2">
-          <a
-            href={csv ?? undefined}
-            // the address stays while it exports: the click's own navigation reads it after React renders
-            onClick={(e) => (exporting ? e.preventDefault() : csv ? exported() : undefined)}
-            // without both dates it has no address, and stays a (disabled) link to assistive tech
-            role="link"
-            aria-disabled={!csv || exporting}
+          <button
+            type="button"
+            onClick={() => void exportCsv()}
+            // without both dates there is nothing to export
+            disabled={!csv || exporting}
             className={`flex flex-1 items-center justify-center rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white transition-colors ${csv && !exporting ? "hover:bg-flask-teal/80" : "cursor-not-allowed opacity-50"}`}
           >
             {exporting ? (
@@ -305,7 +331,7 @@ function HistoryBody({
                 CSV
               </>
             )}
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -315,6 +341,7 @@ function HistoryBody({
     <>
       {busy ? <LoadingOverlay text={busy} /> : null}
       {confirmDelete ? <DeleteReportModal wasPublished={confirmDelete.was_published} onCancel={() => setConfirmDelete(null)} onDelete={() => void remove(confirmDelete)} /> : null}
+      {publish.ui}
     </>
   );
 
@@ -361,6 +388,10 @@ function HistoryBody({
               setMenu(null);
               setConfirmDelete(row);
             }}
+            onPublish={(ask) => {
+              setMenu(null);
+              if (!acting.current) publish.ask(ask);
+            }}
             inApp={inApp}
           />
         ))}
@@ -399,6 +430,7 @@ function HistoryEntry({
   onMenu,
   onEdit,
   onDelete,
+  onPublish,
   inApp,
 }: {
   row: HistoryRow;
@@ -410,6 +442,7 @@ function HistoryEntry({
   onMenu: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onPublish: (ask: PublishAsk) => void;
   inApp: InApp;
 }) {
   const tipId = useId();
@@ -427,6 +460,12 @@ function HistoryEntry({
   const sales = historyAmount(row.total_sales, currencyCode);
   const expenses = historyAmount(row.total_expenses, currencyCode);
   const republish = badge === "Published" || badge === "Publish failed";
+  // Flask's rule: Republish always confirms, warning of duplicates only for a report fully in Xero
+  // (a partly published one is re-sent selectively); Publish confirms only for one edited after a publish
+  const ask: PublishAsk = {
+    reportId: row.id,
+    confirm: republish ? { duplicate: badge === "Published" } : row.was_published ? { duplicate: true } : null,
+  };
 
   return (
     <div className="rounded-flask-2xl bg-flask-white p-4" data-report-id={row.id}>
@@ -559,9 +598,9 @@ function HistoryEntry({
                             <span className="text-sm font-medium">Publish</span>
                           </span>
                         ) : (
-                          <a href={submittedUrl(entityId, row.id)} role="menuitem" title={republish ? "Republish to Xero" : "Publish to Xero"} className={MENU_ITEM}>
+                          <button type="button" role="menuitem" title={republish ? "Republish to Xero" : "Publish to Xero"} onClick={() => onPublish(ask)} className={MENU_ITEM}>
                             <span className="text-sm font-medium">{republish ? "Republish" : "Publish"}</span>
-                          </a>
+                          </button>
                         )
                       ) : null}
                     </div>

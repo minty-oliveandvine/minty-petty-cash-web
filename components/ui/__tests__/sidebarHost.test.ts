@@ -26,8 +26,10 @@ describe("the menu's links", () => {
     expect(entities.searchParams.get("next")).toBe("/entities");
     expect(new URL(sidebarHost.links.subscriptions()).searchParams.get("next")).toBe("/subscription");
     expect(new URL(sidebarHost.links.bills()).pathname).toBe(`/entity/${ENTITY}/payment-request`);
+    // straight to minty-web's My Profile through the hand-off, scoped to the company it was opened from
     const profile = new URL(sidebarHost.links.profile());
-    expect(profile.pathname).toBe("/profile");
+    expect(profile.origin + profile.pathname).toBe("http://localhost:8000/handoff/minty-web");
+    expect(profile.searchParams.get("next")).toBe("/profile");
     expect(profile.searchParams.get("entity_id")).toBe(ENTITY);
   });
 

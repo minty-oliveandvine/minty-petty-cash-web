@@ -3,10 +3,12 @@
  * `entity/settings_entity.html` and `static/js/petty_cash_settings.js` (Minty `1c25b35^1`):
  * Country & currency and the Electronic / Delivery sales methods. What it reads and writes is
  * Minty's `petty_cash_api/routes/settings.py` (`GET /settings`, `PUT /settings/country`,
- * `/sales-methods...`). The Xero mapping and the account codes stay on Flask's page.
+ * `/sales-methods...`). The Xero mapping and account codes are lib/xeroSettings.ts's.
  */
 
 import { companyRef } from "@minty/shared/companyRef";
+
+import { hubUrl, paymentsUrl } from "@/lib/handoff";
 
 export type MethodType = "electronic" | "delivery";
 export const METHOD_TYPES: readonly MethodType[] = ["electronic", "delivery"];
@@ -67,6 +69,19 @@ export const KIND: Record<MethodType, { title: string; sub: string; noun: string
 /** The page, at Flask's own address for it: `/entity/<shortid>/<name>/settings/petty-cash`. */
 export function settingsHref(entityId: string, entityName: string): string {
   return `/entity/${companyRef(entityId, entityName)}/settings/petty-cash`;
+}
+
+/** The settings page's other tabs: minty-web's Users, Entity & Integration and Modules, and the payments app's own. */
+export type SettingsTab = "users" | "integration" | "payment-request" | "modules";
+
+/**
+ * Another settings tab, never a Flask page: minty-web's (`/entity/<shortid>/<name>/settings/<tab>`)
+ * through Flask's `/handoff/minty-web`, or the payments app's settings through Flask's hand-off
+ * that mints its token.
+ */
+export function settingsTabUrl(entityId: string, entityName: string, tab: SettingsTab): string {
+  if (tab === "payment-request") return paymentsUrl(entityId, "settings");
+  return hubUrl(`/entity/${companyRef(entityId, entityName)}/settings/${tab}`, entityId);
 }
 
 export type Option = { value: string; label: string };

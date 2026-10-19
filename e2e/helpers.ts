@@ -4,7 +4,7 @@
 
 import { createHmac } from "node:crypto";
 
-import { test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 export type Credentials = { secret: string; userId: string; entityId: string; entityName: string };
 
@@ -61,4 +61,23 @@ export async function enter(page: Page, creds: Credentials, next: string) {
 export async function expectNoHorizontalScroll(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   if (overflow > 0) throw new Error(`the page scrolls sideways by ${overflow}px`);
+}
+
+/**
+ * A link that leaves for minty-web: Flask's login-gated `/handoff/minty-web` with minty-web's page
+ * as `next` and the company as `entity_id` - never a Flask page (docs/features/petty-cash-web.md,
+ * "No Flask pages").
+ */
+export async function expectHubHandoff(link: Locator, next: string, entityId: string) {
+  const href = await link.getAttribute("href");
+  if (!href) throw new Error("the link has no address");
+  const url = new URL(href);
+  expect(url.pathname).toBe("/handoff/minty-web");
+  expect(url.searchParams.get("next")).toBe(next);
+  expect(url.searchParams.get("entity_id")).toBe(entityId);
+}
+
+/** Flask's hand-offs, caught: the spec reads where the app sent the browser, and nothing leaves. */
+export async function catchHandoffs(page: Page) {
+  await page.route(/\/handoff\/minty-web\?/, (route) => route.fulfill({ contentType: "text/html", body: "<title>Hand-off</title><p>Hand-off</p>" }));
 }

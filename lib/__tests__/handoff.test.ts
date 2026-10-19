@@ -4,7 +4,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getAuth, setAuth } from "@/lib/auth";
-import { _resetHandoffForTests, handoffUrl, redirectToHandoff, safeNext } from "@/lib/handoff";
+import { _resetHandoffForTests, handoffUrl, hubUrl, logoutUrl, paymentsUrl, redirectToHandoff, safeNext } from "@/lib/handoff";
 
 const ENTITY = "360812e1-9f94-46a3-aa31-347e21afde8e";
 
@@ -32,6 +32,27 @@ describe("handoffUrl", () => {
       expect(new URL(handoffUrl(bad)).searchParams.get("next")).toBe("/");
     },
   );
+});
+
+describe("the other hand-offs (Flask as a backend only - no Flask page)", () => {
+  it("reaches a minty-web page through /handoff/minty-web, scoped to the company when given", () => {
+    const url = new URL(hubUrl("/entity/360812e1/olive-and-vine/settings/integration", ENTITY));
+    expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
+    expect(url.searchParams.get("next")).toBe("/entity/360812e1/olive-and-vine/settings/integration");
+    expect(url.searchParams.get("entity_id")).toBe(ENTITY);
+    const bare = new URL(hubUrl("/entities"));
+    expect(bare.searchParams.get("next")).toBe("/entities");
+    expect(bare.searchParams.has("entity_id")).toBe(false);
+  });
+
+  it("reaches the payments app through Flask's hand-offs that mint its token", () => {
+    expect(new URL(paymentsUrl(ENTITY, "home")).pathname).toBe(`/entity/${ENTITY}/payment-request`);
+    expect(new URL(paymentsUrl(ENTITY, "settings")).pathname).toBe(`/entity/${ENTITY}/settings/payment-request`);
+  });
+
+  it("ends the session at Flask's /logout", () => {
+    expect(logoutUrl()).toBe("http://localhost:8000/logout");
+  });
 });
 
 describe("redirectToHandoff", () => {

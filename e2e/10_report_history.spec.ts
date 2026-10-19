@@ -1,6 +1,6 @@
 // Report history (components/history/ReportHistory.tsx, Flask's ORIGINAL look), against a STUBBED
-// Petty Cash API. Needs only `npm run dev`. Flask's pages (Publish, the CSV) are caught, so nothing
-// leaves the app.
+// Petty Cash API. Needs only `npm run dev`. The CSV is the API's `GET /reports/export.csv`, stubbed
+// too - never a Flask page. Publishing from the row menu is 12_publish.
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
@@ -17,7 +17,18 @@ const LATEST = "8a1d3c55-0f8e-4f4e-9d55-2c4b7d1e0a77";
 const PUBLISHED = "1b2c3d4e-0000-4000-8000-000000000002";
 const FAILED = "1b2c3d4e-0000-4000-8000-000000000003";
 const DRAFT = "1b2c3d4e-0000-4000-8000-000000000004";
-const FLASK = `/entity/${ENTITY}/petty-cash/reports`;
+const CSV = /\/api\/petty-cash\/v1\/companies\/[^/]+\/reports\/export\.csv(\?.*)?$/;
+const CSV_NAME = "petty-cash_2026-10-01_to_2026-10-13.csv";
+
+/** The export's answer: CSV, named by its Content-Disposition, which the API exposes to the page. */
+const csvFile = () => ({
+  headers: {
+    "content-type": "text/csv; charset=utf-8",
+    "content-disposition": `attachment; filename=${CSV_NAME}`,
+    "access-control-expose-headers": "Content-Disposition",
+  },
+  body: "Date,Account Code,Amount\r\n",
+});
 
 type Json = Record<string, unknown>;
 
@@ -78,11 +89,12 @@ function listAnswer(over: Json = {}): Json {
 type Handlers = {
   list?: (query: URLSearchParams) => Json | { status: number; json: Json };
   onDelete?: (route: Route) => Promise<void>;
+  csv?: (route: Route) => Promise<void>;
 };
 
 /** Every call the page (and where it leads) makes, stubbed; returns what was asked. */
 async function stub(page: Page, h: Handlers = {}) {
-  const sent = { lists: [] as string[], reopen: 0, delete: 0 };
+  const sent = { lists: [] as string[], reopen: 0, delete: 0, csv: [] as { search: string; auth: string | undefined }[] };
   // a report's own view, where View leads: not the subject here
   await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/reports\/[0-9a-f-]{36}$/, (route) =>
     route.fulfill({ status: 404, json: { error: "Hmm, I couldn't find that report." } }),
@@ -119,13 +131,13 @@ async function stub(page: Page, h: Handlers = {}) {
     }),
   );
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's pages: caught. The CSV comes back as a download, as Flask's does.
-  await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\/download-csv/, (route) =>
-    route.fulfill({ headers: { "content-type": "text/csv", "content-disposition": 'attachment; filename="reports.csv"' }, body: "date\n" }),
-  );
-  await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\/[0-9a-f-]{36}\/submitted/, (route) =>
-    route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
-  );
+  // the API's CSV export: the file, named by its Content-Disposition (exposed to the page, as the API must)
+  await page.route(CSV, async (route) => {
+    const request = route.request();
+    sent.csv.push({ search: new URL(request.url()).search, auth: request.headers()["authorization"] });
+    if (h.csv) return h.csv(route);
+    await route.fulfill(csvFile());
+  });
   return sent;
 }
 
@@ -157,9 +169,7 @@ test("the header, the date filter and the list: each day, its figures, badge, ti
   await expect(page.getByRole("textbox", { name: "Start Date" })).toHaveAttribute("placeholder", "DD/MMM/YYYY");
   await expect(page.getByRole("textbox", { name: "End Date" })).toHaveValue("");
   // the CSV needs both dates
-  const csv = page.getByRole("link", { name: "CSV" });
-  await expect(csv).toHaveAttribute("aria-disabled", "true");
-  await expect(csv).not.toHaveAttribute("href", /.+/);
+  await expect(page.getByRole("button", { name: "CSV" })).toBeDisabled();
 
   await expect(entries(page)).toHaveCount(3);
   const latest = entry(page, LATEST);
@@ -238,8 +248,8 @@ test("filtering by dates: the range calendar, Search Report, the address, reload
   await expect(page).toHaveURL(new RegExp(`${HISTORY}\\?start_date=${start}&end_date=${end}$`));
   await expect(toast(page, "Filter applied")).toBeVisible();
   await expect.poll(() => sent.lists.at(-1)).toBe(`?start_date=${start}&end_date=${end}`);
-  // the CSV is Flask's, for the same days
-  await expect(page.getByRole("link", { name: "CSV" })).toHaveAttribute("href", new RegExp(`${FLASK}/download-csv\\?start_date=${start}&end_date=${end}$`));
+  // the CSV is ready for the same days
+  await expect(page.getByRole("button", { name: "CSV" })).toBeEnabled();
 
   await page.reload();
   await expect(page.getByRole("textbox", { name: "Start Date" })).toHaveValue(`05/${short}/${year}`);
@@ -266,7 +276,7 @@ test("Clear empties the dates and goes back to every report; Escape closes the c
   await calendar.getByRole("button", { name: "Clear" }).click();
   await expect(page).toHaveURL(new RegExp(`${HISTORY}$`));
   await expect(page.getByRole("textbox", { name: "Start Date" })).toHaveValue("");
-  await expect(page.getByRole("link", { name: "CSV" })).toHaveAttribute("aria-disabled", "true");
+  await expect(page.getByRole("button", { name: "CSV" })).toBeDisabled();
 });
 
 test("paging: Flask's pager, ten a page, the page and the dates in the address", async ({ page }) => {
@@ -329,16 +339,16 @@ test("View: the chevron and the menu open the report's view here; a draft opens 
   await expect(page).toHaveURL((url) => url.pathname + url.search === resume);
 });
 
-test("Publish is Flask's Submitted page; Republish for one in Xero or failed; a draft's is greyed; none without the right", async ({ page }) => {
+test("Publish; Republish for one in Xero or failed; a draft's is greyed; none without the right", async ({ page }) => {
   await open(page, { list: () => listAnswer({ reports: [row({ id: DRAFT, status: "draft", status_label: "Draft", permissions: { edit: false, delete: false } }), ...ROWS] }) });
   let items = await menu(page, LATEST);
   await expect(items.getByRole("menuitem")).toHaveText(["Edit", "Delete", "View", "Publish"]);
-  await expect(items.getByRole("menuitem", { name: "Publish" })).toHaveAttribute("href", new RegExp(`${FLASK}/${LATEST}/submitted$`));
+  await expect(items.getByRole("menuitem", { name: "Publish" })).toHaveAttribute("title", "Publish to Xero");
   await expectNoHorizontalScroll(page);
   // one menu at a time; Escape closes
   items = await menu(page, FAILED);
   await expect(entry(page, LATEST).getByRole("menu")).toHaveCount(0);
-  await expect(items.getByRole("menuitem", { name: "Republish" })).toHaveAttribute("href", new RegExp(`${FLASK}/${FAILED}/submitted$`));
+  await expect(items.getByRole("menuitem", { name: "Republish" })).toHaveAttribute("title", "Republish to Xero");
   await page.keyboard.press("Escape");
   await expect(items).toBeHidden();
   items = await menu(page, DRAFT);
@@ -437,15 +447,48 @@ test("a failure says so and offers a retry", async ({ page }) => {
   await expect(entries(page)).toHaveCount(3);
 });
 
-test("the CSV: Flask's download for both dates, then Flask's toast", async ({ page }) => {
-  await open(page, {}, `${HISTORY}?start_date=2026-10-01&end_date=2026-10-13`);
-  const csv = page.getByRole("link", { name: "CSV" });
-  await expect(csv).toHaveAttribute("href", new RegExp(`${FLASK}/download-csv\\?start_date=2026-10-01&end_date=2026-10-13$`));
+test("the CSV: the API's export for both dates, saved under its name, then Flask's toast", async ({ page }) => {
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  const sent = await open(
+    page,
+    {
+      // held, so "Exporting..." can be seen while the API works
+      csv: async (route) => {
+        await held;
+        await route.fulfill(csvFile());
+      },
+    },
+    `${HISTORY}?start_date=2026-10-01&end_date=2026-10-13`,
+  );
+  const csv = page.getByRole("button", { name: "CSV" });
+  await expect(csv).toBeEnabled();
   const download = page.waitForEvent("download");
   await csv.click();
-  expect((await download).url()).toMatch(new RegExp(`${FLASK}/download-csv\\?start_date=2026-10-01&end_date=2026-10-13$`));
+  await expect(page.getByRole("button", { name: "Exporting..." })).toBeDisabled();
+  release();
+  const file = await download;
+  // the API's address with the bearer - never a Flask page
+  expect(sent.csv).toHaveLength(1);
+  expect(sent.csv[0].search).toBe("?start_date=2026-10-01&end_date=2026-10-13");
+  expect(sent.csv[0].auth).toMatch(/^Bearer .+/);
+  expect(file.suggestedFilename()).toBe(CSV_NAME);
   await expect(toast(page, "Your CSV export is on its way!")).toBeVisible();
+  await expect(page.getByRole("button", { name: "CSV" })).toBeEnabled();
   await expect(page).toHaveURL(new RegExp(`${HISTORY}\\?start_date=2026-10-01&end_date=2026-10-13$`));
+});
+
+test("the CSV: a refusal shows the API's sentence and saves nothing", async ({ page }) => {
+  const sentence = "Choose a start date on or before the end date.";
+  const sent = await open(page, { csv: (route) => route.fulfill({ status: 422, json: { error: sentence } }) }, `${HISTORY}?start_date=2026-10-01&end_date=2026-10-13`);
+  let downloads = 0;
+  page.on("download", () => (downloads += 1));
+  await page.getByRole("button", { name: "CSV" }).click();
+  await expect(toast(page, sentence)).toBeVisible();
+  await expect(toast(page, "Your CSV export is on its way!")).toHaveCount(0);
+  expect(sent.csv).toHaveLength(1);
+  expect(downloads).toBe(0);
+  await expect(page.getByRole("button", { name: "CSV" })).toBeEnabled();
 });
 
 test("the way in: the dashboard's View History and the sidebar's Reports", async ({ page }) => {

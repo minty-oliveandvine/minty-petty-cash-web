@@ -1,29 +1,32 @@
 /**
- * Where each report step lives: this app's own page once it is ported, Flask's until then
- * (lib/flaskPages.ts). Ported: every step - Opening, Sales, Expenses, Bank Deposit, Cash Count and Ending.
+ * The report wizard's steps, each this app's own page: Opening, Sales, Expenses, Bank Deposit,
+ * Cash Count and Ending. No step is Flask's - Flask is a backend only (docs/features/petty-cash-web.md,
+ * "No Flask pages").
  */
 
 import { companyRef } from "@minty/shared/companyRef";
 
-import { wizardStepUrl, type WizardStep } from "@/lib/flaskPages";
-
-const PORTED: Partial<Record<WizardStep, string>> = {
+/** The wizard's steps, by the key the API's `report.current_section` uses, and each one's address segment. */
+export const WIZARD_STEP_PATH = {
   opening: "opening",
   sales: "sale",
   expenses: "expense",
   deposit: "deposit",
   cash_count: "cash-count",
   ending: "ending",
-};
+} as const;
 
-/** Whether `step` is this app's own page (so going there is a client-side navigation). */
-export function isPorted(step: WizardStep): boolean {
-  return step in PORTED;
+export type WizardStep = keyof typeof WIZARD_STEP_PATH;
+
+/**
+ * The step a draft is on, from the API's `current_section`: that step when it is one of the six,
+ * else Opening (a draft with no section yet, or one the app does not know).
+ */
+export function sectionStep(section: string | null | undefined): WizardStep {
+  return section && Object.hasOwn(WIZARD_STEP_PATH, section) ? (section as WizardStep) : "opening";
 }
 
 /** A step of a new report for `day`, in the company's address (`/entity/<ref>/petty-cash/reports/new/<step>`). */
 export function stepHref(entityId: string, entityName: string, step: WizardStep, day: string): string {
-  const path = PORTED[step];
-  if (!path) return wizardStepUrl(entityId, step, day);
-  return `/entity/${companyRef(entityId, entityName)}/petty-cash/reports/new/${path}?${new URLSearchParams({ transaction_date: day })}`;
+  return `/entity/${companyRef(entityId, entityName)}/petty-cash/reports/new/${WIZARD_STEP_PATH[step]}?${new URLSearchParams({ transaction_date: day })}`;
 }

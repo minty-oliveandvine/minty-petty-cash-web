@@ -70,7 +70,7 @@ async function openWith(page: Page, answer: Json, onSave?: (body: Json, route: R
     }),
   );
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
-  // Flask's pages (Submitted onwards): caught.
+  // a Flask page address: nothing here opens one (Flask is a backend only), so a regression lands on this stub, never Flask
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\//, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );

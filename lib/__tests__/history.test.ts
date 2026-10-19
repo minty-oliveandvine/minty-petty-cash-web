@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { csvUrl } from "@/lib/flaskPages";
 import {
+  csvFileName,
+  csvQuery,
   dayParts,
   draftStep,
   fieldDate,
@@ -89,18 +90,20 @@ describe("the pager, as Flask draws it", () => {
   });
 });
 
-describe("the CSV export (Flask's report.download_reports_csv)", () => {
-  it("is Flask's address for both dates", () => {
-    expect(csvUrl(ENTITY, "2026-10-01", "2026-10-13")).toBe(
-      `http://localhost:8000/entity/${ENTITY}/petty-cash/reports/download-csv?start_date=2026-10-01&end_date=2026-10-13`,
-    );
+describe("the CSV export (the API's GET /reports/export.csv)", () => {
+  it("asks for both dates", () => {
+    expect(csvQuery("2026-10-01", "2026-10-13")).toEqual({ start_date: "2026-10-01", end_date: "2026-10-13" });
   });
 
-  it("needs both dates, the start on or before the end", () => {
-    expect(csvUrl(ENTITY, "", "")).toBeNull();
-    expect(csvUrl(ENTITY, "2026-10-01", "")).toBeNull();
-    expect(csvUrl(ENTITY, "2026-10-13", "2026-10-01")).toBeNull();
-    expect(csvUrl(ENTITY, "2026-10-13", "2026-10-13")).not.toBeNull();
+  it("needs both dates, the start on or before the end - Flask's rule", () => {
+    expect(csvQuery("", "")).toBeNull();
+    expect(csvQuery("2026-10-01", "")).toBeNull();
+    expect(csvQuery("2026-10-13", "2026-10-01")).toBeNull();
+    expect(csvQuery("2026-10-13", "2026-10-13")).not.toBeNull();
+  });
+
+  it("names the file as the API does when its answer names none", () => {
+    expect(csvFileName("2026-10-01", "2026-10-13")).toBe("reports_2026-10-01_to_2026-10-13.csv");
   });
 });
 

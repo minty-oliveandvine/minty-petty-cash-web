@@ -9,6 +9,7 @@ import { useViewer } from "@minty/shared/viewer";
 
 import { AppBar } from "@/components/layout/AppBar";
 import { BeforeYouStartModal, DepositModal, SetupRequiredModal, type Confirmation } from "@/components/dashboard/DepositModals";
+import { SubscriptionNoticeModal } from "@/components/dashboard/SubscriptionNoticeModal";
 import { StepProgress, type StepProgressStep } from "@/components/ui/StepProgress";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { xeroSettingsHref } from "@/lib/companyPages";
@@ -36,8 +37,9 @@ import {
 import { formatWeekdayDay, formatWeekdayShort, savedText } from "@/lib/dates";
 import { takeFlash, type FlashKind } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
+import { subscriptionSettingsUrl } from "@/lib/hub";
 import { formatMoney } from "@/lib/money";
-import { takeStartRequest } from "@/lib/outcome";
+import { claimSubscriptionNotice, fetchSubscriptionNotice, type SubscriptionNotice } from "@/lib/subscriptionNotice";
 import { historyHref, reportHref, resumeHref, stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
@@ -91,6 +93,21 @@ export function Dashboard() {
   const auth = useAuth();
   const companyName = auth?.entityName ?? "";
 
+  // The subscription notice (Flask's launch page): read alongside /home, shown once per company
+  // per sign-in. Claimed only when there is something to show, so a quiet day claims nothing.
+  const entityId = auth?.entityId ?? "";
+  const [notice, setNotice] = useState<SubscriptionNotice | null>(null);
+  useEffect(() => {
+    if (!entityId) return;
+    let live = true;
+    void fetchSubscriptionNotice(entityId).then((found) => {
+      if (live && found && claimSubscriptionNotice(entityId)) setNotice(found);
+    });
+    return () => {
+      live = false;
+    };
+  }, [entityId]);
+
   return (
     <>
       <AppBar companyName={companyName} />
@@ -110,9 +127,10 @@ export function Dashboard() {
         ) : load.kind === "failed" ? (
           <InlineAlert tone="danger">{load.message}</InlineAlert>
         ) : (
-          <LaunchBody home={load.home} now={load.now} entityId={auth?.entityId ?? ""} entityName={companyName} />
+          <LaunchBody home={load.home} now={load.now} entityId={entityId} entityName={companyName} />
         )}
       </main>
+      <SubscriptionNoticeModal notice={notice} settingsHref={subscriptionSettingsUrl(entityId, companyName)} onClose={() => setNotice(null)} />
     </>
   );
 }
@@ -178,19 +196,6 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
     }
     void correct("no", 0);
   }
-
-  // The outcome page's "Start the next day" (lib/outcome.ts, Flask's autoStartNextDay): start that
-  // day here, through the same rules as the Start button, when it is the day this page would start -
-  // today with nothing open, or the gate's day. Taken once, in a ref, so a development re-run of the
-  // effect does not start twice.
-  const askedStart = useRef<string | null | undefined>(undefined);
-  useEffect(() => {
-    if (askedStart.current !== undefined) return;
-    const day = (askedStart.current = takeStartRequest());
-    if (!day || readOnly || !home.xero_settings.complete || launch.kind !== "not-started") return;
-    if (day === gate || (!gate && day === launch.day)) start(day);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on arrival with /home's answer
-  }, []);
 
   const problemAlert = problem ? <InlineAlert tone="warning">{problem}</InlineAlert> : null;
 

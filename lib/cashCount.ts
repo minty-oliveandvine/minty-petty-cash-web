@@ -212,3 +212,85 @@ export function savePayload(day: string, page: CashCountPage, values: CashCountV
     action,
   };
 }
+
+/*
+ * Daily Closing Phase 1 (Flask 4e004d2, 2026-10-16): the stage is three task cards, one open at a
+ * time - the cash taken to the bank, the count (in the "Count the drawer" sheet), the safe box.
+ * Only the first task not yet done is open; the others show their result (done) or wait ("Next,
+ * after ..."). The Check (the numbers match, or the difference and its reason) appears only once
+ * the drawer has been counted, and Save & Next waits for the count, then for that reason.
+ */
+
+export type CashTask = "deposit" | "count" | "safe";
+export type TaskState = "current" | "done" | "next";
+export type TasksDone = Record<CashTask, boolean>;
+
+/** The tasks, in the order they are done. */
+export const CASH_TASKS: readonly CashTask[] = ["deposit", "count", "safe"];
+
+/** Under each waiting task: what it waits for. */
+export const TASK_NEXT: Record<Exclude<CashTask, "deposit">, string> = {
+  count: "Next, after the bank deposit.",
+  safe: "Next, after the count.",
+};
+
+/** Save & Next's reason while the drawer is not counted yet - Flask's words. */
+export const COUNT_FIRST = "Count the drawer to continue";
+/** Save & Next's reason while a difference has no reason - Flask's words. */
+export const REASON_FIRST = "Add a reason for the difference to continue.";
+
+/**
+ * Whether the stage was saved before (Save & Next or Save & Exit): Cash Count is a completed
+ * section, or a note or coin was counted. Then every task opens done (Flask's `stage_done`).
+ */
+export function countSaved(page: CashCountPage): boolean {
+  return (page.draft?.completed_sections ?? []).includes("cash_count") || page.denominations.some((d) => d.count > 0);
+}
+
+/** The tasks as the page opens: all done once saved; else a saved deposit or safe box is done. */
+export function initialTasks(page: CashCountPage): TasksDone {
+  const saved = countSaved(page);
+  return { deposit: saved || page.bank_deposit > 0, count: saved, safe: saved || page.safe_box_balance > 0 };
+}
+
+/** The open task: the first one not done, or null once all three are. */
+export function currentTask(done: TasksDone): CashTask | null {
+  return CASH_TASKS.find((task) => !done[task]) ?? null;
+}
+
+/** A task's card state: done, the open one, or waiting its turn. */
+export function taskState(task: CashTask, done: TasksDone): TaskState {
+  if (done[task]) return "done";
+  return currentTask(done) === task ? "current" : "next";
+}
+
+/** The stage's guidance line, as the tasks move. */
+export function cashGuidance(done: TasksDone): string {
+  return currentTask(done) ? "Three quick checks. We'll go one at a time." : "All three checks are done.";
+}
+
+/** The deposit task's result line: "HKD300.00 to the bank", or "None today". */
+export function depositResult(depositText: string, code: string | null): string {
+  const taken = parseMoney(depositText);
+  return taken > 0 ? `${formatMoney(taken, code)} to the bank` : "None today";
+}
+
+/** A sheet row's line total: "—" while the row is empty, else the face value times the count. */
+export function rowTotalText(denomination: Denomination, text: string, code: string | null): string {
+  return text.trim() === "" ? "—" : formatMoney(rowTotal(denomination, text), code);
+}
+
+/** Save count: the first row with a problem (the sheet stays open on it), or null. */
+export function sheetProblem(denominations: Denomination[], counts: Record<string, string>): Denomination | null {
+  return denominations.find((d) => countProblem(counts[d.id] ?? "") !== null) ?? null;
+}
+
+/**
+ * Why Save & Next waits, or null: the drawer must be counted first, then any difference needs a
+ * reason (Part 15.2: a gated button says why beside it). Save & Exit never waits.
+ */
+export function nextGate(done: TasksDone, diff: Difference, reason: string): string | null {
+  if (!done.count) return COUNT_FIRST;
+  if (diff.kind !== "none" && reason.trim() === "") return REASON_FIRST;
+  return null;
+}

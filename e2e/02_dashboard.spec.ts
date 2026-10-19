@@ -53,12 +53,18 @@ function homeAnswer(over: Json = {}): Json {
 
 type Enter = {
   onCorrection?: (body: Json, route: Route) => Promise<void>;
+  /** The subscription API's notice for the company ("fail": a 500); none by default. */
+  notice?: Json | "fail";
   /** The device's clock, fixed - for "Saved 6:02 pm" and the greeting. */
   clock?: Date;
 };
 
-async function enterWith(page: Page, home: Json, { onCorrection, clock }: Enter = {}) {
+async function enterWith(page: Page, home: Json, { onCorrection, clock, notice }: Enter = {}) {
   await page.route("**/api/petty-cash/v1/companies/*/home", (route) => route.fulfill({ json: home }));
+  // minty-subscription-api (SUBSCRIPTION_API_URL): the launch page's subscription notice
+  await page.route("**/api/entities/*/subscription-notice", (route) =>
+    route.fulfill(notice === "fail" ? { status: 500, json: { error: "Boom" } } : { json: notice ?? { items: [] } }),
+  );
   await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
   if (onCorrection) {
     await page.route("**/api/petty-cash/v1/companies/*/deposit-correction", async (route) => {
@@ -415,3 +421,57 @@ test("read-only access cannot start, and says why beside the button", async ({ p
   await expect(c.getByRole("button", { name: "Start today's Daily Closing" })).toBeDisabled();
   await expect(c.getByText("Read-only access")).toBeVisible();
 });
+
+/** A past-due notice, as minty-subscription-api answers it. */
+function noticeAnswer(over: Json = {}): Json {
+  return {
+    items: [
+      { kind: "past_due", severity: "critical", module: "Petty Cash", module_code: "petty_cash", title: "Petty Cash payment failed", detail: "Update the card by Tue 20 Oct to keep Petty Cash.", deadline: "2026-10-20" },
+    ],
+    can_manage: true,
+    payer: { name: "Olive Tan", email: "olive@example.com" },
+    severity: "critical",
+    settings_path: "/handoff/minty-web?next=%2Fentity%2Fx%2Fcompany%2Fsettings%2Fmodules",
+    ...over,
+  };
+}
+
+test("the subscription notice: the payer goes to minty-web's subscription settings; shown once per sign-in", async ({ page }) => {
+  await enterWith(page, homeAnswer(), { notice: noticeAnswer() });
+  const dialog = page.getByRole("dialog", { name: "Action needed" });
+  await expect(dialog.getByRole("alert").filter({ hasText: "Petty Cash payment failed" })).toHaveAttribute("data-tone", "danger");
+  await expect(dialog).toContainText("Update the card by Tue 20 Oct to keep Petty Cash.");
+  await expect(dialog).not.toContainText("managed by");
+  // minty-web's Module page through Flask's hand-off - never a Flask page
+  const settings = dialog.getByRole("link", { name: "Go to subscription settings" });
+  await expect(settings).toHaveAttribute("href", /\/handoff\/minty-web\?next=%2Fentity%2F3d65f186%2F[^&]+%2Fsettings%2Fmodules&entity_id=3d65f186-/);
+  await dialog.getByRole("button", { name: "Dismiss" }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Today's Daily Closing" })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("the subscription notice tells anyone but the payer who pays, with no settings button", async ({ page }) => {
+  await enterWith(page, homeAnswer(), { notice: noticeAnswer({ can_manage: false, severity: "warning", items: [{ kind: "pending_cancel", severity: "warning", module: "Bills", module_code: "billing", title: "Bills ends on Sat 31 Oct", detail: "Undo the cancellation to keep it.", deadline: null }] }) });
+  const dialog = page.getByRole("dialog", { name: "Your subscription" });
+  await expect(dialog).toContainText("Billing for this company is managed by Olive Tan (olive@example.com). Only they can change its subscription.");
+  await expect(dialog.getByRole("link", { name: "Go to subscription settings" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+});
+
+test("the subscription notice sits over Setup Required; dismissing it reveals what is beneath", async ({ page }) => {
+  await enterWith(page, homeAnswer({ xero_settings: { complete: false, missing: ["Main Bank Account"] } }), { notice: noticeAnswer() });
+  const notice = page.getByRole("dialog", { name: "Action needed" });
+  await expect(notice).toBeVisible();
+  await notice.getByRole("button", { name: "Dismiss" }).click();
+  await expect(page.getByRole("alertdialog", { name: "Setup Required" })).toBeVisible();
+});
+
+test("a failed subscription read shows no notice and leaves the page alone", async ({ page }) => {
+  await enterWith(page, homeAnswer(), { notice: "fail" });
+  await expect(page.getByRole("heading", { name: "Today's Daily Closing" })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+

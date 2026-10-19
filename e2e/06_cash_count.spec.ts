@@ -1,5 +1,6 @@
 // The Daily Closing's Cash Count stage (components/closing/CashCount.tsx, Part 15.9 / 15.15d), with
-// Bank Deposit folded in as its first section (D15-05), against a STUBBED Petty Cash API. Needs
+// Bank Deposit folded in as its first task (D15-05) - Flask's Daily Closing Phase 1 (Minty 4e004d2):
+// three tasks one at a time, the count in its own sheet - against a STUBBED Petty Cash API. Needs
 // only `npm run dev`. Addition to Drawer, Expenses and Close are this app's own stages (stubbed
 // quietly); Flask's pages (by the company's full id) are caught, so nothing leaves the app.
 // Refusals and warnings are inline alerts or Page banners, never toasts.
@@ -141,16 +142,32 @@ async function openWith(page: Page, answer: Json, setup: Setup = {}): Promise<Js
   return saves;
 }
 
-const deposit = (page: Page) => page.getByRole("textbox", { name: "Cash taken for bank deposit in HKD", exact: true });
-const safebox = (page: Page) => page.getByRole("textbox", { name: "Cash in the safebox in HKD", exact: true });
+const deposit = (page: Page) => page.getByRole("textbox", { name: "Deposit amount in HKD", exact: true });
+const safebox = (page: Page) => page.getByRole("textbox", { name: "Cash in the safe box in HKD", exact: true });
 const reason = (page: Page) => page.getByRole("textbox", { name: /Reason for the difference/ });
-const count = (page: Page, label: string) => page.getByRole("textbox", { name: `Number of ${label}`, exact: true });
+const sheet = (page: Page) => page.getByRole("dialog", { name: /Count the drawer/ });
+const count = (page: Page, label: string) => sheet(page).getByRole("textbox", { name: `Number of ${label}`, exact: true });
 const stages = (page: Page) => page.getByRole("list", { name: "Daily Closing stages" });
-const check = (page: Page) => page.getByRole("region", { name: "Check" });
-/** A Check / Description row's value by its term. */
-const value = (page: Page, term: string) => page.locator("div, dl").filter({ has: page.locator("dt", { hasText: new RegExp(`^${term}$`) }) }).last().locator("dd").first();
+const task = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
+const saveNext = (page: Page) => page.getByRole("button", { name: "Save & Next" });
 
-test("the deposit first, then the drawer by notes and coins, the safebox and the Check block, in the Workflow header", async ({ page }) => {
+/** Daily Closing Phase 1: the deposit task done (Continue), then the count sheet open. */
+async function openSheet(page: Page) {
+  if ((await task(page, "Cash taken to the bank").getAttribute("data-state")) === "current") {
+    await page.getByRole("button", { name: "Continue" }).click();
+  }
+  await page.getByRole("button", { name: "Count notes and coins" }).click();
+  await expect(sheet(page)).toBeVisible();
+}
+
+/** Types the counts into the open sheet, then Save count. */
+async function countAndSave(page: Page, counts: Record<string, string>) {
+  for (const [label, n] of Object.entries(counts)) await count(page, label).fill(n);
+  await sheet(page).getByRole("button", { name: "Save count" }).click();
+  await expect(sheet(page)).toHaveCount(0);
+}
+
+test("three tasks, one at a time, in the Workflow header - the deposit open, the count and the safe box waiting", async ({ page }) => {
   await openWith(page, cashAnswer());
   await expect(page.getByText("Daily Closing · Tue 13 Oct 2026")).toBeVisible();
   await expect(page.getByText("Draft", { exact: true })).toHaveAttribute("data-tone", "neutral");
@@ -158,102 +175,109 @@ test("the deposit first, then the drawer by notes and coins, the safebox and the
   // the done stages are this app's own pages; Close does not open from here
   await expect(stages(page).getByRole("link", { name: "Expenses, done" })).toHaveAttribute("href", EXPENSES_URL);
   await expect(stages(page).getByRole("link")).toHaveCount(3);
+  await expect(page.getByText("Three quick checks. We'll go one at a time.")).toBeVisible();
 
-  await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Bank deposit", "Cash in the drawer", "Cash in the safebox", "Check"]);
-  await expect(value(page, "Cash on hand")).toHaveText("HKD1,300.50");
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Cash taken to the bank", "Count the drawer", "Safe box"]);
+  await expect(task(page, "Cash taken to the bank")).toHaveAttribute("aria-current", "step");
+  await expect(task(page, "Count the drawer")).toHaveAttribute("data-state", "next");
+  await expect(task(page, "Count the drawer")).toContainText("Next, after the bank deposit.");
+  await expect(task(page, "Safe box")).toContainText("Next, after the count.");
+  await expect(task(page, "Cash taken to the bank")).toContainText("In the drawer before any deposit");
+  await expect(task(page, "Cash taken to the bank")).toContainText("HKD1,300.50");
   await expect(deposit(page)).toHaveAttribute("inputmode", "decimal");
-  await expect(page.getByText("Optional. Up to HKD1,300.50, the cash on hand.")).toBeVisible();
-  await expect(page.getByRole("group", { name: "Notes" }).getByRole("textbox")).toHaveCount(2);
-  await expect(page.getByRole("group", { name: "Coins" }).getByRole("textbox")).toHaveCount(2);
-  for (const label of ["HKD500 notes", "HKD100 notes", "HKD5 coins", "HKD0.50 coins"]) {
-    await expect(count(page, label)).toHaveAttribute("inputmode", "numeric");
-    await expect(count(page, label)).toHaveValue("");
-  }
-  await expect(safebox(page)).toHaveAttribute("inputmode", "decimal");
-  await expect(value(page, "Expected in drawer")).toHaveText("HKD1,300.50");
-  await expect(value(page, "Counted")).toHaveText("HKD0.00");
-  await expect(value(page, "Difference")).toHaveText("HKD1,300.50 short");
-  // nothing typed yet: nothing red, and the reason waits for a refused Save & Next
+  await expect(page.getByText("Leave it empty when no cash went to the bank.")).toBeVisible();
+  // no count yet: no Check, the expected amount out of sight, and Save & Next waits for the count
+  await expect(page.getByRole("region", { name: "Check" })).toHaveCount(0);
+  await expect(saveNext(page)).toBeDisabled();
+  await expect(page.getByText("Count the drawer to continue")).toBeVisible();
   await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
-  await expect(reason(page)).toHaveAttribute("aria-required", "true");
-  await expect(reason(page)).not.toHaveAttribute("aria-invalid", "true");
   await expectNoHorizontalScroll(page);
 });
 
-test("the deposit moves the expected cash as it is typed, and above the cash on hand says the limit at once", async ({ page }) => {
+test("the deposit: above the cash in the drawer says the limit at once and stays open; Continue and Change move it", async ({ page }) => {
   await openWith(page, cashAnswer());
-  await deposit(page).fill("300.25");
-  await expect(value(page, "Expected in drawer")).toHaveText("HKD1,000.25");
-  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
-
   await deposit(page).fill("1300.51");
   const why = "The deposit can't be more than the cash on hand. Enter HKD1,300.50 or less.";
   await expect(page.getByRole("alert").filter({ hasText: why })).toBeVisible();
   await expect(deposit(page)).toHaveAttribute("aria-invalid", "true");
-  await expect(value(page, "Expected in drawer")).toHaveText("-HKD0.01");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(task(page, "Cash taken to the bank")).toHaveAttribute("data-state", "current");
 
-  await deposit(page).fill("1300.5");
-  await expect(page.getByText(why)).toHaveCount(0);
-  await expect(value(page, "Expected in drawer")).toHaveText("HKD0.00");
+  await deposit(page).fill("300");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(task(page, "Cash taken to the bank")).toHaveAttribute("data-state", "done");
+  await expect(task(page, "Cash taken to the bank")).toContainText("HKD300.00 to the bank");
+  await expect(page.getByRole("button", { name: "Count notes and coins" })).toBeFocused();
+
+  await page.getByRole("button", { name: "Change the cash taken to the bank" }).click();
+  await expect(deposit(page)).toBeFocused();
+  await deposit(page).fill("");
   await deposit(page).blur();
-  await expect(deposit(page)).toHaveValue("1,300.50");
+  await expect(task(page, "Cash taken to the bank")).toContainText("None today");
 });
 
-test("counting by notes and coins - a 0.50 coin included - and the Check block: short, over, none, to the cent", async ({ page }) => {
+test("the count sheet: notes then coins, a 0.50 coin included, line totals and a live total; Save count, then the safe box and the Check", async ({ page }) => {
   await openWith(page, cashAnswer());
+  await openSheet(page);
+  await expect(sheet(page).getByRole("group", { name: "Notes" }).getByRole("textbox")).toHaveCount(2);
+  await expect(sheet(page).getByRole("group", { name: "Coins" }).getByRole("textbox")).toHaveCount(2);
+  for (const label of ["HKD500 notes", "HKD100 notes", "HKD5 coins", "HKD0.50 coins"]) {
+    await expect(count(page, label)).toHaveAttribute("inputmode", "numeric");
+    await expect(count(page, label)).toHaveValue("");
+  }
+  await expect(count(page, "HKD500 notes")).toBeFocused();
   await count(page, "HKD500 notes").fill("2");
   await count(page, "HKD100 notes").fill("3");
   await count(page, "HKD0.50 coins").fill("1a.");
   await expect(count(page, "HKD0.50 coins")).toHaveValue("1");
-  const coinRow = page.getByRole("group", { name: "Coins" });
-  await expect(coinRow).toContainText("HKD0.50");
-  await expect(value(page, "Drawer total")).toHaveText("HKD1,300.50");
-  await expect(value(page, "Counted")).toHaveText("HKD1,300.50");
-  await expect(value(page, "Difference")).toHaveText("None");
-  await expect(check(page).getByRole("status")).toHaveCount(0);
+  await expect(sheet(page)).toContainText("Total in the drawer");
+  await expect(sheet(page)).toContainText("HKD1,300.50");
+  // Enter in a row is Save count, never the page's Save & Next
+  await count(page, "HKD0.50 coins").press("Enter");
+  await expect(sheet(page)).toHaveCount(0);
+  await expect(task(page, "Count the drawer")).toHaveAttribute("data-state", "done");
+  await expect(task(page, "Count the drawer")).toContainText("Counted in the drawer");
+  await expect(safebox(page)).toBeFocused();
+  const check = page.getByRole("region", { name: "Check" });
+  await expect(check).toContainText("The numbers match");
+  await expect(check).toContainText("Counted HKD1,300.50 · expected HKD1,300.50");
   await expect(reason(page)).toHaveCount(0);
-
-  // one cent over, through the safebox
-  await safebox(page).fill("0.01");
-  await expect(value(page, "Counted")).toHaveText("HKD1,300.51");
-  await expect(value(page, "Difference")).toHaveText("HKD0.01 over");
-  await expect(check(page).getByRole("status").filter({ hasText: "The count is HKD0.01 over" })).toHaveAttribute("data-tone", "warning");
-
-  // one cent short: the drawer without the coin, the safebox 0.49
-  await safebox(page).fill("");
-  await count(page, "HKD0.50 coins").fill("");
-  await expect(value(page, "Difference")).toHaveText("HKD0.50 short");
-  await safebox(page).fill("0.49");
-  await expect(value(page, "Difference")).toHaveText("HKD0.01 short");
-  await expect(check(page).getByRole("status").filter({ hasText: "The count is HKD0.01 short" })).toBeVisible();
-  // and the deposit moves the expected cash, so the difference with it
-  await deposit(page).fill("0.01");
-  await expect(value(page, "Expected in drawer")).toHaveText("HKD1,300.49");
-  await expect(value(page, "Difference")).toHaveText("None");
-  // amounts are words and plain text, never coloured
-  await expect(value(page, "Difference")).toHaveClass(/text-text-primary/);
+  await expect(saveNext(page)).toBeEnabled();
 });
 
-test("a difference needs its reason on Save & Next - nothing is sent until it has one; the PUT carries the deposit and every count", async ({ page }) => {
+test("the difference to the cent: over through the safe box, short without a coin - in words, Warning, never a red number", async ({ page }) => {
+  await openWith(page, cashAnswer());
+  await openSheet(page);
+  await countAndSave(page, { "HKD500 notes": "2", "HKD100 notes": "3", "HKD0.50 coins": "1" });
+  const check = page.getByRole("region", { name: "Check" });
+  await safebox(page).fill("0.01");
+  await expect(check.getByRole("status").filter({ hasText: "The count is HKD0.01 over." })).toHaveAttribute("data-tone", "warning");
+  await expect(check).not.toContainText("The numbers match");
+  await safebox(page).fill("");
+  await safebox(page).blur();
+  await expect(task(page, "Safe box")).toHaveAttribute("data-state", "done");
+  await page.getByRole("button", { name: "Edit the count" }).click();
+  await countAndSave(page, { "HKD0.50 coins": "" });
+  await expect(check).toContainText("The count is HKD0.50 short.");
+  await expect(reason(page)).toHaveAttribute("aria-required", "true");
+  await expect(reason(page)).not.toHaveAttribute("aria-invalid", "true");
+});
+
+test("a difference holds Save & Next until it has a reason; the PUT carries the deposit and every count", async ({ page }) => {
   const saves = await openWith(page, cashAnswer());
   await deposit(page).fill("300");
-  await count(page, "HKD500 notes").fill("2");
-  await expect(value(page, "Expected in drawer")).toHaveText("HKD1,000.50");
-  await expect(value(page, "Difference")).toHaveText("HKD0.50 short");
-
-  await page.getByRole("button", { name: "Save & Next" }).click();
-  const why = "The count is HKD0.50 short. Add the reason to continue.";
-  await expect(page.getByRole("alert").filter({ hasText: why })).toBeVisible();
-  await expect(reason(page)).toHaveAttribute("aria-invalid", "true");
-  // one problem: its field takes the focus, and no summary
-  await expect(reason(page)).toBeFocused();
-  await expect(page.getByText("details need a look")).toHaveCount(0);
+  await openSheet(page);
+  await countAndSave(page, { "HKD500 notes": "2" });
+  await safebox(page).blur();
+  await expect(page.getByRole("region", { name: "Check" })).toContainText("The count is HKD0.50 short.");
+  await expect(saveNext(page)).toBeDisabled();
+  await expect(page.getByText("Add a reason for the difference to continue.")).toBeVisible();
   expect(saves).toEqual([]);
 
   await reason(page).fill("Change given twice");
-  await expect(page.getByText(why)).toHaveCount(0);
   await expect(page.getByText("So the reviewer knows what happened. 18 of 300 characters.")).toBeVisible();
-  await page.getByRole("button", { name: "Save & Next" }).click();
+  await expect(saveNext(page)).toBeEnabled();
+  await saveNext(page).click();
 
   // Close, this app's own stage since Wave 2e
   await expect(page).toHaveURL(ENDING);
@@ -270,16 +294,21 @@ test("a difference needs its reason on Save & Next - nothing is sent until it ha
   ]);
 });
 
-test("Save & Exit keeps a difference without a reason and goes back to the launch page", async ({ page }) => {
+test("a saved stage opens with every task done; Save & Exit keeps a difference without a reason", async ({ page }) => {
   const saves = await openWith(page, cashAnswer({ bank_deposit: 300, denominations: DENOMINATIONS.map((d) => (d.id === "n500" ? { ...d, count: 2 } : d)) }), {
     onSave: async (_body, route) => {
       await route.fulfill({ json: { ...SAVED, current_section: "cash_count", next: "dashboard", discrepancy: { amount: -0.5, kind: "short" } } });
     },
   });
-  // a draft's values come back: the deposit grouped, the saved count
-  await expect(deposit(page)).toHaveValue("300.00");
+  await expect(page.getByText("All three checks are done.")).toBeVisible();
+  for (const name of ["Cash taken to the bank", "Count the drawer", "Safe box"]) await expect(task(page, name)).toHaveAttribute("data-state", "done");
+  await expect(task(page, "Cash taken to the bank")).toContainText("HKD300.00 to the bank");
+  await expect(page.getByRole("region", { name: "Check" })).toContainText("The count is HKD0.50 short.");
+  // Edit reopens the sheet with the saved count
+  await page.getByRole("button", { name: "Edit the count" }).click();
   await expect(count(page, "HKD500 notes")).toHaveValue("2");
-  await expect(value(page, "Difference")).toHaveText("HKD0.50 short");
+  await page.keyboard.press("Escape");
+  await expect(sheet(page)).toHaveCount(0);
   await page.getByRole("button", { name: "Save & Exit" }).click();
   await expect(page).toHaveURL(new RegExp(`${BASE}$`));
   await expect(page.getByRole("heading", { level: 1, name: "Petty Cash" })).toBeVisible();
@@ -288,28 +317,17 @@ test("Save & Exit keeps a difference without a reason and goes back to the launc
   ]);
 });
 
-test("Enter in a count is Save & Next; a count with no difference goes on with no reason", async ({ page }) => {
-  const saves = await openWith(page, cashAnswer());
-  await count(page, "HKD500 notes").fill("2");
-  await count(page, "HKD100 notes").fill("3");
-  await count(page, "HKD0.50 coins").fill("1");
-  await count(page, "HKD0.50 coins").press("Enter");
-  await expect(page).toHaveURL(ENDING);
-  expect(saves).toMatchObject([{ bank_deposit: 0, counts: { n500: 2, n100: 3, c5: 0, c050: 1 }, discrepancy_reason: "", action: "next" }]);
+test("Save & Exit saves before the count is done", async ({ page }) => {
+  const saves = await openWith(page, cashAnswer(), {
+    onSave: (_body, route) => route.fulfill({ json: { ...SAVED, current_section: "deposit", next: "dashboard" } }),
+  });
+  await expect(saveNext(page)).toBeDisabled();
+  await page.getByRole("button", { name: "Save & Exit" }).click();
+  await expect(page).toHaveURL(new RegExp(`${BASE}$`));
+  expect(saves).toMatchObject([{ bank_deposit: 0, counts: { n500: 0, n100: 0, c5: 0, c050: 0 }, action: "exit" }]);
 });
 
-test("two problems on a refused Save & Next show the error summary, which takes the focus and links to each field", async ({ page }) => {
-  const saves = await openWith(page, cashAnswer());
-  await deposit(page).fill("2000");
-  await page.getByRole("button", { name: "Save & Next" }).click();
-  const summary = page.getByRole("alert").filter({ hasText: "2 details need a look" });
-  await expect(summary).toBeFocused();
-  await summary.getByRole("link", { name: /Add the reason to continue/ }).click();
-  await expect(reason(page)).toBeFocused();
-  expect(saves).toEqual([]);
-});
-
-test("a count above a million says so as typed; the API's 422 shows on the field it names", async ({ page }) => {
+test("a count above a million says so as typed and keeps the sheet open; the API's 422 shows on the field it names", async ({ page }) => {
   const why = "The deposit can't be more than the cash on hand. Enter HKD1,200.00 or less.";
   await openWith(page, cashAnswer(), {
     onSave: async (body, route) => {
@@ -317,24 +335,31 @@ test("a count above a million says so as typed; the API's 422 shows on the field
       else await route.fulfill({ status: 422, json: { error: why, field: "bank_deposit" } });
     },
   });
+  await openSheet(page);
   await count(page, "HKD5 coins").fill("1000001");
-  await expect(page.getByRole("alert").filter({ hasText: "The count is 1,000,001. Enter 1,000,000 or fewer." })).toBeVisible();
-  await count(page, "HKD5 coins").fill("260");
-  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+  await expect(sheet(page).getByRole("alert").filter({ hasText: "The count is 1,000,001. Enter 1,000,000 or fewer." })).toBeVisible();
+  await sheet(page).getByRole("button", { name: "Save count" }).click();
+  await expect(sheet(page)).toBeVisible();
+  await expect(count(page, "HKD5 coins")).toBeFocused();
+  await countAndSave(page, { "HKD5 coins": "260" });
 
+  await page.getByRole("button", { name: "Change the cash taken to the bank" }).click();
   await deposit(page).fill("1250");
   await page.getByRole("button", { name: "Save & Exit" }).click();
   await expect(page.getByRole("alert").filter({ hasText: why })).toBeVisible();
   await expect(deposit(page)).toHaveAttribute("aria-invalid", "true");
   await expect(deposit(page)).toBeFocused();
   await expect(page).toHaveURL(/\/reports\/new\/cash-count\?/);
-  await expect(page.getByRole("button", { name: "Save & Exit" })).toBeEnabled();
   // changing the field clears the API's sentence
   await deposit(page).fill("1200");
   await expect(page.getByText(why)).toHaveCount(0);
 
-  await count(page, "HKD100 notes").fill("9");
+  // a count the API refuses: the sheet opens on that row
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Edit the count" }).click();
+  await countAndSave(page, { "HKD100 notes": "9" });
   await page.getByRole("button", { name: "Save & Exit" }).click();
+  await expect(sheet(page)).toBeVisible();
   await expect(count(page, "HKD100 notes")).toHaveAttribute("aria-invalid", "true");
   await expect(count(page, "HKD100 notes")).toBeFocused();
 });
@@ -344,7 +369,7 @@ test("any other refusal stays on the stage, inline, and the actions come back", 
   await openWith(page, cashAnswer(), { onSave: (_body, route) => route.fulfill({ status: 409, json: { error: why } }) });
   await page.getByRole("button", { name: "Save & Exit" }).click();
   await expect(page.getByRole("alert").filter({ hasText: why })).toHaveAttribute("data-tone", "danger");
-  await expect(page.getByRole("button", { name: "Save & Next" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Save & Exit" })).toBeEnabled();
   await expect(page.locator("[data-toast-type]")).toHaveCount(0);
 });
 
@@ -371,7 +396,7 @@ test("no draft for the day: the stage sends the person to Addition to Drawer, wh
 
 test("unsaved changes hold the stage links, with a way to leave anyway", async ({ page }) => {
   await openWith(page, cashAnswer());
-  await count(page, "HKD5 coins").fill("1");
+  await deposit(page).fill("5");
   await stages(page).getByRole("link", { name: "Expenses, done" }).click();
   const warning = page.locator("[data-tone=warning]").filter({ hasText: "Your changes to this stage are not saved yet." });
   await expect(warning).toBeVisible();
@@ -416,15 +441,22 @@ test("Flask's Bank Deposit address lands on this stage, for the same day", async
   await expect(page.getByRole("heading", { level: 1, name: "Cash Count" })).toBeVisible();
 });
 
-test("the largest counts and amounts are never clipped, and the page never scrolls sideways", async ({ page }) => {
+test("the largest counts and amounts are never clipped, in the sheet or on the page, and nothing scrolls sideways", async ({ page }) => {
   await openWith(page, cashAnswer({ cash_on_hand: 99999999999.99, expected_cash: 99999999999.99 }));
+  await deposit(page).fill("12345678901.99");
+  await openSheet(page);
   await count(page, "HKD500 notes").fill("1000000");
   await count(page, "HKD0.50 coins").fill("999999");
-  await deposit(page).fill("12345678901.99");
+  await expect(sheet(page)).toContainText("HKD500,499,999.50");
+  const clippedInSheet = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('[role="dialog"] input, [role="dialog"] span[translate=no]'))
+      .filter((el) => el.scrollWidth > el.clientWidth + 1)
+      .map((el) => (el as HTMLElement).id || el.textContent),
+  );
+  expect(clippedInSheet).toEqual([]);
+  await sheet(page).getByRole("button", { name: "Save count" }).click();
   await safebox(page).fill("99999999999.99");
   await safebox(page).blur();
-  await deposit(page).blur();
-  await expect(value(page, "Drawer total")).toHaveText("HKD500,499,999.50");
   const clipped = await page.evaluate(() =>
     Array.from(document.querySelectorAll("main input, main dd, main span[translate=no]"))
       .filter((el) => el.scrollWidth > el.clientWidth + 1)
@@ -445,6 +477,6 @@ test("the stage reloads with no console error", async ({ page }) => {
   // the browser then hydrates - where a mismatch shows.
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Cash Count" })).toBeVisible();
-  await expect(deposit(page)).toHaveValue("300.00");
+  await expect(task(page, "Cash taken to the bank")).toContainText("HKD300.00 to the bank");
   expect(errors).toEqual([]);
 });

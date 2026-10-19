@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { billsUrl, hubUrl, integrationUrl, logoutUrl } from "@/lib/hub";
+import { billsUrl, hubUrl, integrationUrl, logoutUrl, subscriptionSettingsUrl } from "@/lib/hub";
 
 const ENTITY = "360812e1-9f94-46a3-aa31-347e21afde8e";
 
@@ -24,6 +24,13 @@ describe("Flask's hand-offs", () => {
     const url = new URL(integrationUrl(ENTITY, "Olive & Vine"));
     expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
     expect(url.searchParams.get("next")).toBe("/entity/360812e1/olive-and-vine/settings/integration");
+    expect(url.searchParams.get("entity_id")).toBe(ENTITY);
+  });
+
+  it("opens minty-web's Module page for the subscription notice, through the same hand-off", () => {
+    const url = new URL(subscriptionSettingsUrl(ENTITY, "Olive & Vine"));
+    expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
+    expect(url.searchParams.get("next")).toBe("/entity/360812e1/olive-and-vine/settings/modules");
     expect(url.searchParams.get("entity_id")).toBe(ENTITY);
   });
 

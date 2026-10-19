@@ -5,13 +5,16 @@
  * (components/closing/Close.tsx) only draws what this says.
  *
  * Close is a Work Verification (15.9g): every figure is the API's - nothing is added up here - with
- * an Edit link per stage, and one action, Submit Daily Report. No KPIs or trends (D15-03): the
+ * an Edit link per stage, and one action, Submit Daily Report. Since Daily Closing Phase 1 (Flask
+ * 4e004d2) it is a readiness banner and ONE summary card, a row per stage with its total; the
+ * per-item breakdowns are the stages' own. No KPIs or trends (D15-03): the
  * read's `yesterday_total` and `history` are the Daily Report's, not this stage's.
  */
 
 import { signedMoney } from "@/lib/addition";
 import { differenceText, type Difference } from "@/lib/cashCount";
 import { stageOf } from "@/lib/dailyClosing";
+import { formatMoney } from "@/lib/money";
 import type { WizardStep } from "@/lib/wizardPages";
 import type { OpeningPage } from "@/lib/opening";
 import { shownMethods, type SalesMethod } from "@/lib/sales";
@@ -82,16 +85,47 @@ export function salesRows(page: { sales: { methods: ClosePage["sales"]["methods"
   return shownMethods(page.sales.methods).map((m) => ({ key: m.value_name, label: m.name, amount: m.amount ?? 0 }));
 }
 
-/** An expense row's label: "General Expenses · ParknShop" (Flask's Close: item, then supplier). */
-export function expenseLabel(line: CloseExpense): string {
-  const item = line.item.trim() || "Expense";
-  return line.supplier.trim() ? `${item} · ${line.supplier.trim()}` : item;
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * The Sales row's line (Daily Closing Phase 1: one row per stage, totals not each method):
+ * "3 methods · Cash HKD820.50" - the methods that took money, cash among them.
+ */
+export function salesSummary(page: Pick<ClosePage, "sales" | "currency_code">): string {
+  const methods = salesRows(page).filter((row) => row.amount > 0).length + (page.sales.cash > 0 ? 1 : 0);
+  return `${plural(methods, "method", "methods")} · Cash ${formatMoney(page.sales.cash, page.currency_code)}`;
 }
 
-/** "Receipts 2 of 3 expenses" - how many entries carry a receipt. */
-export function receiptsText(lines: CloseExpense[]): string {
-  const withReceipt = lines.filter((line) => line.receipts > 0).length;
-  return `${withReceipt} of ${lines.length} ${lines.length === 1 ? "expense" : "expenses"}`;
+/** The Expenses row's line: "2 expenses · 3 receipts" (every receipt file, as Flask's). */
+export function expensesSummary(lines: CloseExpense[]): string {
+  const receipts = lines.reduce((n, line) => n + line.receipts, 0);
+  return `${plural(lines.length, "expense", "expenses")} · ${plural(receipts, "receipt", "receipts")}`;
+}
+
+/** The Cash Count row's line: "HKD300.00 to the bank · Counted in the drawer", or "None today · ...". */
+export function cashSummary(page: Pick<ClosePage, "cash" | "currency_code">): string {
+  const deposit = page.cash.bank_deposit > 0 ? `${formatMoney(page.cash.bank_deposit, page.currency_code)} to the bank` : "None today";
+  return `${deposit} · Counted in the drawer`;
+}
+
+export type Readiness =
+  | { kind: "gate" }
+  | { kind: "no-reason"; title: string }
+  | { kind: "ready"; text: string };
+
+/**
+ * "Is this correct and ready to submit?" - the banner over the summary: the business-rule gate
+ * when the API names one (closeGate); a difference without a reason as a Warning with the way to
+ * Cash Count (Submit stays on - the API takes it, as Flask's page does); else "Ready to submit",
+ * with a word that the reviewer has a note when there is a difference.
+ */
+export function closeReadiness(page: ClosePage): Readiness {
+  if (page.problem) return { kind: "gate" };
+  const diff = differenceOf(page.cash.difference.amount);
+  if (diff.kind !== "none" && !page.cash.difference.reason.trim()) {
+    return { kind: "no-reason", title: `The count is ${differenceText(diff, page.currency_code)}` };
+  }
+  return { kind: "ready", text: `All five stages are filled in.${diff.kind !== "none" ? " One note for the reviewer below." : ""}` };
 }
 
 /** A place to fix the day, as one link: the stage's own page, or the launch page. */
@@ -136,7 +170,7 @@ export function submitRefusal(message: string, to: unknown): { message: string; 
   return { message, action: typeof to === "string" ? fixLink(to) : null };
 }
 
-/** The Cash Count section's Difference row: "HKD20.00 short", "HKD0.01 over", "None". */
+/** The difference in the Cash Count row's pill: "HKD20.00 short", "HKD0.01 over", "None". */
 export function closeDifference(page: ClosePage): string {
   return differenceText(differenceOf(page.cash.difference.amount), page.currency_code);
 }

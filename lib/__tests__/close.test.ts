@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { closeDifference, closeGate, differenceOf, expenseLabel, fixLink, receiptsText, salesRows, submitRefusal, type CloseExpense, type ClosePage } from "@/lib/close";
+import {
+  cashSummary,
+  closeDifference,
+  closeGate,
+  closeReadiness,
+  differenceOf,
+  expensesSummary,
+  fixLink,
+  salesRows,
+  salesSummary,
+  submitRefusal,
+  type CloseExpense,
+  type ClosePage,
+} from "@/lib/close";
 
 const line = (over: Partial<CloseExpense> = {}): CloseExpense => ({ id: "e1", item: "General Expenses", supplier: "ParknShop", remarks: "", amount: 120.5, receipts: 1, ...over });
 
@@ -58,15 +71,44 @@ describe("the summary rows", () => {
     ]);
   });
 
-  it("labels an expense by its account, then its supplier", () => {
-    expect(expenseLabel(line())).toBe("General Expenses · ParknShop");
-    expect(expenseLabel(line({ supplier: "  " }))).toBe("General Expenses");
-    expect(expenseLabel(line({ item: "" }))).toBe("Expense · ParknShop");
+  it("sums the Sales row up as the methods that took money, cash among them (Daily Closing Phase 1)", () => {
+    expect(salesSummary(page())).toBe("3 methods · Cash HKD820.50");
+    const quiet = page();
+    quiet.sales = { ...quiet.sales, methods: quiet.sales.methods.map((m) => ({ ...m, amount: 0 })), cash: 0 };
+    expect(salesSummary(quiet)).toBe("0 methods · Cash HKD0.00");
+    const one = page();
+    one.sales = { ...one.sales, methods: [], cash: 10 };
+    expect(salesSummary(one)).toBe("1 method · Cash HKD10.00");
   });
 
-  it("counts the entries that carry a receipt", () => {
-    expect(receiptsText([line(), line({ id: "e2", receipts: 0 }), line({ id: "e3", receipts: 2 })])).toBe("2 of 3 expenses");
-    expect(receiptsText([line()])).toBe("1 of 1 expense");
+  it("sums the Expenses row up as entries and every receipt file", () => {
+    expect(expensesSummary([line(), line({ id: "e2", receipts: 0 }), line({ id: "e3", receipts: 2 })])).toBe("3 expenses · 3 receipts");
+    expect(expensesSummary([line()])).toBe("1 expense · 1 receipt");
+    expect(expensesSummary([])).toBe("0 expenses · 0 receipts");
+  });
+
+  it("sums the Cash Count row up as the deposit, or none today", () => {
+    expect(cashSummary(page())).toBe("HKD300.00 to the bank · Counted in the drawer");
+    expect(cashSummary(page({}, { bank_deposit: 0 }))).toBe("None today · Counted in the drawer");
+  });
+});
+
+describe("readiness (Daily Closing Phase 1: is this correct and ready to submit?)", () => {
+  it("is ready with a note for the reviewer when a difference has its reason", () => {
+    expect(closeReadiness(page())).toEqual({ kind: "ready", text: "All five stages are filled in. One note for the reviewer below." });
+  });
+
+  it("is ready without the note when the count matches", () => {
+    expect(closeReadiness(page({}, { difference: { amount: 0, kind: "none", reason: "" } }))).toEqual({ kind: "ready", text: "All five stages are filled in." });
+  });
+
+  it("warns about a difference with no reason - any cent counts", () => {
+    expect(closeReadiness(page({}, { difference: { amount: -20, kind: "short", reason: "  " } }))).toEqual({ kind: "no-reason", title: "The count is HKD20.00 short" });
+    expect(closeReadiness(page({}, { difference: { amount: 0.01, kind: "over", reason: "" } }))).toEqual({ kind: "no-reason", title: "The count is HKD0.01 over" });
+  });
+
+  it("gives way to the business-rule gate", () => {
+    expect(closeReadiness(page({ problem: { error: "Finish Sales before you submit the day.", to: "sales" } }))).toEqual({ kind: "gate" });
   });
 });
 

@@ -43,7 +43,7 @@ function reportAnswer(over: Json = {}): Json {
 function outcomeAnswer(over: Json = {}): Json {
   return {
     report_id: REPORT, transaction_date: DAY, currency_code: "HKD", company_name: NAME, status: "submitted", submitted: true,
-    submitted_at: "2026-10-13T10:12:00+00:00", submitted_by: "Olive", cash_counted: 760, difference: { amount: 0, kind: "none", has_reason: false },
+    submitted_at: "2026-10-13T10:12:00+00:00", submitted_by: "Olive", total_sales: 1070.5, total_expenses: 240.5, cash_counted: 760, difference: { amount: 0, kind: "none", has_reason: false },
     xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false, was_published: false }, can_publish: true, is_today: false, next_day: "2026-10-14",
     ...over,
   };
@@ -287,7 +287,7 @@ test("reconnect: the sentence and a full-page link through the hand-off to minty
 test("reconnect from the outcome page and from a history row: the same hand-off", async ({ page }) => {
   await stub(page, reconnecting);
   await arrive(page, OUTCOME_URL);
-  await page.getByRole("button", { name: "Publish to Xero" }).click();
+  await page.getByRole("button", { name: "Send to Xero" }).click();
   await expectReconnectLink(page);
 
   await page.goto(HISTORY_URL);
@@ -318,14 +318,13 @@ test("republishing warns that Xero gets a second copy - in Xero now, or sent the
   await expectNoHorizontalScroll(page);
 });
 
-test("the outcome page: Publish to Xero leads, asks first (no status read: the outcome carries was_published), then Sent to Xero follows", async ({ page }) => {
+test("the outcome page: one quiet Xero line - Send to Xero asks first (no status read: the outcome carries was_published), then Sent to Xero follows", async ({ page }) => {
   const calls = await stub(page, { after: [status(), PUBLISHED] });
   await arrive(page, OUTCOME_URL);
   await expect(page.getByRole("heading", { level: 1, name: "The report is submitted" })).toBeFocused();
-  const sent = page.locator("dl > div").filter({ hasText: "Sent to Xero" }).locator("dd");
-  await expect(sent).toHaveText("Not yet");
-  // Publish to Xero is the next action; View report steps back to Secondary
-  const publish = page.getByRole("button", { name: "Publish to Xero" });
+  await expect(page.getByText("Not sent to Xero yet")).toBeVisible();
+  // Daily Closing Phase 1 (Flask 4e004d2): Xero is a quiet line, Back to home the next action
+  const publish = page.getByRole("button", { name: "Send to Xero" });
   await expect(publish).toBeVisible();
   await expect(page.getByRole("link", { name: "View report" })).toHaveAttribute("href", REPORT_URL);
 
@@ -339,12 +338,13 @@ test("the outcome page: Publish to Xero leads, asks first (no status read: the o
   await dialog.getByRole("button", { name: "Publish to Xero" }).click();
 
   await expect(page.getByRole("status").filter({ hasText: "You can leave this page" })).toHaveAttribute("data-tone", "info");
-  await expect(sent).toHaveText("Pending");
-  await expect(sent).toHaveText("Yes · 6:15 pm");
+  // nothing to send while Xero works on it
+  await expect(page.getByRole("button", { name: "Send to Xero" })).toHaveCount(0);
+  await expect(page.getByText("Sent to Xero · 6:15 pm")).toBeVisible();
   await expect(toast(page)).toContainText(TOAST);
   await expect(live(page)).toHaveText("Published to Xero.");
-  // in Xero now: View report leads again, and Publish to Xero again is under it
-  await expect(page.getByRole("button", { name: "Publish to Xero again" })).toBeVisible();
+  // in Xero now: the line offers Publish again
+  await expect(page.getByRole("button", { name: "Publish again" })).toBeVisible();
   await expectNoHorizontalScroll(page);
 });
 
@@ -354,14 +354,14 @@ test("the outcome page: a report sent to Xero before warns (its own was_publishe
     after: [status({ was_published: true }), FAILED],
   });
   await arrive(page, OUTCOME_URL);
-  await page.getByRole("button", { name: "Publish to Xero" }).click();
+  await page.getByRole("button", { name: "Send to Xero" }).click();
   const dialog = page.getByRole("alertdialog", { name: "Publish to Xero?" });
   await expect(dialog).toContainText(WARNING);
   expect(calls.reads).toBe(0);
   await dialog.getByRole("button", { name: "Publish to Xero" }).click();
   const alert = page.getByRole("alert").filter({ hasText: "Publishing to Xero failed" });
   await expect(alert).toContainText("Account 429 is archived in Xero.");
-  await expect(page.locator("dl > div").filter({ hasText: "Sent to Xero" }).locator("dd")).toHaveText("Not yet: it failed");
+  await expect(page.getByText("Not sent to Xero yet")).toBeVisible();
   await alert.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("alertdialog", { name: "Publish to Xero?" })).toBeVisible();
 });

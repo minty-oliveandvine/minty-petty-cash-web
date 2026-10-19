@@ -10,7 +10,7 @@ import { Button, buttonClass, Icon, InlineAlert, inputClass, Modal, PageBanner, 
 import type { ViewerFile } from "@/components/closing/ReceiptViewer";
 import { PublishDialog, PublishProgress, usePublish } from "@/components/closing/Publish";
 import { DeleteReportDialog, EditReportDialog } from "@/components/closing/ReportDialogs";
-import { AuditFacts, ClosingBalance, Disclosure, KpiCards, Row, Rows } from "@/components/closing/ReportParts";
+import { AuditFacts, ClosingBalance, Disclosure, MoneyFlow, OutcomeBand, Row, Rows } from "@/components/closing/ReportParts";
 import { AppBar } from "@/components/layout/AppBar";
 import { MoreMenu, type MoreItem } from "@/components/ui/MoreMenu";
 import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
@@ -29,6 +29,7 @@ import {
   cashRows,
   deletedMessage,
   differenceAlert,
+  expenseBars,
   expenseMeta,
   expenseTitle,
   isDraft,
@@ -36,6 +37,7 @@ import {
   reportKpis,
   reportPill,
   reportReceipts,
+  salesMix,
   type DailyReport as Report,
 } from "@/lib/report";
 import { canEditLines, canEditReason, canEditWithdrawal } from "@/lib/reportEdits";
@@ -62,9 +64,10 @@ type Share = { kind: "making" } | { kind: "ready"; url: string } | { kind: "fail
 /**
  * The Daily Report of a submitted day - Part 15.7 Report page (15.15f; Flask's report summary,
  * `report/ending.html`): the Report header (name, day, one Status pill, Share, Publish to Xero,
- * More: Edit report / Delete report), the three KPIs, the difference as a fact, then Sales by
- * method, Expenses (n), Receipts (n) and Cash as disclosures, the closing balance and the audit
- * facts. In a centred 720 column (15.D: reports are read, not compared).
+ * More: Edit report / Delete report), the outcome band (Cash position the hero, Total sales and
+ * Total expenses secondary), the difference as a fact, "Where the money came from and went" (the
+ * sales mix and the expenses by account), then Sales by method, Expenses (n), Receipts (n) and
+ * Cash as disclosures - the charts' table alternative - the closing balance and the audit facts. In a centred 720 column (15.D: reports are read, not compared).
  *
  * Reads `GET /reports/<report id>`; Edit report is `POST /reports/<id>/reopen` (then the first
  * stage, Addition to Drawer), Delete is `DELETE /reports/<id>` (then the launch page) and Share
@@ -131,11 +134,7 @@ export function DailyReport({ reportId }: { reportId: string }) {
             <>
               <ReportHeader reports={reports} />
               <div className="flex flex-col gap-4" role="status" aria-busy="true" aria-label="Loading">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <Skeleton className="h-24 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                </div>
+                <Skeleton className="h-44 w-full rounded-xl" />
                 <Skeleton className="h-14 w-full" />
                 <Skeleton className="h-14 w-full" />
                 <Skeleton className="h-14 w-full" />
@@ -344,8 +343,8 @@ function ReportBody({
 
       <PublishProgress state={publishing.state} onCheckAgain={publishing.begin} onRetry={canPublish ? () => setDialog("publish") : undefined} />
 
-      {/* 15.7: exactly three KPIs - stacked on a phone, in a row from 640. Each value is read with its label. */}
-      <KpiCards kpis={reportKpis(report)} />
+      {/* 15.7's KPIs as one outcome band: Cash position the hero, sales and expenses secondary (the owner, 2026-10-19). */}
+      <OutcomeBand kpis={reportKpis(report)} />
 
       {difference ? (
         // 15.7: the difference as a fact, not blame - Warning tone, in words, never a red number.
@@ -363,6 +362,9 @@ function ReportBody({
           {difference.body}
         </InlineAlert>
       ) : null}
+
+      {/* Where the money came from and went (15.7 charts, brand + neutral only); the disclosures below are their table. */}
+      <MoneyFlow sales={salesMix(report)} expenses={expenseBars(report)} code={code} />
 
       <div className="flex flex-col gap-3">
         <Disclosure title="Sales by method">

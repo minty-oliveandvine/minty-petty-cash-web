@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Icon, InlineAlert, Skeleton, StatusPill } from "@minty/shared/ui";
 
-import { AuditFacts, ClosingBalance, Disclosure, KpiCards, Row, Rows } from "@/components/closing/ReportParts";
+import { AuditFacts, ClosingBalance, Disclosure, OutcomeBand, Row, Rows } from "@/components/closing/ReportParts";
 import { signedMoney } from "@/lib/addition";
 import { formatWeekdayDay } from "@/lib/dates";
 import {
@@ -33,7 +33,7 @@ const REFUSED: Record<"missing" | "expired" | "failed", { title: string; body: s
 /**
  * A shared Daily Report - Part 15.7's "shared/public variant without actions or navigation", read
  * by anyone with the link and no sign-in (Flask's `report/ending.html` with `is_shared_link`): the
- * title with its Status pill, the day and the company, the KPIs, the difference as a fact, the
+ * title with its Status pill, the day and the company, the outcome band, the difference as a fact, the
  * breakdowns as disclosures, the closing balance and the audit facts. No Share, Publish or More,
  * no edits, no receipt View, no sidebar, no menu, no way back: the App bar keeps the Minty mark and
  * the company only (Flask's `pc_bare`).
@@ -68,11 +68,7 @@ export function SharedReport({ path }: { path: string | null }) {
               <h1 className="min-w-0 break-words text-display-m text-text-primary">Daily Report</h1>
               <div className="flex flex-col gap-4" role="status" aria-busy="true" aria-label="Loading">
                 <Skeleton className="h-5 w-48" />
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <Skeleton className="h-24 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                </div>
+                <Skeleton className="h-44 w-full rounded-xl" />
                 <Skeleton className="h-14 w-full" />
                 <Skeleton className="h-14 w-full" />
               </div>
@@ -137,7 +133,8 @@ function SharedBody({ report, company }: { report: Shared; company: string }) {
         {meta ? <p className="min-w-0 break-words text-body-m text-text-secondary">{meta}</p> : null}
       </div>
 
-      <KpiCards kpis={sharedKpis(report)} />
+      {/* The outcome band, from the KPIs that arrived. No charts here: the public read's lines carry no account. */}
+      <OutcomeBand kpis={sharedKpis(report)} />
 
       {difference ? (
         // 15.7: the difference as a fact, not blame - Warning tone, in words, never a red number.

@@ -5,16 +5,19 @@
  * only draws what this says.
  *
  * Every figure is the server's ("Report figures are computed server-side from the finalised
- * record", 15.7) - nothing is added up here. Amounts are plain text, never coloured; a shortage is
- * stated as a fact, in words. The status pill is the API's own label and tone (Submitted is Info,
- * Published to Xero is Success).
+ * record", 15.7) - nothing is added up here, with ONE exception: the "Where the money came from
+ * and went" chart's expenses by account (`expenseBars`) sums the expense lines the API already
+ * sends, per account. It is a display grouping of the server's line amounts for the chart, never a
+ * figure of its own - every total on the page is still the API's. Amounts are plain text, never
+ * coloured; a shortage is stated as a fact, in words. The status pill is the API's own label and
+ * tone (Submitted is Info, Published to Xero is Success).
  */
 
 import type { StatusTone } from "@minty/shared/ui";
 
 import { signedMoney } from "@/lib/addition";
 import { differenceText } from "@/lib/cashCount";
-import { differenceOf, type ClosePage } from "@/lib/close";
+import { differenceOf, salesRows, type ClosePage } from "@/lib/close";
 import { formatWeekdayDay, momentText } from "@/lib/dates";
 import type { ExpenseAccount, ExpenseLine, Receipt, Supplier } from "@/lib/expenses";
 import { formatMoney } from "@/lib/money";
@@ -82,7 +85,13 @@ export function isDraft(report: DailyReport): boolean {
 
 export type Kpi = { label: string; value: string; meta: string | null };
 
-/** The three KPIs (15.7: exactly these), each a label, the server's figure and one line of meta. */
+/** The KPI the outcome band draws as its one hero amount (ReportParts.tsx `OutcomeBand`). */
+export const CASH_POSITION = "Cash position";
+
+/**
+ * The three KPIs (15.7), each a label, the server's figure and one line of meta - drawn as one
+ * outcome band: Cash position the hero, Total sales and Total expenses secondary.
+ */
 export function reportKpis(report: DailyReport): Kpi[] {
   return kpiCards(report.kpis, report.expenses.lines.length, report.currency_code);
 }
@@ -98,8 +107,103 @@ export function kpiCards(kpis: Partial<DailyReport["kpis"]>, expenseCount: numbe
     const meta = expenseCount === null ? null : `${expenseCount} ${expenseCount === 1 ? "expense" : "expenses"}`;
     cards.push({ label: "Total expenses", value: formatMoney(kpis.total_expenses, code), meta });
   }
-  if (typeof kpis.cash_position === "number") cards.push({ label: "Cash position", value: signedMoney(kpis.cash_position, code), meta: "Counted, with the safe box" });
+  if (typeof kpis.cash_position === "number") cards.push({ label: CASH_POSITION, value: signedMoney(kpis.cash_position, code), meta: "Counted, with the safe box" });
   return cards;
+}
+
+/*
+ * "Where the money came from and went" (15.7: charts optional, brand + neutral only, each with a
+ * table alternative - the disclosures under them). The same rules as Flask's
+ * `blueprints/report/services/report_page.py` `sales_mix` / `expense_bars`.
+ */
+
+/** The six chart tones (app/globals.css `--color-chart-*`), cycled so neighbours never share one. */
+export const CHART_TONES = 6;
+
+export type MixSegment = {
+  key: string;
+  label: string;
+  amount: number;
+  /** A whole percentage; the segments' add up to exactly 100. */
+  pct: number;
+  /** The exact share, 0-100 to two places - the segment's width. */
+  width: number;
+  /** 1..CHART_TONES, in order, largest first. */
+  tone: number;
+};
+
+export type ExpenseBar = {
+  name: string;
+  amount: number;
+  /** Its share of the largest, 0-100 to two places: the largest fills the track. */
+  width: number;
+};
+
+const toCents = (amount: number | null | undefined) => (typeof amount === "number" && Number.isFinite(amount) ? Math.round(amount * 100) : 0);
+const twoPlaces = (n: number) => Math.round(n * 100) / 100;
+
+/** Whole percentages of the total that add up to exactly 100 (largest remainder), in integer cents. */
+function wholePercents(cents: number[]): number[] {
+  const total = cents.reduce((a, b) => a + b, 0);
+  const shares = cents.map((c) => Math.floor((c * 100) / total));
+  const remainders = cents.map((c) => (c * 100) % total);
+  const order = cents.map((_, i) => i).sort((a, b) => remainders[b] - remainders[a] || cents[b] - cents[a]);
+  const left = 100 - shares.reduce((a, b) => a + b, 0);
+  for (const i of order.slice(0, left)) shares[i] += 1;
+  return shares;
+}
+
+/**
+ * The stacked proportion bar of sales by method: EXACTLY the rows the "Sales by method" list shows
+ * (`salesRows` - the Sales stage's methods, Deliveroo left out - then Cash), so bar and list agree.
+ * A row with nothing sold is left out; the rest run largest first (equal amounts keep the list's
+ * order), each with its whole percentage and a tone. No sales: an empty list.
+ */
+export function salesMix(report: { sales: { methods: DailyReport["sales"]["methods"]; cash?: number | null } }): MixSegment[] {
+  const rows = [...salesRows(report), { key: "cash", label: "Cash", amount: report.sales.cash ?? 0 }];
+  const kept = rows.map((row) => ({ ...row, cents: toCents(row.amount) })).filter((row) => row.cents > 0);
+  if (!kept.length) return [];
+  kept.sort((a, b) => b.cents - a.cents);
+  const total = kept.reduce((sum, row) => sum + row.cents, 0);
+  const pcts = wholePercents(kept.map((row) => row.cents));
+  return kept.map((row, i) => ({
+    key: row.key,
+    label: row.label,
+    amount: row.cents / 100,
+    pct: pcts[i],
+    width: twoPlaces((row.cents * 100) / total),
+    tone: (i % CHART_TONES) + 1,
+  }));
+}
+
+/** What an expense without an account is grouped under. */
+export const NO_ACCOUNT = "No account";
+
+/**
+ * The bar rows of expenses by account: the API's lines summed per account name (the one display
+ * grouping this file makes - the note at the top), "No account" for a line without one; a zero
+ * total left out; largest first, then by name.
+ */
+export function expenseBars(report: { expenses: { lines: Pick<ExpenseLine, "account" | "amount">[] } }): ExpenseBar[] {
+  const sums = new Map<string, number>();
+  for (const line of report.expenses.lines) {
+    const name = line.account?.name?.trim() || NO_ACCOUNT;
+    sums.set(name, (sums.get(name) ?? 0) + toCents(line.amount));
+  }
+  const rows = [...sums].filter(([, cents]) => cents > 0).sort(([an, a], [bn, b]) => b - a || (an < bn ? -1 : an > bn ? 1 : 0));
+  if (!rows.length) return [];
+  const top = rows[0][1];
+  return rows.map(([name, cents]) => ({ name, amount: cents / 100, width: twoPlaces((cents * 100) / top) }));
+}
+
+/** The proportion bar as text (its `role="img"` label): "Sales by method: Cash HKD300.00, 71%; Visa HKD120.00, 29%". */
+export function salesMixSummary(segments: MixSegment[], code: string | null): string {
+  return `Sales by method: ${segments.map((s) => `${s.label} ${formatMoney(s.amount, code)}, ${s.pct}%`).join("; ")}`;
+}
+
+/** The bar rows as text (their `role="img"` label): "Expenses by account: Staff meals HKD40.00; Office supplies HKD35.00". */
+export function expenseBarsSummary(bars: ExpenseBar[], code: string | null): string {
+  return `Expenses by account: ${bars.map((b) => `${b.name} ${formatMoney(b.amount, code)}`).join("; ")}`;
 }
 
 /**

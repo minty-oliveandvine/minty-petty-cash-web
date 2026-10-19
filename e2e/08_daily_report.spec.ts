@@ -195,13 +195,17 @@ async function open(page: Page, title: string) {
 const value = (page: Page, term: string, scope = page.locator("main")) =>
   scope.locator("div, dl").filter({ has: page.locator("dt", { hasText: new RegExp(`^${term.replace(/[().]/g, "\\$&")}$`) }) }).last().locator("dd").first();
 
+/** "Where the money came from and went", the charts' section. */
+const moneyFlow = (page: Page) =>
+  page.locator("main section").filter({ has: page.getByRole("heading", { level: 2, name: "Where the money came from and went" }) });
+
 const more = (page: Page) => page.getByRole("button", { name: "More report actions" });
 async function choose(page: Page, item: string) {
   await more(page).click();
   await page.getByRole("menu", { name: "More report actions" }).getByRole("menuitem", { name: item }).click();
 }
 
-test("the view: header and pill, three KPIs, the difference as a fact, the breakdowns, the closing balance and the audit facts", async ({ page }) => {
+test("the view: header and pill, the outcome band, the difference as a fact, the charts, the breakdowns, the closing balance and the audit facts", async ({ page }) => {
   await openWith(page, reportAnswer());
   const pill = page.locator("main [data-tone]").filter({ hasText: "Submitted" }).first();
   await expect(pill).toHaveAttribute("data-tone", "info");
@@ -209,20 +213,40 @@ test("the view: header and pill, three KPIs, the difference as a fact, the break
   // the way back is the report history, its parent list (as Flask's page)
   await expect(page.locator("main").getByRole("link", { name: "Reports" })).toHaveAttribute("href", `${BASE}/reports`);
 
-  // exactly three KPIs, the server's figures
+  // the outcome band: the module chip, Cash position the one hero amount, sales and expenses secondary - the server's figures
   const kpis = page.locator("main dl").filter({ has: page.locator("dt", { hasText: "Cash position" }) });
-  await expect(kpis.locator("dt")).toHaveText(["Total sales", "Total expenses", "Cash position"]);
+  await expect(kpis.locator("dt")).toHaveText(["Cash position", "Total sales", "Total expenses"]);
+  await expect(value(page, "Cash position", kpis)).toHaveText("HKD760.00");
+  await expect(value(page, "Cash position", kpis)).toHaveClass(/text-display-xl/);
+  await expect(page.locator("main .text-display-xl")).toHaveCount(1);
   await expect(value(page, "Total sales", kpis)).toHaveText("HKD1,070.50");
   await expect(value(page, "Total expenses", kpis)).toHaveText("HKD240.50");
   await expect(kpis.getByText("2 expenses", { exact: true })).toBeVisible();
-  await expect(value(page, "Cash position", kpis)).toHaveText("HKD760.00");
+  await expect(page.locator("main").getByText("Petty Cash", { exact: true })).toBeVisible();
 
+  // the difference stays directly under the band
   const fact = page.getByRole("status").filter({ hasText: "Cash was HKD20.00 short" });
   await expect(fact).toHaveAttribute("data-tone", "warning");
   await expect(fact).toContainText("Note: Change given twice");
 
-  // the breakdowns start collapsed
-  await expect(page.getByText("Octopus")).toBeHidden();
+  // where the money came from and went: the list's methods (Deliveroo left out) and Cash, largest first; expenses per account
+  const flow = moneyFlow(page);
+  await expect(flow.getByRole("img", { name: "Sales by method: Cash HKD820.50, 76%; Octopus HKD200.00, 19%; Foodpanda HKD50.00, 5%" })).toBeVisible();
+  await expect(flow.getByRole("listitem")).toHaveText(["CashHKD820.50· 76%", "OctopusHKD200.00· 19%", "FoodpandaHKD50.00· 5%"]);
+  await expect(flow.getByRole("img", { name: "Expenses by account: General Expenses HKD120.50; No account HKD120.00" })).toBeVisible();
+  // band, difference, charts, then the breakdowns
+  const order = await page.evaluate(() => {
+    const all = Array.from(document.querySelectorAll("main *"));
+    const at = (el: Element | null | undefined) => (el ? all.indexOf(el) : -1);
+    const alert = Array.from(document.querySelectorAll("main [role=status]")).find((el) => el.textContent?.includes("Cash was"));
+    const title = Array.from(document.querySelectorAll("main h2")).find((el) => el.textContent === "Where the money came from and went");
+    return [at(document.querySelector("main dl")), at(alert), at(title), at(document.querySelector("main details"))];
+  });
+  expect(order.every((i) => i >= 0)).toBe(true);
+  expect(order).toEqual([...order].sort((a, b) => a - b));
+
+  // the breakdowns start collapsed (the chart's legend above names Octopus on purpose)
+  await expect(page.locator("main details").getByText("Octopus")).toBeHidden();
   const sales = await open(page, "Sales by method");
   await expect(value(page, "Octopus", sales)).toHaveText("HKD200.00");
   await expect(value(page, "Foodpanda", sales)).toHaveText("HKD50.00");
@@ -504,6 +528,59 @@ test("a reopened report says it isn't submitted yet, with the way back to Close 
   await expect(more(page)).toHaveCount(0);
 });
 
+test("the band at 360 px: one column, the hero alone, the figures stacked, no spot art, nothing sideways", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  await openWith(page, reportAnswer());
+  const kpis = page.locator("main dl").filter({ has: page.locator("dt", { hasText: "Cash position" }) });
+  const hero = await value(page, "Cash position", kpis).boundingBox();
+  const sales = await value(page, "Total sales", kpis).boundingBox();
+  const expenses = await value(page, "Total expenses", kpis).boundingBox();
+  // stacked: each figure starts under the one before, at the same left edge
+  expect(sales!.y).toBeGreaterThan(hero!.y + hero!.height - 1);
+  expect(expenses!.y).toBeGreaterThan(sales!.y + sales!.height - 1);
+  expect(Math.round(sales!.x)).toBe(Math.round(expenses!.x));
+  await expect(page.locator('main img[src*="safebox"]')).toBeHidden();
+  await expect(moneyFlow(page).getByRole("img", { name: /^Sales by method:/ })).toBeVisible();
+  await expectNoHorizontalScroll(page);
+});
+
+test("the band from 1024 px: hero, figures and the spot art in one row", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openWith(page, reportAnswer());
+  const kpis = page.locator("main dl").filter({ has: page.locator("dt", { hasText: "Cash position" }) });
+  const hero = await value(page, "Cash position", kpis).boundingBox();
+  const sales = await value(page, "Total sales", kpis).boundingBox();
+  const art = page.locator('main img[src*="safebox"]');
+  await expect(art).toBeVisible();
+  await expect(art).toHaveAttribute("alt", "");
+  const artBox = await art.boundingBox();
+  // the figures sit to the right of the hero, the art to the right of both
+  expect(sales!.x).toBeGreaterThan(hero!.x + 100);
+  expect(artBox!.x).toBeGreaterThan(sales!.x);
+});
+
+test("a day with no sales or expenses says so in the charts; a single method fills the bar", async ({ page }) => {
+  await openWith(
+    page,
+    reportAnswer({
+      kpis: { total_sales: 0, total_expenses: 0, cash_position: 760 },
+      sales: { methods: [{ sale_id: "s1", name: "Octopus", value_name: "octopus_sales", type: "electronic", amount: 0 }], cash: 0, total: 0 },
+      expenses: { lines: [], total: 0 },
+    }),
+  );
+  await expect(moneyFlow(page).getByText("No sales this day.")).toBeVisible();
+  await expect(moneyFlow(page).getByText("No expenses this day.")).toBeVisible();
+  await expect(moneyFlow(page).getByRole("img")).toHaveCount(0);
+});
+
+test("a single sales method fills the whole bar", async ({ page }) => {
+  await openWith(page, reportAnswer({ sales: { methods: [], cash: 820.5, total: 820.5 } }));
+  const bar = moneyFlow(page).getByRole("img", { name: "Sales by method: Cash HKD820.50, 100%" });
+  await expect(bar.locator("[data-chart-tone]")).toHaveCount(1);
+  const [track, seg] = await Promise.all([bar.boundingBox(), bar.locator("[data-chart-tone]").boundingBox()]);
+  expect(Math.round(seg!.width)).toBe(Math.round(track!.width));
+});
+
 test("a report the API doesn't know says so, with the way home", async ({ page }) => {
   await stub(page, reportAnswer());
   await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/reports\/not-a-report$/, (route) => route.fulfill({ status: 404, json: { error: "Hmm, I couldn't find that report." } }));
@@ -539,7 +616,7 @@ test("the largest amounts are never clipped, and the page never scrolls sideways
   // the icon font: until it loads, a glyph is its ligature's text ("more_horiz"), wider than its button
   await page.evaluate(() => document.fonts.ready);
   const clipped = await page.evaluate(() =>
-    Array.from(document.querySelectorAll("main dd, main dt, main h1, main summary, main a, main button"))
+    Array.from(document.querySelectorAll("main dd, main dt, main h1, main h2, main h3, main summary, main a, main button, main li, main [role=img] span"))
       .filter((el) => el.scrollWidth > el.clientWidth + 1)
       .map((el) => el.textContent),
   );

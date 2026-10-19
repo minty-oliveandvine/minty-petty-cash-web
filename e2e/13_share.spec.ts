@@ -146,10 +146,13 @@ test("the shared report: read-only, with no actions or navigation, and no Author
   await expect(page.getByRole("navigation")).toHaveCount(0);
   await expect(page.locator("header").getByRole("img", { name: "Minty" })).toBeVisible();
 
-  // the figures, as on the signed-in Daily Report
+  // the figures, as on the signed-in Daily Report: the outcome band, Cash position its hero
   const kpis = page.locator("main dl").filter({ has: page.locator("dt", { hasText: "Cash position" }) });
-  await expect(kpis.locator("dt")).toHaveText(["Total sales", "Total expenses", "Cash position"]);
+  await expect(kpis.locator("dt")).toHaveText(["Cash position", "Total sales", "Total expenses"]);
+  await expect(value(page, "Cash position", kpis)).toHaveClass(/text-display-xl/);
   await expect(value(page, "Total sales", kpis)).toHaveText("HKD1,070.50");
+  // no charts here: the public read's expense lines carry no account
+  await expect(page.getByRole("heading", { name: "Where the money came from and went" })).toHaveCount(0);
   await expect(kpis.getByText("2 expenses", { exact: true })).toBeVisible();
   const fact = page.getByRole("status").filter({ hasText: "Cash was HKD20.00 short" });
   await expect(fact).toHaveAttribute("data-tone", "warning");

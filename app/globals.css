@@ -36,3 +36,18 @@ body {
   font-family: var(--font-sans);
   font-optical-sizing: auto;
 }
+
+/* The Daily Report's chart tones ("Where the money came from and went", ReportParts.tsx
+   `MoneyFlow`; tone numbers from lib/report.ts `salesMix`). Part 13 §13.4: charts are brand +
+   neutral only, never red/green meaning, and no semantic role names a chart series - so these are
+   the chart's own aliases of the ramps, as Flask's `.pc-flow [data-tone]` (static/css/pc_ui.css).
+   Ordered light/dark so neighbouring segments always differ. A class rule, not a `--color-*`
+   token: this file declares no tokens of its own (app/__tests__/packagedStyles.test.ts). */
+@layer components {
+  [data-chart-tone="1"] { background-color: var(--minty-brand-400); }
+  [data-chart-tone="2"] { background-color: var(--minty-brand-800); }
+  [data-chart-tone="3"] { background-color: var(--minty-brand-200); }
+  [data-chart-tone="4"] { background-color: var(--minty-brand-600); }
+  [data-chart-tone="5"] { background-color: var(--minty-neutral-400); }
+  [data-chart-tone="6"] { background-color: var(--minty-brand-950); }
+}

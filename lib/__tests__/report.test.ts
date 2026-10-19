@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { salesRows } from "@/lib/close";
 import type { ExpenseLine } from "@/lib/expenses";
 import {
   auditFacts,
@@ -8,6 +9,8 @@ import {
   deleteWarning,
   differenceAlert,
   editWarning,
+  expenseBars,
+  expenseBarsSummary,
   expenseMeta,
   expenseTitle,
   isDraft,
@@ -16,6 +19,8 @@ import {
   reportKpis,
   reportPill,
   reportReceipts,
+  salesMix,
+  salesMixSummary,
   xeroFact,
   type DailyReport,
 } from "@/lib/report";
@@ -186,5 +191,123 @@ describe("the report's address", () => {
     expect(reportIdFromSegment("5d6e7f80-0000-4000-8000-000000000001")).toBe("5d6e7f80-0000-4000-8000-000000000001");
     expect(reportIdFromSegment("a%2Fb")).toBe("a/b");
     expect(reportIdFromSegment("%E0%A4%A")).toBe("%E0%A4%A");
+  });
+});
+
+type Method = DailyReport["sales"]["methods"][number];
+const method = (value_name: string, name: string, amount: number, type: Method["type"] = "electronic"): Method => ({
+  sale_id: value_name,
+  name,
+  value_name,
+  type,
+  amount,
+});
+
+describe("where the money came from: the sales mix", () => {
+  it("runs largest first, each with a whole percentage, the set adding up to 100", () => {
+    const mix = salesMix(
+      report({ sales: { methods: [method("visa_sales", "Visa", 120), method("octopus_sales", "Octopus", 30)], cash: 300, total: 450 } }),
+    );
+    expect(mix.map((s) => s.label)).toEqual(["Cash", "Visa", "Octopus"]);
+    expect(mix.map((s) => s.amount)).toEqual([300, 120, 30]);
+    expect(mix.map((s) => s.pct)).toEqual([67, 27, 6]);
+    expect(mix.map((s) => s.width)).toEqual([66.67, 26.67, 6.67]);
+    expect(mix.map((s) => s.tone)).toEqual([1, 2, 3]);
+  });
+
+  it("makes the whole percentages add up to exactly 100 (largest remainder)", () => {
+    const thirds = salesMix(report({ sales: { methods: [method("a", "A", 1), method("b", "B", 1)], cash: 1, total: 3 } }));
+    expect(thirds.map((s) => s.pct)).toEqual([34, 33, 33]);
+    // Equal amounts keep the list's order: the methods in Settings order, then Cash.
+    expect(thirds.map((s) => s.label)).toEqual(["A", "B", "Cash"]);
+    const odd = salesMix(report({ sales: { methods: [method("a", "A", 0.01), method("b", "B", 999.99)], cash: 0.5, total: 1000.5 } }));
+    expect(odd.reduce((sum, s) => sum + s.pct, 0)).toBe(100);
+  });
+
+  it("leaves out a method with nothing sold", () => {
+    const mix = salesMix(report({ sales: { methods: [method("visa_sales", "Visa", 0), method("amex_sales", "Amex", 0.001), method("octopus_sales", "Octopus", 50)], cash: 0, total: 50 } }));
+    expect(mix).toEqual([{ key: "octopus_sales", label: "Octopus", amount: 50, pct: 100, width: 100, tone: 1 }]);
+  });
+
+  it("draws a single method as one full bar", () => {
+    expect(salesMix(report({ sales: { methods: [], cash: 820.5, total: 820.5 } }))).toEqual([{ key: "cash", label: "Cash", amount: 820.5, pct: 100, width: 100, tone: 1 }]);
+  });
+
+  it("is empty with no sales", () => {
+    expect(salesMix(report({ sales: { methods: [method("visa_sales", "Visa", 0)], cash: 0, total: 0 } }))).toEqual([]);
+  });
+
+  it("is exactly what the Sales by method list shows - Deliveroo left out, as there - then Cash", () => {
+    const methods = [
+      method("visa_sales", "Visa", 100),
+      method("foodpanda_sales", "Foodpanda", 40, "delivery"),
+      method("deliveroo_sales", "Deliveroo", 500, "delivery"),
+    ];
+    const r = report({ sales: { methods, cash: 60, total: 700 } });
+    const listed = [...salesRows(r).map((row) => row.label), "Cash"];
+    const mix = salesMix(r);
+    expect(mix.map((s) => s.label).sort()).toEqual([...listed].sort());
+    expect(mix.map((s) => s.label)).not.toContain("Deliveroo");
+    expect(mix.reduce((sum, s) => sum + s.amount, 0)).toBe(200);
+  });
+
+  it("cycles six tones so neighbours never share one", () => {
+    const methods = Array.from({ length: 7 }, (_, i) => method(`m${i}`, `M${i}`, 70 - i));
+    expect(salesMix(report({ sales: { methods, cash: 0, total: 0 } })).map((s) => s.tone)).toEqual([1, 2, 3, 4, 5, 6, 1]);
+  });
+
+  it("reads as text for its role=img label", () => {
+    const mix = salesMix(report({ sales: { methods: [method("visa_sales", "Visa", 120)], cash: 300, total: 420 } }));
+    expect(salesMixSummary(mix, "HKD")).toBe("Sales by method: Cash HKD300.00, 71%; Visa HKD120.00, 29%");
+  });
+});
+
+describe("where the money went: the expenses by account", () => {
+  const account = (name: string) => ({ id: name, code: "400", name });
+
+  it("sums the API's lines per account, largest first, the largest filling the track", () => {
+    const bars = expenseBars(
+      report({
+        expenses: {
+          lines: [
+            line({ id: "1", account: account("Office supplies"), amount: 35 }),
+            line({ id: "2", account: account("Staff meals"), amount: 25 }),
+            line({ id: "3", account: account("Staff meals"), amount: 15 }),
+          ],
+          total: 75,
+        },
+      }),
+    );
+    expect(bars).toEqual([
+      { name: "Staff meals", amount: 40, width: 100 },
+      { name: "Office supplies", amount: 35, width: 87.5 },
+    ]);
+  });
+
+  it("groups a line with no account under \"No account\"", () => {
+    expect(expenseBars(report())).toEqual([
+      { name: "General Expenses", amount: 120.5, width: 100 },
+      { name: "No account", amount: 120, width: 99.59 },
+    ]);
+  });
+
+  it("orders equal totals by name and leaves a zero total out", () => {
+    const bars = expenseBars(
+      report({
+        expenses: {
+          lines: [line({ id: "1", account: account("Travel"), amount: 10 }), line({ id: "2", account: account("Cleaning"), amount: 10 }), line({ id: "3", account: account("Postage"), amount: 0 })],
+          total: 20,
+        },
+      }),
+    );
+    expect(bars.map((b) => b.name)).toEqual(["Cleaning", "Travel"]);
+  });
+
+  it("is empty with no expenses", () => {
+    expect(expenseBars(report({ expenses: { lines: [], total: 0 } }))).toEqual([]);
+  });
+
+  it("reads as text for its role=img label", () => {
+    expect(expenseBarsSummary(expenseBars(report()), "HKD")).toBe("Expenses by account: General Expenses HKD120.50; No account HKD120.00");
   });
 });

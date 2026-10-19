@@ -54,6 +54,31 @@ describe("without a token", () => {
     expect(proxy(request("/landing?token=x")).headers.get("x-middleware-next")).toBe("1");
   });
 
+  it("lets a public share link through - the report someone was sent, read with no token", () => {
+    const res = proxy(request(`/share/OV/13_Oct_2026/${"a".repeat(32)}`));
+    expect(res.headers.get("x-middleware-next")).toBe("1");
+    expect(res.headers.get("location")).toBeNull();
+    // the secret is in the address: never passed on, never indexed, never cached
+    expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(res.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  // Exactly `/share/...` is public: everything else still needs the token.
+  it.each([
+    "/share",
+    "/sharex/OV/13_Oct_2026/x",
+    "/shared/OV",
+    "/landing/share/x",
+    `${HOME}/share/OV/13_Oct_2026/x`,
+    `${HOME}/reports/r1/summary`,
+    "/share/../entity/360812e1/olive-and-vine/petty-cash",
+    "/share/%2e%2e/entity/360812e1/olive-and-vine/petty-cash",
+    "/",
+  ])("still sends %s to the hand-off", (path) => {
+    handoff(proxy(request(path)));
+  });
+
   it("starts the trip on a page of its own on a preview-set host", async () => {
     const res = proxy(request(HOME, {}, "pr-development-petty-cash.dailyminty.com"));
     expect(res.status).toBe(200);

@@ -168,6 +168,30 @@ export async function pettyCashDownload(path: string, init: ApiRequest = {}): Pr
   return { blob: await res.blob(), filename: filenameFromDisposition(res.headers.get("Content-Disposition")) };
 }
 
+/** The only paths `pettyCashPublicFetch` may call. */
+const PUBLIC_SURFACE = "/api/petty-cash/v1/public/";
+
+/**
+ * Petty Cash's PUBLIC surface (`/api/petty-cash/v1/public/...`): a shared report, read by someone
+ * outside the company. It is never `send`: no bearer even when the person happens to be signed in
+ * (the token must not travel with a link meant for anyone), no cookies, no referrer (the page's
+ * address carries the link's secret), nothing cached, and a 401 is just a refusal - no hand-off.
+ * Rejects with an `ApiError` carrying the status; its message is the house sentence, never the
+ * answer's text, so nothing from the request can reach the screen through it.
+ */
+export async function pettyCashPublicFetch<T = unknown>(path: string): Promise<T> {
+  if (!path.startsWith(PUBLIC_SURFACE)) throw new Error("pettyCashPublicFetch calls only the public surface");
+  const res = await fetch(`${env.PETTY_CASH_API_URL}${path}`, {
+    headers: new Headers({ Accept: "application/json" }),
+    credentials: "omit",
+    referrerPolicy: "no-referrer",
+    cache: "no-store",
+  });
+  const body = await readBody(res);
+  if (!res.ok) throw new ApiError(res.status, HOUSE_FALLBACK, body);
+  return body as T;
+}
+
 /** Flask's hub surface (`/api/me/profile`); a company travels as `?entity=`. */
 export function mintyFetch<T = unknown>(path: string, init: ApiRequest = {}): Promise<T> {
   return requestJson<T>(env.ACCOUNTS_API_URL, path, init);

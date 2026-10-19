@@ -6,6 +6,7 @@ import { previewSetSlug } from "@/lib/previewSibling";
 import { AUTH_COOKIE_NAME, ENTITY_ID_COOKIE_NAME, ENTITY_NAME_COOKIE_NAME, decodeJwtPayload } from "@/lib/auth";
 import { companyRefFromPath, pettyCashHome } from "@/lib/companyPages";
 import { handoffUrl } from "@/lib/handoff";
+import { isSharePage } from "@/lib/share";
 
 // proxy.ts is Next 16's name for middleware (minty-web's file, the same convention).
 
@@ -28,8 +29,20 @@ export const RENEW_WITHIN_SECONDS = 5 * 60;
  * - A token about to lapse -> renewed now, on a navigation, never mid-form.
  * - `/` with a token -> the company's Petty Cash.
  */
+const SHARE_HEADERS = { "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow", "Cache-Control": "no-store" };
+
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  // A shared Daily Report, `/share/<initials>/<date>/<secret>` (app/share/[...path]): read-only, for
+  // someone outside the company, so it carries no token. Exactly this prefix is open - the secret
+  // is checked by the API, and the page sends no bearer at all. The secret is in the address, so
+  // the answer is never passed on as a referrer, indexed or cached (as minty-petty-cash-web's
+  // Part 15 track does).
+  if (isSharePage(pathname)) {
+    const res = NextResponse.next();
+    for (const [name, value] of Object.entries(SHARE_HEADERS)) res.headers.set(name, value);
+    return res;
+  }
   if (OPEN_PATHS.has(pathname)) return NextResponse.next();
 
   const origin = request.nextUrl.origin;

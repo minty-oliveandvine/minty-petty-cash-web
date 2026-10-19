@@ -16,7 +16,11 @@ const API = "**/api/petty-cash/v1/companies/*";
 const REPORT = "8a1d3c55-0f8e-4f4e-9d55-2c4b7d1e0a77";
 const SUMMARY = `${BASE}/reports/${REPORT}/summary`;
 const SUBMITTED = `${BASE}/reports/${REPORT}/submitted`;
-const SHARE_URL = "http://localhost:5010/report/share/abc123";
+/** POST /reports/<id>/share-link: `path` is what the link is built from; `url` (Flask's old page) is not used. */
+const SHARE_PATH = "EPCS/13_Oct_2026/Ab3_-xYz0123456789abcdefghijklmn";
+const SHARE_ANSWER = { url: `http://localhost:5001/Minty_Report/${SHARE_PATH}/`, path: SHARE_PATH, expires_at: "2026-11-12T12:00:00+00:00" };
+/** The link the modal shows: this app's own public page, on the page's origin. */
+const shareLink = (page: Page) => `${new URL(page.url()).origin}/share/${SHARE_PATH}`;
 
 type Json = Record<string, unknown>;
 
@@ -154,7 +158,7 @@ async function stub(page: Page, h: Handlers = {}) {
   await page.route(`${API}/reports/${REPORT}/share-link`, async (route) => {
     sent.share += 1;
     if (h.onShare) await h.onShare(route);
-    else await route.fulfill({ json: { url: SHARE_URL } });
+    else await route.fulfill({ json: SHARE_ANSWER });
   });
   await page.route(new RegExp(`/reports/${REPORT}/(difference-reason|withdrawal|expense-lines/[^/]+)$`), async (route) => {
     const req = route.request();
@@ -246,15 +250,15 @@ test("Submitted: Share makes the link, Copy copies it; a refusal says the API's 
   let refuse = false;
   const sent = await openSubmitted(page, {
     onShare: (route) =>
-      refuse ? route.fulfill({ status: 409, json: { error: "A draft can't be shared. Submit the day first." } }) : route.fulfill({ json: { url: SHARE_URL } }),
+      refuse ? route.fulfill({ status: 409, json: { error: "A draft can't be shared. Submit the day first." } }) : route.fulfill({ json: SHARE_ANSWER }),
   });
   await page.getByRole("button", { name: "Share" }).click();
   const dialog = page.getByRole("dialog", { name: "Share Report" });
   await expect(dialog.getByText("Share this link to allow others to view this report. The link will expire in 30 days.")).toBeVisible();
-  await expect(dialog.getByRole("textbox", { name: "Share link" })).toHaveValue(SHARE_URL);
+  await expect(dialog.getByRole("textbox", { name: "Share link" })).toHaveValue(shareLink(page));
   await dialog.getByRole("button", { name: "Copy" }).click();
   await expect(dialog.getByText("Link copied to clipboard!")).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(SHARE_URL);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(shareLink(page));
   await expectNoHorizontalScroll(page);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
@@ -437,10 +441,17 @@ test("View: Share opens Flask's Share Report with the link", async ({ page }) =>
   const sent = await openView(page);
   await page.getByRole("button", { name: "Share" }).click();
   const dialog = page.getByRole("dialog", { name: "Share Report" });
-  await expect(dialog.getByRole("textbox", { name: "Share link" })).toHaveValue(SHARE_URL);
+  await expect(dialog.getByRole("textbox", { name: "Share link" })).toHaveValue(shareLink(page));
   await dialog.getByRole("button", { name: "Close", exact: true }).last().click();
   await expect(dialog).toBeHidden();
   expect(sent.share).toBe(1);
+});
+
+test("Share: an answer without a usable path shows no link - the house sentence, the modal closed", async ({ page }) => {
+  await openView(page, { onShare: (route) => route.fulfill({ json: { url: SHARE_ANSWER.url, expires_at: SHARE_ANSWER.expires_at } }) });
+  await page.getByRole("button", { name: "Share" }).click();
+  await expect(toast(page, "Something went wrong on our side. Please try again.")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Share Report" })).toBeHidden();
 });
 
 test("View: a report that isn't there says so", async ({ page }) => {

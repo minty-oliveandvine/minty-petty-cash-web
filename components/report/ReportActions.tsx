@@ -5,8 +5,9 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { useToast } from "@/components/flask/Toasts";
 import { Modal } from "@/components/report/ReportChrome";
-import { ApiError, pettyCashFetch } from "@/lib/apiClient";
+import { ApiError, HOUSE_FALLBACK, pettyCashFetch } from "@/lib/apiClient";
 import { DELETE_IN_XERO, DELETE_WARNING, EDIT_PUBLISHED_CONFIRM } from "@/lib/report";
+import { shareUrl } from "@/lib/share";
 import { stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
@@ -81,6 +82,10 @@ export function useEditReport(entityId: string, entityName: string, actingRef: R
  * Flask's share: the modal opens at once saying "Generating link...", then `POST
  * /reports/<id>/share-link` fills in the link. A refusal closes it and says the API's sentence.
  * `link` is null while closed, `{url: null}` while the link is being made.
+ *
+ * The link is this app's own public page, `<origin>/share/<path>` (app/share, lib/share.ts), built
+ * from the answer's `path`; its `url` is Flask's old page and is not used. An answer without a
+ * usable path closes the modal with the house sentence rather than show a link that cannot work.
  */
 export function useShareLink(reportId: string) {
   const toast = useToast();
@@ -92,8 +97,15 @@ export function useShareLink(reportId: string) {
     const mine = ++ticket.current;
     setLink({ url: null });
     try {
-      const answer = await pettyCashFetch<{ url: string }>(`/reports/${encodeURIComponent(reportId)}/share-link`, { method: "POST" });
-      if (ticket.current === mine) setLink({ url: answer.url });
+      const answer = await pettyCashFetch<{ path?: unknown }>(`/reports/${encodeURIComponent(reportId)}/share-link`, { method: "POST" });
+      if (ticket.current !== mine) return;
+      const url = shareUrl(window.location.origin, answer?.path);
+      if (url) {
+        setLink({ url });
+      } else {
+        setLink(null);
+        toast(HOUSE_FALLBACK, "error");
+      }
     } catch (err) {
       if (ticket.current !== mine || (err instanceof ApiError && err.status === 401)) return;
       setLink(null);

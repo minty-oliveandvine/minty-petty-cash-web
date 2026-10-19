@@ -25,6 +25,7 @@ Flask is the only thing that mints tokens. This app has no login and no refresh,
    - **No cookie:** back through the hand-off, naming the company from the address. Flask accepts a uuid or `<shortid>/<name>`.
    - **A cookie for another company than the address names:** the same. The token is for one company.
    - **Under 5 minutes left:** renewed on the way to the next page, never in the middle of a form.
+   - **Open without a token:** `/landing`, and exactly `/share/...` (the public share page, below). `__tests__/proxy.test.ts` checks that nothing else became public: `/share` alone, `/sharex/...`, a company page with `/share/` inside it and a `/share/../` climb all still go to the hand-off.
 5. **A 401 from any API call:** back through the hand-off, once (`lib/handoff.ts`).
 
 ## Backends (`lib/env.ts`, `lib/apiClient.ts`)
@@ -42,6 +43,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 - **The Petty Cash API is in Flask for now.** It lives at `/api/petty-cash/v1/companies/<id>/...`, Minty's `blueprints/petty_cash_api` (Minty `docs/features/petty-cash-api.md`). The owner's target is a Django `minty-petty-cash-api` serving **the same paths**, so only `PETTY_CASH_API_URL` changes when it moves.
 - **The company is only in the path.** Flask checks it against membership on every call, and the door fails closed.
 - **One header pair.** Every call sends `Authorization` and nothing else (Flask's CORS allows `Authorization` and `Content-Type`).
+- **The one call without a bearer:** `pettyCashPublicFetch`, the share page's read of `/api/petty-cash/v1/public/...` (and only there). It sends no `Authorization` even when the person is signed in, no cookies (`credentials: "omit"`), no referrer and nothing cached, and a 401 is a plain refusal, never a hand-off.
 - **Errors.** A refusal is `{"error": "<sentence>"}`, and the screen shows the sentence as it stands. A fetch that never got an answer says "We couldn't reach Petty Cash. Check your connection, then reload the page." It is never the browser's error text.
 
 ## The sidebar
@@ -70,7 +72,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Command | What |
 |---|---|
-| `npm test` | Vitest. Covers the proxy, auth, the hand-offs, the API client (a download and its `Content-Disposition` name included), company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`, Edit Details' among them: the reason's and a description's live checks, a receipt's check before it is sent, and what a line's edit sends - only what changed, never an empty supplier or account), publishing to Xero (`lib/publish.ts`: the start, a read every two seconds until the status leaves `publishing`, the 90-read cap, nothing asked after a cancel, how a status ends it - published, partial with its open reasons, failed - a refused start's sentence and `reconnect`, the bar), report history's (`lib/history.ts`: the filters in the address, Flask's pager, the CSV export's query and file name, a row's badge, time and figures, the range calendar's picks), settings' (`lib/settings.ts`: the address, the other tabs' hand-offs, the pickers' filter, what the country Save sends, the catalogue, a method name's live checks, a shared method's rename sentence, Move up / down, view-only), the Xero cards' (`lib/xeroSettings.ts`: Flask's groups and order, an account's "Name - Code", the pickers' filters, the other bank never offered, a contact offered as new, an empty field said only after a refused save and the two banks being one said at once, the fields an API sentence names, the eight keys sent, a new contact in every contact list; the codes' label, search, Select all's three states, at least one ticked, what changed and what is sent), the flash and the next-day hand-over, and the four guards (styles, assets, raw colours, no Flask pages). |
+| `npm test` | Vitest. Covers the proxy, auth, the hand-offs, the API client (a download and its `Content-Disposition` name included), company addresses (a report's own pages included), the sidebar host, the dashboard's and the wizard steps' rules, the submitted report's (`lib/report.ts`, Edit Details' among them: the reason's and a description's live checks, a receipt's check before it is sent, and what a line's edit sends - only what changed, never an empty supplier or account), publishing to Xero (`lib/publish.ts`: the start, a read every two seconds until the status leaves `publishing`, the 90-read cap, nothing asked after a cancel, how a status ends it - published, partial with its open reasons, failed - a refused start's sentence and `reconnect`, the bar), report history's (`lib/history.ts`: the filters in the address, Flask's pager, the CSV export's query and file name, a row's badge, time and figures, the range calendar's picks), settings' (`lib/settings.ts`: the address, the other tabs' hand-offs, the pickers' filter, what the country Save sends, the catalogue, a method name's live checks, a shared method's rename sentence, Move up / down, view-only), the Xero cards' (`lib/xeroSettings.ts`: Flask's groups and order, an account's "Name - Code", the pickers' filters, the other bank never offered, a contact offered as new, an empty field said only after a refused save and the two banks being one said at once, the fields an API sentence names, the eight keys sent, a new contact in every contact list; the codes' label, search, Select all's three states, at least one ticked, what changed and what is sent), the share link and the public share page (`lib/share.ts`: `<origin>/share/<path>` from the API's path, the path's three parts and its 32-character secret, the catch-all unescaped once, Flask's two refusal sentences by status, the public read trimmed to what the page draws, the badge; `pettyCashPublicFetch` sending no bearer, cookie or referrer and never handing off), the flash and the next-day hand-over, and the four guards (styles, assets, raw colours, no Flask pages). |
 | `npm run test:e2e` | Playwright on a 1440 px desktop and a 360 px phone, against local Flask (`e2e/README.md`). |
 
 `npm run lint` and `npm run typecheck` complete the gate. CI runs everything but e2e (`.github/workflows/ci.yml`, the shared `next-web.yml@v1`).
@@ -279,6 +281,7 @@ What it keeps from Flask:
 - **The phone card with no header**, its content centred: the teal tick, **"Report Submitted / Successfully!"** ("Report Published to Xero / Successfully!" once the report is in Xero) and "Your daily petty cash report has been processed".
 - **"Export Options"** with **Share**. Flask's Save as Image and Detailed PDF were commented out, so they are not here either.
 - **"Share Report":** the modal opens saying "Generating link...", then `POST /reports/<id>/share-link` fills in the link. Copy, "Link copied to clipboard!" for three seconds, and Close, Escape or a click outside to close.
+- **The link is this app's own page:** `<origin>/share/<path>`, built from the answer's `path` (`<initials>/<date>/<secret>`, `shareUrl` in `lib/share.ts`) on the page's own origin, so a branch preview set shares its own page. The answer's `url` (Flask's old `/Minty_Report/...` page) is not used. An answer without a usable path shows no link: the modal closes with "Something went wrong on our side. Please try again."
 - **Publish to Xero** ("Republish to Xero" once it is in Xero), only with `can_publish`. Publishing is described below ("Publish to Xero").
 - **Back to Dashboard** ("Redirecting to Dashboard...") and **Continue to next day report** ("Starting next day report..."). The second leaves `next_day` for the dashboard to start, as Flask's `autoStartNextDay` did.
 
@@ -319,6 +322,29 @@ Where the app differs:
   - The selects offer no empty choice: the API cannot clear a supplier or an account. A line's own supplier or account stays in its list even when it is no longer among the options.
   - There is no Xero warning before editing, as in Flask (its warning was on Edit Report only).
 - **Known, shared with every report page:** at 360px the header's centred group (date, initials, badge) runs about 6px under the person's initials with a four-letter company acronym and the longer Submitted / Published badge. Flask's header has the same geometry; `PhoneCard` needs a narrower centre to fix it.
+
+### The public share page: `/share/<initials>/<date>/<secret>`
+
+A shared Daily Report, read by someone outside the company. This is Flask's ORIGINAL `report/ending.html` as a share link drew it (its `is_shared_link` branches, Minty `1c25b35^1`), which Flask served at `/Minty_Report/<initials>/<date>/<secret>/`. Flask is a backend only now, so this app serves it. It is built from `app/share/[...path]/page.tsx` and `components/report/SharedReport.tsx`, with its rules in `lib/share.ts`, and reads `GET {PETTY_CASH_API_URL}/api/petty-cash/v1/public/share/<initials>/<date>/<secret>` with no bearer (`pettyCashPublicFetch`). The Share modal on the Submitted page and on a report's view hands out its address.
+
+What it keeps from Flask:
+- **The header with only its middle:** the date pill, the company and the badge (Published, Publish failed or Submitted, from the read's `status_tone` / `status_label`). Flask's empty boxes stand where the chevron and the person's buttons were. There is no stepper.
+- **The summary:** the submitted view's own cards (`ReportSummary`): Total Sales, Sales History, Total Expenses, Cash Balance and the shortage or surplus box with its reason. Show more works on each.
+- **Nothing to do:** no Share, Delete, Edit Report, Edit Details or Close, no receipt to view, no sidebar and no link of any kind. `components/ui/SidebarShell.tsx` leaves the sidebar out of the page, so even the closed drawer's links are not in it, and `PhoneCard`'s `publicView` reads nothing about the person.
+- **Flask's refusals, word for word:** a 404 (and a 400) says "This link doesn't work anymore. Could you ask for a fresh one?", and a 410 says "This link has expired. Could you ask for a fresh one?". Flask flashed them on the company list. Here, with no company list to land on, the sentence stands on the page.
+
+Where the app differs:
+- **The company's name, not its initials,** beside the day. The reader is outside the company, so initials would mean nothing to them. A long name is cut with "..." at a phone's width, and the full name is its tooltip. The tab reads Flask's "Report Summary - <company>".
+- **An address that is not a share path is refused without asking the API:** the old two-part form, a secret that is not Flask's 32 url-safe characters, an empty or dot part. It gets the 404 sentence.
+- **Only what arrives is drawn.** With no `history` the Sales History card is left out. With no `yesterday_total`, no lines or no difference, the cards show Flask's own "none" for each. An answer that is not a report (no day, no sales total, no cash count) gets the house sentence.
+- **Any other failure** says the house sentence, and no answer at all says "We couldn't reach Petty Cash. Check your connection, then reload the page."
+
+**The secret is in the address,** so:
+- the page carries `<meta name="robots" content="noindex, nofollow">` and `<meta name="referrer" content="no-referrer">`, and the read itself is sent with `referrerPolicy: "no-referrer"`;
+- a refusal is chosen by its status alone: neither the API's text nor the address ever reaches the screen, a toast or the console;
+- the page logs nothing and the app has no analytics.
+
+The dev server's own request log, and a host's access log, still record the path, as they record every address.
 
 ### Report history: `/entity/<shortid>/<name>/petty-cash/reports?start_date=&end_date=&page=`
 

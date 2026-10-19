@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HOUSE_FALLBACK, filenameFromDisposition, mintyFetch, pettyCashBlob, pettyCashDownload, pettyCashFetch } from "@/lib/apiClient";
+import { HOUSE_FALLBACK, filenameFromDisposition, mintyFetch, pettyCashBlob, pettyCashDownload, pettyCashFetch, pettyCashPublicFetch } from "@/lib/apiClient";
 import { setAuth } from "@/lib/auth";
 import { _resetHandoffForTests } from "@/lib/handoff";
 
@@ -83,6 +83,35 @@ describe("pettyCashFetch", () => {
     await expect(pettyCashFetch("")).rejects.toMatchObject({ status: 401 });
     expect(fetchMock).not.toHaveBeenCalled();
     expect(go).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("pettyCashPublicFetch - a shared report, read by anyone", () => {
+  const PATH = "/api/petty-cash/v1/public/share/OV/13_Oct_2026/s3cr3t";
+
+  it("sends no bearer even to a signed-in person, no cookies and no referrer", async () => {
+    setAuth("tok", ENTITY, "n");
+    fetchMock.mockResolvedValue(answer(200, { ok: 1 }));
+    await expect(pettyCashPublicFetch(PATH)).resolves.toEqual({ ok: 1 });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`http://localhost:8010${PATH}`);
+    expect((init.headers as Headers).has("Authorization")).toBe(false);
+    expect(init.credentials).toBe("omit");
+    expect(init.referrerPolicy).toBe("no-referrer");
+    expect(init.cache).toBe("no-store");
+  });
+
+  it("rejects with the status and never goes through Flask, even on a 401", async () => {
+    fetchMock.mockResolvedValueOnce(answer(410, { error: "expired" }));
+    await expect(pettyCashPublicFetch(PATH)).rejects.toMatchObject({ name: "ApiError", status: 410 });
+    fetchMock.mockResolvedValueOnce(answer(401, null));
+    await expect(pettyCashPublicFetch(PATH)).rejects.toMatchObject({ status: 401 });
+    expect(go).not.toHaveBeenCalled();
+  });
+
+  it("refuses a path outside the public surface", async () => {
+    await expect(pettyCashPublicFetch("/api/petty-cash/v1/companies/x/home")).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { ToastProvider } from "@/components/flask/Toasts";
-import { SidebarProvider } from "@/components/ui/Sidebar";
+import { SidebarShell } from "@/components/ui/SidebarShell";
 
 import "./globals.css";
 
@@ -23,13 +23,13 @@ export const viewport: Viewport = {
 };
 
 // The sidebar with no profile slot: My Profile is minty-web's page, reached through Flask
-// (components/ui/sidebarHost.ts `links.profile`).
+// (components/ui/sidebarHost.ts `links.profile`). None on the public share page (SidebarShell).
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
       <body className="m-0 min-w-0 overflow-x-clip antialiased">
         <ToastProvider>
-          <SidebarProvider>{children}</SidebarProvider>
+          <SidebarShell>{children}</SidebarShell>
         </ToastProvider>
       </body>
     </html>

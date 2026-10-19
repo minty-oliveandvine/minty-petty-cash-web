@@ -57,8 +57,8 @@ export function ReportSummary({
   sales: SummarySales;
   /** The day before's total sales (null: none, the green arrow alone). */
   yesterday: number | null;
-  /** The 30 days up to the day, the day last. */
-  history: ClosePage["sales"]["history"];
+  /** The 30 days up to the day, the day last; null leaves the card out (a shared report's read without it). */
+  history: ClosePage["sales"]["history"] | null;
   lines: Pick<CloseLine, "item" | "amount">[];
   cash: Pick<ClosePage["cash"], "counted" | "safe_box" | "difference">;
   /** A submitted report's Edit Details: the reason's editor, drawn in the box in place of the reason. */
@@ -72,7 +72,7 @@ export function ReportSummary({
       </div>
 
       <TotalSales sales={sales} yesterday={yesterday} />
-      <SalesHistory history={history} />
+      {history ? <SalesHistory history={history} /> : null}
       <TotalExpenses lines={lines} />
       <CashBalance till={cash.counted} safeBox={cash.safe_box} />
       <DifferenceBox difference={cash.difference} code={code} reasonEditor={reasonEditor} />

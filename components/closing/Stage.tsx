@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode, type Ref } from "react";
+import { useEffect, useId, useRef, useState, type MouseEvent, type ReactNode, type Ref } from "react";
 
 import { Button, Field, Icon, InlineAlert, inputClass, PageBanner, Skeleton, StatusPill, type StatusTone } from "@minty/shared/ui";
 
@@ -387,21 +387,32 @@ export function AmountInput({
 /**
  * Part 15.2 workflow continuation, not sticky: Save & Next first and full width on a phone with
  * Save & Exit under it; [Save & Exit] [Save & Next] at the right from 640. Save & Next is the
- * form's submit, so Enter in a field is Save & Next.
+ * form's submit, so Enter in a field is Save & Next. `gate`: why Save & Next waits - it is
+ * disabled and says so above it (Cash Count, Daily Closing Phase 1); Save & Exit never waits.
  */
-export function StageActions({ saving, onExit }: { saving: "next" | "exit" | null; onExit: () => void }) {
+export function StageActions({ saving, onExit, gate = null }: { saving: "next" | "exit" | null; onExit: () => void; gate?: string | null }) {
+  const gateId = useId();
   return (
-    <div className="flex flex-col gap-2 sm:flex-row-reverse sm:justify-start sm:gap-3">
-      <Button
-        type="submit"
-        kind="primary"
-        className="w-full sm:w-auto"
-        processing={saving === "next"}
-        processingLabel="Saving…"
-        disabled={saving !== null}
-      >
-        Save &amp; Next
-      </Button>
+    <div className="flex flex-col gap-2 sm:flex-row-reverse sm:items-end sm:justify-start sm:gap-3">
+      <div className="flex flex-col gap-1 sm:items-end">
+        {gate ? (
+          <p id={gateId} className="text-body-s text-text-secondary sm:text-right">
+            {gate}
+          </p>
+        ) : null}
+        <Button
+          type="submit"
+          kind="primary"
+          className="w-full sm:w-auto"
+          processing={saving === "next"}
+          processingLabel="Saving…"
+          disabled={saving !== null || Boolean(gate)}
+          aria-describedby={gate ? gateId : undefined}
+          data-stage-save="next"
+        >
+          Save &amp; Next
+        </Button>
+      </div>
       <Button
         kind="ghost"
         className="w-full sm:w-auto"
@@ -409,6 +420,7 @@ export function StageActions({ saving, onExit }: { saving: "next" | "exit" | nul
         processingLabel="Saving…"
         disabled={saving !== null}
         onClick={onExit}
+        data-stage-save="exit"
       >
         Save &amp; Exit
       </Button>

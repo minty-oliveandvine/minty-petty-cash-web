@@ -9,6 +9,8 @@
  *   token and redirects; with `entityId` the token is scoped to that company).
  * - `integrationUrl` - minty-web's Entity & Integration tab, where Xero is connected or
  *   reconnected, through that hand-off.
+ * - `subscriptionSettingsUrl` - minty-web's Module page, where the subscription is managed (the
+ *   launch page's subscription notice), through that hand-off.
  * - `billsUrl` - the payments app, through Flask's `/entity/<id>/payment-request`: a hand-off that
  *   mints the payments app's token and redirects (Minty `go_to_bills`), never a page.
  * - `logoutUrl` - Flask's `/logout`: ends the session everywhere, then redirects to minty-web's
@@ -35,6 +37,14 @@ export function hubUrl(next: string, entityId?: string): string {
 /** minty-web's Entity & Integration tab for the company (`/entity/<shortid>/<name>/settings/integration`), where Xero is connected. */
 export function integrationUrl(entityId: string, entityName: string): string {
   return hubUrl(`/entity/${companyRef(entityId, entityName)}/settings/integration`, entityId);
+}
+
+/**
+ * minty-web's Module page for the company (`/entity/<shortid>/<name>/settings/modules`), where its
+ * subscription is managed - the subscription notice's "Go to subscription settings".
+ */
+export function subscriptionSettingsUrl(entityId: string, entityName: string): string {
+  return hubUrl(`/entity/${companyRef(entityId, entityName)}/settings/modules`, entityId);
 }
 
 /** The payments app for the company, through Flask's token hand-off (`/entity/<id>/payment-request`). */

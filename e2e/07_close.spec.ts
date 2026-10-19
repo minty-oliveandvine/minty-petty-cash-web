@@ -1,5 +1,6 @@
 // The Daily Closing's Close stage (components/closing/Close.tsx, Part 15.9g / 15.15e) and the
-// outcome page after Submit Daily Report (components/closing/ReportOutcome.tsx, Part 15.12e),
+// outcome page after Submit Daily Report (components/closing/ReportOutcome.tsx, Part 15.12e), as
+// Flask's Daily Closing Phase 1 (Minty 4e004d2) - the verification Close and the Completion state -
 // against a STUBBED Petty Cash API. Needs only `npm run dev`. The other stages are this app's own
 // (stubbed quietly); Flask's pages (by the company's full id) are caught, so nothing leaves the
 // app. Refusals are inline alerts or Page banners, never toasts.
@@ -73,6 +74,8 @@ function outcomeAnswer(over: Json = {}): Json {
     submitted: true,
     submitted_at: "2026-10-13T10:12:00+00:00",
     submitted_by: "Olive",
+    total_sales: 1070.5,
+    total_expenses: 240.5,
     cash_counted: 760,
     difference: { amount: -20, kind: "short", has_reason: true },
     xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false, was_published: false },
@@ -175,9 +178,9 @@ const section = (page: Page, name: string | RegExp) => page.getByRole("region", 
 const value = (page: Page, term: string, scope = page.locator("main")) =>
   scope.locator("div, dl").filter({ has: page.locator("dt", { hasText: new RegExp(`^${term.replace(/[().]/g, "\\$&")}$`) }) }).last().locator("dd").first();
 
-test("the read-only summary: each stage with its Edit link, the closing balance and the difference with its reason", async ({ page }) => {
+test("the verification: Ready to submit, one row per stage with its total and Edit link, the difference highlighted in Cash Count", async ({ page }) => {
   await openWith(page, closeAnswer());
-  await expect(page.getByText("Check the day, then submit the Daily Report.")).toBeVisible();
+  await expect(page.getByText("One last look before today is closed.")).toBeVisible();
   await expect(page.getByText("Daily Closing · Tue 13 Oct 2026")).toBeVisible();
   const stages = page.getByRole("list", { name: "Daily Closing stages" });
   await expect(stages.getByText("Close, current step")).toBeVisible();
@@ -186,68 +189,67 @@ test("the read-only summary: each stage with its Edit link, the closing balance 
 
   // nothing to type: Close is a verification
   await expect(page.getByRole("textbox")).toHaveCount(0);
+  const ready = page.getByRole("status").filter({ hasText: "Ready to submit" });
+  await expect(ready).toContainText("All five stages are filled in. One note for the reviewer below.");
 
   const drawer = section(page, "Addition to Drawer");
   await expect(drawer.getByRole("link", { name: "Edit Addition to Drawer" })).toHaveAttribute("href", stageUrl("opening"));
-  await expect(value(page, "Starting cash balance", drawer)).toHaveText("HKD500.00");
-  await expect(value(page, "Added to the drawer", drawer)).toHaveText("HKD100.00");
+  await expect(drawer).toContainText("Starting cash balance HKD500.00");
+  await expect(drawer).toContainText("HKD100.00");
 
+  // totals, not each method (Daily Closing Phase 1): the breakdown is the stage's own
   const sales = section(page, "Sales");
   await expect(sales.getByRole("link", { name: "Edit Sales" })).toHaveAttribute("href", stageUrl("sale"));
-  await expect(value(page, "Octopus", sales)).toHaveText("HKD200.00");
-  await expect(value(page, "Foodpanda", sales)).toHaveText("HKD50.00");
-  await expect(sales.getByText("Deliveroo")).toHaveCount(0);
-  await expect(value(page, "Cash", sales)).toHaveText("HKD820.50");
-  await expect(value(page, "Total sales", sales)).toHaveText("HKD1,070.50");
+  await expect(sales).toContainText("3 methods · Cash HKD820.50");
+  await expect(sales).toContainText("HKD1,070.50");
+  await expect(sales.getByText("Octopus")).toHaveCount(0);
   // no KPIs or trends inside the workflow (D15-03)
   await expect(page.getByText(/yesterday|history/i)).toHaveCount(0);
 
   const expenses = section(page, "Expenses (2)");
   await expect(expenses.getByRole("link", { name: "Edit Expenses" })).toHaveAttribute("href", stageUrl("expense"));
-  await expect(value(page, "General Expenses · ParknShop", expenses)).toHaveText("HKD120.50");
-  await expect(value(page, "Cleaning", expenses)).toHaveText("HKD120.00");
-  await expect(value(page, "Receipts", expenses)).toHaveText("1 of 2 expenses");
-  await expect(value(page, "Total expenses", expenses)).toHaveText("HKD240.50");
+  await expect(expenses).toContainText("2 expenses · 1 receipt");
+  await expect(expenses).toContainText("HKD240.50");
+  await expect(expenses.getByText("ParknShop")).toHaveCount(0);
 
   const count = section(page, "Cash Count");
   await expect(count.getByRole("link", { name: "Edit Cash Count" })).toHaveAttribute("href", stageUrl("cash-count"));
-  await expect(value(page, "Cash taken for bank deposit", count)).toHaveText("HKD300.00");
-  await expect(value(page, "Expected in drawer", count)).toHaveText("HKD780.00");
-  await expect(value(page, "Counted in the drawer", count)).toHaveText("HKD760.00");
-  await expect(value(page, "In the safe box", count)).toHaveText("HKD0.00");
-  await expect(value(page, "Difference", count)).toHaveText("HKD20.00 short");
-  const warning = count.getByRole("status").filter({ hasText: "The count is HKD20.00 short" });
-  await expect(warning).toHaveAttribute("data-tone", "warning");
-  await expect(warning).toContainText("Reason: Change given twice");
+  await expect(count).toContainText("HKD300.00 to the bank · Counted in the drawer");
+  await expect(count).toContainText("HKD760.00");
+  await expect(count.getByText("HKD20.00 short")).toHaveAttribute("data-tone", "warning");
+  await expect(count).toContainText("Change given twice");
+  await expect(page.getByText("Closing balance")).toHaveCount(0);
 
-  await expect(value(page, "Closing balance")).toHaveText("HKD760.00");
-  // amounts are plain text, never coloured
-  for (const term of ["Difference", "Closing balance"]) await expect(value(page, term)).toHaveClass(/text-text-primary/);
-
+  await expect(page.getByRole("heading", { name: "When you submit" })).toBeVisible();
   await expect(submitButton(page)).toBeEnabled();
   await expect(page.getByRole("link", { name: "Save & Exit" })).toHaveAttribute("href", BASE);
-  // Publish to Xero is not part of this wave
-  await expect(page.getByRole("button", { name: /Publish/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Publish|Send to Xero/ })).toHaveCount(0);
+  await expectNoHorizontalScroll(page);
 });
 
-test("any cent is a difference, and a count with none says None with no warning", async ({ page }) => {
+test("any cent is a difference: without its reason it warns, with the way to Cash Count; a count with none is just Ready", async ({ page }) => {
   await openWith(page, closeAnswer({}, { difference: { amount: 0.01, kind: "over", reason: "" } }));
-  await expect(value(page, "Difference")).toHaveText("HKD0.01 over");
-  await expect(page.getByRole("status").filter({ hasText: "The count is HKD0.01 over" })).toContainText("No reason was given yet.");
+  const warning = page.getByRole("status").filter({ hasText: "The count is HKD0.01 over" });
+  await expect(warning).toHaveAttribute("data-tone", "warning");
+  await expect(warning).toContainText("No reason was given yet.");
+  await expect(warning.getByRole("link", { name: "Go to Cash Count" })).toHaveAttribute("href", stageUrl("cash-count"));
+  await expect(page.getByText("Ready to submit")).toHaveCount(0);
+  await expect(section(page, "Cash Count").getByText("HKD0.01 over")).toBeVisible();
+  // the API takes it (Save & Exit keeps a difference without one): Submit stays on
+  await expect(submitButton(page)).toBeEnabled();
+
   await page.unroute("**/api/petty-cash/v1/companies/*/reports/close**");
   await page.route("**/api/petty-cash/v1/companies/*/reports/close**", (route) =>
     route.fulfill({ json: closeAnswer({}, { difference: { amount: 0, kind: "none", reason: "" } }) }),
   );
   await page.reload();
-  await expect(value(page, "Difference")).toHaveText("None");
+  await expect(page.getByRole("status").filter({ hasText: "Ready to submit" })).toContainText("All five stages are filled in.");
   await expect(page.locator("[data-tone=warning]")).toHaveCount(0);
 });
 
-test("a day with no expenses says so, and Edit links still open each stage in the app", async ({ page }) => {
+test("a day with no expenses says so in its row, and Edit links open each stage in the app", async ({ page }) => {
   await openWith(page, closeAnswer({ expenses: { lines: [], total: 0 } }));
-  const expenses = section(page, "Expenses (0)");
-  await expect(expenses.getByText("No expenses added for the day.")).toBeVisible();
-  await expect(value(page, "Receipts", expenses)).toHaveCount(0);
+  await expect(section(page, "Expenses (0)")).toContainText("0 expenses · 0 receipts");
   await page.evaluate(() => Object.assign(window, { __stayed: true }));
   await page.getByRole("link", { name: "Edit Addition to Drawer" }).click();
   await expect(page).toHaveURL(exact(stageUrl("opening")));
@@ -255,7 +257,7 @@ test("a day with no expenses says so, and Edit links still open each stage in th
   expect(await page.evaluate(() => (window as unknown as { __stayed?: boolean }).__stayed)).toBe(true);
 });
 
-test("Submit opens the outcome page with the server's facts - and a double click submits once", async ({ page }) => {
+test("Submit opens the Completion state with the server's facts - and a double click submits once", async ({ page }) => {
   const submits = await openWith(page, closeAnswer(), {
     onSubmit: async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 600));
@@ -273,13 +275,19 @@ test("Submit opens the outcome page with the server's facts - and a double click
   await expect(page).toHaveURL(exact(OUTCOME_URL));
   const title = page.getByRole("heading", { level: 1, name: "The report is submitted" });
   await expect(title).toBeFocused();
-  await expect(page.getByText("Tue 13 Oct 2026 · E2E Petty Cash Shop")).toBeVisible();
-  await expect(value(page, "Cash counted")).toHaveText("HKD760.00");
-  await expect(value(page, "Difference")).toHaveText("HKD20.00 short · note added");
-  await expect(value(page, "Sent to Xero")).toHaveText("Not yet");
-  // this app's own Daily Report (e2e/08_daily_report.spec.ts); not in Xero yet, so Publish to Xero leads (e2e/12_publish.spec.ts)
+  await expect(page.getByText("The Daily Report for Tue 13 Oct 2026 is submitted. Nice work — see you tomorrow.")).toBeVisible();
+  // Sales and Expenses from the outcome read itself (the Daily Report's kpis figures) - no second read
+  await expect(value(page, "Sales")).toHaveText("HKD1,070.50");
+  await expect(value(page, "Expenses")).toHaveText("HKD240.50");
+  await expect(value(page, "Cash counted")).toContainText("HKD760.00");
+  await expect(value(page, "Cash counted").getByText("HKD20.00 short")).toHaveAttribute("data-tone", "warning");
+  await expect(page.getByText("Not sent to Xero yet")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send to Xero" })).toBeVisible();
+  // this app's own Daily Report (e2e/08_daily_report.spec.ts); Publish is e2e/12_publish.spec.ts
   await expect(page.getByRole("link", { name: "View report" })).toHaveAttribute("href", `${BASE}/reports/${REPORT}/summary`);
-  await expect(page.getByRole("button", { name: "Publish to Xero" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to home" })).toHaveAttribute("href", BASE);
+  // the next day starts from the launch page (Flask 4e004d2)
+  await expect(page.getByRole("button", { name: "Start the next day" })).toHaveCount(0);
   expect(submits).toEqual([{ transaction_date: DAY }]);
 });
 
@@ -313,6 +321,7 @@ test("the gate on arrival: the rule, the reason and one action; Submit disabled 
   await expect(gate).toHaveAttribute("data-tone", "warning");
   await expect(gate).toContainText("Finish Sales before you submit the day.");
   await expect(gate.getByRole("link", { name: "Go to Sales" })).toHaveAttribute("href", stageUrl("sale"));
+  await expect(page.getByText("Ready to submit")).toHaveCount(0);
   await expect(submitButton(page)).toBeDisabled();
   const reason = page.getByText("Fix Sales first, then submit.");
   await expect(reason).toBeVisible();
@@ -331,8 +340,8 @@ test("a drawer below zero is the gate in figures, with Cash Count to fix it", as
   const gate = page.getByRole("status").filter({ hasText: "The drawer is below zero" });
   await expect(gate).toContainText("Expected in drawer comes to -HKD20.00. Lower the deposit or check the earlier stages before you submit.");
   await expect(gate.getByRole("link", { name: "Go to Cash Count" })).toHaveAttribute("href", stageUrl("cash-count"));
-  await expect(value(page, "Expected in drawer")).toHaveText("-HKD20.00");
-  await expect(value(page, "Closing balance")).toHaveText("-HKD20.00");
+  // the gate stands alone: no second warning about the reason
+  await expect(page.getByText("No reason was given yet.")).toHaveCount(0);
   await expect(page.getByText("Fix Cash Count first, then submit.")).toBeVisible();
   await expect(submitButton(page)).toBeDisabled();
 });
@@ -384,7 +393,7 @@ test("the launch page's Continue on a report left on Close opens this stage", as
   await expect(page.getByRole("heading", { level: 1, name: "Close" })).toBeVisible();
 });
 
-test("the outcome's Back to home goes to the launch page, and starts nothing", async ({ page }) => {
+test("the outcome's Back to home goes to the launch page, which offers the next day itself, and starts nothing", async ({ page }) => {
   await stub(page, closeAnswer());
   await arrive(page, OUTCOME_URL);
   await expect(page.getByRole("heading", { level: 1, name: "The report is submitted" })).toBeVisible();
@@ -394,28 +403,7 @@ test("the outcome's Back to home goes to the launch page, and starts nothing", a
   await expect(page).toHaveURL(new RegExp(`${BASE}$`));
 });
 
-test("Start the next day starts it on the launch page, through its start rules, onto Addition to Drawer", async ({ page }) => {
-  await stub(page, closeAnswer());
-  await arrive(page, OUTCOME_URL);
-  await page.getByRole("button", { name: "Start the next day" }).click();
-  await expect(page).toHaveURL(exact(stageUrl("opening", "2026-10-14")));
-  await expect(page.getByRole("heading", { level: 1, name: "Addition to Drawer" })).toBeVisible();
-});
-
-test("Start the next day asks Before You Start first when the day banked cash", async ({ page }) => {
-  await stub(page, closeAnswer(), {
-    home: homeAnswer({
-      latest: { date: DAY, closing_balance: 760, deposit: 300, deposit_bank_name: "HSBC", deposit_bank_number: "123", deposit_correction_missing_settings: [], can_correct_deposit: true, submitter_first_name: "Olive" },
-      published: { [DAY]: { id: REPORT, closing_balance: 760, bank_deposit: 300, xero_integrated: false, submitter_first_name: "Olive" } },
-    }),
-  });
-  await arrive(page, OUTCOME_URL);
-  await page.getByRole("button", { name: "Start the next day" }).click();
-  await expect(page).toHaveURL(new RegExp(`${BASE}$`));
-  await expect(page.getByRole("dialog")).toContainText("HKD300.00");
-});
-
-test("today's outcome offers no next day; a pending publish is an Info line; Xero's time shows once it is in", async ({ page }) => {
+test("today's outcome says Today is closed; a pending publish is an Info line, with nothing to send meanwhile", async ({ page }) => {
   await stub(page, closeAnswer(), {
     outcome: (route) => route.fulfill({ json: outcomeAnswer({ is_today: true, xero: { publishing_status: "publishing", published_at: null, xero_integrated: false, was_published: false } }) }),
   });
@@ -426,11 +414,11 @@ test("today's outcome offers no next day; a pending publish is an Info line; Xer
     }),
   );
   await arrive(page, OUTCOME_URL);
-  await expect(page.getByRole("heading", { level: 1, name: "Today's report is submitted" })).toBeFocused();
-  await expect(page.getByRole("button", { name: "Start the next day" })).toHaveCount(0);
-  await expect(value(page, "Sent to Xero")).toHaveText("Pending");
+  await expect(page.getByRole("heading", { level: 1, name: "Today is closed" })).toBeFocused();
+  await expect(page.locator('main img[src*="minty-cat"]')).toBeVisible();
+  await expect(page.getByText("Not sent to Xero yet")).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: "Publishing to Xero" })).toHaveAttribute("data-tone", "info");
-  await expect(page.getByRole("button", { name: /Publish/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Publish|Send to Xero/ })).toHaveCount(0);
 });
 
 test("an outcome the API doesn't know says so, with the way home", async ({ page }) => {
@@ -456,7 +444,7 @@ test("the largest amounts are never clipped, and neither page scrolls sideways",
   );
   const clipped = () =>
     page.evaluate(() =>
-      Array.from(document.querySelectorAll("main dd, main dt, main h1, main h2, main a, main button"))
+      Array.from(document.querySelectorAll("main dd, main dt, main h1, main h2, main p, main a, main button, main span[translate=no]"))
         .filter((el) => el.scrollWidth > el.clientWidth + 1)
         .map((el) => el.textContent),
     );
@@ -464,7 +452,7 @@ test("the largest amounts are never clipped, and neither page scrolls sideways",
   await expectNoHorizontalScroll(page);
 
   await page.route("**/api/petty-cash/v1/companies/*/reports/*/outcome", (route) =>
-    route.fulfill({ json: outcomeAnswer({ cash_counted: big, difference: { amount: -big, kind: "short", has_reason: true }, company_name: "A company with a rather long registered name Limited" }) }),
+    route.fulfill({ json: outcomeAnswer({ total_sales: big, total_expenses: big, cash_counted: big, difference: { amount: -big, kind: "short", has_reason: true }, company_name: "A company with a rather long registered name Limited" }) }),
   );
   await page.goto(OUTCOME_URL);
   await expect(page.getByRole("heading", { level: 1, name: "The report is submitted" })).toBeVisible();
@@ -483,10 +471,11 @@ test("both pages reload with no console error", async ({ page }) => {
   // the browser then hydrates - where a mismatch shows.
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Close" })).toBeVisible();
-  await expect(value(page, "Closing balance")).toHaveText("HKD760.00");
+  await expect(page.getByText("Ready to submit")).toBeVisible();
   await page.goto(OUTCOME_URL);
   await expect(page.getByRole("heading", { level: 1, name: "The report is submitted" })).toBeVisible();
   await page.reload();
-  await expect(value(page, "Cash counted")).toHaveText("HKD760.00");
+  await expect(value(page, "Cash counted")).toContainText("HKD760.00");
+  await expect(value(page, "Sales")).toHaveText("HKD1,070.50");
   expect(errors).toEqual([]);
 });

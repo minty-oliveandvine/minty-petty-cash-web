@@ -156,7 +156,7 @@ async function stub(page: Page, answer: Json, { read, onReopen, onDelete, onShar
     route.fulfill({
       json: {
         report_id: REPORT, transaction_date: DAY, currency_code: "HKD", company_name: NAME, status: "submitted", submitted: true,
-        submitted_at: "2026-10-13T10:12:00+00:00", submitted_by: "Olive", cash_counted: 760, difference: { amount: -20, kind: "short", has_reason: true },
+        submitted_at: "2026-10-13T10:12:00+00:00", submitted_by: "Olive", total_sales: 1070.5, total_expenses: 240.5, cash_counted: 760, difference: { amount: -20, kind: "short", has_reason: true },
         xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false, was_published: false }, can_publish: true, is_today: false, next_day: "2026-10-14",
       },
     }),

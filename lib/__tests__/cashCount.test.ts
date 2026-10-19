@@ -3,6 +3,17 @@ import { describe, expect, it } from "vitest";
 import {
   belowZero,
   cashCountDirty,
+  cashGuidance,
+  COUNT_FIRST,
+  countSaved,
+  currentTask,
+  depositResult,
+  initialTasks,
+  nextGate,
+  REASON_FIRST,
+  rowTotalText,
+  sheetProblem,
+  taskState,
   countedCash,
   countProblem,
   denominationGroups,
@@ -190,5 +201,68 @@ describe("the fields and the save", () => {
       discrepancy_reason: "",
       action: "exit",
     });
+  });
+});
+
+describe("one task at a time (Daily Closing Phase 1, Flask 4e004d2)", () => {
+  const fresh = (over: Partial<CashCountPage> = {}) => page({ denominations: denominations.map((x) => ({ ...x, count: 0 })), ...over });
+
+  it("opens a fresh stage on the deposit, the count and the safe box waiting in that order", () => {
+    const done = initialTasks(fresh());
+    expect(done).toEqual({ deposit: false, count: false, safe: false });
+    expect(currentTask(done)).toBe("deposit");
+    expect([taskState("deposit", done), taskState("count", done), taskState("safe", done)]).toEqual(["current", "next", "next"]);
+    expect(cashGuidance(done)).toBe("Three quick checks. We'll go one at a time.");
+  });
+
+  it("opens the first task not done: a saved deposit or safe box is done, the count is next", () => {
+    const done = initialTasks(fresh({ bank_deposit: 300, safe_box_balance: 50 }));
+    expect(done).toEqual({ deposit: true, count: false, safe: true });
+    expect(currentTask(done)).toBe("count");
+    expect(taskState("safe", done)).toBe("done");
+  });
+
+  it("opens every task done once the stage was saved: a counted note, or Cash Count completed", () => {
+    expect(countSaved(page())).toBe(true); // the fixture counts two HKD100 notes
+    expect(countSaved(fresh())).toBe(false);
+    const completed = fresh({ draft: { ...page().draft!, completed_sections: ["opening", "sales", "expenses", "deposit", "cash_count"] } });
+    expect(countSaved(completed)).toBe(true);
+    const done = initialTasks(completed);
+    expect(done).toEqual({ deposit: true, count: true, safe: true });
+    expect(currentTask(done)).toBeNull();
+    expect(cashGuidance(done)).toBe("All three checks are done.");
+  });
+
+  it("puts a task back in its turn when it is changed: an earlier one opens before a later one", () => {
+    const done = { deposit: false, count: true, safe: false };
+    expect(currentTask(done)).toBe("deposit");
+    expect(taskState("safe", done)).toBe("next");
+  });
+
+  it("says the deposit's result: the amount to the bank, or none today", () => {
+    expect(depositResult("300", "HKD")).toBe("HKD300.00 to the bank");
+    expect(depositResult("", "HKD")).toBe("None today");
+    expect(depositResult("0", "HKD")).toBe("None today");
+  });
+
+  it("shows a sheet row's line total as a dash while it is empty", () => {
+    expect(rowTotalText(d("c050", 0.5, "coin"), "", "HKD")).toBe("—");
+    expect(rowTotalText(d("c050", 0.5, "coin"), "3", "HKD")).toBe("HKD1.50");
+    expect(rowTotalText(d("n500", 500, "note"), "0", "HKD")).toBe("HKD0.00");
+  });
+
+  it("keeps the sheet open on the first row with a problem", () => {
+    expect(sheetProblem(denominations, { n500: "1", c5: "2" })).toBeNull();
+    expect(sheetProblem(denominations, { n500: "1", c5: "2000000", c010: "3000000" })?.id).toBe("c5");
+  });
+
+  it("holds Save & Next for the count first, then for a difference's reason - any cent counts", () => {
+    const counted = { deposit: true, count: true, safe: true };
+    expect(nextGate({ deposit: true, count: false, safe: true }, difference(0, 0), "")).toBe(COUNT_FIRST);
+    expect(COUNT_FIRST).toBe("Count the drawer to continue");
+    expect(nextGate(counted, difference(980, 1000), "")).toBe(REASON_FIRST);
+    expect(nextGate(counted, difference(1000.01, 1000), "  ")).toBe("Add a reason for the difference to continue.");
+    expect(nextGate(counted, difference(980, 1000), "Float swap")).toBeNull();
+    expect(nextGate(counted, difference(1000, 1000), "")).toBeNull();
   });
 });

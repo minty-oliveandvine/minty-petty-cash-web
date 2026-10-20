@@ -48,9 +48,9 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 `@minty/shared/sidebar`, with this app's host in `components/ui/sidebarHost.ts`. That file is the only app-specific part.
 - **This app's own pages:** Dashboard, Reports (the report history, since Wave 2g) and Settings (Petty Cash settings, since Wave 2h; connecting Xero links on to minty-web's Entity & Integration).
-- **minty-web's pages, through Flask's hand-offs:** the entity list, Subscriptions and My Profile.
+- **minty-web's pages, through Flask's hand-offs:** the entity list and Subscriptions.
 - **Through Flask's `/entity/<id>/payment-request`:** Bills.
-- **No profile slot.** My Profile is minty-web's page, reached through `/handoff/minty-web?next=/profile&entity_id=` (`hubUrl`, `lib/hub.ts`) - not Flask's `/profile`, which only redirected there.
+- **My Profile is the sidebar's sheet, over the page** (the owner, 2026-10-20): the shared panel `@minty/shared/profile` (v0.6) in the redesign's look, wired in `components/ui/AppSidebar.tsx` with this app's Flask calls (`lib/profileApi.ts`: `GET`/`PATCH /api/me/profile` with `?entity=`), its Subscriptions Overview (`lib/subscriptionsApi.ts`, every page) and a toast of its own. No PASSWORD row. `main` draws the same sheet in the original look. The five `public/profile/` files are asserted against `PROFILE_ASSETS`. minty-web's page (`/handoff/minty-web?next=/profile&entity_id=`) is only the badge's fallback where no sidebar can hold the profile.
 
 ## No Flask pages
 
@@ -69,7 +69,7 @@ The user's rule (2026-10-16): Flask's HTML frontend will be deleted and Flask be
 | `settingsUrl` - Setup Required and a deposit correction's missing accounts | this app's settings at its Xero cards (`xeroSettingsHref`, `…/settings/petty-cash#xero`) |
 | `settingsUrl` - a publish answered `reconnect: true` (Daily Report, outcome page, history row) | **Reconnect Xero in Entity & Integration**: minty-web's `/entity/<shortid>/<name>/settings/integration` through `/handoff/minty-web` (`integrationUrl`) |
 | `settingsUrl` - the settings page's "not connected" Xero card | **Connect Xero in Entity & Integration**, the same hand-off |
-| sidebar's My Profile - Flask's `/profile` | `/handoff/minty-web?next=/profile&entity_id=` |
+| sidebar's My Profile - Flask's `/profile` | the sidebar's own sheet (`AppSidebar`); `/handoff/minty-web?next=/profile&entity_id=` only where no sidebar can hold it |
 
 The sidebar's Bills still goes through Flask's `/entity/<id>/payment-request`: it is a token hand-off (Minty `go_to_bills` mints the payments app's token and redirects), not a page.
 

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 
-import { SidebarProvider } from "@/components/ui/Sidebar";
+import { AppSidebar } from "@/components/ui/AppSidebar";
 
 import "./globals.css";
 
@@ -21,13 +21,12 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-// The sidebar with no profile slot: My Profile is minty-web's page, reached through Flask
-// (components/ui/sidebarHost.ts `links.profile`).
+// The sidebar, with My Profile as its sheet (@minty/shared/profile, wired in AppSidebar).
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
       <body className="m-0 min-w-0 overflow-x-clip antialiased">
-        <SidebarProvider>{children}</SidebarProvider>
+        <AppSidebar>{children}</AppSidebar>
       </body>
     </html>
   );

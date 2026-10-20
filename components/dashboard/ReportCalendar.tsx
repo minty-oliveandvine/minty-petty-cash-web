@@ -24,7 +24,7 @@ const SAY: Record<DayState, string> = { today: "today", submitted: "submitted", 
  * grey, not-submitted red, a picked day teal-outlined.
  */
 export function ReportCalendar({ home, selected, onPick }: { home: Home; selected: string | null; onPick: (day: string) => void }) {
-  const [shown, setShown] = useState(() => monthOf(home.server_today));
+  const [shown, setShown] = useState(() => monthOf(selected ?? home.server_today));
   const grid = monthGrid(shown.year, shown.month);
 
   return (

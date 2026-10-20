@@ -152,6 +152,7 @@ The page is the same in every element:
 Behaviour is Flask's, minus its bugs:
 - **One "today".** It is always the server's Hong Kong date. Flask mixed the browser's date, UTC and Hong Kong time.
 - **The date rules always run.** Starting a report checks them every time; Flask skipped them after a calendar click.
+- **The first report starts on onboarding's start date.** `GET /home`'s `start_date` (`entity_pettycash_settings.start_date`) is the calendar's floor before any report: days before it are shut and the "onboarding date" message names it. With no report and no draft, the calendar opens on its month with it picked, so Start New Report opens Opening on it (once it has come). Flask's floor was the earliest draft, which onboarding no longer seeds; `draft_date` stays the fallback for companies onboarded before the start date existed.
 - **The right day is corrected.** The deposit correction targets the day shown in the dialog.
 - **The amount field accepts small amounts.** "0.50" can be typed; Flask turned a zero into "-".
 - **Removed:**

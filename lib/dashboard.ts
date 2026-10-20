@@ -43,6 +43,8 @@ export type Home = {
     last_edit_seconds: number;
   } | null;
   draft_date: string | null;
+  /** Onboarding's start date (`entity_pettycash_settings.start_date`): the first report's floor. */
+  start_date: string | null;
   published: Record<string, PublishedDay>;
   today_has_report: boolean;
   today_is_latest_report: boolean;
@@ -63,9 +65,26 @@ export function isMissing(home: Home, day: string): boolean {
 }
 
 /**
+ * The earliest day a first report may use: onboarding's start date (the server's own floor),
+ * else the earliest draft's day (companies onboarded before the start date existed).
+ */
+function onboardingFloor(home: Home): string | null {
+  return home.start_date ?? home.draft_date;
+}
+
+/**
+ * The day a company's first report opens on: its onboarding start date, while it has no report,
+ * no draft (Continue owns that) and the start date has arrived.
+ */
+export function firstReportDay(home: Home): string | null {
+  if (reportSpan(home) || home.draft || !home.start_date) return null;
+  return home.start_date <= home.server_today ? home.start_date : null;
+}
+
+/**
  * Whether a calendar day does anything when tapped (Flask's `isClickable`):
  * today; a submitted day; the day after the last submitted report; and, before any report,
- * a future day or a past day on or after the onboarding floor (the earliest draft).
+ * a future day or a past day on or after the onboarding floor.
  */
 export function isClickable(home: Home, day: string): boolean {
   if (day === home.server_today) return true;
@@ -73,7 +92,8 @@ export function isClickable(home: Home, day: string): boolean {
   const span = reportSpan(home);
   if (span) return day === addDays(span.latest, 1);
   if (day > home.server_today) return true;
-  return !home.draft_date || day >= home.draft_date;
+  const floor = onboardingFloor(home);
+  return !floor || day >= floor;
 }
 
 export type DayState = "today" | "submitted" | "missing" | "open" | "idle";
@@ -109,8 +129,9 @@ export function startProblem(home: Home, day: string): string | null {
     if (day !== expected) {
       return `Transaction date must be ${expected}, the day after your last submitted report (${span.latest}).`;
     }
-  } else if (home.draft_date && day < home.draft_date) {
-    return `Transaction date must be on or after your onboarding date (${home.draft_date}).`;
+  } else {
+    const floor = onboardingFloor(home);
+    if (floor && day < floor) return `Transaction date must be on or after your onboarding date (${floor}).`;
   }
   if (day === home.server_today && previousDayUnfinished(home)) return PREVIOUS_DAY_FIRST;
   return null;

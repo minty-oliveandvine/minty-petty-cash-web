@@ -32,6 +32,7 @@ function homeAnswer(over: Json = {}): Json {
     },
     draft: null,
     draft_date: null,
+    start_date: null,
     published: {
       "2026-10-10": { id: "a", closing_balance: 900, bank_deposit: 0, xero_integrated: true, submitter_first_name: "Olive" },
       "2026-10-13": { id: "b", closing_balance: 1250.5, bank_deposit: 300, xero_integrated: true, submitter_first_name: "Olive" },
@@ -185,6 +186,23 @@ test("a day out of sequence is refused with Flask's sentence", async ({ page }) 
   await expect(
     toast(page, "Transaction date must be 2026-10-13, the day after your last submitted report (2026-10-12)."),
   ).toBeVisible();
+});
+
+test("a new company's first report opens on its onboarding start date, and nothing before it", async ({ page }) => {
+  await enterWith(
+    page,
+    homeAnswer({
+      latest: { ...(homeAnswer().latest as Json), date: null, closing_balance: 0, deposit: 0, deposit_bank_name: "No deposit", deposit_bank_number: "" },
+      published: {},
+      start_date: "2026-09-28",
+    }),
+  );
+  // the calendar opens on the start date's month, with that day picked and the days before it shut
+  await expect(page.getByRole("button", { name: "28 Sep 2026" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "27 Sep 2026" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "29 Sep 2026" })).toBeEnabled();
+  await page.getByRole("button", { name: "Start New Report" }).click();
+  await expect(page).toHaveURL((url) => url.pathname + url.search === `${HOME_PATH}/reports/new/opening?transaction_date=2026-09-28`);
 });
 
 test("a draft shows its progress and continues where it was left", async ({ page }) => {

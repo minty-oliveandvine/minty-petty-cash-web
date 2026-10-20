@@ -13,6 +13,7 @@ import { reportHref } from "@/lib/companyPages";
 import {
   balanceFor,
   depositToConfirm,
+  firstReportDay,
   lastEditText,
   PREVIOUS_DAY_FIRST,
   previousDayUnfinished,
@@ -101,7 +102,8 @@ function DashboardBody({
   acronym: string;
 }) {
   const toast = useToast();
-  const [selected, setSelected] = useState<string | null>(nextDay);
+  // A first report opens on onboarding's start date; a hand-over's day wins.
+  const [selected, setSelected] = useState<string | null>(nextDay ?? firstReportDay(home));
   const [confirming, setConfirming] = useState<{ day: string; deposit: number; submitter: string | null } | null>(null);
   const [step, setStep] = useState<"confirm" | "amount">("confirm");
   const [busy, setBusy] = useState(false);

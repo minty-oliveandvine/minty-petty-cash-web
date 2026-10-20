@@ -6,6 +6,7 @@ import {
   balanceFor,
   dayState,
   depositToConfirm,
+  firstReportDay,
   isClickable,
   lastEditText,
   PREVIOUS_DAY_FIRST,
@@ -33,6 +34,7 @@ function home(over: Partial<Home> = {}): Home {
     },
     draft: null,
     draft_date: null,
+    start_date: null,
     published: {},
     today_has_report: false,
     today_is_latest_report: false,
@@ -72,6 +74,15 @@ describe("the calendar", () => {
     expect(isClickable(fresh, "2026-09-30")).toBe(false);
     expect(isClickable(home(), "2020-01-01")).toBe(true); // no floor at all
   });
+
+  it("before any report, the onboarding start date is the floor, ahead of a draft's date", () => {
+    const fresh = home({ start_date: "2026-10-05" });
+    expect(isClickable(fresh, "2026-10-05")).toBe(true);
+    expect(isClickable(fresh, "2026-10-04")).toBe(false);
+    expect(dayState(fresh, "2026-10-04")).toBe("idle");
+    const both = home({ start_date: "2026-10-05", draft_date: "2026-10-08" });
+    expect(isClickable(both, "2026-10-06")).toBe(true);
+  });
 });
 
 describe("starting a report", () => {
@@ -94,6 +105,19 @@ describe("starting a report", () => {
     const h = home({ draft_date: "2026-10-05" });
     expect(startProblem(h, "2026-10-04")).toBe("Transaction date must be on or after your onboarding date (2026-10-05).");
     expect(startProblem(h, "2026-10-20")).toBeNull(); // the future is allowed then
+    const started = home({ start_date: "2026-10-07", draft_date: "2026-10-09" });
+    expect(startProblem(started, "2026-10-06")).toBe("Transaction date must be on or after your onboarding date (2026-10-07).");
+    expect(startProblem(started, "2026-10-07")).toBeNull();
+  });
+
+  it("a company's first report opens on its onboarding start date", () => {
+    expect(firstReportDay(home({ start_date: "2026-10-07" }))).toBe("2026-10-07");
+    expect(firstReportDay(home({ start_date: TODAY }))).toBe(TODAY);
+    expect(firstReportDay(home())).toBeNull();
+    expect(firstReportDay(home({ start_date: "2026-10-20" }))).toBeNull(); // a future start waits for its day
+    expect(firstReportDay(home({ start_date: "2026-10-07", published: { "2026-10-07": day() } }))).toBeNull();
+    const draft = { id: "d", current_section: "opening", completed_sections: [], last_edit_seconds: 5 };
+    expect(firstReportDay(home({ start_date: "2026-10-07", draft }))).toBeNull(); // Continue owns it
   });
 
   it("not today while yesterday is unfinished", () => {

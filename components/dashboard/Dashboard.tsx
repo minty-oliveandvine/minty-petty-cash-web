@@ -210,7 +210,9 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
             title="Your first Daily Closing"
             action={
               <Button kind="primary" disabled={readOnly} onClick={() => start(launch.day)}>
-                Start today&apos;s Daily Closing
+                {launch.day === home.server_today
+                  ? "Start today's Daily Closing"
+                  : `Start the Daily Closing for ${formatWeekdayShort(launch.day)}`}
               </Button>
             }
           >

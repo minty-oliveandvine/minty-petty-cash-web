@@ -34,6 +34,7 @@ function home(over: Partial<Home> = {}): Home {
     },
     draft: null,
     draft_date: null,
+    start_date: null,
     published: {},
     today_has_report: false,
     today_is_latest_report: false,
@@ -66,6 +67,10 @@ describe("starting a report", () => {
   it("before any report, not before the onboarding date", () => {
     const h = home({ draft_date: "2026-10-05" });
     expect(startProblem(h, "2026-10-04")).toBe("Transaction date must be on or after your onboarding date (2026-10-05).");
+    // onboarding's start date is the floor, ahead of a draft's day
+    const started = home({ start_date: "2026-10-07", draft_date: "2026-10-09" });
+    expect(startProblem(started, "2026-10-06")).toBe("Transaction date must be on or after your onboarding date (2026-10-07).");
+    expect(startProblem(started, "2026-10-07")).toBeNull();
     expect(startProblem(h, "2026-10-20")).toBeNull(); // the future is allowed then
   });
 
@@ -95,6 +100,15 @@ const DRAFT = { id: "d", current_section: "sales", completed_sections: ["opening
 describe("the launch card's state", () => {
   it("is first use with nothing submitted and nothing open", () => {
     expect(launchState(home())).toEqual({ kind: "first-use", day: TODAY });
+  });
+
+  it("starts first use on onboarding's start date once it has come", () => {
+    expect(launchState(home({ start_date: "2026-10-07" }))).toEqual({ kind: "first-use", day: "2026-10-07" });
+    expect(launchState(home({ start_date: TODAY }))).toEqual({ kind: "first-use", day: TODAY });
+    // a start date still ahead: today, which the start rule then explains
+    expect(launchState(home({ start_date: "2026-10-20" }))).toEqual({ kind: "first-use", day: TODAY });
+    // once a report exists, the start date no longer leads
+    expect(launchState(home({ start_date: "2026-10-07", published: { "2026-10-13": day() } }))).toMatchObject({ kind: "not-started", day: TODAY });
   });
 
   it("is in progress whenever a report is open, on the open report's day", () => {

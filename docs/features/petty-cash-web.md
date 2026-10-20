@@ -145,7 +145,7 @@ The states (`launchState` and `gateDay`, `lib/dashboard.ts`):
 
 | State | When | The card |
 |---|---|---|
-| First use | nothing submitted and no open report | 15.11a empty state with Minty, "Your first Daily Closing", **Start today's Daily Closing** |
+| First use | nothing submitted and no open report | 15.11a empty state with Minty, "Your first Daily Closing", **Start today's Daily Closing** - or, when onboarding's start date (`GET /home`'s `start_date`) is before today, **Start the Daily Closing for Mon 28 Sep** on that day. The start date is also the first report's floor in `startProblem` (`draft_date` only for companies onboarded before it existed) |
 | In progress | an open report (the newest draft; its day is `draft_date`, as Flask's Continue used it) | its stages, **Continue Daily Closing** to this app's own stage the report is on (every stage since Wave 2e; Addition to Drawer for a section this app does not know - never Flask's resume) |
 | Done | `published[server_today]` exists | all five done, "Today's report is submitted", **View report** to the day's report (this app's Daily Report since Wave 2f, by `published[server_today].id`) |
 | Not started | otherwise | five stages ahead, **Start today's Daily Closing** |

@@ -39,6 +39,7 @@ function homeAnswer(over: Json = {}): Json {
     },
     draft: null,
     draft_date: null,
+    start_date: null,
     published: {
       "2026-10-10": day(900),
       "2026-10-13": day(1250.5, 300),
@@ -375,6 +376,15 @@ test("first use: Minty's empty state starts the first Daily Closing", async ({ p
   await page.getByRole("button", { name: "Start today's Daily Closing" }).click();
   await expect(page).toHaveURL(addition(TODAY));
   await expect(page.getByRole("heading", { level: 1, name: "Addition to Drawer" })).toBeVisible();
+});
+
+test("first use after onboarding: the first Daily Closing is on the start date", async ({ page }) => {
+  await enterWith(
+    page,
+    homeAnswer({ published: {}, start_date: "2026-10-07", latest: { ...(homeAnswer().latest as Json), date: null, deposit: 0 } }),
+  );
+  await page.getByRole("button", { name: "Start the Daily Closing for Wed 7 Oct" }).click();
+  await expect(page).toHaveURL(addition("2026-10-07"));
 });
 
 test("recent reports: the newest three, Submitted, each opening its report, and See all", async ({ page }) => {

@@ -41,6 +41,8 @@ export type Home = {
     last_edit_seconds: number;
   } | null;
   draft_date: string | null;
+  /** Onboarding's start date (`entity_pettycash_settings.start_date`): the first report's floor. */
+  start_date: string | null;
   published: Record<string, PublishedDay>;
   today_has_report: boolean;
   today_is_latest_report: boolean;
@@ -77,8 +79,10 @@ export function startProblem(home: Home, day: string): string | null {
     if (day !== expected) {
       return `Transaction date must be ${expected}, the day after your last submitted report (${span.latest}).`;
     }
-  } else if (home.draft_date && day < home.draft_date) {
-    return `Transaction date must be on or after your onboarding date (${home.draft_date}).`;
+  } else {
+    // onboarding's start date (the server's own floor), else the earliest draft's day
+    const floor = home.start_date ?? home.draft_date;
+    if (floor && day < floor) return `Transaction date must be on or after your onboarding date (${floor}).`;
   }
   if (day === home.server_today && previousDayUnfinished(home)) return PREVIOUS_DAY_FIRST;
   return null;
@@ -93,7 +97,8 @@ export function depositToConfirm(home: Home, day: string): { day: string; report
 
 /**
  * What the launch page's one primary card is about (Part 15.6 states):
- * - `first-use`: nothing submitted and nothing open - the first-use empty state (15.11a);
+ * - `first-use`: nothing submitted and nothing open - the first-use empty state (15.11a), on
+ *   onboarding's start date once it has come;
  * - `in-progress`: an open report (the newest draft) - its day is `draft_date`, the day Flask's
  *   own Continue used;
  * - `done`: today is submitted (`reportId` opens its Daily Report);
@@ -109,7 +114,10 @@ export function launchState(home: Home): Launch {
   const today = home.server_today;
   if (home.draft) return { kind: "in-progress", day: home.draft_date ?? today, draft: home.draft };
   if (home.published[today]) return { kind: "done", day: today, reportId: home.published[today].id };
-  if (!reportSpan(home)) return { kind: "first-use", day: today };
+  if (!reportSpan(home)) {
+    const start = home.start_date;
+    return { kind: "first-use", day: start && start < today ? start : today };
+  }
   return { kind: "not-started", day: today };
 }
 

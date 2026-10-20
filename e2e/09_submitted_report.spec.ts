@@ -328,7 +328,7 @@ for (const [badge, over] of [
       return b;
     };
     const back = await box(page.getByRole("link", { name: "Back" }));
-    const profile = await box(page.getByRole("link", { name: "My Profile" }));
+    const profile = await box(page.getByRole("button", { name: "My Profile" }));
     const date = await box(page.locator("span").filter({ hasText: /^13 OCT$/ }));
     const pill = await box(page.getByText(badge, { exact: true }));
     expect(date.x).toBeGreaterThanOrEqual(back.x + back.width);

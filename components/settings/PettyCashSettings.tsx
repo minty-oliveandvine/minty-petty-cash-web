@@ -61,6 +61,10 @@ function refusal(err: unknown): string | null {
  *
  * What a person may change is the API's `permissions`; a cashier sees it all read-only.
  */
+// Flask's 28px initials, with a 44px tap area around them.
+const PROFILE_BADGE =
+  "relative inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-flask-avatar-bg text-[12px] font-semibold text-flask-avatar-ink transition-shadow before:absolute before:-inset-2 before:content-[''] hover:ring-2 hover:ring-flask-menu/30";
+
 export function PettyCashSettings() {
   const auth = useAuth();
   const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -130,6 +134,7 @@ function SettingsHeader({ entityId, entityName }: { entityId: string; entityName
   const mounted = useMounted();
   const viewer = useViewer();
   const menu = useRef<HTMLButtonElement>(null);
+  const profileButton = useRef<HTMLButtonElement>(null);
   const home = entityId ? pettyCashHome(entityId, entityName) : undefined;
   return (
     <header className="sticky top-0 z-40 bg-flask-white pt-[env(safe-area-inset-top,0px)]">
@@ -153,15 +158,32 @@ function SettingsHeader({ entityId, entityName }: { entityId: string; entityName
           <Icon name="corporate_fare" className="text-[22px] text-flask-menu sm:text-[26px]" />
           <span className="min-w-0 max-w-[6.5rem] truncate text-sm font-medium text-flask-menu sm:max-w-[9rem] sm:text-base md:max-w-[14rem] lg:max-w-[28rem]">{entityName}</span>
           <div className="flex shrink-0 items-center gap-1.5 pl-0.5 sm:gap-2 sm:pl-2">
-            <a
-              href={mounted ? sidebarHost.links.profile() : undefined}
-              aria-label={`${viewer?.name ?? ""}, My Profile`.replace(/^, /, "")}
-              title={viewer?.name ?? ""}
-              // 44px for a finger without moving Flask's 28px badge
-              className="relative inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-flask-avatar-bg text-[12px] font-semibold text-flask-avatar-ink no-underline transition-shadow before:absolute before:-inset-2 before:content-[''] hover:ring-2 hover:ring-flask-menu/30"
-            >
-              <span aria-hidden="true">{viewer?.initials || "?"}</span>
-            </a>
+            {/* My Profile is the sidebar's sheet, over the page (the owner, 2026-10-20); minty-web's
+                page only where no sidebar can hold it. 44px for a finger without moving Flask's
+                28px badge. */}
+            {sidebar?.canOpenProfile ? (
+              <button
+                ref={profileButton}
+                type="button"
+                onClick={() => sidebar.openProfile(profileButton.current)}
+                aria-label={`${viewer?.name ?? ""}, My Profile`.replace(/^, /, "")}
+                aria-expanded={sidebar.open && sidebar.view === "profile"}
+                aria-controls={sidebar.panelId}
+                title={viewer?.name ?? ""}
+                className={`m-0 border-0 p-0 ${PROFILE_BADGE}`}
+              >
+                <span aria-hidden="true">{viewer?.initials || "?"}</span>
+              </button>
+            ) : (
+              <a
+                href={mounted ? sidebarHost.links.profile() : undefined}
+                aria-label={`${viewer?.name ?? ""}, My Profile`.replace(/^, /, "")}
+                title={viewer?.name ?? ""}
+                className={`no-underline ${PROFILE_BADGE}`}
+              >
+                <span aria-hidden="true">{viewer?.initials || "?"}</span>
+              </a>
+            )}
             <button
               ref={menu}
               type="button"

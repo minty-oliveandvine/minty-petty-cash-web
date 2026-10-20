@@ -93,9 +93,9 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 `@minty/shared/sidebar`, with this app's host in `components/ui/sidebarHost.ts`. That file is the only app-specific part.
 - **This app's own pages:** Dashboard, Reports and Settings.
-- **minty-web's pages, through Flask's `/handoff/minty-web`:** the entity list, Subscriptions and My Profile (scoped to the company it was opened from).
+- **minty-web's pages, through Flask's `/handoff/minty-web`:** the entity list and Subscriptions.
 - **Through Flask's `/entity/<id>/payment-request`** (a hand-off that mints the payments app's token, not a page): Bills.
-- **No profile slot.** My Profile is minty-web's page.
+- **My Profile is the sidebar's sheet, over the page** (the owner, 2026-10-20): the shared panel `@minty/shared/profile` (v0.6), wired in `components/ui/SidebarShell.tsx` with this app's Flask calls (`lib/profileApi.ts`, `GET`/`PATCH /api/me/profile` with `?entity=`) its toast, and the packaged Subscriptions Overview (`lib/subscriptionsApi.ts`: subscription-api's `GET /api/me/subscriptions`, every page; Manage Subscription goes to minty-web's portal through the hand-off). No PASSWORD row (Minty holds no password). Its five `public/profile/` files are asserted against `PROFILE_ASSETS` (`app/__tests__/packagedAssets.test.ts`). `links.profile()` (minty-web's page through the hand-off) is only the no-sidebar fallback.
 
 ## Design
 

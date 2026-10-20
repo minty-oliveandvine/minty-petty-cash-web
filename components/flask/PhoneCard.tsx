@@ -9,26 +9,48 @@ import { sidebarHost } from "@/components/ui/sidebarHost";
 
 /**
  * Flask's two header buttons, drawn as Flask draws them (28px initials on #FFE6B1, the 40px ≡ in
- * #656565) and wired to the shared sidebar: the initials go to My Profile (minty-web's page - this
- * app's sidebar has no profile view), the ≡ opens the menu.
+ * #656565) and wired to the shared sidebar: the initials open My Profile as the sidebar's sheet,
+ * over the page (the owner, 2026-10-20) - minty-web's page only where no sidebar can hold it - and
+ * the ≡ opens the menu.
  */
 function HeaderButtons() {
   const sidebar = useSidebar();
   const mounted = useMounted();
   const viewer = useViewer();
   const menu = useRef<HTMLButtonElement>(null);
+  const profile = useRef<HTMLButtonElement>(null);
+  const initials = (
+    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-flask-avatar-bg text-[12px] font-semibold text-flask-avatar-ink">
+      {viewer?.initials || "?"}
+    </span>
+  );
+  const BADGE =
+    "relative inline-flex shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-flask-teal/50";
   return (
     <div className="flex items-center gap-2">
-      <a
-        href={mounted ? sidebarHost.links.profile() : undefined}
-        className="relative inline-flex shrink-0 cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-flask-teal/50"
-        aria-label="My Profile"
-        title={viewer?.name ?? ""}
-      >
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-flask-avatar-bg text-[12px] font-semibold text-flask-avatar-ink">
-          {viewer?.initials || "?"}
-        </span>
-      </a>
+      {sidebar?.canOpenProfile ? (
+        <button
+          ref={profile}
+          type="button"
+          onClick={() => sidebar.openProfile(profile.current)}
+          className={BADGE}
+          aria-label="My Profile"
+          aria-expanded={sidebar.open && sidebar.view === "profile"}
+          aria-controls={sidebar.panelId}
+          title={viewer?.name ?? ""}
+        >
+          {initials}
+        </button>
+      ) : (
+        <a
+          href={mounted ? sidebarHost.links.profile() : undefined}
+          className={BADGE}
+          aria-label="My Profile"
+          title={viewer?.name ?? ""}
+        >
+          {initials}
+        </a>
+      )}
       <button
         ref={menu}
         type="button"

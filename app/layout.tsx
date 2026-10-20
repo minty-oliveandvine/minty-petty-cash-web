@@ -22,8 +22,8 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-// The sidebar with no profile slot: My Profile is minty-web's page, reached through Flask
-// (components/ui/sidebarHost.ts `links.profile`). None on the public share page (SidebarShell).
+// The sidebar, with My Profile as its sheet (@minty/shared/profile, wired in SidebarShell). None on
+// the public share page (SidebarShell).
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>

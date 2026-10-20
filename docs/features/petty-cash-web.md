@@ -2,9 +2,9 @@
 
 Petty Cash's own front end (Next.js 16, Tailwind v4, port **3010**). It is replacing the Petty Cash pages in Minty (the Flask app) and redesigning them to the owner's guidelines (Parts 13-15, `Minty/docs/design/`).
 
-- `main` is this scaffold.
-- The redesign is built on `development` and reviewed as a PR into `main`.
-- Production keeps Flask's pages until traffic is switched.
+- `main` is the Flask look and production (`pettycash.dailyminty.com`, from the Step 5 apply).
+- `development` is the Part 15 redesign (`dev-pettycash.` and previews). The two are separate tracks: never fast-forward one into the other.
+- Flask's own Petty Cash dashboard and report history hand over to this app wherever Flask has `PETTY_CASH_WEB_URL` set (Minty `blueprints/entity/routes/list.py::report_dashboard`, `blueprints/report/routes/history.py`).
 
 ## Addresses
 
@@ -68,13 +68,13 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Variable | What | Default (decided ports) | Today on a workstation |
 |---|---|---|---|
-| `ACCOUNTS_API_URL` | Flask: the hand-off, `/api/me/profile`, logout | `http://localhost:8000` | `http://localhost:5001` |
-| `PETTY_CASH_API_URL` | Petty Cash's API: `pettyCashFetch` | `http://localhost:8010` | `http://localhost:5001` (Flask serves it for now) |
-| `SUBSCRIPTION_API_URL` | the sidebar's Subscriptions | `http://localhost:8001` | `http://localhost:8000` |
+| `ACCOUNTS_API_URL` | Flask: the hand-off, `/api/me/profile`, logout | `http://localhost:8000` | same |
+| `PETTY_CASH_API_URL` | Petty Cash's API (Django `minty-petty-cash-api`): `pettyCashFetch` | `http://localhost:8010` | same |
+| `SUBSCRIPTION_API_URL` | the sidebar's Subscriptions | `http://localhost:8001` | same |
 | `PAYMENT_REQUEST_WEB_URL` | the sidebar's Bills (fallback) | `http://localhost:3020` | same |
 
 - **Inlined at build time.** Every variable is listed under `next.config.ts`'s `env`.
-- **The Petty Cash API is in Flask for now.** It lives at `/api/petty-cash/v1/companies/<id>/...`, Minty's `blueprints/petty_cash_api` (Minty `docs/features/petty-cash-api.md`). The owner's target is a Django `minty-petty-cash-api` serving **the same paths**, so only `PETTY_CASH_API_URL` changes when it moves.
+- **The Petty Cash API is Django's** (`minty-petty-cash-api`, `pettycash-api.` in production), at `/api/petty-cash/v1/companies/<id>/...`. Flask still has a copy (`blueprints/petty_cash_api`) at the same paths, but deployments point `PETTY_CASH_API_URL` at Django: Flask's copy sends no `Expose-Headers`, so a CSV download would lose its file name.
 - **The company is only in the path.** Flask checks it against membership on every call, and the door fails closed.
 - **One header pair.** Every call sends `Authorization` and nothing else (Flask's CORS allows `Authorization` and `Content-Type`).
 - **The one call without a bearer:** `pettyCashPublicFetch`, the share page's read of `/api/petty-cash/v1/public/...` (and only there). It sends no `Authorization` even when the person is signed in, no cookies (`credentials: "omit"`), no referrer and nothing cached, and a 401 is a plain refusal, never a hand-off.

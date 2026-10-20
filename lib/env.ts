@@ -8,12 +8,10 @@
  * here, once. (minty-web's lib/env.ts, the same rule.)
  *
  * The names follow the owner's 2026-10-14 decision: Flask is becoming `accounts-api` (sign-in,
- * tokens, companies, My Profile), and Petty Cash gets its own API. Until that API exists its
- * routes are Flask's (`/api/petty-cash/v1/...`, Minty `blueprints/petty_cash_api`), so both
- * point at Flask today - the paths stay the same when the API moves, only its base URL changes.
+ * tokens, companies, My Profile), and Petty Cash has its own API, Django `minty-petty-cash-api`
+ * (`/api/petty-cash/v1/...` - the same paths Flask's copy serves).
  *
  * Defaults are the decided local ports (Flask 8000, Petty Cash API 8010, Subscription API 8001).
- * Until the port move lands, .env.local sets today's (.env.example).
  */
 
 function url(raw: string | undefined, fallback: string): string {

@@ -10,7 +10,6 @@
  * already offers it, so the outcome no longer has "Start the next day".
  */
 
-
 import { differenceText } from "@/lib/cashCount";
 import { differenceOf } from "@/lib/close";
 import { clockTime, formatWeekdayDay } from "@/lib/dates";
@@ -32,7 +31,12 @@ export type Outcome = {
   cash_counted: number;
   difference: { amount: number; kind: string; has_reason: boolean };
   /** `was_published`: it has been to Xero, even if changed since - publishing again warns. */
-  xero: { publishing_status: string | null; published_at: string | null; xero_integrated: boolean; was_published: boolean };
+  xero: {
+    publishing_status: string | null;
+    published_at: string | null;
+    xero_integrated: boolean;
+    was_published: boolean;
+  };
   can_publish: boolean;
   /** The report is for today (the server's Hong Kong date). */
   is_today: boolean;
@@ -67,11 +71,17 @@ export function differencePill(outcome: Outcome): string | null {
  * is in Xero, else "Not sent to Xero yet" + Send to Xero (a report changed since it was published
  * warns in the dialog, `was_published`). The time is on the device's clock.
  */
-export function xeroLine(outcome: Outcome): { text: string; action: "Send to Xero" | "Publish again" } {
+export function xeroLine(outcome: Outcome): {
+  text: string;
+  action: "Send to Xero" | "Publish again";
+} {
   const { xero_integrated, published_at } = outcome.xero;
   if (xero_integrated) {
     const at = published_at ? new Date(published_at) : null;
-    return { text: at && !Number.isNaN(at.getTime()) ? `Sent to Xero · ${clockTime(at)}` : "Sent to Xero", action: "Publish again" };
+    return {
+      text: at && !Number.isNaN(at.getTime()) ? `Sent to Xero · ${clockTime(at)}` : "Sent to Xero",
+      action: "Publish again",
+    };
   }
   return { text: "Not sent to Xero yet", action: "Send to Xero" };
 }

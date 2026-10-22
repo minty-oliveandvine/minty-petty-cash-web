@@ -18,7 +18,8 @@ import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { formatWeekdayDay } from "@/lib/dates";
 import { deleteWarning, editWarning, type Deleted, type Reopened } from "@/lib/report";
 
-const NOT_REOPENED = "We couldn't open the report for editing. Check your connection, then try again.";
+const NOT_REOPENED =
+  "We couldn't open the report for editing. Check your connection, then try again.";
 const NOT_DELETED = "We couldn't delete the report. Check your connection, then try again.";
 
 /** What both dialogs need of a report: its id, its day, and whether it has been to Xero. */
@@ -62,9 +63,18 @@ export function EditReportDialog({
     setBusy(true);
     setProblem(null);
     try {
-      const answer = await pettyCashFetch<Reopened>(`/reports/${encodeURIComponent(report.id)}/reopen`, { method: "POST" });
+      const answer = await pettyCashFetch<Reopened>(
+        `/reports/${encodeURIComponent(report.id)}/reopen`,
+        { method: "POST" },
+      );
       // The button stays busy until the stage is up.
-      openStep((href) => router.push(href), entityId, entityName, "opening", answer.transaction_date);
+      openStep(
+        (href) => router.push(href),
+        entityId,
+        entityName,
+        "opening",
+        answer.transaction_date,
+      );
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
       inFlight.current = false;
@@ -86,7 +96,12 @@ export function EditReportDialog({
           <Button ref={cancel} kind="secondary" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
-          <Button kind="primary" onClick={() => void confirm()} processing={busy} processingLabel="Opening…">
+          <Button
+            kind="primary"
+            onClick={() => void confirm()}
+            processing={busy}
+            processingLabel="Opening…"
+          >
             Edit report
           </Button>
         </>
@@ -128,7 +143,9 @@ export function DeleteReportDialog({
     setBusy(true);
     setProblem(null);
     try {
-      const answer = await pettyCashFetch<Deleted>(`/reports/${encodeURIComponent(report.id)}`, { method: "DELETE" });
+      const answer = await pettyCashFetch<Deleted>(`/reports/${encodeURIComponent(report.id)}`, {
+        method: "DELETE",
+      });
       onDeleted(answer);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
@@ -147,7 +164,10 @@ export function DeleteReportDialog({
       title="Delete this report?"
       description={
         <>
-          <span className="font-semibold">The Daily Report for {formatWeekdayDay(report.day)} is deleted with its expenses and receipts.</span>{" "}
+          <span className="font-semibold">
+            The Daily Report for {formatWeekdayDay(report.day)} is deleted with its expenses and
+            receipts.
+          </span>{" "}
           This can&apos;t be undone.
         </>
       }
@@ -156,7 +176,12 @@ export function DeleteReportDialog({
           <Button ref={cancel} kind="secondary" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
-          <Button kind="danger" onClick={() => void confirm()} processing={busy} processingLabel="Deleting…">
+          <Button
+            kind="danger"
+            onClick={() => void confirm()}
+            processing={busy}
+            processingLabel="Deleting…"
+          >
             Delete report
           </Button>
         </>

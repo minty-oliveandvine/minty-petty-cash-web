@@ -30,7 +30,12 @@ export function isWizardStep(step: string): step is WizardStep {
 }
 
 /** A step of a new report for `day`, in the company's address (`/entity/<ref>/petty-cash/reports/new/<step>`). */
-export function stepHref(entityId: string, entityName: string, step: WizardStep, day: string): string {
+export function stepHref(
+  entityId: string,
+  entityName: string,
+  step: WizardStep,
+  day: string,
+): string {
   return `/entity/${companyRef(entityId, entityName)}/petty-cash/reports/new/${STEP_PATH[step]}?${new URLSearchParams({ transaction_date: day })}`;
 }
 
@@ -39,8 +44,18 @@ export function stepHref(entityId: string, entityName: string, step: WizardStep,
  * Drawer when it names none (or a key this app does not know) - the launch page's Continue and a
  * history row's draft alike.
  */
-export function resumeHref(entityId: string, entityName: string, section: string | null, day: string): string {
-  return stepHref(entityId, entityName, section && isWizardStep(section) ? section : "opening", day);
+export function resumeHref(
+  entityId: string,
+  entityName: string,
+  section: string | null,
+  day: string,
+): string {
+  return stepHref(
+    entityId,
+    entityName,
+    section && isWizardStep(section) ? section : "opening",
+    day,
+  );
 }
 
 /** The outcome page of a submitted report (`/entity/<ref>/petty-cash/reports/<report id>/submitted`). */

@@ -78,9 +78,18 @@ export function announcement(state: PublishState): string {
 }
 
 /** What the page shows while Xero works, once it stalls, and when it fails (Flask's page's words). */
-export const PUBLISHING = { title: "Publishing to Xero", body: "This can take a few minutes. You can leave this page; Xero carries on." };
-export const STALLED = { title: "Xero is still working on it", body: "The report is submitted. Check again in a few minutes; it shows here once Xero has it." };
-export const FAILED = { title: "Publishing to Xero failed", body: "Nothing more was sent. Check the Xero connection, then try again." };
+export const PUBLISHING = {
+  title: "Publishing to Xero",
+  body: "This can take a few minutes. You can leave this page; Xero carries on.",
+};
+export const STALLED = {
+  title: "Xero is still working on it",
+  body: "The report is submitted. Check again in a few minutes; it shows here once Xero has it.",
+};
+export const FAILED = {
+  title: "Publishing to Xero failed",
+  body: "Nothing more was sent. Check the Xero connection, then try again.",
+};
 
 /** The toast after a publish that went through. */
 export function publishedMessage(day: string): string {
@@ -119,7 +128,10 @@ export function refusalOf(err: unknown): { message: string; reconnect: boolean }
   if (!(err instanceof ApiError)) return { message: NOT_STARTED, reconnect: false };
   if (err.status === 401) return null;
   const body = err.body as { reconnect?: unknown } | null;
-  return { message: err.message, reconnect: Boolean(body && typeof body === "object" && body.reconnect === true) };
+  return {
+    message: err.message,
+    reconnect: Boolean(body && typeof body === "object" && body.reconnect === true),
+  };
 }
 
 /**

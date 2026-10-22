@@ -12,7 +12,12 @@ import {
   type SalesPage,
 } from "@/lib/sales";
 
-const method = (value_name: string, type: SalesMethod["type"], amount: number | null = null, name = value_name): SalesMethod => ({
+const method = (
+  value_name: string,
+  type: SalesMethod["type"],
+  amount: number | null = null,
+  name = value_name,
+): SalesMethod => ({
   sale_id: value_name,
   name,
   value_name,
@@ -41,7 +46,11 @@ describe("the sections", () => {
     const { electronic, delivery } = sections(methods);
     expect(electronic.map((m) => m.value_name)).toEqual(["visa_sales", "wechat_sales"]);
     expect(delivery.map((m) => m.value_name)).toEqual(["foodpanda_sales"]);
-    expect(shownMethods(methods).map((m) => m.value_name)).toEqual(["visa_sales", "wechat_sales", "foodpanda_sales"]);
+    expect(shownMethods(methods).map((m) => m.value_name)).toEqual([
+      "visa_sales",
+      "wechat_sales",
+      "foodpanda_sales",
+    ]);
   });
 
   it("show the catalogue's names as they stand", () => {
@@ -52,12 +61,23 @@ describe("the sections", () => {
 describe("the running totals", () => {
   it("add up what the fields show - commas, empties and Deliveroo's hidden value aside", () => {
     expect(
-      salesTotals(methods, { visa_sales: "1,200.50", wechat_sales: "", foodpanda_sales: "33.25", deliveroo_sales: "9" }, "1,000.00"),
+      salesTotals(
+        methods,
+        {
+          visa_sales: "1,200.50",
+          wechat_sales: "",
+          foodpanda_sales: "33.25",
+          deliveroo_sales: "9",
+        },
+        "1,000.00",
+      ),
     ).toEqual({ electronic: 1200.5, delivery: 33.25, cash: 1000, total: 2233.75 });
   });
 
   it("never show floating-point dust", () => {
-    expect(salesTotals(methods, { visa_sales: "0.1", wechat_sales: "0.2" }, "").electronic).toBe(0.3);
+    expect(salesTotals(methods, { visa_sales: "0.1", wechat_sales: "0.2" }, "").electronic).toBe(
+      0.3,
+    );
     expect(salesTotals(methods, { visa_sales: "0.1", wechat_sales: "0.2" }, "0.4").total).toBe(0.7);
   });
 });
@@ -67,7 +87,10 @@ describe("the fields as the page opens", () => {
     expect(shownAmount(1200.5)).toBe("1,200.50");
     expect(shownAmount(0)).toBe("");
     expect(shownAmount(null)).toBe("");
-    expect(initialValues(page())).toEqual({ values: { visa_sales: "1,200.50", wechat_sales: "", foodpanda_sales: "" }, cash: "300.00" });
+    expect(initialValues(page())).toEqual({
+      values: { visa_sales: "1,200.50", wechat_sales: "", foodpanda_sales: "" },
+      cash: "300.00",
+    });
   });
 });
 
@@ -92,7 +115,9 @@ describe("unsaved changes", () => {
 
 describe("the save's amounts", () => {
   it("name every method the stage shows, an empty field as zero", () => {
-    expect(salesAmounts(methods, { visa_sales: "1,200.55", wechat_sales: "", deliveroo_sales: "9" })).toEqual({
+    expect(
+      salesAmounts(methods, { visa_sales: "1,200.55", wechat_sales: "", deliveroo_sales: "9" }),
+    ).toEqual({
       visa_sales: 1200.55,
       wechat_sales: 0,
       foodpanda_sales: 0,

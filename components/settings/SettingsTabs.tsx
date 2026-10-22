@@ -15,11 +15,27 @@ type Tab = { label: string; href?: string };
 
 function tabs(entityId: string, entityName: string, billing: boolean): Tab[] {
   return [
-    { label: "Users", href: settingsSectionUrl(env.ACCOUNTS_API_URL, entityId, entityName, "users") },
-    { label: "Entity & Integration", href: settingsSectionUrl(env.ACCOUNTS_API_URL, entityId, entityName, "integration") },
+    {
+      label: "Users",
+      href: settingsSectionUrl(env.ACCOUNTS_API_URL, entityId, entityName, "users"),
+    },
+    {
+      label: "Entity & Integration",
+      href: settingsSectionUrl(env.ACCOUNTS_API_URL, entityId, entityName, "integration"),
+    },
     { label: "Petty Cash Settings" },
-    ...(billing ? [{ label: "Payment Request Settings", href: paymentRequestSettingsUrl(env.ACCOUNTS_API_URL, entityId) }] : []),
-    { label: "Modules", href: settingsSectionUrl(env.ACCOUNTS_API_URL, entityId, entityName, "modules") },
+    ...(billing
+      ? [
+          {
+            label: "Payment Request Settings",
+            href: paymentRequestSettingsUrl(env.ACCOUNTS_API_URL, entityId),
+          },
+        ]
+      : []),
+    {
+      label: "Modules",
+      href: settingsSectionUrl(env.ACCOUNTS_API_URL, entityId, entityName, "modules"),
+    },
   ];
 }
 

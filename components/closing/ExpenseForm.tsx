@@ -25,17 +25,57 @@
  * changed asks first, inline (Part 14 Drawer: `onRequestClose` may refuse).
  */
 
-import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
-import { Button, buttonClass, Drawer, ErrorSummary, Field, Icon, InlineAlert, inputClass } from "@minty/shared/ui";
+import {
+  Button,
+  buttonClass,
+  Drawer,
+  ErrorSummary,
+  Field,
+  Icon,
+  InlineAlert,
+  inputClass,
+} from "@minty/shared/ui";
 import { formatAmount, parseAmount } from "@minty/shared/money";
 
-import { ReadingNotice, ReceiptNote, SuggestedHelper, SuggestionExtras, useReceiptReader } from "@/components/closing/ReceiptReader";
+import {
+  ReadingNotice,
+  ReceiptNote,
+  SuggestedHelper,
+  SuggestionExtras,
+  useReceiptReader,
+} from "@/components/closing/ReceiptReader";
 import { AmountInput, refused } from "@/components/closing/Stage";
 import type { ViewerFile } from "@/components/closing/ReceiptViewer";
 import { ApiError, pettyCashBlob, pettyCashFetch } from "@/lib/apiClient";
-import { cleared, edited, entryState, usedNote, withoutSuggestions, withSuggestions, type EntryValues, type SuggestedField } from "@/lib/expenseAi";
-import { accountsFor, canRemoveReceipt, draftLineChanges, draftLineForm, keptReceipts } from "@/lib/expenseEdit";
+import {
+  cleared,
+  edited,
+  entryState,
+  usedNote,
+  withoutSuggestions,
+  withSuggestions,
+  type EntryValues,
+  type SuggestedField,
+} from "@/lib/expenseAi";
+import {
+  accountsFor,
+  canRemoveReceipt,
+  draftLineChanges,
+  draftLineForm,
+  keptReceipts,
+} from "@/lib/expenseEdit";
 import {
   accountLabel,
   accountProblem,
@@ -133,7 +173,9 @@ export default function ExpenseForm({
   const { amount, query, supplier, accountId, remarks } = entry.values;
 
   const reader = useReceiptReader((suggestions) =>
-    setEntry((state) => withSuggestions(state, suggestions, { suppliers, accounts, code, day, canCreateSupplier })),
+    setEntry((state) =>
+      withSuggestions(state, suggestions, { suppliers, accounts, code, day, canCreateSupplier }),
+    ),
   );
 
   // A line saved without a supplier or an account may stay without; a new one needs both.
@@ -148,7 +190,11 @@ export default function ExpenseForm({
       supplier:
         !supplierRequired && !supplier && query.trim() === ""
           ? null
-          : supplierProblem(query, supplier, { touched: final || touched.supplier, submitted: done, canCreate: canCreateSupplier }),
+          : supplierProblem(query, supplier, {
+              touched: final || touched.supplier,
+              submitted: done,
+              canCreate: canCreateSupplier,
+            }),
       amount: amountProblem(amount, { touched: final || touched.amount, submitted: done, code }),
       account: accountRequired ? accountProblem(accountId, done) : null,
       remarks: remarksProblem(remarks),
@@ -156,15 +202,27 @@ export default function ExpenseForm({
   }
   const problems = problemsAt(false);
   const summary = submitted
-    ? (Object.keys(ids) as (keyof typeof ids)[]).flatMap((key) => (problems[key] ? [{ fieldId: ids[key], message: problems[key] as string }] : []))
+    ? (Object.keys(ids) as (keyof typeof ids)[]).flatMap((key) =>
+        problems[key] ? [{ fieldId: ids[key], message: problems[key] as string }] : [],
+      )
     : [];
-  const changes = line ? draftLineChanges(line, { amount, remarks, supplier, accountId, receipt: file, removeReceiptIds: removed }) : null;
+  const changes = line
+    ? draftLineChanges(line, {
+        amount,
+        remarks,
+        supplier,
+        accountId,
+        receipt: file,
+        removeReceiptIds: removed,
+      })
+    : null;
   const dirty = changes
     ? Object.keys(changes).length > 0 || query !== (line?.supplier?.name ?? "")
     : Boolean(file || query.trim() || amount || accountId || remarks.trim());
 
   /** The person's own change to a field: it is theirs now (any suggestion's marking goes). */
-  const change = (field: SuggestedField, patch: Partial<EntryValues>) => setEntry((state) => edited(state, field, patch));
+  const change = (field: SuggestedField, patch: Partial<EntryValues>) =>
+    setEntry((state) => edited(state, field, patch));
 
   function requestClose() {
     if (busy) return;
@@ -212,7 +270,12 @@ export default function ExpenseForm({
       onSaved(await pettyCashFetch<ExpenseAdded>(path, init));
     } catch (err) {
       // No draft for the day any more: to Addition to Drawer, which says why.
-      const message = err instanceof ApiError ? refused(err, { here: "expenses", day, ...route }) : editing ? NOT_SAVED : NOT_ADDED;
+      const message =
+        err instanceof ApiError
+          ? refused(err, { here: "expenses", day, ...route })
+          : editing
+            ? NOT_SAVED
+            : NOT_ADDED;
       if (message === undefined) return;
       setBusy(false);
       setServerProblem(message);
@@ -252,7 +315,13 @@ export default function ExpenseForm({
           <Button kind="ghost" onClick={requestClose} disabled={busy}>
             Cancel
           </Button>
-          <Button type="submit" form={formId} kind="primary" processing={busy} processingLabel={editing ? "Saving…" : "Adding…"}>
+          <Button
+            type="submit"
+            form={formId}
+            kind="primary"
+            processing={busy}
+            processingLabel={editing ? "Saving…" : "Adding…"}
+          >
             {editing ? "Save" : "Add expense"}
           </Button>
         </>
@@ -278,7 +347,9 @@ export default function ExpenseForm({
                 </Button>
               }
             >
-              {editing ? "Save them with Save, or discard what you changed." : "Add it with Add expense, or discard what you entered."}
+              {editing
+                ? "Save them with Save, or discard what you changed."
+                : "Add it with Add expense, or discard what you entered."}
             </InlineAlert>
           ) : null}
           {serverProblem ? <InlineAlert tone="danger">{serverProblem}</InlineAlert> : null}
@@ -287,7 +358,13 @@ export default function ExpenseForm({
 
         {line && kept.length ? (
           <div className="flex min-w-0 flex-col gap-1.5">
-            <p className="text-label text-text-secondary">{file ? "Saved receipt, replaced when you save" : kept.length > 1 ? "Saved receipts" : "Saved receipt"}</p>
+            <p className="text-label text-text-secondary">
+              {file
+                ? "Saved receipt, replaced when you save"
+                : kept.length > 1
+                  ? "Saved receipts"
+                  : "Saved receipt"}
+            </p>
             <ul className="flex flex-col gap-2">
               {kept.map((receipt) => (
                 <li key={receipt.id} className="flex min-w-0 flex-wrap items-center gap-1">
@@ -297,18 +374,31 @@ export default function ExpenseForm({
                       onView({
                         name: receipt.name,
                         mime: receipt.mime_type,
-                        source: () => pettyCashBlob(`/expense-lines/${encodeURIComponent(line.id)}/receipts/${encodeURIComponent(receipt.id)}`),
+                        source: () =>
+                          pettyCashBlob(
+                            `/expense-lines/${encodeURIComponent(line.id)}/receipts/${encodeURIComponent(receipt.id)}`,
+                          ),
                       })
                     }
                     aria-label={`View receipt ${receipt.name}`}
                     className="flex min-h-11 min-w-0 flex-1 basis-48 cursor-pointer items-center gap-3 rounded-lg border border-border-default bg-surface-card px-3 py-2 text-left hover:bg-state-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
                   >
-                    <Icon name={receiptKind(receipt.mime_type) === "pdf" ? "picture_as_pdf" : "image"} className="text-text-secondary" />
-                    <span className="min-w-0 flex-1 truncate text-body-m text-text-primary">{receipt.name}</span>
+                    <Icon
+                      name={receiptKind(receipt.mime_type) === "pdf" ? "picture_as_pdf" : "image"}
+                      className="text-text-secondary"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-body-m text-text-primary">
+                      {receipt.name}
+                    </span>
                     <span className="shrink-0 text-body-s font-medium text-text-link">View</span>
                   </button>
                   {canRemoveReceipt(kept, Boolean(file)) ? (
-                    <Button kind="ghost" disabled={busy} onClick={() => setRemoved((list) => [...list, receipt.id])} aria-label={`Remove saved receipt ${receipt.name}`}>
+                    <Button
+                      kind="ghost"
+                      disabled={busy}
+                      onClick={() => setRemoved((list) => [...list, receipt.id])}
+                      aria-label={`Remove saved receipt ${receipt.name}`}
+                    >
                       Remove
                     </Button>
                   ) : null}
@@ -325,7 +415,13 @@ export default function ExpenseForm({
           disabled={busy}
           required={!editing}
           prompt={line?.receipts.length ? "Replace the receipt" : "Add the receipt"}
-          note={line?.receipts.length ? "Optional. A new receipt replaces the saved one." : editing ? "Optional. One receipt for each expense." : undefined}
+          note={
+            line?.receipts.length
+              ? "Optional. A new receipt replaces the saved one."
+              : editing
+                ? "Optional. One receipt for each expense."
+                : undefined
+          }
           onPick={(picked) => {
             const why = receiptProblem(picked);
             setFileProblem(why);
@@ -359,7 +455,12 @@ export default function ExpenseForm({
           helper={entry.marks.supplier ? helperFor("supplier") : undefined}
           after={extras("supplier")}
           detectedName={entry.detectedName}
-          onQuery={(text) => change("supplier", { query: text, supplier: supplier && text === supplier.name ? supplier : null })}
+          onQuery={(text) =>
+            change("supplier", {
+              query: text,
+              supplier: supplier && text === supplier.name ? supplier : null,
+            })
+          }
           onChoose={(s) => change("supplier", { supplier: s, query: s.name })}
           onLeave={() => setTouched((t) => ({ ...t, supplier: true }))}
         />
@@ -387,7 +488,12 @@ export default function ExpenseForm({
             label="Account"
             required={accountRequired}
             error={problems.account}
-            helper={helperFor("account", editing ? "Choosing another account renames the expense to it." : "Where Minty records this expense in Xero.")}
+            helper={helperFor(
+              "account",
+              editing
+                ? "Choosing another account renames the expense to it."
+                : "Where Minty records this expense in Xero.",
+            )}
           >
             {(a11y) => (
               <div className="relative">
@@ -407,7 +513,10 @@ export default function ExpenseForm({
                     </option>
                   ))}
                 </select>
-                <Icon name="expand_more" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                <Icon
+                  name="expand_more"
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary"
+                />
               </div>
             )}
           </Field>
@@ -415,7 +524,12 @@ export default function ExpenseForm({
         </div>
 
         <div className="flex min-w-0 flex-col gap-2">
-          <Field id={ids.remarks} label="Description" error={problems.remarks} helper={helperFor("description", remarksHelper(remarks))}>
+          <Field
+            id={ids.remarks}
+            label="Description"
+            error={problems.remarks}
+            helper={helperFor("description", remarksHelper(remarks))}
+          >
             {(a11y) => (
               <input
                 {...a11y}
@@ -531,7 +645,10 @@ export function ReceiptField({
               // eslint-disable-next-line @next/next/no-img-element -- an object URL; next/image cannot optimise it
               <img ref={thumb} alt="Receipt photo" className="size-12 object-cover" />
             ) : (
-              <Icon name={receiptKind(file.type) === "pdf" ? "picture_as_pdf" : "description"} size="lg" />
+              <Icon
+                name={receiptKind(file.type) === "pdf" ? "picture_as_pdf" : "description"}
+                size="lg"
+              />
             )}
           </span>
           <div className="min-w-0 flex-1 basis-32">
@@ -543,10 +660,21 @@ export function ReceiptField({
             </p>
           </div>
           <div className="flex shrink-0 gap-1">
-            <Button kind="ghost" onClick={onView} disabled={disabled} aria-label={`View ${file.name}`}>
+            <Button
+              kind="ghost"
+              onClick={onView}
+              disabled={disabled}
+              aria-label={`View ${file.name}`}
+            >
               View
             </Button>
-            <Button id={id} kind="ghost" onClick={onRemove} disabled={disabled} aria-label={`Remove ${file.name}`}>
+            <Button
+              id={id}
+              kind="ghost"
+              onClick={onRemove}
+              disabled={disabled}
+              aria-label={`Remove ${file.name}`}
+            >
               Remove
             </Button>
           </div>
@@ -562,12 +690,18 @@ export function ReceiptField({
           <Icon name="receipt_long" size="lg" className="text-text-secondary" />
           <div className="flex flex-col gap-0.5">
             <p className="text-body-m font-semibold text-text-primary">{prompt}</p>
-            <p className="text-body-s text-text-secondary">Keep the total and the date in view. {RECEIPT_LIMITS}</p>
+            <p className="text-body-s text-text-secondary">
+              Keep the total and the date in view. {RECEIPT_LIMITS}
+            </p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             {/* The camera, on a phone only (Part 14 Camera capture: on a computer, Choose file). */}
             <label className={`${labelClass} sm:hidden`}>
-              <input {...control} capture="environment" aria-labelledby={`${legendId} ${id}-camera`} />
+              <input
+                {...control}
+                capture="environment"
+                aria-labelledby={`${legendId} ${id}-camera`}
+              />
               <Icon name="photo_camera" />
               <span id={`${id}-camera`}>Take photo</span>
             </label>
@@ -579,7 +713,11 @@ export function ReceiptField({
           </div>
         </div>
       )}
-      <p id={noteId} className={`text-caption ${problem ? "text-status-danger-ink" : "text-text-muted"}`} {...(problem ? { role: "alert" } : {})}>
+      <p
+        id={noteId}
+        className={`text-caption ${problem ? "text-status-danger-ink" : "text-text-muted"}`}
+        {...(problem ? { role: "alert" } : {})}
+      >
         {problem ?? note}
       </p>
     </div>
@@ -738,7 +876,10 @@ export function SupplierPicker({
                 onKeyDown={onKeyDown}
                 className={`${inputClass(Boolean(problem))} pr-10`}
               />
-              <Icon name="search" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+              <Icon
+                name="search"
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary"
+              />
             </div>
             {open ? (
               <ul
@@ -776,12 +917,16 @@ export function SupplierPicker({
                     } ${active === matches.length ? "bg-state-selected" : ""}`}
                   >
                     <Icon name="add" />
-                    <span className="min-w-0 flex-1 break-words">Add &ldquo;{query.trim()}&rdquo; as a new supplier</span>
+                    <span className="min-w-0 flex-1 break-words">
+                      Add &ldquo;{query.trim()}&rdquo; as a new supplier
+                    </span>
                   </li>
                 ) : null}
                 {options === 0 ? (
                   <li role="presentation" className="px-3 py-3 text-body-m text-text-secondary">
-                    {suppliers.length ? "No supplier matches that name." : "No suppliers are synced from Xero yet."}
+                    {suppliers.length
+                      ? "No supplier matches that name."
+                      : "No suppliers are synced from Xero yet."}
                   </li>
                 ) : null}
               </ul>
@@ -856,7 +1001,12 @@ function NewSupplier({
     }
     setSaving(true);
     try {
-      onAdded(await pettyCashFetch<Supplier>("/suppliers", { method: "POST", body: { name: name.trim() } }));
+      onAdded(
+        await pettyCashFetch<Supplier>("/suppliers", {
+          method: "POST",
+          body: { name: name.trim() },
+        }),
+      );
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
       setSaving(false);
@@ -865,11 +1015,20 @@ function NewSupplier({
   }
 
   return (
-    <div role="group" aria-labelledby={titleId} className="flex min-w-0 flex-col gap-3 rounded-lg border border-border-default bg-surface-card p-4">
+    <div
+      role="group"
+      aria-labelledby={titleId}
+      className="flex min-w-0 flex-col gap-3 rounded-lg border border-border-default bg-surface-card p-4"
+    >
       <h3 id={titleId} className="text-title-m text-text-primary">
         New supplier
       </h3>
-      <Field label="Supplier's name" required error={problem} helper="It's added to your Xero contacts, so you can choose it next time.">
+      <Field
+        label="Supplier's name"
+        required
+        error={problem}
+        helper="It's added to your Xero contacts, so you can choose it next time."
+      >
         {(a11y) => (
           <input
             {...a11y}
@@ -895,7 +1054,13 @@ function NewSupplier({
         <Button kind="ghost" onClick={onCancel} disabled={saving} className="w-full sm:w-auto">
           Cancel
         </Button>
-        <Button kind="secondary" onClick={() => void create()} processing={saving} processingLabel="Adding…" className="w-full sm:w-auto">
+        <Button
+          kind="secondary"
+          onClick={() => void create()}
+          processing={saving}
+          processingLabel="Adding…"
+          className="w-full sm:w-auto"
+        >
           Add supplier
         </Button>
       </div>

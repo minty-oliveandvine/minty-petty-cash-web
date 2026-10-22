@@ -27,7 +27,10 @@ const line = (over: Partial<ExpenseLine> = {}): ExpenseLine => ({
   ...over,
 });
 
-function report(over: Partial<DailyReport> = {}, cash: Partial<DailyReport["cash"]> = {}): DailyReport {
+function report(
+  over: Partial<DailyReport> = {},
+  cash: Partial<DailyReport["cash"]> = {},
+): DailyReport {
   return {
     report_id: "r1",
     transaction_date: "2026-10-13",
@@ -61,7 +64,10 @@ function report(over: Partial<DailyReport> = {}, cash: Partial<DailyReport["cash
     },
     closing_balance: 459.5,
     permissions: { edit: false, delete: false, publish: true, share: true, edit_details: true },
-    options: { suppliers: [{ id: "c1", name: "ParknShop" }], accounts: [{ id: "a1", code: "429", name: "General Expenses" }] },
+    options: {
+      suppliers: [{ id: "c1", name: "ParknShop" }],
+      accounts: [{ id: "a1", code: "429", name: "General Expenses" }],
+    },
     ...over,
   };
 }
@@ -74,7 +80,10 @@ describe("what may be edited", () => {
     expect(canEditReason(r)).toBe(true);
     expect(canEditWithdrawal(r)).toBe(true);
     expect(canEditLines(r)).toBe(true);
-    const off = report({ permissions: { edit: true, delete: true, publish: true, share: true, edit_details: false }, options: null });
+    const off = report({
+      permissions: { edit: true, delete: true, publish: true, share: true, edit_details: false },
+      options: null,
+    });
     expect(canEditReason(off)).toBe(false);
     expect(canEditWithdrawal(off)).toBe(false);
     expect(canEditLines(off)).toBe(false);
@@ -82,7 +91,9 @@ describe("what may be edited", () => {
 
   it("offers the reason only while the cash was short or over, any cent counting", () => {
     expect(canEditReason(report({}, NO_DIFFERENCE))).toBe(false);
-    expect(canEditReason(report({}, { difference: { amount: 0.01, kind: "over", reason: "" } }))).toBe(true);
+    expect(
+      canEditReason(report({}, { difference: { amount: 0.01, kind: "over", reason: "" } })),
+    ).toBe(true);
   });
 
   it("offers where the cash came from only when cash was added", () => {
@@ -103,15 +114,19 @@ describe("what may be edited", () => {
 describe("the reason", () => {
   it("is needed while there is a difference", () => {
     expect(reasonNeeded(report())).toBe("short");
-    expect(reasonNeeded(report({}, { difference: { amount: 5, kind: "over", reason: "" } }))).toBe("over");
+    expect(reasonNeeded(report({}, { difference: { amount: 5, kind: "over", reason: "" } }))).toBe(
+      "over",
+    );
     expect(reasonNeeded(report({}, NO_DIFFERENCE))).toBeNull();
   });
 
   it("says at once when it is over 300 characters", () => {
-    expect(reasonEditProblem("x".repeat(301), { needed: "short", changed: true, submitted: false })).toBe(
-      "The reason is 301 characters. Shorten it to 300 characters or fewer.",
-    );
-    expect(reasonEditProblem("x".repeat(300), { needed: "short", changed: true, submitted: false })).toBeNull();
+    expect(
+      reasonEditProblem("x".repeat(301), { needed: "short", changed: true, submitted: false }),
+    ).toBe("The reason is 301 characters. Shorten it to 300 characters or fewer.");
+    expect(
+      reasonEditProblem("x".repeat(300), { needed: "short", changed: true, submitted: false }),
+    ).toBeNull();
   });
 
   it("can't be emptied while the cash was short or over - at once once it is changed", () => {
@@ -129,7 +144,12 @@ describe("the reason", () => {
 });
 
 describe("an expense line's changes", () => {
-  const unchanged = { remarks: "Bags", supplier: { id: "c1", name: "ParknShop" }, accountId: "a1", receipt: null };
+  const unchanged = {
+    remarks: "Bags",
+    supplier: { id: "c1", name: "ParknShop" },
+    accountId: "a1",
+    receipt: null,
+  };
 
   it("sends nothing when nothing changed", () => {
     expect(lineChanges(line(), unchanged)).toEqual({});
@@ -137,8 +157,12 @@ describe("an expense line's changes", () => {
 
   it("sends only what changed", () => {
     const file = new File(["x"], "new.pdf", { type: "application/pdf" });
-    expect(lineChanges(line(), { ...unchanged, remarks: " Paper bags " })).toEqual({ remarks: "Paper bags" });
-    expect(lineChanges(line(), { ...unchanged, supplier: { id: "c2", name: "Wellcome" } })).toEqual({ supplier_id: "c2" });
+    expect(lineChanges(line(), { ...unchanged, remarks: " Paper bags " })).toEqual({
+      remarks: "Paper bags",
+    });
+    expect(lineChanges(line(), { ...unchanged, supplier: { id: "c2", name: "Wellcome" } })).toEqual(
+      { supplier_id: "c2" },
+    );
     expect(lineChanges(line(), { ...unchanged, accountId: "a2" })).toEqual({ account_id: "a2" });
     expect(lineChanges(line(), { ...unchanged, receipt: file })).toEqual({ receipt: file });
   });
@@ -149,7 +173,13 @@ describe("an expense line's changes", () => {
   });
 
   it("never sends an empty supplier or account (the API keeps them)", () => {
-    expect(lineChanges(line({ supplier: null, account: null }), { ...unchanged, supplier: null, accountId: "" })).toEqual({});
+    expect(
+      lineChanges(line({ supplier: null, account: null }), {
+        ...unchanged,
+        supplier: null,
+        accountId: "",
+      }),
+    ).toEqual({});
   });
 
   it("builds the multipart body from the changes alone", () => {
@@ -166,24 +196,30 @@ describe("the line's supplier", () => {
   const chosen = { id: "c1", name: "ParknShop" };
 
   it("is fine when chosen", () => {
-    expect(lineSupplierProblem("ParknShop", chosen, { required: true, touched: true, submitted: true })).toBeNull();
+    expect(
+      lineSupplierProblem("ParknShop", chosen, { required: true, touched: true, submitted: true }),
+    ).toBeNull();
   });
 
   it("can't be emptied when the line has one - at once", () => {
-    expect(lineSupplierProblem("", null, { required: true, touched: false, submitted: false })).toBe(
-      "The supplier is still empty. Choose a supplier from the list to save it.",
-    );
+    expect(
+      lineSupplierProblem("", null, { required: true, touched: false, submitted: false }),
+    ).toBe("The supplier is still empty. Choose a supplier from the list to save it.");
   });
 
   it("may stay empty when the line has none", () => {
-    expect(lineSupplierProblem("", null, { required: false, touched: true, submitted: true })).toBeNull();
+    expect(
+      lineSupplierProblem("", null, { required: false, touched: true, submitted: true }),
+    ).toBeNull();
   });
 
   it("waits for the field to be left before a name that is not a supplier", () => {
-    expect(lineSupplierProblem("Parkn", null, { required: true, touched: false, submitted: false })).toBeNull();
-    expect(lineSupplierProblem("Parkn", null, { required: true, touched: true, submitted: false })).toBe(
-      '"Parkn" is not a supplier yet. Choose one from the list.',
-    );
+    expect(
+      lineSupplierProblem("Parkn", null, { required: true, touched: false, submitted: false }),
+    ).toBeNull();
+    expect(
+      lineSupplierProblem("Parkn", null, { required: true, touched: true, submitted: false }),
+    ).toBe('"Parkn" is not a supplier yet. Choose one from the list.');
   });
 });
 

@@ -17,7 +17,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Icon, InlineAlert } from "@minty/shared/ui";
 
 import { pettyCashFetch } from "@/lib/apiClient";
-import { clearLabel, noteAnswer, readerOff, readingCopy, suggestedText, suggestionsOf, type Band, type ExtractAnswer, type ReadNote, type SuggestedField, type Suggestions } from "@/lib/expenseAi";
+import {
+  clearLabel,
+  noteAnswer,
+  readerOff,
+  readingCopy,
+  suggestedText,
+  suggestionsOf,
+  type Band,
+  type ExtractAnswer,
+  type ReadNote,
+  type SuggestedField,
+  type Suggestions,
+} from "@/lib/expenseAi";
 
 export const EXTRACT_PATH = "/reports/expenses/extract";
 
@@ -59,7 +71,12 @@ export function useReceiptReader(onSuggestions: (suggestions: Suggestions) => vo
       const body = new FormData();
       // The bytes are the reading copy; the name stays the receipt's own.
       body.set("receipt", copy, file.name);
-      const answer = await pettyCashFetch<ExtractAnswer>(EXTRACT_PATH, { method: "POST", form: body, signal: abort.signal, onUnauthorized: "reject" });
+      const answer = await pettyCashFetch<ExtractAnswer>(EXTRACT_PATH, {
+        method: "POST",
+        form: body,
+        signal: abort.signal,
+        onUnauthorized: "reject",
+      });
       noteAnswer(answer);
       if (mine !== token.current) return;
       const suggestions = suggestionsOf(answer);
@@ -123,14 +140,29 @@ export function SuggestionExtras({
         </div>
       ) : null}
       {note ? (
-        <ReceiptNote text={note.text} action={`Use the ${field} from the receipt`} disabled={disabled} onAction={onUse} />
+        <ReceiptNote
+          text={note.text}
+          action={`Use the ${field} from the receipt`}
+          disabled={disabled}
+          onAction={onUse}
+        />
       ) : null}
     </div>
   );
 }
 
 /** A quiet note with one action: the receipt reads something else, or names an unknown supplier. Untrusted text, drawn as text. */
-export function ReceiptNote({ text, action, disabled, onAction }: { text: string; action: string | null; disabled: boolean; onAction: () => void }) {
+export function ReceiptNote({
+  text,
+  action,
+  disabled,
+  onAction,
+}: {
+  text: string;
+  action: string | null;
+  disabled: boolean;
+  onAction: () => void;
+}) {
   return (
     <div className="flex min-w-0 flex-col items-start gap-1 rounded-lg bg-surface-sunk px-3 py-2">
       <p className="min-w-0 break-words text-body-s text-text-secondary">{text}</p>

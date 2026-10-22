@@ -2,7 +2,12 @@
 // shared-code refactor (2026-10-21) they are @minty/shared's builders over this app's Flask base
 // (lib/env.ts), plus lib/hub.ts's two names - pinned here byte for byte as they were.
 
-import { billsUrl as sharedBillsUrl, paymentRequestSettingsUrl as sharedPaymentRequestSettingsUrl, settingsSectionUrl as sharedSettingsSectionUrl, type HubSettingsSection } from "@minty/shared/companyRef";
+import {
+  billsUrl as sharedBillsUrl,
+  paymentRequestSettingsUrl as sharedPaymentRequestSettingsUrl,
+  settingsSectionUrl as sharedSettingsSectionUrl,
+  type HubSettingsSection,
+} from "@minty/shared/companyRef";
 import { hubHandoffUrl, logoutUrl as sharedLogoutUrl } from "@minty/shared/handoff";
 import { describe, expect, it } from "vitest";
 
@@ -10,9 +15,12 @@ import { env } from "@/lib/env";
 import { integrationUrl, subscriptionSettingsUrl } from "@/lib/hub";
 
 // As the sidebar host and the settings pills call them.
-const hubUrl = (next: string, entityId?: string) => hubHandoffUrl(env.ACCOUNTS_API_URL, next, entityId);
-const settingsSectionUrl = (entityId: string, name: string, section: HubSettingsSection) => sharedSettingsSectionUrl(env.ACCOUNTS_API_URL, entityId, name, section);
-const paymentRequestSettingsUrl = (entityId: string) => sharedPaymentRequestSettingsUrl(env.ACCOUNTS_API_URL, entityId);
+const hubUrl = (next: string, entityId?: string) =>
+  hubHandoffUrl(env.ACCOUNTS_API_URL, next, entityId);
+const settingsSectionUrl = (entityId: string, name: string, section: HubSettingsSection) =>
+  sharedSettingsSectionUrl(env.ACCOUNTS_API_URL, entityId, name, section);
+const paymentRequestSettingsUrl = (entityId: string) =>
+  sharedPaymentRequestSettingsUrl(env.ACCOUNTS_API_URL, entityId);
 const billsUrl = (entityId: string) => sharedBillsUrl(env.ACCOUNTS_API_URL, entityId);
 const logoutUrl = () => sharedLogoutUrl(env.ACCOUNTS_API_URL);
 
@@ -35,7 +43,9 @@ describe("Flask's hand-offs", () => {
   it("connects Xero in minty-web's Entity & Integration, at the company's own address", () => {
     const url = new URL(integrationUrl(ENTITY, "Olive & Vine"));
     expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
-    expect(url.searchParams.get("next")).toBe("/entity/360812e1/olive-and-vine/settings/integration");
+    expect(url.searchParams.get("next")).toBe(
+      "/entity/360812e1/olive-and-vine/settings/integration",
+    );
     expect(url.searchParams.get("entity_id")).toBe(ENTITY);
   });
 
@@ -50,7 +60,9 @@ describe("Flask's hand-offs", () => {
     for (const section of ["users", "integration", "modules"] as const) {
       const url = new URL(settingsSectionUrl(ENTITY, "Olive & Vine", section));
       expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
-      expect(url.searchParams.get("next")).toBe(`/entity/360812e1/olive-and-vine/settings/${section}`);
+      expect(url.searchParams.get("next")).toBe(
+        `/entity/360812e1/olive-and-vine/settings/${section}`,
+      );
       expect(url.searchParams.get("entity_id")).toBe(ENTITY);
       expect(url.searchParams.has("token")).toBe(false);
     }
@@ -58,7 +70,9 @@ describe("Flask's hand-offs", () => {
 
   it("opens the payments app's settings through Flask's settings hand-off, never a page", () => {
     const url = new URL(paymentRequestSettingsUrl(ENTITY));
-    expect(url.origin + url.pathname).toBe(`http://localhost:8000/entity/${ENTITY}/settings/payment-request`);
+    expect(url.origin + url.pathname).toBe(
+      `http://localhost:8000/entity/${ENTITY}/settings/payment-request`,
+    );
     expect(url.searchParams.has("token")).toBe(false);
   });
 
@@ -74,7 +88,9 @@ describe("Flask's hand-off addresses, exactly", () => {
   const BACK = "return_origin=http%3A%2F%2Flocalhost%3A3000";
 
   it("writes hubUrl as next, then entity_id, then the way back", () => {
-    expect(hubUrl("/entities")).toBe(`http://localhost:8000/handoff/minty-web?next=%2Fentities&${BACK}`);
+    expect(hubUrl("/entities")).toBe(
+      `http://localhost:8000/handoff/minty-web?next=%2Fentities&${BACK}`,
+    );
     expect(hubUrl("/profile?tab=a b", ENTITY)).toBe(
       `http://localhost:8000/handoff/minty-web?next=%2Fprofile%3Ftab%3Da+b&entity_id=${ENTITY}&${BACK}`,
     );
@@ -87,16 +103,22 @@ describe("Flask's hand-off addresses, exactly", () => {
       `http://localhost:8000/handoff/minty-web?next=%2Fentity%2F360812e1%2Folive-and-vine%2Fsettings%2Fusers&entity_id=${ENTITY}&${BACK}`,
     );
     // a company with no name is "company" in the address
-    expect(new URL(settingsSectionUrl(ENTITY, "", "modules")).searchParams.get("next")).toBe("/entity/360812e1/company/settings/modules");
+    expect(new URL(settingsSectionUrl(ENTITY, "", "modules")).searchParams.get("next")).toBe(
+      "/entity/360812e1/company/settings/modules",
+    );
   });
 
   it("percent-encodes the company id in the payments app's addresses, and names the way back", () => {
     expect(billsUrl("a/b")).toBe(`http://localhost:8000/entity/a%2Fb/payment-request?${BACK}`);
-    expect(paymentRequestSettingsUrl("a/b")).toBe(`http://localhost:8000/entity/a%2Fb/settings/payment-request?${BACK}`);
+    expect(paymentRequestSettingsUrl("a/b")).toBe(
+      `http://localhost:8000/entity/a%2Fb/settings/payment-request?${BACK}`,
+    );
   });
 
   it("writes this app's two names exactly as hubUrl wrote them", () => {
-    expect(integrationUrl(ENTITY, "Olive & Vine")).toBe(hubUrl("/entity/360812e1/olive-and-vine/settings/integration", ENTITY));
+    expect(integrationUrl(ENTITY, "Olive & Vine")).toBe(
+      hubUrl("/entity/360812e1/olive-and-vine/settings/integration", ENTITY),
+    );
     expect(subscriptionSettingsUrl(ENTITY, "Olive & Vine")).toBe(
       `http://localhost:8000/handoff/minty-web?next=%2Fentity%2F360812e1%2Folive-and-vine%2Fsettings%2Fmodules&entity_id=${ENTITY}&${BACK}`,
     );

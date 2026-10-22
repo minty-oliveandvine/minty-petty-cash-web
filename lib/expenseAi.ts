@@ -48,7 +48,13 @@ export type ExtractAnswer = { suggestions: Suggestions | null; reason: string | 
 export type SuggestedField = "amount" | "supplier" | "account" | "description";
 
 /** The entry form's own values (the receipt is kept apart). */
-export type EntryValues = { amount: string; query: string; supplier: Supplier | null; accountId: string; remarks: string };
+export type EntryValues = {
+  amount: string;
+  query: string;
+  supplier: Supplier | null;
+  accountId: string;
+  remarks: string;
+};
 
 /** A hint under a field: the receipt reads something else (or, low band, might). Nothing moves without its button. */
 export type ReadNote = { text: string; fill: Partial<EntryValues>; band: Band };
@@ -64,7 +70,13 @@ export type EntryState = {
   announcement: string;
 };
 
-export const EMPTY_VALUES: EntryValues = { amount: "", query: "", supplier: null, accountId: "", remarks: "" };
+export const EMPTY_VALUES: EntryValues = {
+  amount: "",
+  query: "",
+  supplier: null,
+  accountId: "",
+  remarks: "",
+};
 
 export function entryState(values: EntryValues = EMPTY_VALUES): EntryState {
   return { values, marks: {}, notes: {}, detectedName: null, announcement: "" };
@@ -122,10 +134,17 @@ export function suggestionsOf(answer: unknown): Suggestions | null {
 
 /** The source line under a filled field (Part 14 AI field: plain source text, no "AI"). */
 export function suggestedText(band: Band): string {
-  return band === "medium" ? "Suggested from the receipt. Check it before you go on." : "Suggested from the receipt.";
+  return band === "medium"
+    ? "Suggested from the receipt. Check it before you go on."
+    : "Suggested from the receipt.";
 }
 
-const FIELD_NAMES: Record<SuggestedField, string> = { amount: "amount", supplier: "supplier", account: "account", description: "description" };
+const FIELD_NAMES: Record<SuggestedField, string> = {
+  amount: "amount",
+  supplier: "supplier",
+  account: "account",
+  description: "description",
+};
 
 /** The Clear button's accessible name. */
 export function clearLabel(field: SuggestedField): string {
@@ -139,7 +158,8 @@ const hedge = (band: Band) => (band === "low" ? "might read" : "reads");
 
 const emptyText = (text: string) => text.trim() === "";
 const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-const sameAmount = (a: string, b: string) => Math.abs((parseAmount(a) ?? 0) - (parseAmount(b) ?? 0)) < 0.005;
+const sameAmount = (a: string, b: string) =>
+  Math.abs((parseAmount(a) ?? 0) - (parseAmount(b) ?? 0)) < 0.005;
 
 /**
  * The receipt's amount as plain digits: the reader may send it with currency letters, a symbol or
@@ -173,7 +193,13 @@ export function withSuggestions(
     code,
     day,
     canCreateSupplier,
-  }: { suppliers: Supplier[]; accounts: ExpenseAccount[]; code: string | null; day: string; canCreateSupplier: boolean },
+  }: {
+    suppliers: Supplier[];
+    accounts: ExpenseAccount[];
+    code: string | null;
+    day: string;
+    canCreateSupplier: boolean;
+  },
 ): EntryState {
   const values = { ...state.values };
   const marks = { ...state.marks };
@@ -195,7 +221,11 @@ export function withSuggestions(
   if (amount && shown && (parseAmount(read) ?? 0) > 0) {
     if (amount.applied && emptyText(values.amount)) fill("amount", { amount: shown }, amount.band);
     else if (emptyText(values.amount))
-      notes.amount = { text: `The receipt ${hedge(amount.band)} ${money(shown, code)}.`, fill: { amount: shown }, band: amount.band };
+      notes.amount = {
+        text: `The receipt ${hedge(amount.band)} ${money(shown, code)}.`,
+        fill: { amount: shown },
+        band: amount.band,
+      };
     else if (!sameAmount(values.amount, read))
       notes.amount = {
         text: `The receipt ${hedge(amount.band)} ${money(shown, code)}, not ${money(parseAmount(values.amount) ?? 0, code)}.`,
@@ -206,16 +236,24 @@ export function withSuggestions(
 
   // The description: filled only, never argued with (Flask's rule).
   const description = s.description;
-  if (description?.applied && description.value && emptyText(values.remarks)) fill("description", { remarks: description.value }, description.band);
+  if (description?.applied && description.value && emptyText(values.remarks))
+    fill("description", { remarks: description.value }, description.band);
 
   // The supplier: by its id from the company's list only.
   const supplier = s.supplier;
   const supplierEmpty = !values.supplier && emptyText(values.query);
-  const known = supplier?.contact_id ? (suppliers.find((x) => x.id === supplier.contact_id) ?? null) : null;
+  const known = supplier?.contact_id
+    ? (suppliers.find((x) => x.id === supplier.contact_id) ?? null)
+    : null;
   if (supplier && known) {
     const patch = { supplier: known, query: known.name };
     if (supplier.applied && supplierEmpty) fill("supplier", patch, supplier.band);
-    else if (supplierEmpty) notes.supplier = { text: `The receipt ${hedge(supplier.band)} like "${known.name}".`, fill: patch, band: supplier.band };
+    else if (supplierEmpty)
+      notes.supplier = {
+        text: `The receipt ${hedge(supplier.band)} like "${known.name}".`,
+        fill: patch,
+        band: supplier.band,
+      };
     else if (!sameText(values.supplier?.name ?? values.query, known.name))
       notes.supplier = {
         text: `The receipt ${hedge(supplier.band)} like "${known.name}", not "${(values.supplier?.name ?? values.query).trim()}".`,
@@ -228,11 +266,18 @@ export function withSuggestions(
 
   // The account: by its id from the accounts switched on for Petty Cash only.
   const account = s.account;
-  const chosen = account?.account_id ? (accounts.find((a) => a.id === account.account_id) ?? null) : null;
+  const chosen = account?.account_id
+    ? (accounts.find((a) => a.id === account.account_id) ?? null)
+    : null;
   if (account && chosen) {
     const patch = { accountId: chosen.id };
     if (account.applied && values.accountId === "") fill("account", patch, account.band);
-    else if (values.accountId === "") notes.account = { text: `The receipt ${hedge(account.band)} like "${chosen.name}".`, fill: patch, band: account.band };
+    else if (values.accountId === "")
+      notes.account = {
+        text: `The receipt ${hedge(account.band)} like "${chosen.name}".`,
+        fill: patch,
+        band: account.band,
+      };
     else if (values.accountId !== chosen.id) {
       const current = accounts.find((a) => a.id === values.accountId);
       notes.account = {
@@ -252,9 +297,15 @@ export function withSuggestions(
       `Suggestions from the receipt filled ${filled.length} ${filled.length === 1 ? "field" : "fields"}: ${filled.map((f) => FIELD_NAMES[f]).join(", ")}. Check them before you go on.`,
     );
   }
-  const differing = (Object.keys(notes) as SuggestedField[]).filter((f) => notes[f] && !state.notes[f]);
-  if (differing.length) parts.push(`The receipt reads differently for: ${differing.map((f) => FIELD_NAMES[f]).join(", ")}. Nothing was changed.`);
-  if (detectedName) parts.push(`The receipt names a supplier that is not in your list: ${detectedName}.`);
+  const differing = (Object.keys(notes) as SuggestedField[]).filter(
+    (f) => notes[f] && !state.notes[f],
+  );
+  if (differing.length)
+    parts.push(
+      `The receipt reads differently for: ${differing.map((f) => FIELD_NAMES[f]).join(", ")}. Nothing was changed.`,
+    );
+  if (detectedName)
+    parts.push(`The receipt names a supplier that is not in your list: ${detectedName}.`);
   const date = dateNote(s.document_date, day);
   if (date && parts.length) parts.push(date);
 
@@ -265,19 +316,37 @@ export function withSuggestions(
  * The person changed a field: it is theirs now (Confirmed) - its marking and its note go, and for
  * the supplier the offered name too. A change to the same value (the amount grouped on blur) is no change.
  */
-export function edited(state: EntryState, field: SuggestedField, patch: Partial<EntryValues>): EntryState {
+export function edited(
+  state: EntryState,
+  field: SuggestedField,
+  patch: Partial<EntryValues>,
+): EntryState {
   const values = { ...state.values, ...patch };
-  const changed = (Object.keys(patch) as (keyof EntryValues)[]).some((k) => patch[k] !== state.values[k]);
+  const changed = (Object.keys(patch) as (keyof EntryValues)[]).some(
+    (k) => patch[k] !== state.values[k],
+  );
   if (!changed) return state;
   // The amount grouped on blur ("45" -> "45.00") is the same amount: the field keeps its marking
   // and its note - leaving the field to press "Use the amount from the receipt" must not withdraw it.
-  if (field === "amount" && patch.amount !== undefined && !emptyText(patch.amount) && !emptyText(state.values.amount) && sameAmount(patch.amount, state.values.amount))
+  if (
+    field === "amount" &&
+    patch.amount !== undefined &&
+    !emptyText(patch.amount) &&
+    !emptyText(state.values.amount) &&
+    sameAmount(patch.amount, state.values.amount)
+  )
     return { ...state, values };
   const marks = { ...state.marks };
   const notes = { ...state.notes };
   delete marks[field];
   delete notes[field];
-  return { ...state, values, marks, notes, detectedName: field === "supplier" ? null : state.detectedName };
+  return {
+    ...state,
+    values,
+    marks,
+    notes,
+    detectedName: field === "supplier" ? null : state.detectedName,
+  };
 }
 
 const CLEARED: Record<SuggestedField, Partial<EntryValues>> = {
@@ -301,7 +370,12 @@ export function usedNote(state: EntryState, field: SuggestedField): EntryState {
   if (!note) return state;
   const notes = { ...state.notes };
   delete notes[field];
-  return { ...state, values: { ...state.values, ...note.fill }, marks: { ...state.marks, [field]: note.band }, notes };
+  return {
+    ...state,
+    values: { ...state.values, ...note.fill },
+    marks: { ...state.marks, [field]: note.band },
+    notes,
+  };
 }
 
 /**
@@ -311,7 +385,8 @@ export function usedNote(state: EntryState, field: SuggestedField): EntryState {
  */
 export function withoutSuggestions(state: EntryState): EntryState {
   let values = { ...state.values };
-  for (const field of Object.keys(state.marks) as SuggestedField[]) values = { ...values, ...CLEARED[field] };
+  for (const field of Object.keys(state.marks) as SuggestedField[])
+    values = { ...values, ...CLEARED[field] };
   return { values, marks: {}, notes: {}, detectedName: null, announcement: "" };
 }
 
@@ -347,7 +422,9 @@ export async function readingCopy(file: File): Promise<Blob> {
     }
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
+    );
     // Only when it is actually smaller: a tiny detailed image can re-encode larger.
     return blob && blob.size < file.size ? blob : file;
   } catch {

@@ -17,7 +17,11 @@ describe("the outcome band", () => {
     // One list, so each value is read with its label: the hero first.
     const lists = document.querySelectorAll("dl");
     expect(lists).toHaveLength(1);
-    expect(within(lists[0]).getAllByRole("term").map((dt) => dt.textContent)).toEqual(["Cash position", "Total sales", "Total expenses"]);
+    expect(
+      within(lists[0])
+        .getAllByRole("term")
+        .map((dt) => dt.textContent),
+    ).toEqual(["Cash position", "Total sales", "Total expenses"]);
     const hero = screen.getByText("HKD 760.00");
     expect(hero.tagName).toBe("DD");
     expect(hero).toHaveClass("text-display-xl");
@@ -31,12 +35,16 @@ describe("the outcome band", () => {
   it("carries the Petty Cash chip and the decorative safe box, never coloured amounts", () => {
     const { container } = render(<OutcomeBand kpis={KPIS} />);
     // the label sits in its own span beside the icon, so the chip is its parent
-    expect(screen.getByText("Petty Cash").parentElement).toHaveClass("bg-module-pettycash-wash", "text-module-pettycash-ink");
+    expect(screen.getByText("Petty Cash").parentElement).toHaveClass(
+      "bg-module-pettycash-wash",
+      "text-module-pettycash-ink",
+    );
     const art = container.querySelector("img")!;
     expect(art).toHaveAttribute("alt", "");
     expect(art.getAttribute("src")).toContain("safebox.webp");
     expect(art).toHaveClass("hidden", "sm:block");
-    for (const dd of container.querySelectorAll("dd[translate='no']")) expect(dd).toHaveClass("text-text-primary");
+    for (const dd of container.querySelectorAll("dd[translate='no']"))
+      expect(dd).toHaveClass("text-text-primary");
   });
 
   it("draws only the KPIs that arrived, and nothing for none", () => {
@@ -60,8 +68,12 @@ const EXPENSES: ExpenseBar[] = [
 describe("where the money came from and went", () => {
   it("draws the sales mix as one proportion bar and a legend, read as text", () => {
     render(<MoneyFlow sales={SALES} expenses={EXPENSES} code="HKD" />);
-    expect(screen.getByRole("heading", { level: 2, name: "Where the money came from and went" })).toBeInTheDocument();
-    const bar = screen.getByRole("img", { name: "Sales by method: Cash HKD\u00a0300.00, 71%; Visa HKD\u00a0120.00, 29%" });
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Where the money came from and went" }),
+    ).toBeInTheDocument();
+    const bar = screen.getByRole("img", {
+      name: "Sales by method: Cash HKD\u00a0300.00, 71%; Visa HKD\u00a0120.00, 29%",
+    });
     const segments = bar.querySelectorAll("[data-chart-tone]");
     expect([...segments].map((s) => s.getAttribute("data-chart-tone"))).toEqual(["1", "2"]);
     expect((segments[0] as HTMLElement).style.flexGrow).toBe("71.43");
@@ -71,7 +83,9 @@ describe("where the money came from and went", () => {
 
   it("draws the expenses by account as bar rows against the largest, read as text", () => {
     render(<MoneyFlow sales={SALES} expenses={EXPENSES} code="HKD" />);
-    const rows = screen.getByRole("img", { name: "Expenses by account: Staff meals HKD\u00a040.00; Office supplies HKD\u00a035.00" });
+    const rows = screen.getByRole("img", {
+      name: "Expenses by account: Staff meals HKD\u00a040.00; Office supplies HKD\u00a035.00",
+    });
     const fills = rows.querySelectorAll<HTMLElement>(".bg-brand-primary");
     expect([...fills].map((f) => f.style.width)).toEqual(["100%", "87.5%"]);
   });
@@ -84,7 +98,13 @@ describe("where the money came from and went", () => {
   });
 
   it("draws a single method as one full bar", () => {
-    render(<MoneyFlow sales={[{ key: "cash", label: "Cash", amount: 300, pct: 100, width: 100, tone: 1 }]} expenses={[]} code="HKD" />);
+    render(
+      <MoneyFlow
+        sales={[{ key: "cash", label: "Cash", amount: 300, pct: 100, width: 100, tone: 1 }]}
+        expenses={[]}
+        code="HKD"
+      />,
+    );
     const bar = screen.getByRole("img", { name: "Sales by method: Cash HKD\u00a0300.00, 100%" });
     expect(bar.querySelectorAll("[data-chart-tone]")).toHaveLength(1);
   });

@@ -7,11 +7,25 @@ import { DepositModal, SetupRequiredModal } from "@/components/dashboard/Deposit
 // keystrokes, its currency, and the amount it hands on.
 
 function open(currencyCode: string | null, onProceed = vi.fn()) {
-  render(<DepositModal open onBack={() => undefined} previousAmount={300} currencyCode={currencyCode} busy={false} problem={null} onProceed={onProceed} />);
-  return { field: screen.getByRole("textbox", { name: /Deposit Amount/ }) as HTMLInputElement, onProceed };
+  render(
+    <DepositModal
+      open
+      onBack={() => undefined}
+      previousAmount={300}
+      currencyCode={currencyCode}
+      busy={false}
+      problem={null}
+      onProceed={onProceed}
+    />,
+  );
+  return {
+    field: screen.getByRole("textbox", { name: /Deposit Amount/ }) as HTMLInputElement,
+    onProceed,
+  };
 }
 
-const type = (field: HTMLInputElement, value: string) => fireEvent.change(field, { target: { value } });
+const type = (field: HTMLInputElement, value: string) =>
+  fireEvent.change(field, { target: { value } });
 
 describe("Deposit to Bank", () => {
   it("refuses a keystroke that is not digits and one point, or past two decimals", () => {
@@ -62,15 +76,26 @@ describe("Setup Required", () => {
       />,
     );
     const dialog = screen.getByRole("alertdialog", { name: "Setup Required" });
-    expect(within(dialog).getByRole("link", { name: "Choose your company's currency" })).toHaveAttribute("href", COUNTRY);
-    expect(within(dialog).getByRole("link", { name: "Main Bank Account" })).toHaveAttribute("href", XERO);
-    expect(within(dialog).getByRole("link", { name: "Set Up Settings" })).toHaveAttribute("href", COUNTRY);
+    expect(
+      within(dialog).getByRole("link", { name: "Choose your company's currency" }),
+    ).toHaveAttribute("href", COUNTRY);
+    expect(within(dialog).getByRole("link", { name: "Main Bank Account" })).toHaveAttribute(
+      "href",
+      XERO,
+    );
+    expect(within(dialog).getByRole("link", { name: "Set Up Settings" })).toHaveAttribute(
+      "href",
+      COUNTRY,
+    );
   });
 
   it("says settings are missing when none is named, and opens the Xero cards", () => {
     render(<SetupRequiredModal open items={[]} fallbackHref={XERO} />);
     const dialog = screen.getByRole("alertdialog", { name: "Setup Required" });
     expect(dialog).toHaveTextContent("One or more required settings are missing");
-    expect(within(dialog).getByRole("link", { name: "Set Up Settings" })).toHaveAttribute("href", XERO);
+    expect(within(dialog).getByRole("link", { name: "Set Up Settings" })).toHaveAttribute(
+      "href",
+      XERO,
+    );
   });
 });

@@ -33,9 +33,18 @@ export type ViewerFile = {
   source: Blob | (() => Promise<Blob>);
 };
 
-type Shown = { kind: "loading" } | { kind: "ready"; url: string; mime: string } | { kind: "failed"; message: string };
+type Shown =
+  | { kind: "loading" }
+  | { kind: "ready"; url: string; mime: string }
+  | { kind: "failed"; message: string };
 
-export default function ReceiptViewer({ file, onClose }: { file: ViewerFile; onClose: () => void }) {
+export default function ReceiptViewer({
+  file,
+  onClose,
+}: {
+  file: ViewerFile;
+  onClose: () => void;
+}) {
   const titleId = useId();
   const root = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -111,7 +120,11 @@ export default function ReceiptViewer({ file, onClose }: { file: ViewerFile; onC
       className="fixed inset-0 z-[340] flex flex-col bg-surface-document"
     >
       <div className="flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-border-subtle bg-surface-card px-3 py-2 pt-[max(8px,env(safe-area-inset-top))] sm:px-4">
-        <p id={titleId} className="min-w-0 truncate text-body-m font-semibold text-text-primary" title={file.name}>
+        <p
+          id={titleId}
+          className="min-w-0 truncate text-body-m font-semibold text-text-primary"
+          title={file.name}
+        >
           {file.name}
         </p>
         <button
@@ -128,7 +141,11 @@ export default function ReceiptViewer({ file, onClose }: { file: ViewerFile; onC
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-auto p-2 sm:p-4">
         {shown.kind === "loading" ? (
-          <div role="status" aria-label="Opening the receipt" className="mx-auto flex w-full max-w-3xl flex-1">
+          <div
+            role="status"
+            aria-label="Opening the receipt"
+            className="mx-auto flex w-full max-w-3xl flex-1"
+          >
             <Skeleton className="h-full min-h-60 w-full" />
           </div>
         ) : shown.kind === "failed" ? (
@@ -136,13 +153,24 @@ export default function ReceiptViewer({ file, onClose }: { file: ViewerFile; onC
             <InlineAlert tone="danger">{shown.message}</InlineAlert>
           </div>
         ) : receiptKind(shown.mime) === "pdf" ? (
-          <iframe src={shown.url} title={file.name} className="mx-auto block min-h-0 w-full max-w-5xl flex-1 rounded-lg border border-border-default bg-surface-card" />
+          <iframe
+            src={shown.url}
+            title={file.name}
+            className="mx-auto block min-h-0 w-full max-w-5xl flex-1 rounded-lg border border-border-default bg-surface-card"
+          />
         ) : receiptKind(shown.mime) === "image" ? (
           // eslint-disable-next-line @next/next/no-img-element -- an object URL; next/image cannot optimise it
-          <img src={shown.url} alt={`Receipt: ${file.name}`} className="mx-auto block h-auto max-h-full w-auto max-w-full object-contain" draggable={false} />
+          <img
+            src={shown.url}
+            alt={`Receipt: ${file.name}`}
+            className="mx-auto block h-auto max-h-full w-auto max-w-full object-contain"
+            draggable={false}
+          />
         ) : (
           <div className="mx-auto w-full max-w-xl">
-            <InlineAlert tone="info">This file can&apos;t be shown here. It isn&apos;t a PDF, JPEG or PNG.</InlineAlert>
+            <InlineAlert tone="info">
+              This file can&apos;t be shown here. It isn&apos;t a PDF, JPEG or PNG.
+            </InlineAlert>
           </div>
         )}
       </div>

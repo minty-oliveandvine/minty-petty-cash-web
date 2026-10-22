@@ -22,7 +22,11 @@ const OPEN_PATHS = new Set(["/landing"]);
  * referrer, keep it out of search engines, never cache it (the page's metadata says the same).
  */
 const SHARE_PREFIX = "/share/";
-const SHARE_HEADERS = { "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow", "Cache-Control": "no-store" };
+const SHARE_HEADERS = {
+  "Referrer-Policy": "no-referrer",
+  "X-Robots-Tag": "noindex, nofollow",
+  "Cache-Control": "no-store",
+};
 
 /**
  * A token this close to its `exp` is renewed on the way to the next page rather than lapsing in

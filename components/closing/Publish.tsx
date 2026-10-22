@@ -37,7 +37,8 @@ import {
   type PublishState,
 } from "@/lib/publish";
 
-const statusPath = (reportId: string) => `/reports/${encodeURIComponent(reportId)}/publishing-status`;
+const statusPath = (reportId: string) =>
+  `/reports/${encodeURIComponent(reportId)}/publishing-status`;
 
 /**
  * A report's publish on the page. `initial` is the report's `publishing_status` as read: a page
@@ -56,7 +57,9 @@ export function usePublish({
   onStatus: (status: PublishingStatus) => void;
   onPublished: () => void;
 }) {
-  const [state, setState] = useState<PublishState>(() => (initial === "publishing" ? { kind: "publishing" } : { kind: "idle" }));
+  const [state, setState] = useState<PublishState>(() =>
+    initial === "publishing" ? { kind: "publishing" } : { kind: "idle" },
+  );
   const stop = useRef<(() => void) | null>(null);
   const handlers = useRef({ onStatus, onPublished });
   useEffect(() => {
@@ -112,7 +115,9 @@ export function PublishReasons({ reasons }: { reasons: PublishReason[] }) {
           <span className="min-w-0 break-words">
             {reason.text}
             {/* In words, not only the icon's colour. */}
-            {reason.resolved ? <span className="font-semibold text-text-primary"> · Resolved</span> : null}
+            {reason.resolved ? (
+              <span className="font-semibold text-text-primary"> · Resolved</span>
+            ) : null}
           </span>
         </li>
       ))}
@@ -172,7 +177,13 @@ export function PublishProgress({
             ) : null
           }
         >
-          {state.message ? state.message : state.reasons.length ? <PublishReasons reasons={state.reasons} /> : FAILED.body}
+          {state.message ? (
+            state.message
+          ) : state.reasons.length ? (
+            <PublishReasons reasons={state.reasons} />
+          ) : (
+            FAILED.body
+          )}
         </InlineAlert>
       ) : null}
     </>
@@ -213,7 +224,9 @@ export function PublishDialog({
     setBusy(true);
     setProblem(null);
     try {
-      await pettyCashFetch<PublishStarted>(`/reports/${encodeURIComponent(reportId)}/publish`, { method: "POST" });
+      await pettyCashFetch<PublishStarted>(`/reports/${encodeURIComponent(reportId)}/publish`, {
+        method: "POST",
+      });
       onStarted();
     } catch (err) {
       const refusal = refusalOf(err);
@@ -237,7 +250,12 @@ export function PublishDialog({
           <Button ref={cancel} kind="secondary" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
-          <Button kind="primary" onClick={() => void confirm()} processing={busy} processingLabel="Publishing…">
+          <Button
+            kind="primary"
+            onClick={() => void confirm()}
+            processing={busy}
+            processingLabel="Publishing…"
+          >
             {words.verb}
           </Button>
         </>

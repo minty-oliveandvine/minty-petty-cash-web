@@ -75,10 +75,15 @@ export const RECEIPT_LIMITS = "PDF, JPEG or PNG, up to 10 MB.";
  * the field to be left (`touched`). Above the limit cannot be typed (11 whole digits), but the
  * rule says so anyway.
  */
-export function amountProblem(text: string, { touched, submitted, code }: { touched: boolean; submitted: boolean; code: string | null }): string | null {
-  if (text.trim() === "") return submitted ? "The amount is still empty. Add the amount to continue." : null;
+export function amountProblem(
+  text: string,
+  { touched, submitted, code }: { touched: boolean; submitted: boolean; code: string | null },
+): string | null {
+  if (text.trim() === "")
+    return submitted ? "The amount is still empty. Add the amount to continue." : null;
   const amount = parseAmount(text) ?? 0;
-  if (amount > MAX_AMOUNT) return `The amount is above ${money(MAX_AMOUNT, code)}. Enter ${money(MAX_AMOUNT, code)} or less.`;
+  if (amount > MAX_AMOUNT)
+    return `The amount is above ${money(MAX_AMOUNT, code)}. Enter ${money(MAX_AMOUNT, code)} or less.`;
   if (amount <= 0 && (touched || submitted)) return "The amount is 0. Enter an amount above 0.";
   return null;
 }
@@ -86,7 +91,9 @@ export function amountProblem(text: string, { touched, submitted, code }: { touc
 /** The description's problem: only above the limit (an optional field never warns otherwise). */
 export function remarksProblem(text: string): string | null {
   const length = text.trim().length;
-  return length > MAX_REMARKS ? `The description is ${length} characters. Shorten it to ${MAX_REMARKS} characters or fewer.` : null;
+  return length > MAX_REMARKS
+    ? `The description is ${length} characters. Shorten it to ${MAX_REMARKS} characters or fewer.`
+    : null;
 }
 
 /** The description's helper: "Optional" and the live count - the counter Part 14's Textarea asks for. */
@@ -104,7 +111,10 @@ export function supplierProblem(
   { touched, submitted, canCreate }: { touched: boolean; submitted: boolean; canCreate: boolean },
 ): string | null {
   if (chosen) return null;
-  if (query.trim() === "") return submitted ? "The supplier is still empty. Choose a supplier from the list to continue." : null;
+  if (query.trim() === "")
+    return submitted
+      ? "The supplier is still empty. Choose a supplier from the list to continue."
+      : null;
   if (!(touched || submitted)) return null;
   return canCreate
     ? `"${query.trim()}" is not a supplier yet. Choose one from the list, or add it as a new supplier.`
@@ -113,12 +123,16 @@ export function supplierProblem(
 
 /** The account's problem: only none chosen, after a refused submit (the list holds nothing else). */
 export function accountProblem(accountId: string, submitted: boolean): string | null {
-  return accountId === "" && submitted ? "The account is still empty. Choose where to record this expense to continue." : null;
+  return accountId === "" && submitted
+    ? "The account is still empty. Choose where to record this expense to continue."
+    : null;
 }
 
 /** The receipt's problem when none is attached - after a refused submit only. */
 export function missingReceipt(file: File | null, submitted: boolean): string | null {
-  return !file && submitted ? "The receipt is still missing. Take a photo of it or choose its file to continue." : null;
+  return !file && submitted
+    ? "The receipt is still missing. Take a photo of it or choose its file to continue."
+    : null;
 }
 
 const RECEIPT_TYPES = ["application/pdf", "image/jpeg", "image/png"];
@@ -130,10 +144,13 @@ const RECEIPT_EXTENSIONS = /\.(pdf|jpe?g|png)$/i;
  * card: "say which file failed and why"). The API judges the bytes again.
  */
 export function receiptProblem(file: { name: string; size: number; type: string }): string | null {
-  const known = RECEIPT_TYPES.includes(file.type.toLowerCase()) || (!file.type && RECEIPT_EXTENSIONS.test(file.name));
+  const known =
+    RECEIPT_TYPES.includes(file.type.toLowerCase()) ||
+    (!file.type && RECEIPT_EXTENSIONS.test(file.name));
   if (!known) return `${file.name} isn't a PDF, JPEG or PNG. Attach the receipt as one of those.`;
   if (file.size === 0) return `${file.name} is empty. Attach the receipt again.`;
-  if (file.size > MAX_RECEIPT_BYTES) return `${file.name} is ${fileSize(file.size)}. Attach a file of 10 MB or less.`;
+  if (file.size > MAX_RECEIPT_BYTES)
+    return `${file.name} is ${fileSize(file.size)}. Attach a file of 10 MB or less.`;
   return null;
 }
 
@@ -176,15 +193,25 @@ export function exactSupplier(suppliers: Supplier[], query: string): Supplier | 
 }
 
 /** Whether the list ends with 'Add "…" as a new supplier': allowed, something typed, and no supplier has that name. */
-export function offersNewSupplier(suppliers: Supplier[], query: string, canCreate: boolean): boolean {
+export function offersNewSupplier(
+  suppliers: Supplier[],
+  query: string,
+  canCreate: boolean,
+): boolean {
   return canCreate && query.trim() !== "" && exactSupplier(suppliers, query) === null;
 }
 
 /** A new supplier's name problem, as it is typed. Empty waits for the Add supplier press. */
-export function newSupplierProblem(name: string, suppliers: Supplier[], attempted: boolean): string | null {
+export function newSupplierProblem(
+  name: string,
+  suppliers: Supplier[],
+  attempted: boolean,
+): string | null {
   const trimmed = name.trim();
-  if (trimmed === "") return attempted ? "The supplier's name is still empty. Add the name to continue." : null;
-  if (trimmed.length > MAX_SUPPLIER_NAME) return `The name is ${trimmed.length} characters. Keep it to ${MAX_SUPPLIER_NAME} characters or fewer.`;
+  if (trimmed === "")
+    return attempted ? "The supplier's name is still empty. Add the name to continue." : null;
+  if (trimmed.length > MAX_SUPPLIER_NAME)
+    return `The name is ${trimmed.length} characters. Keep it to ${MAX_SUPPLIER_NAME} characters or fewer.`;
   const same = exactSupplier(suppliers, trimmed);
   if (same) return `${same.name} is already a supplier. Choose it from the list.`;
   return null;
@@ -192,7 +219,9 @@ export function newSupplierProblem(name: string, suppliers: Supplier[], attempte
 
 /** The list with a new supplier in it, A to Z (as the read gives them). */
 export function withSupplier(suppliers: Supplier[], added: Supplier): Supplier[] {
-  return [...suppliers.filter((s) => s.id !== added.id), added].sort((a, b) => a.name.localeCompare(b.name));
+  return [...suppliers.filter((s) => s.id !== added.id), added].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 }
 
 // ---------------------------------------------------------------------------------------------

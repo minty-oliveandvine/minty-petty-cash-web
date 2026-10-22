@@ -13,7 +13,10 @@ import { formatAmount, formatMoney } from "@minty/shared/money";
 export const NO_CURRENCY = "(No currency selected)";
 
 /** The amount for display, or "" when there is no usable number. */
-export function money(value: string | number | null | undefined, code: string | null | undefined): string {
+export function money(
+  value: string | number | null | undefined,
+  code: string | null | undefined,
+): string {
   if (code?.trim()) return formatMoney(value, code);
   const amount = formatAmount(value);
   return amount ? `${amount} ${NO_CURRENCY}` : "";

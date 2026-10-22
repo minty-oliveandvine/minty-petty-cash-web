@@ -18,7 +18,17 @@ import {
 } from "@/lib/subscriptionNotice";
 
 const notice = (over: Partial<SubscriptionNotice> = {}): SubscriptionNotice => ({
-  items: [{ kind: "past_due", severity: "critical", module: "Petty Cash", module_code: "petty_cash", title: "Petty Cash is past due", detail: "Pay by 20 Oct.", deadline: "2026-10-20" }],
+  items: [
+    {
+      kind: "past_due",
+      severity: "critical",
+      module: "Petty Cash",
+      module_code: "petty_cash",
+      title: "Petty Cash is past due",
+      detail: "Pay by 20 Oct.",
+      deadline: "2026-10-20",
+    },
+  ],
   can_manage: true,
   payer: { name: "Olive", email: "olive@example.com" },
   severity: "critical",
@@ -28,7 +38,14 @@ const notice = (over: Partial<SubscriptionNotice> = {}): SubscriptionNotice => (
 
 /** A token whose payload carries `sid` (the signature is not checked in the browser). */
 function token(sid: string | null): string {
-  const payload = btoa(JSON.stringify({ user_id: "u1", entity_id: "e1", ...(sid ? { sid } : {}), exp: Math.floor(Date.now() / 1000) + 600 }));
+  const payload = btoa(
+    JSON.stringify({
+      user_id: "u1",
+      entity_id: "e1",
+      ...(sid ? { sid } : {}),
+      exp: Math.floor(Date.now() / 1000) + 600,
+    }),
+  );
   return `h.${payload.replace(/=+$/, "")}.s`;
 }
 
@@ -50,7 +67,9 @@ describe("what the notice says (Flask's launch page)", () => {
     expect(payerLine(notice({ can_manage: false }))).toBe(
       "Billing for this company is managed by Olive (olive@example.com). Only they can change its subscription.",
     );
-    expect(payerLine(notice({ can_manage: false, payer: { name: "", email: "olive@example.com" } }))).toBe(
+    expect(
+      payerLine(notice({ can_manage: false, payer: { name: "", email: "olive@example.com" } })),
+    ).toBe(
       "Billing for this company is managed by olive@example.com. Only they can change its subscription.",
     );
     expect(payerLine(notice({ can_manage: false, payer: null }))).toBeNull();
@@ -63,7 +82,9 @@ describe("reading it from the subscription API", () => {
   it("asks for the company's notice without ever moving the page on a 401", async () => {
     subscriptionFetch.mockResolvedValue(notice());
     await expect(fetchSubscriptionNotice("e 1")).resolves.toEqual(notice());
-    expect(subscriptionFetch).toHaveBeenCalledWith("/api/entities/e%201/subscription-notice", { onUnauthorized: "reject" });
+    expect(subscriptionFetch).toHaveBeenCalledWith("/api/entities/e%201/subscription-notice", {
+      onUnauthorized: "reject",
+    });
   });
 
   it("shows nothing when there is nothing to say", async () => {
@@ -104,7 +125,9 @@ describe("once per company per sign-in (claim_subscription_notice)", () => {
     expect(claimSubscriptionNotice("e1")).toBe(true);
     setAuth(token("sid-2"), "e1", "Olive");
     expect(claimSubscriptionNotice("e1")).toBe(true);
-    expect(JSON.parse(sessionStorage.getItem("petty_cash_subscription_notice_seen") ?? "[]")).toEqual(["sid-2:e1"]);
+    expect(
+      JSON.parse(sessionStorage.getItem("petty_cash_subscription_notice_seen") ?? "[]"),
+    ).toEqual(["sid-2:e1"]);
   });
 
   it("falls back to once per tab for a token without a sign-in id", () => {

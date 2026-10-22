@@ -8,7 +8,6 @@
  * pages on the server; this file never cuts a list itself. Amounts are plain text, never coloured.
  */
 
-
 import { money } from "@/lib/money";
 import { publishLabel } from "@/lib/report";
 import { reportHref, resumeHref } from "@/lib/wizardPages";
@@ -96,7 +95,8 @@ export function filtersOf(params: URLSearchParams): Filters {
     start: params.get("start_date") ?? "",
     end: params.get("end_date") ?? "",
     page: page && page >= 1 ? page : 1,
-    perPage: perPage && (PER_PAGE as readonly number[]).includes(perPage) ? perPage : DEFAULT_PER_PAGE,
+    perPage:
+      perPage && (PER_PAGE as readonly number[]).includes(perPage) ? perPage : DEFAULT_PER_PAGE,
   };
 }
 
@@ -154,14 +154,22 @@ export function rangeText(page: number, perPage: number, total: number): string 
 
 /** The date range's rule, said as soon as both dates are there (Flask's sentence). */
 export function dateRangeProblem(start: string, end: string): string | null {
-  return start && end && end < start ? "The end date is before the start date. Choose a later end date." : null;
+  return start && end && end < start
+    ? "The end date is before the start date. Choose a later end date."
+    : null;
 }
 
 /** One date without the other: "not finished yet", so it is said only when Show is pressed. */
-export function missingDate(start: string, end: string): { field: "start" | "end"; message: string } | null {
+export function missingDate(
+  start: string,
+  end: string,
+): { field: "start" | "end"; message: string } | null {
   if (Boolean(start) === Boolean(end)) return null;
   const field = start ? "end" : "start";
-  return { field, message: `The ${field === "start" ? "From" : "To"} date is still empty. Choose it to see the reports between the two dates.` };
+  return {
+    field,
+    message: `The ${field === "start" ? "From" : "To"} date is still empty. Choose it to see the reports between the two dates.`,
+  };
 }
 
 /** Why Export CSV waits (beside the button), or null once the list shows a date range. */
@@ -173,7 +181,10 @@ export function csvGate(f: Filters): string | null {
  * Export CSV's request: `GET /reports/export.csv?start_date=&end_date=` (Minty
  * `petty_cash_api/routes/history.py`), read with the bearer - the shown dates only.
  */
-export function csvRequest(f: Filters): { path: string; query: { start_date: string; end_date: string } } {
+export function csvRequest(f: Filters): {
+  path: string;
+  query: { start_date: string; end_date: string };
+} {
   return { path: "/reports/export.csv", query: { start_date: f.start, end_date: f.end } };
 }
 
@@ -199,8 +210,14 @@ export function rowMeta(row: HistoryRow, code: string | null): string {
  * pill says Published to Xero, its only Success tone), Edit report and Delete report as the row's
  * `permissions` say.
  */
-export function rowActions(row: HistoryRow, canPublish: boolean): { publish: string | null; edit: boolean; delete: boolean } {
-  const publish = canPublish && row.status !== "draft" ? publishLabel({ xero_integrated: row.status_tone === "success" }) : null;
+export function rowActions(
+  row: HistoryRow,
+  canPublish: boolean,
+): { publish: string | null; edit: boolean; delete: boolean } {
+  const publish =
+    canPublish && row.status !== "draft"
+      ? publishLabel({ xero_integrated: row.status_tone === "success" })
+      : null;
   return { publish, edit: row.permissions.edit, delete: row.permissions.delete };
 }
 

@@ -46,7 +46,13 @@ function home(over: Partial<Home> = {}): Home {
 }
 
 function day(closing = 100, deposit = 0) {
-  return { id: "r", closing_balance: closing, bank_deposit: deposit, xero_integrated: false, submitter_first_name: "Olive" };
+  return {
+    id: "r",
+    closing_balance: closing,
+    bank_deposit: deposit,
+    xero_integrated: false,
+    submitter_first_name: "Olive",
+  };
 }
 
 describe("starting a report", () => {
@@ -67,10 +73,14 @@ describe("starting a report", () => {
 
   it("before any report, not before the onboarding date", () => {
     const h = home({ draft_date: "2026-10-05" });
-    expect(startProblem(h, "2026-10-04")).toBe("Transaction date must be on or after your onboarding date (2026-10-05).");
+    expect(startProblem(h, "2026-10-04")).toBe(
+      "Transaction date must be on or after your onboarding date (2026-10-05).",
+    );
     // onboarding's start date is the floor, ahead of a draft's day
     const started = home({ start_date: "2026-10-07", draft_date: "2026-10-09" });
-    expect(startProblem(started, "2026-10-06")).toBe("Transaction date must be on or after your onboarding date (2026-10-07).");
+    expect(startProblem(started, "2026-10-06")).toBe(
+      "Transaction date must be on or after your onboarding date (2026-10-07).",
+    );
     expect(startProblem(started, "2026-10-07")).toBeNull();
     expect(startProblem(h, "2026-10-20")).toBeNull(); // the future is allowed then
   });
@@ -96,7 +106,12 @@ describe("Before You Start", () => {
   });
 });
 
-const DRAFT = { id: "d", current_section: "sales", completed_sections: ["opening"], last_edit_seconds: 60 };
+const DRAFT = {
+  id: "d",
+  current_section: "sales",
+  completed_sections: ["opening"],
+  last_edit_seconds: 60,
+};
 
 describe("the launch card's state", () => {
   it("is first use with nothing submitted and nothing open", () => {
@@ -104,37 +119,65 @@ describe("the launch card's state", () => {
   });
 
   it("starts first use on onboarding's start date once it has come", () => {
-    expect(launchState(home({ start_date: "2026-10-07" }))).toEqual({ kind: "first-use", day: "2026-10-07" });
+    expect(launchState(home({ start_date: "2026-10-07" }))).toEqual({
+      kind: "first-use",
+      day: "2026-10-07",
+    });
     expect(launchState(home({ start_date: TODAY }))).toEqual({ kind: "first-use", day: TODAY });
     // a start date still ahead: today, which the start rule then explains
-    expect(launchState(home({ start_date: "2026-10-20" }))).toEqual({ kind: "first-use", day: TODAY });
+    expect(launchState(home({ start_date: "2026-10-20" }))).toEqual({
+      kind: "first-use",
+      day: TODAY,
+    });
     // once a report exists, the start date no longer leads
-    expect(launchState(home({ start_date: "2026-10-07", published: { "2026-10-13": day() } }))).toMatchObject({ kind: "not-started", day: TODAY });
+    expect(
+      launchState(home({ start_date: "2026-10-07", published: { "2026-10-13": day() } })),
+    ).toMatchObject({ kind: "not-started", day: TODAY });
   });
 
   it("is in progress whenever a report is open, on the open report's day", () => {
-    expect(launchState(home({ draft: DRAFT, draft_date: TODAY }))).toEqual({ kind: "in-progress", day: TODAY, draft: DRAFT });
-    expect(launchState(home({ draft: DRAFT, draft_date: "2026-10-12", published: { "2026-10-11": day() } }))).toMatchObject({
+    expect(launchState(home({ draft: DRAFT, draft_date: TODAY }))).toEqual({
+      kind: "in-progress",
+      day: TODAY,
+      draft: DRAFT,
+    });
+    expect(
+      launchState(
+        home({ draft: DRAFT, draft_date: "2026-10-12", published: { "2026-10-11": day() } }),
+      ),
+    ).toMatchObject({
       kind: "in-progress",
       day: "2026-10-12",
     });
     // a first draft (onboarding) is in progress, not first use
-    expect(launchState(home({ draft: DRAFT, draft_date: null }))).toMatchObject({ kind: "in-progress", day: TODAY });
+    expect(launchState(home({ draft: DRAFT, draft_date: null }))).toMatchObject({
+      kind: "in-progress",
+      day: TODAY,
+    });
   });
 
   it("is done when today is submitted - the server's today, not the device's - with its report to open", () => {
-    expect(launchState(home({ published: { [TODAY]: day() } }))).toEqual({ kind: "done", day: TODAY, reportId: "r" });
+    expect(launchState(home({ published: { [TODAY]: day() } }))).toEqual({
+      kind: "done",
+      day: TODAY,
+      reportId: "r",
+    });
   });
 
   it("is not started otherwise", () => {
-    expect(launchState(home({ published: { "2026-10-13": day() } }))).toEqual({ kind: "not-started", day: TODAY });
+    expect(launchState(home({ published: { "2026-10-13": day() } }))).toEqual({
+      kind: "not-started",
+      day: TODAY,
+    });
   });
 });
 
 describe("the gate", () => {
   it("names the day after the last submitted report when yesterday is unfinished", () => {
     expect(gateDay(home({ published: { "2026-10-12": day() } }))).toBe("2026-10-13");
-    expect(gateDay(home({ published: { "2026-10-01": day(), "2026-10-10": day() } }))).toBe("2026-10-11");
+    expect(gateDay(home({ published: { "2026-10-01": day(), "2026-10-10": day() } }))).toBe(
+      "2026-10-11",
+    );
   });
 
   it("is open when yesterday is submitted, when nothing is, and when today is", () => {
@@ -173,7 +216,10 @@ describe("Setup Required", () => {
   });
 
   it("names each missing Xero setting, linking to the Xero cards, after the currency", () => {
-    const h = home({ currency_code: null, xero_settings: { complete: false, missing: ["Main Bank Account", "Cash Sale Contact"] } });
+    const h = home({
+      currency_code: null,
+      xero_settings: { complete: false, missing: ["Main Bank Account", "Cash Sale Contact"] },
+    });
     expect(setupRequired(h, ID, NAME)).toEqual({
       open: true,
       items: [
@@ -185,13 +231,22 @@ describe("Setup Required", () => {
   });
 
   it("holds the page when the Xero settings are incomplete even with none named", () => {
-    expect(setupRequired(home({ xero_settings: { complete: false, missing: [] } }), ID, NAME)).toEqual({ open: true, items: [] });
+    expect(
+      setupRequired(home({ xero_settings: { complete: false, missing: [] } }), ID, NAME),
+    ).toEqual({ open: true, items: [] });
   });
 });
 
 describe("recent reports", () => {
   it("are the newest three submitted days, newest first", () => {
-    const h = home({ published: { "2026-10-09": day(1), "2026-10-13": day(4), "2026-10-10": day(2), "2026-10-12": day(3) } });
+    const h = home({
+      published: {
+        "2026-10-09": day(1),
+        "2026-10-13": day(4),
+        "2026-10-10": day(2),
+        "2026-10-12": day(3),
+      },
+    });
     expect(recentReports(h).map((r) => [r.day, r.report.closing_balance])).toEqual([
       ["2026-10-13", 4],
       ["2026-10-12", 3],

@@ -18,7 +18,9 @@ describe("the menu's links", () => {
     expect(sidebarHost.links.pettyCashDashboard()).toBe(HOME);
     expect(sidebarHost.links.pettyCashReports(ENTITY)).toBe(`${HOME}/reports`);
     expect(sidebarHost.links.pettyCashReports("")).toBe(`${HOME}/reports`);
-    expect(sidebarHost.links.settings()).toBe("/entity/360812e1/olive-and-vine/settings/petty-cash");
+    expect(sidebarHost.links.settings()).toBe(
+      "/entity/360812e1/olive-and-vine/settings/petty-cash",
+    );
   });
 
   it("reaches minty-web's pages and the payments app through Flask", () => {
@@ -26,7 +28,9 @@ describe("the menu's links", () => {
     const entities = new URL(sidebarHost.links.entities());
     expect(entities.origin + entities.pathname).toBe("http://localhost:8000/handoff/minty-web");
     expect(entities.searchParams.get("next")).toBe("/entities");
-    expect(new URL(sidebarHost.links.subscriptions()).searchParams.get("next")).toBe("/subscription");
+    expect(new URL(sidebarHost.links.subscriptions()).searchParams.get("next")).toBe(
+      "/subscription",
+    );
     expect(new URL(sidebarHost.links.bills()).pathname).toBe(`/entity/${ENTITY}/payment-request`);
     // My Profile is minty-web's, through the hand-off - never Flask's /profile page
     const profile = new URL(sidebarHost.links.profile());
@@ -36,7 +40,9 @@ describe("the menu's links", () => {
   });
 
   it("marks only its own settings page as current", () => {
-    expect(sidebarHost.currentOf("/entity/360812e1/olive-and-vine/settings/petty-cash")).toBe("settings");
+    expect(sidebarHost.currentOf("/entity/360812e1/olive-and-vine/settings/petty-cash")).toBe(
+      "settings",
+    );
     expect(sidebarHost.currentOf(`${HOME}/settings`)).toBeNull();
     expect(sidebarHost.currentOf(HOME)).toBeNull();
   });
@@ -97,20 +103,28 @@ describe("the host's other seams", () => {
 
   it("reads the viewer's name and initials from Flask's profile, with no company in the query", async () => {
     setAuth("tok", ENTITY, "Olive & Vine");
-    fetchMock.mockResolvedValue(json(200, { user: { name: "John Birmingha", initials: "JB", email: "x" } }));
-    await expect(sidebarHost.loadViewer()).resolves.toEqual({ name: "John Birmingha", initials: "JB" });
+    fetchMock.mockResolvedValue(
+      json(200, { user: { name: "John Birmingha", initials: "JB", email: "x" } }),
+    );
+    await expect(sidebarHost.loadViewer()).resolves.toEqual({
+      name: "John Birmingha",
+      initials: "JB",
+    });
     expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8000/api/me/profile");
     expect((fetchMock.mock.calls[0][1].headers as Headers).get("Authorization")).toBe("Bearer tok");
   });
 
-  it.each([{}, { user: null }, { user: { name: "J" } }, { user: { name: 1, initials: "J" } }, { user: { name: "J", initials: null } }])(
-    "has no viewer for %j",
-    async (body) => {
-      setAuth("tok", ENTITY, "n");
-      fetchMock.mockResolvedValue(json(200, body));
-      await expect(sidebarHost.loadViewer()).resolves.toBeNull();
-    },
-  );
+  it.each([
+    {},
+    { user: null },
+    { user: { name: "J" } },
+    { user: { name: 1, initials: "J" } },
+    { user: { name: "J", initials: null } },
+  ])("has no viewer for %j", async (body) => {
+    setAuth("tok", ENTITY, "n");
+    fetchMock.mockResolvedValue(json(200, body));
+    await expect(sidebarHost.loadViewer()).resolves.toBeNull();
+  });
 
   it("only rejects on a 401 - the page never moves for a decoration - and rejects on any refusal", async () => {
     setAuth("tok", ENTITY, "n");
@@ -120,11 +134,17 @@ describe("the host's other seams", () => {
     await expect(sidebarHost.loadViewer()).rejects.toMatchObject({ status: 401 });
     expect(go).not.toHaveBeenCalled();
     fetchMock.mockResolvedValueOnce(json(500, { error: "Flask is down for a moment." }));
-    await expect(sidebarHost.loadViewer()).rejects.toMatchObject({ status: 500, message: "Flask is down for a moment." });
+    await expect(sidebarHost.loadViewer()).rejects.toMatchObject({
+      status: 500,
+      message: "Flask is down for a moment.",
+    });
     // owner 2026-10-21: one shared module (@minty/shared/errorCopy) - a one-word "sentence" is not
     // shown (it was: "Down.")
     fetchMock.mockResolvedValueOnce(json(500, { error: "Down." }));
-    await expect(sidebarHost.loadViewer()).rejects.toMatchObject({ status: 500, message: HOUSE_FALLBACK });
+    await expect(sidebarHost.loadViewer()).rejects.toMatchObject({
+      status: 500,
+      message: HOUSE_FALLBACK,
+    });
   });
 
   it("leads home and to settings at / with no company, and to the payments app's own address", () => {
@@ -140,8 +160,15 @@ describe("the host's other seams", () => {
   it("calls onLeaving before it forgets the token and leaves", () => {
     setAuth("tok", ENTITY, "n");
     const order: string[] = [];
-    _resetHandoffForTests((url) => order.push(`leave ${url} token=${document.cookie.includes("petty_cash_token=tok")}`));
-    sidebarHost.logOut(() => order.push(`onLeaving token=${document.cookie.includes("petty_cash_token=tok")}`));
-    expect(order).toEqual(["onLeaving token=true", "leave http://localhost:8000/logout token=false"]);
+    _resetHandoffForTests((url) =>
+      order.push(`leave ${url} token=${document.cookie.includes("petty_cash_token=tok")}`),
+    );
+    sidebarHost.logOut(() =>
+      order.push(`onLeaving token=${document.cookie.includes("petty_cash_token=tok")}`),
+    );
+    expect(order).toEqual([
+      "onLeaving token=true",
+      "leave http://localhost:8000/logout token=false",
+    ]);
   });
 });

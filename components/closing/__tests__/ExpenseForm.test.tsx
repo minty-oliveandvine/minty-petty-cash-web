@@ -63,24 +63,36 @@ const callsTo = (path: string) => fetchMock.mock.calls.filter(([p]) => p === pat
 const formOf = (path: string, n = 0) => (callsTo(path)[n][1] as { form: FormData }).form;
 
 const pdf = (name = "scan.pdf") => new File(["%PDF-1.4"], name, { type: "application/pdf" });
-const chooseFile = () => document.querySelector<HTMLInputElement>("input[type=file]:not([capture])") as HTMLInputElement;
+const chooseFile = () =>
+  document.querySelector<HTMLInputElement>("input[type=file]:not([capture])") as HTMLInputElement;
 
 /** Answers the extract route with what the test holds back until `answer` is called; other paths with `others`. */
 function holdExtract(others: (path: string) => unknown = () => ({})) {
   let release: (a: ExtractAnswer) => void = () => undefined;
   fetchMock.mockImplementation(async (path: string) => {
-    if (path === "/reports/expenses/extract") return new Promise((resolve) => (release = resolve as typeof release));
+    if (path === "/reports/expenses/extract")
+      return new Promise((resolve) => (release = resolve as typeof release));
     return others(path);
   });
   return { answer: (a: ExtractAnswer) => act(async () => release(a)) };
 }
 
-const read = (value: string, band: "high" | "medium" | "low") => ({ value, confidence: 0.9, band, applied: band !== "low" });
+const read = (value: string, band: "high" | "medium" | "low") => ({
+  value,
+  confidence: 0.9,
+  band,
+  applied: band !== "low",
+});
 const SUGGESTED: Suggestions = {
   amount: read("448.80", "high"),
   description: read("Courier delivery", "medium"),
   supplier: { ...read("Wellcome", "high"), contact_id: "c3" },
-  account: { ...read("461 Printing & Stationery", "high"), account_id: "a2", code: "461", name: "Printing & Stationery" },
+  account: {
+    ...read("461 Printing & Stationery", "high"),
+    account_id: "a2",
+    code: "461",
+    name: "Printing & Stationery",
+  },
 };
 
 // jsdom has no layout: the sheet scrolls its refusal into view.
@@ -98,8 +110,12 @@ describe("Edit expense", () => {
     expect(within(dialog).getByRole("textbox", { name: /Amount/ })).toHaveValue("120.50");
     expect(within(dialog).getByRole("combobox", { name: /Supplier/ })).toHaveValue("ParknShop");
     expect(within(dialog).getByRole("combobox", { name: /Account/ })).toHaveValue("a1");
-    expect(within(dialog).getByRole("textbox", { name: "Description" })).toHaveValue("Printer paper");
-    expect(within(dialog).getByRole("button", { name: "View receipt receipt-l1.png" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("textbox", { name: "Description" })).toHaveValue(
+      "Printer paper",
+    );
+    expect(
+      within(dialog).getByRole("button", { name: "View receipt receipt-l1.png" }),
+    ).toBeInTheDocument();
     // the last saved receipt can't be removed: no Remove is offered for it
     expect(within(dialog).queryByRole("button", { name: /Remove saved receipt/ })).toBeNull();
     expect(within(dialog).getByRole("button", { name: "Save" })).toBeInTheDocument();
@@ -132,7 +148,10 @@ describe("Edit expense", () => {
 
   it("removes a saved receipt while another stays", async () => {
     fetchMock.mockResolvedValue({ line: LINE, total: 120.5 });
-    const two = { ...LINE, receipts: [...LINE.receipts, { id: "r2", name: "back.png", mime_type: "image/png" }] };
+    const two = {
+      ...LINE,
+      receipts: [...LINE.receipts, { id: "r2", name: "back.png", mime_type: "image/png" }],
+    };
     const { dialog, user } = setup({ line: two });
     await user.click(within(dialog).getByRole("button", { name: "Remove saved receipt back.png" }));
     expect(within(dialog).queryByRole("button", { name: "View receipt back.png" })).toBeNull();
@@ -154,7 +173,9 @@ describe("Edit expense", () => {
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(why);
     expect(props.onSaved).not.toHaveBeenCalled();
-    expect(within(dialog).getByRole("textbox", { name: "Description" })).toHaveValue("Printer paper and toner");
+    expect(within(dialog).getByRole("textbox", { name: "Description" })).toHaveValue(
+      "Printer paper and toner",
+    );
     expect(within(dialog).getByRole("button", { name: "Save" })).toBeEnabled();
   });
 
@@ -163,7 +184,9 @@ describe("Edit expense", () => {
     const { dialog, user } = setup({ line: LINE });
     await user.type(within(dialog).getByRole("textbox", { name: "Description" }), "!");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("We couldn't save this expense. Check your connection, then try again.");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "We couldn't save this expense. Check your connection, then try again.",
+    );
   });
 
   it("checks as it is typed, as the add does - an emptied amount waits for Save", async () => {
@@ -172,7 +195,9 @@ describe("Edit expense", () => {
     await user.clear(amount);
     expect(amount).not.toHaveAttribute("aria-invalid");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(amount).toHaveAccessibleDescription("The amount is still empty. Add the amount to continue.");
+    expect(amount).toHaveAccessibleDescription(
+      "The amount is still empty. Add the amount to continue.",
+    );
     expect(amount).toHaveFocus();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -209,7 +234,9 @@ describe("the receipt reader", () => {
     expect(within(dialog).getByRole("combobox", { name: /Account/ })).toHaveValue("a2");
     const description = within(dialog).getByRole("textbox", { name: "Description" });
     expect(description).toHaveValue("Courier delivery");
-    expect(description).toHaveAccessibleDescription("Suggested from the receipt. Check it before you go on.");
+    expect(description).toHaveAccessibleDescription(
+      "Suggested from the receipt. Check it before you go on.",
+    );
     expect(dialog).toHaveTextContent("Suggestions from the receipt filled 4 fields");
     expect(props.onSaved).not.toHaveBeenCalled();
     expect(callsTo("/reports/expenses/lines")).toHaveLength(0);
@@ -218,7 +245,9 @@ describe("the receipt reader", () => {
     await user.clear(amount);
     await user.type(amount, "448.81");
     expect(amount).not.toHaveAccessibleDescription(/Suggested/);
-    await user.click(within(dialog).getByRole("button", { name: "Clear the suggested description" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Clear the suggested description" }),
+    );
     expect(description).toHaveValue("");
     expect(description).toHaveFocus();
 
@@ -243,7 +272,9 @@ describe("the receipt reader", () => {
     await reader.answer({ suggestions: { amount: read("448.80", "high") }, reason: null });
     expect(amount).toHaveValue("44.80");
     expect(dialog).toHaveTextContent("The receipt reads HKD 448.80, not HKD 44.80.");
-    await user.click(within(dialog).getByRole("button", { name: "Use the amount from the receipt" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Use the amount from the receipt" }),
+    );
     expect(amount).toHaveValue("448.80");
     expect(amount).toHaveAccessibleDescription("Suggested from the receipt.");
   });
@@ -261,11 +292,29 @@ describe("the receipt reader", () => {
     const reader = holdExtract();
     const { dialog, user } = setup();
     await user.upload(chooseFile(), pdf());
-    await reader.answer({ suggestions: { supplier: { value: "", confidence: 0, band: "low", applied: false, contact_id: "", detected_name: "Kwok Transport" } }, reason: null });
-    expect(dialog).toHaveTextContent('The receipt says "Kwok Transport", which is not in your supplier list.');
-    await user.click(within(dialog).getByRole("button", { name: 'Add "Kwok Transport" as a new supplier' }));
+    await reader.answer({
+      suggestions: {
+        supplier: {
+          value: "",
+          confidence: 0,
+          band: "low",
+          applied: false,
+          contact_id: "",
+          detected_name: "Kwok Transport",
+        },
+      },
+      reason: null,
+    });
+    expect(dialog).toHaveTextContent(
+      'The receipt says "Kwok Transport", which is not in your supplier list.',
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: 'Add "Kwok Transport" as a new supplier' }),
+    );
     const panel = within(dialog).getByRole("group", { name: "New supplier" });
-    expect(within(panel).getByRole("textbox", { name: /Supplier's name/ })).toHaveValue("Kwok Transport");
+    expect(within(panel).getByRole("textbox", { name: /Supplier's name/ })).toHaveValue(
+      "Kwok Transport",
+    );
     expect(callsTo("/suppliers")).toHaveLength(0);
   });
 
@@ -273,7 +322,9 @@ describe("the receipt reader", () => {
     fetchMock.mockResolvedValue({ suggestions: null, reason: "disabled" });
     const { dialog, user } = setup();
     await user.upload(chooseFile(), pdf());
-    await waitFor(() => expect(within(dialog).queryByText("Minty is reading the receipt…")).toBeNull());
+    await waitFor(() =>
+      expect(within(dialog).queryByText("Minty is reading the receipt…")).toBeNull(),
+    );
     expect(within(dialog).queryByRole("alert")).toBeNull();
     expect(within(dialog).getByRole("textbox", { name: /Amount/ })).toHaveValue("");
     await user.click(within(dialog).getByRole("button", { name: /^Remove scan.pdf/ }));
@@ -283,14 +334,22 @@ describe("the receipt reader", () => {
   });
 
   it.each([
-    ["a refusal", () => Promise.reject(new ApiError(403, "You do not have permission to edit reports for this entity."))],
+    [
+      "a refusal",
+      () =>
+        Promise.reject(
+          new ApiError(403, "You do not have permission to edit reports for this entity."),
+        ),
+    ],
     ["a lost connection", () => Promise.reject(new TypeError("Failed to fetch"))],
     ["a failed reading", () => Promise.resolve({ suggestions: null, reason: "timeout" })],
   ])("says nothing about %s, and asks again next time", async (_, outcome) => {
     fetchMock.mockImplementation(outcome as () => Promise<never>);
     const { dialog, user } = setup();
     await user.upload(chooseFile(), pdf());
-    await waitFor(() => expect(within(dialog).queryByText("Minty is reading the receipt…")).toBeNull());
+    await waitFor(() =>
+      expect(within(dialog).queryByText("Minty is reading the receipt…")).toBeNull(),
+    );
     expect(within(dialog).queryByRole("alert")).toBeNull();
     expect(within(dialog).queryAllByRole("status")).toHaveLength(0);
     await user.click(within(dialog).getByRole("button", { name: /^Remove scan.pdf/ }));

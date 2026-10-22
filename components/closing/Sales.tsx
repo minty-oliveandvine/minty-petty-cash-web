@@ -7,15 +7,35 @@ import { useId, useState, type ReactNode } from "react";
 import { buttonClass, InlineAlert, PageBanner } from "@minty/shared/ui";
 import { parseAmount } from "@minty/shared/money";
 
-import { AmountInput, openStep, refused, StageActions, StagePage, stageSteps, useLeaveHold, WorkflowHeader, type StageContext } from "@/components/closing/Stage";
+import {
+  AmountInput,
+  openStep,
+  refused,
+  StageActions,
+  StagePage,
+  stageSteps,
+  useLeaveHold,
+  WorkflowHeader,
+  type StageContext,
+} from "@/components/closing/Stage";
 import { pettyCashFetch } from "@/lib/apiClient";
 import { money } from "@/lib/money";
 import { reportStatus } from "@/lib/reportStatus";
-import { initialValues, salesAmounts, salesDirty, salesTotals, sections, type SalesMethod, type SalesPage, type SalesSaved } from "@/lib/sales";
+import {
+  initialValues,
+  salesAmounts,
+  salesDirty,
+  salesTotals,
+  sections,
+  type SalesMethod,
+  type SalesPage,
+  type SalesSaved,
+} from "@/lib/sales";
 import { stepHref } from "@/lib/wizardPages";
 
 const STAGE = "Sales";
-const GUIDANCE = "Add the day's sales for each way your customers paid. Leave a method empty if it had no sales.";
+const GUIDANCE =
+  "Add the day's sales for each way your customers paid. Leave a method empty if it had no sales.";
 
 /**
  * The Daily Closing's second stage, "Sales" (Part 15.15b; Flask's Sales section): a grouped form
@@ -32,7 +52,13 @@ export function Sales({ day }: { day: string | null }) {
   );
 }
 
-function StageForm({ page, entityId, entityName, home, notice }: { page: SalesPage } & StageContext) {
+function StageForm({
+  page,
+  entityId,
+  entityName,
+  home,
+  notice,
+}: { page: SalesPage } & StageContext) {
   const router = useRouter();
   const [initial] = useState(() => initialValues(page));
   const [values, setValues] = useState(initial.values);
@@ -56,9 +82,15 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: SalesPa
     try {
       const answer = await pettyCashFetch<SalesSaved>("/reports/sales", {
         method: "PUT",
-        body: { transaction_date: day, cash_sales: parseAmount(cash) ?? 0, amounts: salesAmounts(page.methods, values), action },
+        body: {
+          transaction_date: day,
+          cash_sales: parseAmount(cash) ?? 0,
+          amounts: salesAmounts(page.methods, values),
+          action,
+        },
       });
-      if (answer.next === "expenses") openStep(push, entityId, entityName, "expenses", answer.transaction_date);
+      if (answer.next === "expenses")
+        openStep(push, entityId, entityName, "expenses", answer.transaction_date);
       else push(home);
     } catch (err) {
       // No draft for the day yet: back to Addition to Drawer, which says why (`to: "opening"`).
@@ -106,13 +138,16 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: SalesPa
           tone="warning"
           title="This day's Daily Closing hasn't started"
           action={
-            <Link href={stepHref(entityId, entityName, "opening", day)} className={buttonClass("link")}>
+            <Link
+              href={stepHref(entityId, entityName, "opening", day)}
+              className={buttonClass("link")}
+            >
               Go to Addition to Drawer
             </Link>
           }
         >
-          Sales are added once the cash in the drawer is counted in. Start with Addition to Drawer, then come back to
-          Sales.
+          Sales are added once the cash in the drawer is counted in. Start with Addition to Drawer,
+          then come back to Sales.
         </PageBanner>
       </>
     );
@@ -131,12 +166,18 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: SalesPa
         }}
       >
         {/* Part 15.3b grouped form: Section headers, the fields, a running subtotal per section. */}
-        <section aria-label={STAGE} className="flex flex-col gap-6 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6">
+        <section
+          aria-label={STAGE}
+          className="flex flex-col gap-6 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6"
+        >
           {electronic.length ? (
             <SalesSection
               title="Electronic payments"
               description="Card and e-wallet sales, as each terminal or app shows them."
-              subtotal={{ label: "Electronic payments total", amount: money(totals.electronic, code) }}
+              subtotal={{
+                label: "Electronic payments total",
+                amount: money(totals.electronic, code),
+              }}
             >
               {electronic.map(field)}
             </SalesSection>
@@ -156,7 +197,14 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: SalesPa
             description="Cash your customers paid. It goes into the drawer."
             divided={electronic.length + delivery.length > 0}
           >
-            <AmountInput label="Cash sales" name="cash_sales" code={code} value={cash} onChange={setCash} disabled={saving !== null} />
+            <AmountInput
+              label="Cash sales"
+              name="cash_sales"
+              code={code}
+              value={cash}
+              onChange={setCash}
+              disabled={saving !== null}
+            />
           </SalesSection>
         </section>
 
@@ -164,10 +212,16 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: SalesPa
         <div className="flex flex-col gap-3">
           <dl className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-lg bg-surface-sunk px-4 py-3">
             <dt className="min-w-0 text-title-m text-text-primary">Total sales</dt>
-            <dd className="shrink-0 text-title-m text-text-primary" translate="no" aria-live="polite">
+            <dd
+              className="shrink-0 text-title-m text-text-primary"
+              translate="no"
+              aria-live="polite"
+            >
               {money(totals.total, code)}
             </dd>
-            <dd className="basis-full text-body-s text-text-secondary">Electronic payments, delivery and cash sales together.</dd>
+            <dd className="basis-full text-body-s text-text-secondary">
+              Electronic payments, delivery and cash sales together.
+            </dd>
           </dl>
           {problem ? <InlineAlert tone="danger">{problem}</InlineAlert> : null}
         </div>
@@ -198,7 +252,11 @@ function SalesSection({
 }) {
   const id = useId();
   return (
-    <div role="group" aria-labelledby={id} className={`flex min-w-0 flex-col gap-3 ${divided ? "border-t border-border-subtle pt-6" : ""}`}>
+    <div
+      role="group"
+      aria-labelledby={id}
+      className={`flex min-w-0 flex-col gap-3 ${divided ? "border-t border-border-subtle pt-6" : ""}`}
+    >
       <div className="flex flex-col gap-0.5">
         <h2 id={id} className="text-title-m text-text-primary">
           {title}
@@ -209,7 +267,11 @@ function SalesSection({
       {subtotal ? (
         <dl className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-t border-border-subtle pt-3">
           <dt className="min-w-0 text-body-m text-text-secondary">{subtotal.label}</dt>
-          <dd className="shrink-0 text-body-m font-semibold text-text-primary" translate="no" aria-live="polite">
+          <dd
+            className="shrink-0 text-body-m font-semibold text-text-primary"
+            translate="no"
+            aria-live="polite"
+          >
             {subtotal.amount}
           </dd>
         </dl>

@@ -20,7 +20,16 @@ import type { ClosePage } from "@/lib/close";
 import { salesRows } from "@/lib/close";
 import { env } from "@/lib/env";
 import { money } from "@/lib/money";
-import { cashRowsOf, differenceAlertOf, isoMoment, kpiCards, reportPill, type CashRow, type DailyReport, type Kpi } from "@/lib/report";
+import {
+  cashRowsOf,
+  differenceAlertOf,
+  isoMoment,
+  kpiCards,
+  reportPill,
+  type CashRow,
+  type DailyReport,
+  type Kpi,
+} from "@/lib/report";
 
 type Maybe<T> = T | null | undefined;
 
@@ -42,7 +51,11 @@ export type SharedReport = {
   status_label?: Maybe<string>;
   status_tone?: Maybe<string>;
   kpis?: Maybe<Partial<DailyReport["kpis"]>>;
-  sales?: Maybe<{ methods?: Maybe<ClosePage["sales"]["methods"]>; cash?: Maybe<number>; total?: Maybe<number> }>;
+  sales?: Maybe<{
+    methods?: Maybe<ClosePage["sales"]["methods"]>;
+    cash?: Maybe<number>;
+    total?: Maybe<number>;
+  }>;
   expenses?: Maybe<{ lines?: Maybe<SharedLine[]>; total?: Maybe<number> }>;
   cash?: Maybe<Partial<DailyReport["cash"]>>;
   closing_balance?: Maybe<number>;
@@ -51,7 +64,11 @@ export type SharedReport = {
   expires_at?: Maybe<string>;
 };
 
-export type SharedRead = { kind: "ready"; report: SharedReport } | { kind: "missing" } | { kind: "expired" } | { kind: "failed" };
+export type SharedRead =
+  | { kind: "ready"; report: SharedReport }
+  | { kind: "missing" }
+  | { kind: "expired" }
+  | { kind: "failed" };
 
 /** This app's public share page (`/share/<initials>/<day>/<secret>`) - proxy.ts lets exactly this prefix through. */
 export function isSharePage(pathname: string): boolean {
@@ -83,7 +100,10 @@ export function sharedReportUrl(path: string): string {
  * in a cookie), no cookies, no referrer, no cache. 404 and 410 are the two refusals the page
  * words; anything else is logged by its status alone - never the address, which holds the secret.
  */
-export async function readSharedReport(path: string, fetcher: typeof fetch = fetch): Promise<SharedRead> {
+export async function readSharedReport(
+  path: string,
+  fetcher: typeof fetch = fetch,
+): Promise<SharedRead> {
   let res: Response;
   try {
     res = await fetcher(sharedReportUrl(path), {
@@ -118,7 +138,9 @@ const code = (report: SharedReport) => report.currency_code ?? null;
 
 /** The Status pill, when the API sent its label (its tone as the Daily Report takes it). */
 export function sharedPill(report: SharedReport): { label: string; tone: StatusTone } | null {
-  return report.status_label ? reportPill({ status_label: report.status_label, status_tone: report.status_tone ?? "" }) : null;
+  return report.status_label
+    ? reportPill({ status_label: report.status_label, status_tone: report.status_tone ?? "" })
+    : null;
 }
 
 /** The KPIs that arrived; the expenses' count only when the lines did. */
@@ -134,9 +156,16 @@ export function sharedSales(report: SharedReport): ShareRow[] | null {
   const sales = report.sales;
   if (!sales) return null;
   const amountText = (n: number) => money(n, code(report));
-  const rows: ShareRow[] = Array.isArray(sales.methods) ? salesRows({ sales: { methods: sales.methods } }).map((r) => ({ key: r.key, label: r.label, value: amountText(r.amount) })) : [];
+  const rows: ShareRow[] = Array.isArray(sales.methods)
+    ? salesRows({ sales: { methods: sales.methods } }).map((r) => ({
+        key: r.key,
+        label: r.label,
+        value: amountText(r.amount),
+      }))
+    : [];
   if (num(sales.cash)) rows.push({ key: "cash", label: "Cash", value: amountText(sales.cash) });
-  if (num(sales.total)) rows.push({ key: "total", label: "Total sales", value: amountText(sales.total), total: true });
+  if (num(sales.total))
+    rows.push({ key: "total", label: "Total sales", value: amountText(sales.total), total: true });
   return rows.length ? rows : null;
 }
 
@@ -167,7 +196,11 @@ export function sharedExpenses(report: SharedReport): SharedExpenses | null {
   const carried = raw.some((line) => Array.isArray(line.receipts));
   const receipts = carried
     ? raw.flatMap((line, i) =>
-        (Array.isArray(line.receipts) ? line.receipts : []).map((r) => ({ name: (r.name ?? "").trim() || "Receipt", title: lines[i].title, value: lines[i].value })),
+        (Array.isArray(line.receipts) ? line.receipts : []).map((r) => ({
+          name: (r.name ?? "").trim() || "Receipt",
+          title: lines[i].title,
+          value: lines[i].value,
+        })),
       )
     : null;
   return { lines, total: amountText(expenses.total), receipts };
@@ -188,7 +221,10 @@ export function sharedDifference(report: SharedReport): { title: string; body: s
 export function sharedAudit(report: SharedReport): string[] {
   const facts: string[] = [];
   const at = isoMoment(report.submitted_at);
-  if (report.submitted_by || at) facts.push(`Submitted${report.submitted_by ? ` by ${report.submitted_by}` : ""}${at ? ` · ${at}` : ""}`);
+  if (report.submitted_by || at)
+    facts.push(
+      `Submitted${report.submitted_by ? ` by ${report.submitted_by}` : ""}${at ? ` · ${at}` : ""}`,
+    );
   const until = isoMoment(report.expires_at);
   if (until) facts.push(`This link works until ${until}`);
   return facts;

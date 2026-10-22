@@ -49,11 +49,7 @@ beforeEach(() => {
   fetchMock.mockImplementation((input) =>
     Promise.resolve(
       new Response(
-        JSON.stringify(
-          String(input).includes("/api/me/subscriptions")
-            ? SUBSCRIPTIONS
-            : PROFILE,
-        ),
+        JSON.stringify(String(input).includes("/api/me/subscriptions") ? SUBSCRIPTIONS : PROFILE),
         {
           status: 200,
           headers: { "Content-Type": "application/json" },
@@ -63,11 +59,7 @@ beforeEach(() => {
   );
   _resetHandoffForTests(vi.fn());
   setAuth("h.eyJ1c2VyX2lkIjoidTEifQ.s", ENTITY, "Olive & Vine");
-  window.history.replaceState(
-    {},
-    "",
-    "/entity/360812e1/olive-and-vine/petty-cash",
-  );
+  window.history.replaceState({}, "", "/entity/360812e1/olive-and-vine/petty-cash");
 });
 
 afterEach(() => {
@@ -92,22 +84,14 @@ describe("My Profile in Petty Cash (development)", () => {
       await sheet.findByRole("heading", { level: 2, name: "John Birmingha" }),
     ).toBeInTheDocument();
     expect(sheet.queryByText(/password/i)).toBeNull();
-    expect(
-      await sheet.findByRole("link", { name: "Manage Subscription" }),
-    ).toBeInTheDocument();
-    expect(region.firstElementChild).toHaveClass(
-      ...PROFILE_LOOK.v2.panel.split(" "),
-    );
+    expect(await sheet.findByRole("link", { name: "Manage Subscription" })).toBeInTheDocument();
+    expect(region.firstElementChild).toHaveClass(...PROFILE_LOOK.v2.panel.split(" "));
 
     // the panel's read names this company (the badge's own viewer read does not)
     const reads = fetchMock.mock.calls
       .map(([u]) => new URL(String(u)))
       .filter((u) => u.pathname === "/api/me/profile");
-    expect(reads.some((u) => u.searchParams.get("entity") === ENTITY)).toBe(
-      true,
-    );
-    expect(window.location.pathname).toBe(
-      "/entity/360812e1/olive-and-vine/petty-cash",
-    );
+    expect(reads.some((u) => u.searchParams.get("entity") === ENTITY)).toBe(true);
+    expect(window.location.pathname).toBe("/entity/360812e1/olive-and-vine/petty-cash");
   });
 });

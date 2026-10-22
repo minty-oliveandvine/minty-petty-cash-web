@@ -39,15 +39,27 @@ const ALLOWED_PATHS = [
  * (`/handoff/...`), a payments hand-off (`/entity/<id>/payment-request`,
  * `/entity/<id>/settings/payment-request`) or `/logout` - never a page.
  */
-const FLASK_BUILDERS = ["hubHandoffUrl", "flaskHandoffUrl", "settingsSectionUrl", "paymentRequestSettingsUrl", "pettyCashSettingsUrl", "billsUrl", "logoutUrl"];
+const FLASK_BUILDERS = [
+  "hubHandoffUrl",
+  "flaskHandoffUrl",
+  "settingsSectionUrl",
+  "paymentRequestSettingsUrl",
+  "pettyCashSettingsUrl",
+  "billsUrl",
+  "logoutUrl",
+];
 
 /** The bases of this app's own Flask clients: the JSON API (lib/apiClient.ts) and its hand-off (lib/handoff.ts). */
-const FLASK_BASES = [/\bclients\(\(\) => env\.ACCOUNTS_API_URL\)/g, /\bflaskBase: \(\) => env\.ACCOUNTS_API_URL\b/g];
+const FLASK_BASES = [
+  /\bclients\(\(\) => env\.ACCOUNTS_API_URL\)/g,
+  /\bflaskBase: \(\) => env\.ACCOUNTS_API_URL\b/g,
+];
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
-    if (statSync(path).isDirectory()) return name === "__tests__" || name === "node_modules" ? [] : sources(path);
+    if (statSync(path).isDirectory())
+      return name === "__tests__" || name === "node_modules" ? [] : sources(path);
     return /\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name) ? [path] : [];
   });
 }
@@ -64,26 +76,38 @@ describe("no Flask pages", () => {
   });
 
   it("builds Flask addresses only in the hand-off and API helpers", () => {
-    const offenders = files.filter((f) => !ALLOWED.has(f.name) && f.text.includes("ACCOUNTS_API_URL")).map((f) => f.name);
+    const offenders = files
+      .filter((f) => !ALLOWED.has(f.name) && f.text.includes("ACCOUNTS_API_URL"))
+      .map((f) => f.name);
     expect(offenders).toEqual([]);
   });
 
   it("builds every literal one of them to a hand-off, an action or an API - never a page", () => {
     const built = files
       .filter((f) => ALLOWED.has(f.name))
-      .flatMap((f) => [...f.text.matchAll(/\$\{env\.ACCOUNTS_API_URL\}([^`]*)`/g)].map((m) => ({ file: f.name, path: m[1] })));
+      .flatMap((f) =>
+        [...f.text.matchAll(/\$\{env\.ACCOUNTS_API_URL\}([^`]*)`/g)].map((m) => ({
+          file: f.name,
+          path: m[1],
+        })),
+      );
     // a helper that takes the path as an argument (`${path}`) is checked through its callers below
     const literal = built.filter((b) => !/^\$\{\w+\}$/.test(b.path));
     expect(literal.filter((b) => !ALLOWED_PATHS.some((re) => re.test(b.path)))).toEqual([]);
   });
 
   it("hands the Flask base only to a shared hand-off builder or to this app's own clients", () => {
-    const builderCall = new RegExp(`\\b(?:${FLASK_BUILDERS.join("|")})\\(\\s*env\\.ACCOUNTS_API_URL\\b`, "g");
+    const builderCall = new RegExp(
+      `\\b(?:${FLASK_BUILDERS.join("|")})\\(\\s*env\\.ACCOUNTS_API_URL\\b`,
+      "g",
+    );
     const uses = files
       .filter((f) => ALLOWED.has(f.name) && f.name !== "lib/env.ts")
       .map((f) => {
         const total = [...f.text.matchAll(/env\.ACCOUNTS_API_URL/g)].length;
-        const explained = [...f.text.matchAll(builderCall)].length + FLASK_BASES.reduce((n, re) => n + [...f.text.matchAll(re)].length, 0);
+        const explained =
+          [...f.text.matchAll(builderCall)].length +
+          FLASK_BASES.reduce((n, re) => n + [...f.text.matchAll(re)].length, 0);
         return { file: f.name, total, explained };
       });
     expect(uses.every((u) => u.total > 0)).toBe(true);
@@ -92,6 +116,8 @@ describe("no Flask pages", () => {
 
   it("leaves no module of Flask page links behind", () => {
     expect(files.some((f) => f.name === "lib/flaskPages.ts")).toBe(false);
-    expect(files.filter((f) => /from "@\/lib\/flaskPages"/.test(f.text)).map((f) => f.name)).toEqual([]);
+    expect(
+      files.filter((f) => /from "@\/lib\/flaskPages"/.test(f.text)).map((f) => f.name),
+    ).toEqual([]);
   });
 });

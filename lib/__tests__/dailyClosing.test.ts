@@ -2,10 +2,21 @@
 
 import { describe, expect, it } from "vitest";
 
-import { notStartedProgress, STAGES, stageOf, stageProgress, stageSection, stagesOnPage, submittedProgress } from "@/lib/dailyClosing";
+import {
+  notStartedProgress,
+  STAGES,
+  stageOf,
+  stageProgress,
+  stageSection,
+  stagesOnPage,
+  submittedProgress,
+} from "@/lib/dailyClosing";
 import type { Home } from "@/lib/dashboard";
 
-function draft(current_section: string | null, completed_sections: string[]): NonNullable<Home["draft"]> {
+function draft(
+  current_section: string | null,
+  completed_sections: string[],
+): NonNullable<Home["draft"]> {
   return { id: "d", current_section, completed_sections, last_edit_seconds: 0 };
 }
 
@@ -13,13 +24,27 @@ const states = (p: ReturnType<typeof stageProgress>) => p.stages.map((s) => s.st
 
 describe("the stages", () => {
   it("are Part 15.15's five, in order, with Part 15.9's short labels", () => {
-    expect(STAGES.map((s) => s.label)).toEqual(["Addition to Drawer", "Sales", "Expenses", "Cash Count", "Close"]);
-    expect(STAGES.map((s) => s.short)).toEqual(["Drawer", "Sales", "Expenses", "Cash Count", "Close"]);
+    expect(STAGES.map((s) => s.label)).toEqual([
+      "Addition to Drawer",
+      "Sales",
+      "Expenses",
+      "Cash Count",
+      "Close",
+    ]);
+    expect(STAGES.map((s) => s.short)).toEqual([
+      "Drawer",
+      "Sales",
+      "Expenses",
+      "Cash Count",
+      "Close",
+    ]);
   });
 
   it("take Flask's six sections - Bank Deposit folded into Cash Count (D15-05)", () => {
     expect(
-      ["opening", "sales", "expenses", "deposit", "cash_count", "ending"].map((section) => stageOf(section)?.label),
+      ["opening", "sales", "expenses", "deposit", "cash_count", "ending"].map(
+        (section) => stageOf(section)?.label,
+      ),
     ).toEqual(["Addition to Drawer", "Sales", "Expenses", "Cash Count", "Cash Count", "Close"]);
     expect(stageOf(null)).toBeNull();
     expect(stageOf("bank")).toBeNull();
@@ -44,7 +69,9 @@ describe("an open report's progress", () => {
     expect(p.next?.label).toBe("Cash Count");
     expect(states(p)).toEqual(["done", "done", "done", "current", "upcoming"]);
 
-    const counted = stageProgress(draft("ending", ["opening", "sales", "expenses", "deposit", "cash_count"]));
+    const counted = stageProgress(
+      draft("ending", ["opening", "sales", "expenses", "deposit", "cash_count"]),
+    );
     expect(counted.done).toBe(4);
     expect(counted.next?.label).toBe("Close");
   });
@@ -99,8 +126,20 @@ describe("a stage's own page", () => {
   it("draws its stage as current, done or not, and the others by what is done", () => {
     const here = (completed: string[]) => stagesOnPage(completed, "drawer").map((s) => s.state);
     expect(here([])).toEqual(["current", "upcoming", "upcoming", "upcoming", "upcoming"]);
-    expect(here(["opening", "sales", "deposit"])).toEqual(["current", "done", "upcoming", "upcoming", "upcoming"]);
-    expect(here(["opening", "sales", "expenses", "cash_count"])).toEqual(["current", "done", "done", "done", "upcoming"]);
+    expect(here(["opening", "sales", "deposit"])).toEqual([
+      "current",
+      "done",
+      "upcoming",
+      "upcoming",
+      "upcoming",
+    ]);
+    expect(here(["opening", "sales", "expenses", "cash_count"])).toEqual([
+      "current",
+      "done",
+      "done",
+      "done",
+      "upcoming",
+    ]);
   });
 
   it("opens another stage where the report is inside it, else at the stage's first section", () => {

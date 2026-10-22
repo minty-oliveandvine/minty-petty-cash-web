@@ -24,25 +24,37 @@ describe("the opening cash", () => {
   it("is the starting cash plus what the field shows, to the cent", () => {
     expect(openingCash(page(), "")).toBe(1200);
     expect(openingCash(page(), "1,250.55")).toBe(2450.55);
-    expect(openingCash(page({ starting_cash_balance: 0.1, yesterday_closing_balance: 0.1 }), "0.2")).toBe(0.3);
+    expect(
+      openingCash(page({ starting_cash_balance: 0.1, yesterday_closing_balance: 0.1 }), "0.2"),
+    ).toBe(0.3);
   });
 });
 
 describe("the starting cash", () => {
   it("comes from the last closing when there is one", () => {
     expect(startingSource(page())).toBe("last-closing");
-    expect(startingSource(page({ starting_cash_balance: -50, yesterday_closing_balance: -50 }))).toBe("last-closing");
+    expect(
+      startingSource(page({ starting_cash_balance: -50, yesterday_closing_balance: -50 })),
+    ).toBe("last-closing");
   });
 
   it("else from the opening balance set up in onboarding, else from nothing", () => {
-    expect(startingSource(page({ yesterday_closing_balance: 0, starting_cash_balance: 900 }))).toBe("setup");
-    expect(startingSource(page({ yesterday_closing_balance: 0, starting_cash_balance: 0 }))).toBe("none");
+    expect(startingSource(page({ yesterday_closing_balance: 0, starting_cash_balance: 900 }))).toBe(
+      "setup",
+    );
+    expect(startingSource(page({ yesterday_closing_balance: 0, starting_cash_balance: 0 }))).toBe(
+      "none",
+    );
   });
 
   it("splits into drawer and safebox only when some of it is in the safebox", () => {
     expect(startingSplit(page())).toBeNull();
     expect(startingSplit(page({ safebox_balance: 200 }))).toEqual({ drawer: 1000, safebox: 200 });
-    expect(startingSplit(page({ yesterday_closing_balance: 0, starting_cash_balance: 900, safebox_balance: 200 }))).toBeNull();
+    expect(
+      startingSplit(
+        page({ yesterday_closing_balance: 0, starting_cash_balance: 900, safebox_balance: 200 }),
+      ),
+    ).toBeNull();
   });
 });
 
@@ -60,6 +72,8 @@ describe("the negative-balance gate", () => {
 
   it("is open otherwise", () => {
     expect(negativeGate(page(), 1200)).toBeNull();
-    expect(negativeGate(page({ starting_cash_balance: 0, yesterday_closing_balance: 0 }), 0)).toBeNull();
+    expect(
+      negativeGate(page({ starting_cash_balance: 0, yesterday_closing_balance: 0 }), 0),
+    ).toBeNull();
   });
 });

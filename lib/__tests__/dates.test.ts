@@ -1,7 +1,14 @@
 import { formatDay } from "@minty/shared/dates";
 import { describe, expect, it } from "vitest";
 
-import { addDays, clockTime, formatWeekdayDay, formatWeekdayShort, momentText, savedText } from "@/lib/dates";
+import {
+  addDays,
+  clockTime,
+  formatWeekdayDay,
+  formatWeekdayShort,
+  momentText,
+  savedText,
+} from "@/lib/dates";
 
 describe("report days", () => {
   it("add across months and years", () => {
@@ -23,7 +30,8 @@ describe("report days", () => {
 
 describe("moments on the device's clock", () => {
   // Local-time Dates, so the expectations hold in any time zone the tests run in.
-  const at = (y: number, mo: number, d: number, h: number, mi: number) => new Date(y, mo - 1, d, h, mi);
+  const at = (y: number, mo: number, d: number, h: number, mi: number) =>
+    new Date(y, mo - 1, d, h, mi);
 
   it("tell the time in 12 hours", () => {
     expect(clockTime(at(2026, 10, 14, 18, 2))).toBe("6:02 pm");
@@ -55,12 +63,29 @@ describe("the month and weekday names", () => {
   // GET /home (lib/dashboard.ts).
 
   it("names every month in three letters", () => {
-    const names = Array.from({ length: 12 }, (_, i) => formatDay(`2026-${String(i + 1).padStart(2, "0")}-01`).slice(3, 6));
-    expect(names).toEqual(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]);
+    const names = Array.from({ length: 12 }, (_, i) =>
+      formatDay(`2026-${String(i + 1).padStart(2, "0")}-01`).slice(3, 6),
+    );
+    expect(names).toEqual([
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ]);
   });
 
   it("names every weekday in three letters, from the UTC date", () => {
-    const days = Array.from({ length: 7 }, (_, i) => formatWeekdayShort(addDays("2026-10-18", i)).slice(0, 3));
+    const days = Array.from({ length: 7 }, (_, i) =>
+      formatWeekdayShort(addDays("2026-10-18", i)).slice(0, 3),
+    );
     expect(days).toEqual(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
   });
 

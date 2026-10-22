@@ -121,7 +121,10 @@ export function rowTotal(denomination: Denomination, text: string): number {
 
 /** The drawer's total: every row together. */
 export function drawerTotal(denominations: Denomination[], counts: Record<string, string>): number {
-  return denominations.reduce((total, d) => total + valueCents(d) * parseCount(counts[d.id] ?? ""), 0) / 100;
+  return (
+    denominations.reduce((total, d) => total + valueCents(d) * parseCount(counts[d.id] ?? ""), 0) /
+    100
+  );
 }
 
 /** Counted: the drawer and the safebox together. */
@@ -147,10 +150,17 @@ export function differenceText(diff: Difference, code: string | null): string {
  * The reason's problem. Too long shows at once; missing while there is a difference only after a
  * refused Save & Next (the API's sentence) - Save & Exit keeps a difference without one.
  */
-export function reasonProblem(reason: string, diff: Difference, code: string | null, { submitted }: { submitted: boolean }): string | null {
+export function reasonProblem(
+  reason: string,
+  diff: Difference,
+  code: string | null,
+  { submitted }: { submitted: boolean },
+): string | null {
   const length = reason.trim().length;
-  if (length > MAX_REASON) return `The reason is ${count(length)} characters. Shorten it to ${MAX_REASON} characters or fewer.`;
-  if (submitted && diff.kind !== "none" && length === 0) return `The count is ${differenceText(diff, code)}. Add the reason to continue.`;
+  if (length > MAX_REASON)
+    return `The reason is ${count(length)} characters. Shorten it to ${MAX_REASON} characters or fewer.`;
+  if (submitted && diff.kind !== "none" && length === 0)
+    return `The count is ${differenceText(diff, code)}. Add the reason to continue.`;
   return null;
 }
 
@@ -172,11 +182,21 @@ export function denominationLabel(denomination: Denomination, code: string | nul
 }
 
 /** The denominations by kind, in the company's order: notes, then coins, then anything else. */
-export function denominationGroups(denominations: Denomination[]): { kind: string; title: string; items: Denomination[] }[] {
+export function denominationGroups(
+  denominations: Denomination[],
+): { kind: string; title: string; items: Denomination[] }[] {
   const order = ["note", "coin"];
-  const kinds = [...order.filter((k) => denominations.some((d) => d.kind === k)), ...Array.from(new Set(denominations.map((d) => d.kind).filter((k) => !order.includes(k))))];
-  const title = (kind: string) => (kind === "note" ? "Notes" : kind === "coin" ? "Coins" : "Other cash");
-  return kinds.map((kind) => ({ kind, title: title(kind), items: denominations.filter((d) => d.kind === kind) }));
+  const kinds = [
+    ...order.filter((k) => denominations.some((d) => d.kind === k)),
+    ...Array.from(new Set(denominations.map((d) => d.kind).filter((k) => !order.includes(k)))),
+  ];
+  const title = (kind: string) =>
+    kind === "note" ? "Notes" : kind === "coin" ? "Coins" : "Other cash";
+  return kinds.map((kind) => ({
+    kind,
+    title: title(kind),
+    items: denominations.filter((d) => d.kind === kind),
+  }));
 }
 
 /** "notes", "coins" - for a count's accessible name ("Number of HKD 1,000 notes"). */
@@ -184,14 +204,21 @@ export function kindNoun(kind: string): string {
   return kind === "note" ? "notes" : kind === "coin" ? "coins" : "pieces";
 }
 
-export type CashCountValues = { deposit: string; counts: Record<string, string>; safebox: string; reason: string };
+export type CashCountValues = {
+  deposit: string;
+  counts: Record<string, string>;
+  safebox: string;
+  reason: string;
+};
 
 /** The fields as the page first shows them: saved amounts grouped, a zero as an empty field. */
 export function initialValues(page: CashCountPage): CashCountValues {
   const field = (n: number) => (n ? formatAmount(n) : "");
   return {
     deposit: field(page.bank_deposit),
-    counts: Object.fromEntries(page.denominations.map((d) => [d.id, d.count ? String(d.count) : ""])),
+    counts: Object.fromEntries(
+      page.denominations.map((d) => [d.id, d.count ? String(d.count) : ""]),
+    ),
     safebox: field(page.safe_box_balance),
     reason: page.discrepancy.reason ?? "",
   };
@@ -211,11 +238,19 @@ export function cashCountDirty(page: CashCountPage, values: CashCountValues): bo
  * field as 0). The reason is sent only while there is a difference - a note about a difference
  * the count no longer has would be wrong.
  */
-export function savePayload(day: string, page: CashCountPage, values: CashCountValues, diff: Difference, action: "next" | "exit") {
+export function savePayload(
+  day: string,
+  page: CashCountPage,
+  values: CashCountValues,
+  diff: Difference,
+  action: "next" | "exit",
+) {
   return {
     transaction_date: day,
     bank_deposit: parseAmount(values.deposit) ?? 0,
-    counts: Object.fromEntries(page.denominations.map((d) => [d.id, parseCount(values.counts[d.id] ?? "")])),
+    counts: Object.fromEntries(
+      page.denominations.map((d) => [d.id, parseCount(values.counts[d.id] ?? "")]),
+    ),
     safe_box_balance: parseAmount(values.safebox) ?? 0,
     discrepancy_reason: diff.kind === "none" ? "" : values.reason.trim(),
     action,
@@ -253,13 +288,20 @@ export const REASON_FIRST = "Add a reason for the difference to continue.";
  * section, or a note or coin was counted. Then every task opens done (Flask's `stage_done`).
  */
 export function countSaved(page: CashCountPage): boolean {
-  return (page.draft?.completed_sections ?? []).includes("cash_count") || page.denominations.some((d) => d.count > 0);
+  return (
+    (page.draft?.completed_sections ?? []).includes("cash_count") ||
+    page.denominations.some((d) => d.count > 0)
+  );
 }
 
 /** The tasks as the page opens: all done once saved; else a saved deposit or safe box is done. */
 export function initialTasks(page: CashCountPage): TasksDone {
   const saved = countSaved(page);
-  return { deposit: saved || page.bank_deposit > 0, count: saved, safe: saved || page.safe_box_balance > 0 };
+  return {
+    deposit: saved || page.bank_deposit > 0,
+    count: saved,
+    safe: saved || page.safe_box_balance > 0,
+  };
 }
 
 /** The open task: the first one not done, or null once all three are. */
@@ -275,7 +317,9 @@ export function taskState(task: CashTask, done: TasksDone): TaskState {
 
 /** The stage's guidance line, as the tasks move. */
 export function cashGuidance(done: TasksDone): string {
-  return currentTask(done) ? "Three quick checks. We'll go one at a time." : "All three checks are done.";
+  return currentTask(done)
+    ? "Three quick checks. We'll go one at a time."
+    : "All three checks are done.";
 }
 
 /** The deposit task's result line: "HKD 300.00 to the bank", or "None today". */
@@ -285,12 +329,19 @@ export function depositResult(depositText: string, code: string | null): string 
 }
 
 /** A sheet row's line total: "—" while the row is empty, else the face value times the count. */
-export function rowTotalText(denomination: Denomination, text: string, code: string | null): string {
+export function rowTotalText(
+  denomination: Denomination,
+  text: string,
+  code: string | null,
+): string {
   return text.trim() === "" ? "—" : money(rowTotal(denomination, text), code);
 }
 
 /** Save count: the first row with a problem (the sheet stays open on it), or null. */
-export function sheetProblem(denominations: Denomination[], counts: Record<string, string>): Denomination | null {
+export function sheetProblem(
+  denominations: Denomination[],
+  counts: Record<string, string>,
+): Denomination | null {
   return denominations.find((d) => countProblem(counts[d.id] ?? "") !== null) ?? null;
 }
 

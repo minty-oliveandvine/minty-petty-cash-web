@@ -50,7 +50,14 @@ export type MappingAnswer = XeroSettings & { message: string; first_save: boolea
 export type CodesAnswer = XeroSettings & { message: string };
 
 /** A save's answer as the read it carries (without its sentence). */
-export function readOf({ live, organisation, mapping, mapping_saved, account_codes, permissions }: XeroSettings): XeroSettings {
+export function readOf({
+  live,
+  organisation,
+  mapping,
+  mapping_saved,
+  account_codes,
+  permissions,
+}: XeroSettings): XeroSettings {
   return { live, organisation, mapping, mapping_saved, account_codes, permissions };
 }
 
@@ -93,7 +100,11 @@ export function typeInto(draft: MappingDraft, field: MappingField, text: string)
   return { ...draft, [field.key]: { text, id: keep ? pick.id : "", left: false } };
 }
 
-export function chooseOption(draft: MappingDraft, field: MappingField, option: XeroOption): MappingDraft {
+export function chooseOption(
+  draft: MappingDraft,
+  field: MappingField,
+  option: XeroOption,
+): MappingDraft {
   return { ...draft, [field.key]: { text: optionLabel(option), id: option.id, left: false } };
 }
 
@@ -122,7 +133,8 @@ export function optionMatches(field: MappingField, pick: Pick): XeroOption[] {
   return field.options.filter((o) => fold(optionLabel(o)).includes(q));
 }
 
-export const SAME_BANKS = "The Petty Cash Account and the Deposit Bank Account can't be the same. Choose a different one for each.";
+export const SAME_BANKS =
+  "The Petty Cash Account and the Deposit Bank Account can't be the same. Choose a different one for each.";
 
 /**
  * What is wrong with one choice (CLAUDE.md, Part 11 wording):
@@ -130,19 +142,33 @@ export const SAME_BANKS = "The Petty Cash Account and the Deposit Bank Account c
  * - a text that names no option, once the field is left ("not finished yet" waits);
  * - empty, after a refused Save - or at once when a saved choice is emptied.
  */
-export function mappingProblem(settings: XeroSettings, draft: MappingDraft, key: MappingKey, attempted: boolean): string | null {
+export function mappingProblem(
+  settings: XeroSettings,
+  draft: MappingDraft,
+  key: MappingKey,
+  attempted: boolean,
+): string | null {
   const field = fieldOf(settings, key);
   if (!field) return null;
   const pick = draft[key];
   if (key === "deposit_bank" && pick.id && pick.id === draft.main_bank.id) return SAME_BANKS;
   if (pick.id) return null;
   const text = pick.text.trim();
-  if (text) return pick.left || attempted ? `${text} isn't in the list. Choose the ${field.label} from the list.` : null;
-  return attempted || field.selected ? `The ${field.label} is still empty. Choose one from the list to save.` : null;
+  if (text)
+    return pick.left || attempted
+      ? `${text} isn't in the list. Choose the ${field.label} from the list.`
+      : null;
+  return attempted || field.selected
+    ? `The ${field.label} is still empty. Choose one from the list to save.`
+    : null;
 }
 
 /** Every choice's problem, in the page's order: what a refused Save lists. */
-export function mappingProblems(settings: XeroSettings, draft: MappingDraft, attempted: boolean): { key: MappingKey; message: string }[] {
+export function mappingProblems(
+  settings: XeroSettings,
+  draft: MappingDraft,
+  attempted: boolean,
+): { key: MappingKey; message: string }[] {
   return MAPPING_KEYS.flatMap((key) => {
     const message = mappingProblem(settings, draft, key, attempted);
     return message ? [{ key, message }] : [];
@@ -152,17 +178,24 @@ export function mappingProblems(settings: XeroSettings, draft: MappingDraft, att
 /** Whether the card changed: a choice other than the saved one, or a text typed over it. */
 export function mappingDirty(settings: XeroSettings, draft: MappingDraft): boolean {
   const saved = mappingDraftOf(settings);
-  return MAPPING_KEYS.some((key) => draft[key].id !== saved[key].id || draft[key].text !== saved[key].text);
+  return MAPPING_KEYS.some(
+    (key) => draft[key].id !== saved[key].id || draft[key].text !== saved[key].text,
+  );
 }
 
 /** The body for `PUT /settings/xero/mapping`: the eight Xero ids (the API sets the Discrepancy Bank Account). */
 export function mappingBody(draft: MappingDraft): Record<MappingKey, string> {
-  return Object.fromEntries(MAPPING_KEYS.map((key) => [key, draft[key].id])) as Record<MappingKey, string>;
+  return Object.fromEntries(MAPPING_KEYS.map((key) => [key, draft[key].id])) as Record<
+    MappingKey,
+    string
+  >;
 }
 
 /** The toast after a save. The first one says what it unlocks. */
 export function mappingSavedMessage(answer: MappingAnswer): string {
-  return answer.first_save ? `${answer.message} Daily Reports can be published to Xero now.` : answer.message;
+  return answer.first_save
+    ? `${answer.message} Daily Reports can be published to Xero now.`
+    : answer.message;
 }
 
 // --- A new contact ------------------------------------------------------------------------------
@@ -170,27 +203,46 @@ export function mappingSavedMessage(answer: MappingAnswer): string {
 /** Whether the list ends with 'Add "…" as a new contact': allowed, something typed, and no contact has that name. */
 export function offersNewContact(field: MappingField, text: string, canCreate: boolean): boolean {
   const q = fold(text);
-  return canCreate && field.kind === "contact" && q !== "" && !field.options.some((o) => fold(o.name) === q);
+  return (
+    canCreate &&
+    field.kind === "contact" &&
+    q !== "" &&
+    !field.options.some((o) => fold(o.name) === q)
+  );
 }
 
 /** A new contact's name, as it is typed. Empty waits for the Add contact press. */
-export function newContactProblem(name: string, field: MappingField, attempted: boolean): string | null {
+export function newContactProblem(
+  name: string,
+  field: MappingField,
+  attempted: boolean,
+): string | null {
   const t = name.trim();
   if (!t) return attempted ? "The contact's name is still empty. Add the name to continue." : null;
-  if (t.length > MAX_SUPPLIER_NAME) return `The name is ${t.length} characters. Keep it to ${MAX_SUPPLIER_NAME} characters or fewer.`;
+  if (t.length > MAX_SUPPLIER_NAME)
+    return `The name is ${t.length} characters. Keep it to ${MAX_SUPPLIER_NAME} characters or fewer.`;
   const same = field.options.find((o) => fold(o.name) === fold(t));
   return same ? `${same.name} is already a contact. Choose it from the list.` : null;
 }
 
 /** The read with a new contact offered in every contact field, A to Z. */
-export function withContact(settings: XeroSettings, contact: { id: string; name: string }): XeroSettings {
+export function withContact(
+  settings: XeroSettings,
+  contact: { id: string; name: string },
+): XeroSettings {
   if (!settings.mapping) return settings;
   return {
     ...settings,
     mapping: settings.mapping.map((f) =>
       f.kind !== "contact"
         ? f
-        : { ...f, options: [...f.options.filter((o) => o.id !== contact.id), { id: contact.id, name: contact.name }].sort((a, b) => a.name.localeCompare(b.name)) },
+        : {
+            ...f,
+            options: [
+              ...f.options.filter((o) => o.id !== contact.id),
+              { id: contact.id, name: contact.name },
+            ].sort((a, b) => a.name.localeCompare(b.name)),
+          },
     ),
   };
 }
@@ -237,7 +289,8 @@ export function shownState(ticked: string[], shown: AccountCode[]): "all" | "som
   return n === 0 ? "none" : n === shown.length ? "all" : "some";
 }
 
-export const NO_CODE = "No account code is picked. Pick at least one to save: an expense can use only the picked codes.";
+export const NO_CODE =
+  "No account code is picked. Pick at least one to save: an expense can use only the picked codes.";
 
 /** At least one code stays picked when the company has any (the API's 422 "Pick at least one account code."). */
 export function codesProblem(settings: XeroSettings, ticked: string[]): string | null {

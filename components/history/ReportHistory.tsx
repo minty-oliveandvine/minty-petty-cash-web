@@ -5,10 +5,30 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { saveBlob } from "@minty/shared/download";
-import { Button, buttonClass, EmptyState, Field, FilterChip, Icon, InlineAlert, inputClass, Skeleton, StatusPill } from "@minty/shared/ui";
+import {
+  Button,
+  buttonClass,
+  EmptyState,
+  Field,
+  FilterChip,
+  Icon,
+  InlineAlert,
+  inputClass,
+  Skeleton,
+  StatusPill,
+} from "@minty/shared/ui";
 
-import { PublishDialog, PublishProgress, PublishReasons, usePublish } from "@/components/closing/Publish";
-import { DeleteReportDialog, EditReportDialog, type DialogReport } from "@/components/closing/ReportDialogs";
+import {
+  PublishDialog,
+  PublishProgress,
+  PublishReasons,
+  usePublish,
+} from "@/components/closing/Publish";
+import {
+  DeleteReportDialog,
+  EditReportDialog,
+  type DialogReport,
+} from "@/components/closing/ReportDialogs";
 import { AppBar } from "@/components/layout/AppBar";
 import { MoreMenu, type MoreItem } from "@/components/ui/MoreMenu";
 import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
@@ -46,7 +66,8 @@ import { deletedMessage, reportPill } from "@/lib/report";
 import { useAuth } from "@/lib/useAuth";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then try again.";
-const NOT_EXPORTED = "We couldn't reach Petty Cash, so nothing was exported. Check your connection, then try again.";
+const NOT_EXPORTED =
+  "We couldn't reach Petty Cash, so nothing was exported. Check your connection, then try again.";
 
 /** One answer of `GET /reports`, for the address (`query`) and the attempt it was asked with. */
 type Load =
@@ -103,8 +124,15 @@ export function ReportHistory() {
       .catch((err: unknown) => {
         // A 401 has already gone back through the hand-off.
         if (!live || (err instanceof ApiError && err.status === 401)) return;
-        if (err instanceof ApiError && err.status === 422) setLoad({ query, attempt, kind: "refused", message: err.message });
-        else setLoad({ query, attempt, kind: "failed", message: err instanceof ApiError ? err.message : UNREACHABLE });
+        if (err instanceof ApiError && err.status === 422)
+          setLoad({ query, attempt, kind: "refused", message: err.message });
+        else
+          setLoad({
+            query,
+            attempt,
+            kind: "failed",
+            message: err instanceof ApiError ? err.message : UNREACHABLE,
+          });
       });
     return () => {
       live = false;
@@ -169,7 +197,11 @@ export function ReportHistory() {
             ) : (
               <span className="min-h-11" aria-hidden />
             )}
-            <h1 ref={heading} tabIndex={-1} className="text-display-m text-text-primary outline-none">
+            <h1
+              ref={heading}
+              tabIndex={-1}
+              className="text-display-m text-text-primary outline-none"
+            >
               Reports
             </h1>
             <p className="text-body-m text-text-secondary">Every Daily Report, newest first.</p>
@@ -180,15 +212,29 @@ export function ReportHistory() {
             key={`${filters.start}|${filters.end}`}
             filters={filters}
             csvGate={gate}
-            onExported={(filename) => setToast({ id: Date.now(), message: csvSavedMessage(filename) })}
+            onExported={(filename) =>
+              setToast({ id: Date.now(), message: csvSavedMessage(filename) })
+            }
             onShow={(start, end) => go(changeFilters(filters, { start, end }))}
           />
 
           {/* Part 14 Filter chips: toggles (aria-pressed), the pill's words; a phone scrolls them in their own row. */}
-          <div ref={chipRow} className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 py-1.5 sm:-mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
-            <div role="group" aria-label="Filter by status" className="flex shrink-0 gap-2 sm:flex-wrap">
+          <div
+            ref={chipRow}
+            className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 py-1.5 sm:-mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+          >
+            <div
+              role="group"
+              aria-label="Filter by status"
+              className="flex shrink-0 gap-2 sm:flex-wrap"
+            >
               {STATUS_CHIPS.map((chip) => (
-                <FilterChip key={chip.key || "all"} label={chip.label} selected={filters.status === chip.key} onClick={() => go(changeFilters(filters, { status: chip.key }))} />
+                <FilterChip
+                  key={chip.key || "all"}
+                  label={chip.label}
+                  selected={filters.status === chip.key}
+                  onClick={() => go(changeFilters(filters, { status: chip.key }))}
+                />
               ))}
             </div>
             {filtered ? (
@@ -199,7 +245,12 @@ export function ReportHistory() {
           </div>
 
           {!shown ? (
-            <div className="flex flex-col gap-2" role="status" aria-busy="true" aria-label="Loading">
+            <div
+              className="flex flex-col gap-2"
+              role="status"
+              aria-busy="true"
+              aria-label="Loading"
+            >
               {/* 15.4 States: five Skeleton rows. */}
               {[0, 1, 2, 3, 4].map((i) => (
                 <Skeleton key={i} className="h-[88px] w-full rounded-lg md:h-[72px]" />
@@ -220,7 +271,12 @@ export function ReportHistory() {
             <InlineAlert
               tone="danger"
               action={
-                <Button kind="link" onClick={() => setAttempt((a) => a + 1)} processing={attempt !== shown.attempt} processingLabel="Trying again…">
+                <Button
+                  kind="link"
+                  onClick={() => setAttempt((a) => a + 1)}
+                  processing={attempt !== shown.attempt}
+                  processingLabel="Trying again…"
+                >
                   Try again
                 </Button>
               }
@@ -239,11 +295,18 @@ export function ReportHistory() {
                     entityId={entityId}
                     entityName={entityName}
                     onDeleted={deleted}
-                    onPublished={(day) => setToast({ id: Date.now(), message: publishedMessage(day) })}
+                    onPublished={(day) =>
+                      setToast({ id: Date.now(), message: publishedMessage(day) })
+                    }
                   />
                 ))}
               </ul>
-              <Pager page={shown.page} filters={filters} hrefOf={hrefOf} onPerPage={(perPage) => go(changeFilters(filters, { perPage }))} />
+              <Pager
+                page={shown.page}
+                filters={filters}
+                hrefOf={hrefOf}
+                onPerPage={(perPage) => go(changeFilters(filters, { perPage }))}
+              />
             </>
           ) : filtered ? (
             // 15.11c: no character for a filtered list that matched nothing.
@@ -340,7 +403,8 @@ function DateRange({
       onExported(filename);
     } catch (err) {
       // A 401 has already gone back through the hand-off.
-      if (!(err instanceof ApiError && err.status === 401)) setExportProblem(err instanceof ApiError ? err.message : NOT_EXPORTED);
+      if (!(err instanceof ApiError && err.status === 401))
+        setExportProblem(err instanceof ApiError ? err.message : NOT_EXPORTED);
     } finally {
       exportInFlight.current = false;
       setExporting(false);
@@ -348,13 +412,38 @@ function DateRange({
   }
 
   return (
-    <form onSubmit={submit} noValidate aria-label="Date range" className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
+    <form
+      onSubmit={submit}
+      noValidate
+      aria-label="Date range"
+      className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start"
+    >
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <Field label="From" error={problems.start} className="sm:w-44">
-          {(a11y) => <input {...a11y} ref={startRef} type="date" name="start_date" value={start} onChange={(e) => setStart(e.target.value)} className={inputClass(Boolean(problems.start))} />}
+          {(a11y) => (
+            <input
+              {...a11y}
+              ref={startRef}
+              type="date"
+              name="start_date"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+              className={inputClass(Boolean(problems.start))}
+            />
+          )}
         </Field>
         <Field label="To" error={problems.end} className="sm:w-44">
-          {(a11y) => <input {...a11y} ref={endRef} type="date" name="end_date" value={end} onChange={(e) => setEnd(e.target.value)} className={inputClass(Boolean(problems.end))} />}
+          {(a11y) => (
+            <input
+              {...a11y}
+              ref={endRef}
+              type="date"
+              name="end_date"
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+              className={inputClass(Boolean(problems.end))}
+            />
+          )}
         </Field>
       </div>
       {/* Level with the fields' boxes from 640 (the label above them is ~22 px). */}
@@ -364,7 +453,12 @@ function DateRange({
         </Button>
         {csvGate ? (
           <>
-            <Button kind="ghost" icon={<Icon name="download" />} disabled aria-describedby="csv-reason">
+            <Button
+              kind="ghost"
+              icon={<Icon name="download" />}
+              disabled
+              aria-describedby="csv-reason"
+            >
               Export CSV
             </Button>
             <p id="csv-reason" className="text-body-s text-text-secondary">
@@ -372,7 +466,13 @@ function DateRange({
             </p>
           </>
         ) : (
-          <Button kind="ghost" icon={<Icon name="download" />} processing={exporting} processingLabel="Exporting…" onClick={() => void exportCsv()}>
+          <Button
+            kind="ghost"
+            icon={<Icon name="download" />}
+            processing={exporting}
+            processingLabel="Exporting…"
+            onClick={() => void exportCsv()}
+          >
             Export CSV
           </Button>
         )}
@@ -423,7 +523,13 @@ function ReportRow({
     onStatus: (s) =>
       setLive({
         of: row,
-        patch: { status_label: s.status_label, status_tone: s.status_tone, was_published: s.was_published, published_at: s.published_at, publish_reasons: s.reasons },
+        patch: {
+          status_label: s.status_label,
+          status_tone: s.status_tone,
+          was_published: s.was_published,
+          published_at: s.published_at,
+          publish_reasons: s.reasons,
+        },
       }),
     onPublished: () => onPublished(day),
   });
@@ -437,9 +543,30 @@ function ReportRow({
 
   // D15-14: the rare and destructive actions in More, Delete last as Danger.
   const more: MoreItem[] = [
-    ...(can.publish ? [{ key: "publish", label: can.publish, icon: "cloud_upload", onSelect: () => setDialog("publish") }] : []),
-    ...(can.edit ? [{ key: "edit", label: "Edit report", icon: "edit", onSelect: () => setDialog("edit") }] : []),
-    ...(can.delete ? [{ key: "delete", label: "Delete report", icon: "delete", danger: true, onSelect: () => setDialog("delete") }] : []),
+    ...(can.publish
+      ? [
+          {
+            key: "publish",
+            label: can.publish,
+            icon: "cloud_upload",
+            onSelect: () => setDialog("publish"),
+          },
+        ]
+      : []),
+    ...(can.edit
+      ? [{ key: "edit", label: "Edit report", icon: "edit", onSelect: () => setDialog("edit") }]
+      : []),
+    ...(can.delete
+      ? [
+          {
+            key: "delete",
+            label: "Delete report",
+            icon: "delete",
+            danger: true,
+            onSelect: () => setDialog("delete"),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -463,7 +590,10 @@ function ReportRow({
             {/* Total sales: plain text, never coloured, right-aligned in its own 160 track from 768. */}
             <p className="flex min-w-0 items-baseline gap-1.5 md:w-40 md:flex-col md:items-end md:gap-0">
               <span className="text-body-s text-text-secondary md:order-2">Sales</span>
-              <span className="min-w-0 break-all text-body-m text-text-primary md:text-right" translate="no">
+              <span
+                className="min-w-0 break-all text-body-m text-text-primary md:text-right"
+                translate="no"
+              >
                 {money(row.total_sales, code)}
               </span>
             </p>
@@ -473,7 +603,11 @@ function ReportRow({
           </div>
         </div>
         {/* After the link in the page's order, so it sits above the link's ::after and keeps its own click. */}
-        {more.length ? <MoreMenu label={`More actions for ${formatWeekdayDay(day)}`} items={more} /> : <span className="hidden w-11 shrink-0 md:block" aria-hidden />}
+        {more.length ? (
+          <MoreMenu label={`More actions for ${formatWeekdayDay(day)}`} items={more} />
+        ) : (
+          <span className="hidden w-11 shrink-0 md:block" aria-hidden />
+        )}
       </div>
 
       {/* A publish started here: above the card's link, so its actions keep their own click. A failure
@@ -486,7 +620,9 @@ function ReportRow({
       />
       {publishing.state.kind !== "failed" && shown.publish_reasons.length ? (
         <div className="flex min-w-0 flex-col gap-1 rounded-md bg-surface-sunk p-3">
-          <p className="text-body-s font-semibold text-text-primary">Why it didn&apos;t reach Xero</p>
+          <p className="text-body-s font-semibold text-text-primary">
+            Why it didn&apos;t reach Xero
+          </p>
           <PublishReasons reasons={shown.publish_reasons} />
         </div>
       ) : null}
@@ -504,7 +640,14 @@ function ReportRow({
           }}
         />
       ) : null}
-      {dialog === "edit" ? <EditReportDialog report={dialogReport} entityId={entityId} entityName={entityName} onCancel={() => setDialog(null)} /> : null}
+      {dialog === "edit" ? (
+        <EditReportDialog
+          report={dialogReport}
+          entityId={entityId}
+          entityName={entityName}
+          onCancel={() => setDialog(null)}
+        />
+      ) : null}
       {dialog === "delete" ? (
         <DeleteReportDialog
           report={dialogReport}
@@ -575,7 +718,10 @@ function Pager({
               </option>
             ))}
           </select>
-          <Icon name="expand_more" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <Icon
+            name="expand_more"
+            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary"
+          />
         </div>
         {last > 1 ? (
           <nav aria-label="Pagination" className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -585,7 +731,11 @@ function Pager({
             </span>
             {pagerItems(current, last).map((item, i) =>
               item === "gap" ? (
-                <span key={`gap-${i}`} className="hidden size-9 items-center justify-center text-body-s text-text-muted sm:inline-flex" aria-hidden>
+                <span
+                  key={`gap-${i}`}
+                  className="hidden size-9 items-center justify-center text-body-s text-text-muted sm:inline-flex"
+                  aria-hidden
+                >
                   …
                 </span>
               ) : (
@@ -595,7 +745,9 @@ function Pager({
                   aria-label={`Page ${item}`}
                   aria-current={item === current ? "page" : undefined}
                   className={`${target} max-sm:hidden ${
-                    item === current ? "border-border-selected bg-state-selected font-semibold text-text-link" : "border-border-default text-text-secondary hover:bg-state-hover"
+                    item === current
+                      ? "border-border-selected bg-state-selected font-semibold text-text-link"
+                      : "border-border-default text-text-secondary hover:bg-state-hover"
                   }`}
                 >
                   {item}

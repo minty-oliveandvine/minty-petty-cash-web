@@ -42,7 +42,10 @@ const line = (over: Partial<ExpenseLine> = {}): ExpenseLine => ({
 const SUBMITTED = new Date(2026, 9, 13, 18, 12).toISOString();
 const PUBLISHED = new Date(2026, 9, 13, 18, 15).toISOString();
 
-function report(over: Partial<DailyReport> = {}, cash: Partial<DailyReport["cash"]> = {}): DailyReport {
+function report(
+  over: Partial<DailyReport> = {},
+  cash: Partial<DailyReport["cash"]> = {},
+): DailyReport {
   return {
     report_id: "r1",
     transaction_date: "2026-10-13",
@@ -60,7 +63,20 @@ function report(over: Partial<DailyReport> = {}, cash: Partial<DailyReport["cash
     was_published: false,
     kpis: { total_sales: 1070.5, total_expenses: 240.5, cash_position: 760 },
     sales: { methods: [], cash: 820.5, total: 1070.5 },
-    expenses: { lines: [line(), line({ id: "e2", item: "Cleaning", account: null, supplier: null, receipts: [], amount: 120 })], total: 240.5 },
+    expenses: {
+      lines: [
+        line(),
+        line({
+          id: "e2",
+          item: "Cleaning",
+          account: null,
+          supplier: null,
+          receipts: [],
+          amount: 120,
+        }),
+      ],
+      total: 240.5,
+    },
     cash: {
       opening_balance: 500,
       cash_addition: 100,
@@ -86,12 +102,17 @@ afterEach(() => vi.restoreAllMocks());
 describe("the Daily Report's header", () => {
   it("takes the status pill from the API: Submitted is Info, Published to Xero is Success", () => {
     expect(reportPill(report())).toEqual({ label: "Submitted", tone: "info" });
-    expect(reportPill(report({ status_label: "Published to Xero", status_tone: "success" }))).toEqual({ label: "Published to Xero", tone: "success" });
+    expect(
+      reportPill(report({ status_label: "Published to Xero", status_tone: "success" })),
+    ).toEqual({ label: "Published to Xero", tone: "success" });
   });
 
   it("says loudly when the API sends a tone Part 13 does not have, and draws it Neutral", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(reportPill(report({ status_tone: "teal" }))).toEqual({ label: "Submitted", tone: "neutral" });
+    expect(reportPill(report({ status_tone: "teal" }))).toEqual({
+      label: "Submitted",
+      tone: "neutral",
+    });
     expect(error).toHaveBeenCalledWith(expect.stringContaining("teal"));
   });
 
@@ -100,7 +121,7 @@ describe("the Daily Report's header", () => {
     expect(isDraft(report({ status: "draft" }))).toBe(true);
   });
 
-  it("names Publish to Xero, and \"again\" once the report is in Xero", () => {
+  it('names Publish to Xero, and "again" once the report is in Xero', () => {
     expect(publishLabel(report())).toBe("Publish to Xero");
     expect(publishLabel(report({ xero_integrated: true }))).toBe("Publish to Xero again");
   });
@@ -113,15 +134,30 @@ describe("the figures", () => {
       { label: "Total expenses", value: "HKD\u00a0240.50", meta: "2 expenses" },
       { label: "Cash position", value: "HKD\u00a0760.00", meta: "Counted, with the safe box" },
     ]);
-    expect(reportKpis(report({ expenses: { lines: [line()], total: 120.5 } }))[1].meta).toBe("1 expense");
-    expect(reportKpis(report({ kpis: { total_sales: 0, total_expenses: 0, cash_position: -20 } }))[2].value).toBe("-HKD\u00a020.00");
+    expect(reportKpis(report({ expenses: { lines: [line()], total: 120.5 } }))[1].meta).toBe(
+      "1 expense",
+    );
+    expect(
+      reportKpis(report({ kpis: { total_sales: 0, total_expenses: 0, cash_position: -20 } }))[2]
+        .value,
+    ).toBe("-HKD\u00a020.00");
   });
 
   it("state a difference as a fact, any cent counting, with its note", () => {
-    expect(differenceAlert(report())).toEqual({ title: "Cash was HKD\u00a020.00 short", body: "Note: Change given twice" });
-    expect(differenceAlert(report({}, { difference: { amount: 0.01, kind: "over", reason: " " } }))).toEqual({ title: "Cash was HKD\u00a00.01 over", body: "No reason was given." });
-    expect(differenceAlert(report({}, { difference: { amount: -0.005, kind: "short", reason: "" } }))?.title).toBe("Cash was HKD\u00a00.01 short");
-    expect(differenceAlert(report({}, { difference: { amount: 0, kind: "none", reason: "" } }))).toBeNull();
+    expect(differenceAlert(report())).toEqual({
+      title: "Cash was HKD\u00a020.00 short",
+      body: "Note: Change given twice",
+    });
+    expect(
+      differenceAlert(report({}, { difference: { amount: 0.01, kind: "over", reason: " " } })),
+    ).toEqual({ title: "Cash was HKD\u00a00.01 over", body: "No reason was given." });
+    expect(
+      differenceAlert(report({}, { difference: { amount: -0.005, kind: "short", reason: "" } }))
+        ?.title,
+    ).toBe("Cash was HKD\u00a00.01 short");
+    expect(
+      differenceAlert(report({}, { difference: { amount: 0, kind: "none", reason: "" } })),
+    ).toBeNull();
   });
 
   it("name each expense as the Expenses stage does", () => {
@@ -132,7 +168,9 @@ describe("the figures", () => {
   });
 
   it("list every receipt with its expense", () => {
-    expect(reportReceipts(report()).map(({ line, receipt }) => [line.id, receipt.name])).toEqual([["e1", "parknshop.jpg"]]);
+    expect(reportReceipts(report()).map(({ line, receipt }) => [line.id, receipt.name])).toEqual([
+      ["e1", "parknshop.jpg"],
+    ]);
   });
 
   it("run the cash in the order of the day, the difference in words last", () => {
@@ -149,7 +187,12 @@ describe("the figures", () => {
       { label: "Difference", value: "HKD\u00a020.00 short", total: true, words: true },
     ]);
     // nothing added: no source; a negative expectation keeps its sign
-    const rows = cashRows(report({}, { cash_addition: 0, expected: -20, difference: { amount: 0, kind: "none", reason: "" } }));
+    const rows = cashRows(
+      report(
+        {},
+        { cash_addition: 0, expected: -20, difference: { amount: 0, kind: "none", reason: "" } },
+      ),
+    );
     expect(rows.map((r) => r.label)).not.toContain("Where the cash came from");
     expect(rows.find((r) => r.label === "Expected in drawer")?.value).toBe("-HKD\u00a020.00");
     expect(rows.at(-1)?.value).toBe("None");
@@ -159,16 +202,27 @@ describe("the figures", () => {
   it("say so on an old report whose company has no currency - never $, never a bare number (owner 2026-10-22)", () => {
     const old = report({ currency_code: null });
     expect(reportKpis(old)[0].value).toBe("1,070.50 (No currency selected)");
-    expect(cashRows(old)[0]).toEqual({ label: "Starting cash balance", value: "500.00 (No currency selected)" });
+    expect(cashRows(old)[0]).toEqual({
+      label: "Starting cash balance",
+      value: "500.00 (No currency selected)",
+    });
     expect(cashRows(old).at(-1)?.value).toBe("20.00 (No currency selected) short");
   });
 });
 
 describe("the audit facts", () => {
   it("say who submitted it and when, and where it stands with Xero", () => {
-    expect(auditFacts(report())).toEqual(["Submitted by Olive Tan · Tue 13 Oct 2026, 6:12 pm", "Not in Xero yet"]);
-    expect(auditFacts(report({ submitted_by: null, submitted_at: null }))).toEqual(["Submitted", "Not in Xero yet"]);
-    expect(xeroFact(report({ xero_integrated: true, published_at: PUBLISHED }))).toBe("Sent to Xero · Tue 13 Oct 2026, 6:15 pm");
+    expect(auditFacts(report())).toEqual([
+      "Submitted by Olive Tan · Tue 13 Oct 2026, 6:12 pm",
+      "Not in Xero yet",
+    ]);
+    expect(auditFacts(report({ submitted_by: null, submitted_at: null }))).toEqual([
+      "Submitted",
+      "Not in Xero yet",
+    ]);
+    expect(xeroFact(report({ xero_integrated: true, published_at: PUBLISHED }))).toBe(
+      "Sent to Xero · Tue 13 Oct 2026, 6:15 pm",
+    );
     expect(xeroFact(report({ xero_integrated: true }))).toBe("Sent to Xero");
     expect(xeroFact(report({ publishing_status: "publishing" }))).toBe("Publishing to Xero");
     expect(xeroFact(report({ publishing_status: "failed" }))).toBe("Xero publish failed");
@@ -197,14 +251,21 @@ describe("Edit report and Delete", () => {
 
 describe("the report's address", () => {
   it("decodes the id, and keeps a malformed escape as written", () => {
-    expect(reportIdFromSegment("5d6e7f80-0000-4000-8000-000000000001")).toBe("5d6e7f80-0000-4000-8000-000000000001");
+    expect(reportIdFromSegment("5d6e7f80-0000-4000-8000-000000000001")).toBe(
+      "5d6e7f80-0000-4000-8000-000000000001",
+    );
     expect(reportIdFromSegment("a%2Fb")).toBe("a/b");
     expect(reportIdFromSegment("%E0%A4%A")).toBe("%E0%A4%A");
   });
 });
 
 type Method = DailyReport["sales"]["methods"][number];
-const method = (value_name: string, name: string, amount: number, type: Method["type"] = "electronic"): Method => ({
+const method = (
+  value_name: string,
+  name: string,
+  amount: number,
+  type: Method["type"] = "electronic",
+): Method => ({
   sale_id: value_name,
   name,
   value_name,
@@ -215,7 +276,13 @@ const method = (value_name: string, name: string, amount: number, type: Method["
 describe("where the money came from: the sales mix", () => {
   it("runs largest first, each with a whole percentage, the set adding up to 100", () => {
     const mix = salesMix(
-      report({ sales: { methods: [method("visa_sales", "Visa", 120), method("octopus_sales", "Octopus", 30)], cash: 300, total: 450 } }),
+      report({
+        sales: {
+          methods: [method("visa_sales", "Visa", 120), method("octopus_sales", "Octopus", 30)],
+          cash: 300,
+          total: 450,
+        },
+      }),
     );
     expect(mix.map((s) => s.label)).toEqual(["Cash", "Visa", "Octopus"]);
     expect(mix.map((s) => s.amount)).toEqual([300, 120, 30]);
@@ -225,25 +292,55 @@ describe("where the money came from: the sales mix", () => {
   });
 
   it("makes the whole percentages add up to exactly 100 (largest remainder)", () => {
-    const thirds = salesMix(report({ sales: { methods: [method("a", "A", 1), method("b", "B", 1)], cash: 1, total: 3 } }));
+    const thirds = salesMix(
+      report({ sales: { methods: [method("a", "A", 1), method("b", "B", 1)], cash: 1, total: 3 } }),
+    );
     expect(thirds.map((s) => s.pct)).toEqual([34, 33, 33]);
     // Equal amounts keep the list's order: the methods in Settings order, then Cash.
     expect(thirds.map((s) => s.label)).toEqual(["A", "B", "Cash"]);
-    const odd = salesMix(report({ sales: { methods: [method("a", "A", 0.01), method("b", "B", 999.99)], cash: 0.5, total: 1000.5 } }));
+    const odd = salesMix(
+      report({
+        sales: {
+          methods: [method("a", "A", 0.01), method("b", "B", 999.99)],
+          cash: 0.5,
+          total: 1000.5,
+        },
+      }),
+    );
     expect(odd.reduce((sum, s) => sum + s.pct, 0)).toBe(100);
   });
 
   it("leaves out a method with nothing sold", () => {
-    const mix = salesMix(report({ sales: { methods: [method("visa_sales", "Visa", 0), method("amex_sales", "Amex", 0.001), method("octopus_sales", "Octopus", 50)], cash: 0, total: 50 } }));
-    expect(mix).toEqual([{ key: "octopus_sales", label: "Octopus", amount: 50, pct: 100, width: 100, tone: 1 }]);
+    const mix = salesMix(
+      report({
+        sales: {
+          methods: [
+            method("visa_sales", "Visa", 0),
+            method("amex_sales", "Amex", 0.001),
+            method("octopus_sales", "Octopus", 50),
+          ],
+          cash: 0,
+          total: 50,
+        },
+      }),
+    );
+    expect(mix).toEqual([
+      { key: "octopus_sales", label: "Octopus", amount: 50, pct: 100, width: 100, tone: 1 },
+    ]);
   });
 
   it("draws a single method as one full bar", () => {
-    expect(salesMix(report({ sales: { methods: [], cash: 820.5, total: 820.5 } }))).toEqual([{ key: "cash", label: "Cash", amount: 820.5, pct: 100, width: 100, tone: 1 }]);
+    expect(salesMix(report({ sales: { methods: [], cash: 820.5, total: 820.5 } }))).toEqual([
+      { key: "cash", label: "Cash", amount: 820.5, pct: 100, width: 100, tone: 1 },
+    ]);
   });
 
   it("is empty with no sales", () => {
-    expect(salesMix(report({ sales: { methods: [method("visa_sales", "Visa", 0)], cash: 0, total: 0 } }))).toEqual([]);
+    expect(
+      salesMix(
+        report({ sales: { methods: [method("visa_sales", "Visa", 0)], cash: 0, total: 0 } }),
+      ),
+    ).toEqual([]);
   });
 
   it("is exactly what the Sales by method list shows - Deliveroo left out, as there - then Cash", () => {
@@ -262,12 +359,18 @@ describe("where the money came from: the sales mix", () => {
 
   it("cycles six tones so neighbours never share one", () => {
     const methods = Array.from({ length: 7 }, (_, i) => method(`m${i}`, `M${i}`, 70 - i));
-    expect(salesMix(report({ sales: { methods, cash: 0, total: 0 } })).map((s) => s.tone)).toEqual([1, 2, 3, 4, 5, 6, 1]);
+    expect(salesMix(report({ sales: { methods, cash: 0, total: 0 } })).map((s) => s.tone)).toEqual([
+      1, 2, 3, 4, 5, 6, 1,
+    ]);
   });
 
   it("reads as text for its role=img label", () => {
-    const mix = salesMix(report({ sales: { methods: [method("visa_sales", "Visa", 120)], cash: 300, total: 420 } }));
-    expect(salesMixSummary(mix, "HKD")).toBe("Sales by method: Cash HKD\u00a0300.00, 71%; Visa HKD\u00a0120.00, 29%");
+    const mix = salesMix(
+      report({ sales: { methods: [method("visa_sales", "Visa", 120)], cash: 300, total: 420 } }),
+    );
+    expect(salesMixSummary(mix, "HKD")).toBe(
+      "Sales by method: Cash HKD\u00a0300.00, 71%; Visa HKD\u00a0120.00, 29%",
+    );
   });
 });
 
@@ -293,7 +396,7 @@ describe("where the money went: the expenses by account", () => {
     ]);
   });
 
-  it("groups a line with no account under \"No account\"", () => {
+  it('groups a line with no account under "No account"', () => {
     expect(expenseBars(report())).toEqual([
       { name: "General Expenses", amount: 120.5, width: 100 },
       { name: "No account", amount: 120, width: 99.59 },
@@ -304,7 +407,11 @@ describe("where the money went: the expenses by account", () => {
     const bars = expenseBars(
       report({
         expenses: {
-          lines: [line({ id: "1", account: account("Travel"), amount: 10 }), line({ id: "2", account: account("Cleaning"), amount: 10 }), line({ id: "3", account: account("Postage"), amount: 0 })],
+          lines: [
+            line({ id: "1", account: account("Travel"), amount: 10 }),
+            line({ id: "2", account: account("Cleaning"), amount: 10 }),
+            line({ id: "3", account: account("Postage"), amount: 0 }),
+          ],
           total: 20,
         },
       }),
@@ -317,6 +424,8 @@ describe("where the money went: the expenses by account", () => {
   });
 
   it("reads as text for its role=img label", () => {
-    expect(expenseBarsSummary(expenseBars(report()), "HKD")).toBe("Expenses by account: General Expenses HKD\u00a0120.50; No account HKD\u00a0120.00");
+    expect(expenseBarsSummary(expenseBars(report()), "HKD")).toBe(
+      "Expenses by account: General Expenses HKD\u00a0120.50; No account HKD\u00a0120.00",
+    );
   });
 });

@@ -2,9 +2,27 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, type MouseEvent, type ReactNode, type Ref } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 
-import { Button, Field, Icon, InlineAlert, inputClass, PageBanner, Skeleton, StatusPill, type StatusTone } from "@minty/shared/ui";
+import {
+  Button,
+  Field,
+  Icon,
+  InlineAlert,
+  inputClass,
+  PageBanner,
+  Skeleton,
+  StatusPill,
+  type StatusTone,
+} from "@minty/shared/ui";
 import { acceptAmountInput, formatAmount } from "@minty/shared/money";
 
 import { AppBar } from "@/components/layout/AppBar";
@@ -28,13 +46,20 @@ import { outcomeHref, stepHref, type WizardStep } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 export const NOT_SAVED = "We couldn't save this stage. Check your connection, then try again.";
-const UNSAVED = "Your changes to this stage are not saved yet. Save them with Save & Next or Save & Exit first.";
+const UNSAVED =
+  "Your changes to this stage are not saved yet. Save them with Save & Next or Save & Exit first.";
 
 type Flash = { message: string; kind: FlashKind } | null;
-type Load<T> = { kind: "loading" } | { kind: "ready"; page: T } | { kind: "failed"; message: string };
+type Load<T> =
+  { kind: "loading" } | { kind: "ready"; page: T } | { kind: "failed"; message: string };
 
 /** A flash's tone as a Page banner - an error is Danger, and never a toast (Part 14, 15.10). */
-const FLASH_TONE = { error: "danger", warning: "warning", success: "success", info: "info" } as const;
+const FLASH_TONE = {
+  error: "danger",
+  warning: "warning",
+  success: "success",
+  info: "info",
+} as const;
 
 export type StageContext = {
   entityId: string;
@@ -92,11 +117,27 @@ export function StagePage<T>({
         // A 401 has already gone back through the hand-off.
         if (!live || (err instanceof ApiError && err.status === 401)) return;
         const auth = getAuth();
-        if (here && day && auth && err instanceof ApiError && typeof (err.body as { to?: unknown } | null)?.to === "string") {
+        if (
+          here &&
+          day &&
+          auth &&
+          err instanceof ApiError &&
+          typeof (err.body as { to?: unknown } | null)?.to === "string"
+        ) {
           const home = pettyCashHome(auth.entityId, auth.entityName);
           // In place of this page, which never showed: Back must not land on a page that sends it on again.
           const push = (href: string) => router.replace(href);
-          if (refused(err, { here, push, entityId: auth.entityId, entityName: auth.entityName, home, day }) === undefined) return;
+          if (
+            refused(err, {
+              here,
+              push,
+              entityId: auth.entityId,
+              entityName: auth.entityName,
+              home,
+              day,
+            }) === undefined
+          )
+            return;
         }
         setShownFlash(flash.current ?? null);
         setLoad({ kind: "failed", message: err instanceof ApiError ? err.message : UNREACHABLE });
@@ -110,7 +151,9 @@ export function StagePage<T>({
   const entityId = auth?.entityId ?? "";
   const entityName = auth?.entityName ?? "";
   const home = auth ? pettyCashHome(entityId, entityName) : "";
-  const notice = shownFlash ? <PageBanner tone={FLASH_TONE[shownFlash.kind]}>{shownFlash.message}</PageBanner> : null;
+  const notice = shownFlash ? (
+    <PageBanner tone={FLASH_TONE[shownFlash.kind]}>{shownFlash.message}</PageBanner>
+  ) : null;
 
   return (
     <>
@@ -127,7 +170,12 @@ export function StagePage<T>({
               {load.kind === "failed" ? (
                 <InlineAlert tone="danger">{load.message}</InlineAlert>
               ) : (
-                <div className="flex flex-col gap-4" role="status" aria-busy="true" aria-label="Loading">
+                <div
+                  className="flex flex-col gap-4"
+                  role="status"
+                  aria-busy="true"
+                  aria-label="Loading"
+                >
                   <Skeleton className="h-40 w-full" />
                   <Skeleton className="h-12 w-full" />
                   <Skeleton className="h-11 w-full sm:ml-auto sm:w-56" />
@@ -198,7 +246,9 @@ export function WorkflowHeader({
         <StepProgress
           steps={steps}
           label="Daily Closing stages"
-          onStepClick={onLeave ? (event, step) => step.href && onLeave(event, step.href) : undefined}
+          onStepClick={
+            onLeave ? (event, step) => step.href && onLeave(event, step.href) : undefined
+          }
         />
       ) : (
         <Skeleton className="h-[70px] w-full" />
@@ -227,7 +277,10 @@ export function stageSteps(
   return stagesOnPage(progress.completed_sections, here).map(({ stage, state }) => ({
     label: stage.short,
     state,
-    href: state === "done" ? stepHref(entityId, entityName, stageSection(stage, progress.current_section), day) : undefined,
+    href:
+      state === "done"
+        ? stepHref(entityId, entityName, stageSection(stage, progress.current_section), day)
+        : undefined,
   }));
 }
 
@@ -265,7 +318,13 @@ export function useLeaveHold(dirty: boolean, saving: boolean) {
 type Push = (href: string) => void;
 
 /** Open a section of the day's report - every one is this app's own stage page. */
-export function openStep(push: Push, entityId: string, entityName: string, step: WizardStep, day: string) {
+export function openStep(
+  push: Push,
+  entityId: string,
+  entityName: string,
+  step: WizardStep,
+  day: string,
+) {
   push(stepHref(entityId, entityName, step, day));
 }
 
@@ -279,12 +338,27 @@ export function openStep(push: Push, entityId: string, entityName: string, step:
  */
 export function refused(
   err: unknown,
-  { here, push, entityId, entityName, home, day }: { here: StageKey; push: Push; entityId: string; entityName: string; home: string; day: string },
+  {
+    here,
+    push,
+    entityId,
+    entityName,
+    home,
+    day,
+  }: {
+    here: StageKey;
+    push: Push;
+    entityId: string;
+    entityName: string;
+    home: string;
+    day: string;
+  },
 ): string | undefined {
   if (err instanceof ApiError && err.status === 401) return undefined;
   const message = err instanceof ApiError ? err.message : NOT_SAVED;
   const to = err instanceof ApiError ? (err.body as { to?: unknown } | null)?.to : undefined;
-  const reportId = err instanceof ApiError ? (err.body as { report_id?: unknown } | null)?.report_id : undefined;
+  const reportId =
+    err instanceof ApiError ? (err.body as { report_id?: unknown } | null)?.report_id : undefined;
   if (to === "submitted" && typeof reportId === "string") {
     push(outcomeHref(entityId, entityName, reportId));
     return undefined;
@@ -397,7 +471,15 @@ export function AmountInput({
  * form's submit, so Enter in a field is Save & Next. `gate`: why Save & Next waits - it is
  * disabled and says so above it (Cash Count, Daily Closing Phase 1); Save & Exit never waits.
  */
-export function StageActions({ saving, onExit, gate = null }: { saving: "next" | "exit" | null; onExit: () => void; gate?: string | null }) {
+export function StageActions({
+  saving,
+  onExit,
+  gate = null,
+}: {
+  saving: "next" | "exit" | null;
+  onExit: () => void;
+  gate?: string | null;
+}) {
   const gateId = useId();
   return (
     <div className="flex flex-col gap-2 sm:flex-row-reverse sm:items-end sm:justify-start sm:gap-3">

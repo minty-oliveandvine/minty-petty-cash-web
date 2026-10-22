@@ -28,7 +28,14 @@ describe("the flash", () => {
 });
 
 describe("a report's status pill", () => {
-  const draft = { id: "d", status: "draft", current_section: "opening", completed_sections: [], xero_integrated: false, publishing_status: null };
+  const draft = {
+    id: "d",
+    status: "draft",
+    current_section: "opening",
+    completed_sections: [],
+    xero_integrated: false,
+    publishing_status: null,
+  };
 
   it("is Draft (Neutral) for a new report and for a draft", () => {
     expect(reportStatus(null)).toEqual({ label: "Draft", tone: "neutral" });
@@ -36,8 +43,17 @@ describe("a report's status pill", () => {
   });
 
   it("is Published, Publish failed or Submitted (Info) otherwise", () => {
-    expect(reportStatus({ ...draft, status: "submitted", xero_integrated: true })).toEqual({ label: "Published", tone: "success" });
-    expect(reportStatus({ ...draft, status: "submitted", publishing_status: "failed" })).toEqual({ label: "Publish failed", tone: "danger" });
-    expect(reportStatus({ ...draft, status: "submitted" })).toEqual({ label: "Submitted", tone: "info" });
+    expect(reportStatus({ ...draft, status: "submitted", xero_integrated: true })).toEqual({
+      label: "Published",
+      tone: "success",
+    });
+    expect(reportStatus({ ...draft, status: "submitted", publishing_status: "failed" })).toEqual({
+      label: "Publish failed",
+      tone: "danger",
+    });
+    expect(reportStatus({ ...draft, status: "submitted" })).toEqual({
+      label: "Submitted",
+      tone: "info",
+    });
   });
 });

@@ -21,9 +21,20 @@
  * they change identity.
  */
 
-import { ApiError, HOUSE_FALLBACK, SESSION_ENDED, createBearerClient, type BearerClient, type BearerRequest } from "@minty/shared/apiClient";
+import {
+  ApiError,
+  HOUSE_FALLBACK,
+  SESSION_ENDED,
+  createBearerClient,
+  type BearerClient,
+  type BearerRequest,
+} from "@minty/shared/apiClient";
 import { filenameFromDisposition } from "@minty/shared/download";
-import { createProfileApi, fetchAllSubscriptions, type AllSubscriptions } from "@minty/shared/portal";
+import {
+  createProfileApi,
+  fetchAllSubscriptions,
+  type AllSubscriptions,
+} from "@minty/shared/portal";
 
 import { getAuth } from "@/lib/auth";
 import { env } from "@/lib/env";
@@ -63,7 +74,8 @@ function pick(set: Clients, init: ApiRequest): [BearerClient, BearerRequest] {
 }
 
 const pettyCash = clients(
-  () => `${env.PETTY_CASH_API_URL}/api/petty-cash/v1/companies/${encodeURIComponent(getAuth()?.entityId ?? "")}`,
+  () =>
+    `${env.PETTY_CASH_API_URL}/api/petty-cash/v1/companies/${encodeURIComponent(getAuth()?.entityId ?? "")}`,
 );
 const minty = clients(() => env.ACCOUNTS_API_URL);
 const subscriptions = clients(() => env.SUBSCRIPTION_API_URL);
@@ -102,10 +114,16 @@ export async function pettyCashBlob(path: string, init: ApiRequest = {}): Promis
  * company: its bytes and the server's file name (`Content-Disposition`; null when the header is
  * absent or the browser was not let read it). A refusal rejects with the API's sentence.
  */
-export async function pettyCashDownload(path: string, init: ApiRequest = {}): Promise<{ blob: Blob; filename: string | null }> {
+export async function pettyCashDownload(
+  path: string,
+  init: ApiRequest = {},
+): Promise<{ blob: Blob; filename: string | null }> {
   const [client, request] = companyClient(init);
   const res = await client.response(path, request);
-  return { blob: await res.blob(), filename: filenameFromDisposition(res.headers.get("Content-Disposition")) };
+  return {
+    blob: await res.blob(),
+    filename: filenameFromDisposition(res.headers.get("Content-Disposition")),
+  };
 }
 
 /** Flask's hub surface (`/api/me/profile`); a company travels as `?entity=`. */
@@ -133,5 +151,8 @@ export const profileApi = createProfileApi(mintyFetch);
  * `ApiError(502)`; a refusal is the API's own `ApiError`.
  */
 export function loadSubscriptions(signal: AbortSignal): Promise<AllSubscriptions> {
-  return fetchAllSubscriptions(subscriptionFetch, { signal, shapeError: (status, message) => new ApiError(status, message) });
+  return fetchAllSubscriptions(subscriptionFetch, {
+    signal,
+    shapeError: (status, message) => new ApiError(status, message),
+  });
 }

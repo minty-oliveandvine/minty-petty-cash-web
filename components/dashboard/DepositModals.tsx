@@ -61,7 +61,9 @@ export function BeforeYouStartModal({
   const option = (value: Confirmation, label: string, disabled: boolean) => (
     <label
       className={`flex min-h-11 items-center gap-3 rounded-lg border px-3 ${
-        choice === value ? "border-2 border-border-focus bg-state-selected" : "border-border-default"
+        choice === value
+          ? "border-2 border-border-focus bg-state-selected"
+          : "border-border-default"
       } ${disabled ? "cursor-not-allowed text-text-disabled" : "cursor-pointer text-text-primary"}`}
     >
       <input
@@ -113,7 +115,8 @@ export function BeforeYouStartModal({
 
       {blocked ? (
         <InlineAlert tone="danger" title="Deposit cannot be corrected" className="mt-4">
-          The following entity setting(s) are not configured: <strong>{blockedBy.join(", ")}</strong>. Configure them in{" "}
+          The following entity setting(s) are not configured:{" "}
+          <strong>{blockedBy.join(", ")}</strong>. Configure them in{" "}
           <Link href={settingsHref} className="underline">
             Settings → Petty Cash
           </Link>{" "}
@@ -128,12 +131,15 @@ export function BeforeYouStartModal({
         {option("no", "No, there was no deposit", blocked || !mayCorrect)}
       </fieldset>
       {!mayCorrect && !blocked ? (
-        <p className="mt-2 text-body-s text-text-secondary">Only a shop manager or above can change or remove a deposit.</p>
+        <p className="mt-2 text-body-s text-text-secondary">
+          Only a shop manager or above can change or remove a deposit.
+        </p>
       ) : null}
 
       {choice === "yes" ? (
         <InlineAlert tone="warning" title="Please Note:" className="mt-4">
-          By proceeding, you confirm that the stated deposit is accurate and has been deposited to the specified bank.
+          By proceeding, you confirm that the stated deposit is accurate and has been deposited to
+          the specified bank.
         </InlineAlert>
       ) : choice ? (
         <InlineAlert tone="danger" title="Please Note:" className="mt-4">
@@ -260,7 +266,15 @@ export function DepositModal({
  * are. It cannot be dismissed - only the way to the settings is offered: each missing setting links
  * to its settings card, and Set Up Settings opens the first (the Xero cards when none is named).
  */
-export function SetupRequiredModal({ open, items, fallbackHref }: { open: boolean; items: SetupItem[]; fallbackHref: string }) {
+export function SetupRequiredModal({
+  open,
+  items,
+  fallbackHref,
+}: {
+  open: boolean;
+  items: SetupItem[];
+  fallbackHref: string;
+}) {
   return (
     <Modal
       open={open}

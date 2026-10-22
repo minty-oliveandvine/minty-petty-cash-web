@@ -6,7 +6,12 @@ import { useId, useRef, useState, type ReactNode } from "react";
 
 import { Button, buttonClass, Icon, InlineAlert, PageBanner, StatusPill } from "@minty/shared/ui";
 
-import { StagePage, stageSteps, WorkflowHeader, type StageContext } from "@/components/closing/Stage";
+import {
+  StagePage,
+  stageSteps,
+  WorkflowHeader,
+  type StageContext,
+} from "@/components/closing/Stage";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import {
   cashSummary,
@@ -45,7 +50,13 @@ const NOT_SUBMITTED = "We couldn't submit the day. Check your connection, then t
  */
 export function Close({ day }: { day: string | null }) {
   return (
-    <StagePage<ClosePage> path="/reports/close" day={day} title={STAGE} guidance={GUIDANCE} here="close">
+    <StagePage<ClosePage>
+      path="/reports/close"
+      day={day}
+      title={STAGE}
+      guidance={GUIDANCE}
+      here="close"
+    >
       {(page, context) => <Verification page={page} {...context} />}
     </StagePage>
   );
@@ -54,7 +65,13 @@ export function Close({ day }: { day: string | null }) {
 type Refusal = { message: string; action: FixLink | null } | null;
 
 /** The stage once the read has answered (exported for its component tests). */
-export function Verification({ page, entityId, entityName, home, notice }: { page: ClosePage } & StageContext) {
+export function Verification({
+  page,
+  entityId,
+  entityName,
+  home,
+  notice,
+}: { page: ClosePage } & StageContext) {
   const router = useRouter();
   const reasonId = useId();
   const whenId = useId();
@@ -80,14 +97,18 @@ export function Verification({ page, entityId, entityName, home, notice }: { pag
     setSubmitting(true);
     setRefusal(null);
     try {
-      const answer = await pettyCashFetch<Submitted>("/reports/submit", { method: "POST", body: { transaction_date: day } });
+      const answer = await pettyCashFetch<Submitted>("/reports/submit", {
+        method: "POST",
+        body: { transaction_date: day },
+      });
       // In place of Close (Back from the outcome must not land on a day that is no longer open);
       // the button stays busy until the outcome page is up.
       router.replace(outcomeHref(entityId, entityName, answer.report_id));
     } catch (err) {
       // A 401 has already gone back through the hand-off.
       if (err instanceof ApiError && err.status === 401) return;
-      const body = err instanceof ApiError ? (err.body as { to?: unknown; report_id?: unknown } | null) : null;
+      const body =
+        err instanceof ApiError ? (err.body as { to?: unknown; report_id?: unknown } | null) : null;
       if (body?.to === "submitted" && typeof body.report_id === "string") {
         // Someone else submitted the day meanwhile: its outcome says so.
         router.replace(outcomeHref(entityId, entityName, body.report_id));
@@ -96,7 +117,11 @@ export function Verification({ page, entityId, entityName, home, notice }: { pag
       inFlight.current = false;
       setSubmitting(false);
       // Nothing was written: the sentence, and the way to the stage that fixes it.
-      setRefusal(err instanceof ApiError ? submitRefusal(err.message, body?.to) : { message: NOT_SUBMITTED, action: null });
+      setRefusal(
+        err instanceof ApiError
+          ? submitRefusal(err.message, body?.to)
+          : { message: NOT_SUBMITTED, action: null },
+      );
     }
   }
 
@@ -140,8 +165,14 @@ export function Verification({ page, entityId, entityName, home, notice }: { pag
           No reason was given yet.
         </InlineAlert>
       ) : readiness.kind === "ready" ? (
-        <div className="flex items-start gap-3 rounded-lg border border-border-selected bg-state-selected p-4" role="status">
-          <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-border-selected text-action-on-primary" aria-hidden>
+        <div
+          className="flex items-start gap-3 rounded-lg border border-border-selected bg-state-selected p-4"
+          role="status"
+        >
+          <span
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-border-selected text-action-on-primary"
+            aria-hidden
+          >
             <Icon name="check" size="md" />
           </span>
           <div className="min-w-0">
@@ -153,13 +184,22 @@ export function Verification({ page, entityId, entityName, home, notice }: { pag
 
       {/* One summary card, a row per stage; only what needs attention is highlighted. */}
       <div className="rounded-xl border border-border-subtle bg-surface-card px-4 sm:px-6">
-        <SummaryRow title="Addition to Drawer" edit={edit("opening")} amount={amountText(page.cash_addition)}>
+        <SummaryRow
+          title="Addition to Drawer"
+          edit={edit("opening")}
+          amount={amountText(page.cash_addition)}
+        >
           Starting cash balance <span translate="no">{amountText(page.opening_balance)}</span>
         </SummaryRow>
         <SummaryRow title="Sales" edit={edit("sales")} amount={amountText(page.sales.total)}>
           <span translate="no">{salesSummary(page)}</span>
         </SummaryRow>
-        <SummaryRow title={`Expenses (${lines.length})`} editLabel="Expenses" edit={edit("expenses")} amount={amountText(page.expenses.total)}>
+        <SummaryRow
+          title={`Expenses (${lines.length})`}
+          editLabel="Expenses"
+          edit={edit("expenses")}
+          amount={amountText(page.expenses.total)}
+        >
           {expensesSummary(lines)}
         </SummaryRow>
         <SummaryRow
@@ -173,7 +213,9 @@ export function Verification({ page, entityId, entityName, home, notice }: { pag
                 <span translate="no">
                   <StatusPill label={closeDifference(page)} tone="warning" />
                 </span>
-                {page.cash.difference.reason.trim() ? <p className="break-words">{page.cash.difference.reason.trim()}</p> : null}
+                {page.cash.difference.reason.trim() ? (
+                  <p className="break-words">{page.cash.difference.reason.trim()}</p>
+                ) : null}
               </div>
             ) : null
           }
@@ -186,7 +228,10 @@ export function Verification({ page, entityId, entityName, home, notice }: { pag
         <h2 id={whenId} className="mb-1 text-body-m font-semibold text-text-primary">
           When you submit
         </h2>
-        <p>Today&apos;s numbers are locked and the Daily Report is saved. You can send it to Xero straight after.</p>
+        <p>
+          Today&apos;s numbers are locked and the Daily Report is saved. You can send it to Xero
+          straight after.
+        </p>
       </section>
 
       {refusal ? (
@@ -267,10 +312,17 @@ function SummaryRow({
         <p className="mt-0.5 break-words text-body-s text-text-secondary">{children}</p>
       </div>
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1">
-        <span className="break-all text-right text-body-l font-semibold text-text-primary" translate="no">
+        <span
+          className="break-all text-right text-body-l font-semibold text-text-primary"
+          translate="no"
+        >
           {amount}
         </span>
-        <Link href={edit} className={`${buttonClass("link")} min-w-11 shrink-0`} aria-label={`Edit ${editLabel ?? title}`}>
+        <Link
+          href={edit}
+          className={`${buttonClass("link")} min-w-11 shrink-0`}
+          aria-label={`Edit ${editLabel ?? title}`}
+        >
           Edit
         </Link>
       </div>

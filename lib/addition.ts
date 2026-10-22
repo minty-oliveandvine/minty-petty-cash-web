@@ -32,7 +32,10 @@ export function startingSource(page: OpeningPage): "last-closing" | "setup" | "n
  */
 export function startingSplit(page: OpeningPage): { drawer: number; safebox: number } | null {
   if (startingSource(page) !== "last-closing" || page.safebox_balance === 0) return null;
-  return { drawer: cents(page.yesterday_closing_balance - page.safebox_balance), safebox: page.safebox_balance };
+  return {
+    drawer: cents(page.yesterday_closing_balance - page.safebox_balance),
+    safebox: page.safebox_balance,
+  };
 }
 
 /**
@@ -42,12 +45,11 @@ export function startingSplit(page: OpeningPage): { drawer: number; safebox: num
  * - `short`: the opening cash would be below zero; adding at least `addAtLeast` fixes it.
  */
 export type NegativeGate =
-  | { kind: "last-closing"; balance: number }
-  | { kind: "short"; addAtLeast: number }
-  | null;
+  { kind: "last-closing"; balance: number } | { kind: "short"; addAtLeast: number } | null;
 
 export function negativeGate(page: OpeningPage, opening: number): NegativeGate {
-  if (page.yesterday_closing_balance < 0) return { kind: "last-closing", balance: page.yesterday_closing_balance };
+  if (page.yesterday_closing_balance < 0)
+    return { kind: "last-closing", balance: page.yesterday_closing_balance };
   if (opening < 0) return { kind: "short", addAtLeast: cents(-page.starting_cash_balance) };
   return null;
 }

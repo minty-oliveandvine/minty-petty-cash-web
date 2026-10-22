@@ -55,7 +55,14 @@ const LABELS: Record<MappingKey, string> = {
 
 function field(key: MappingKey, selected: string | null = null): MappingField {
   const contact = key.endsWith("_contact");
-  const options = contact ? CONTACTS : key.endsWith("_bank") ? BANKS : [{ id: `a-${key}`, name: "General Expenses", code: "429" }, { id: `a2-${key}`, name: "Sales", code: "200" }];
+  const options = contact
+    ? CONTACTS
+    : key.endsWith("_bank")
+      ? BANKS
+      : [
+          { id: `a-${key}`, name: "General Expenses", code: "429" },
+          { id: `a2-${key}`, name: "Sales", code: "200" },
+        ];
   return { key, label: LABELS[key], kind: contact ? "contact" : "account", options, selected };
 }
 
@@ -90,7 +97,9 @@ const f = (s: XeroSettings, key: MappingKey) => s.mapping!.find((x) => x.key ===
 
 describe("the mapping on the page", () => {
   it("labels an account by its code and name, a bank or contact without a code by its name", () => {
-    expect(optionLabel({ id: "x", name: "General Expenses", code: "429" })).toBe("429 — General Expenses");
+    expect(optionLabel({ id: "x", name: "General Expenses", code: "429" })).toBe(
+      "429 — General Expenses",
+    );
     expect(optionLabel({ id: "x", name: "HSBC Current", code: "" })).toBe("HSBC Current");
     expect(optionLabel({ id: "x", name: "Olive Tan" })).toBe("Olive Tan");
   });
@@ -118,18 +127,33 @@ describe("the mapping on the page", () => {
   it("leaving a field with a name typed in full chooses it; any case, by name or label", () => {
     const s = xero({}, false);
     const typed = typeInto(mappingDraftOf(s), f(s, "main_bank"), "petty cash");
-    expect(leaveField(typed, f(s, "main_bank")).main_bank).toEqual({ text: "091 — Petty Cash", id: "b-pc", left: true });
+    expect(leaveField(typed, f(s, "main_bank")).main_bank).toEqual({
+      text: "091 — Petty Cash",
+      id: "b-pc",
+      left: true,
+    });
     expect(exactOption(f(s, "main_bank"), "091 — petty cash")?.id).toBe("b-pc");
     expect(exactOption(f(s, "main_bank"), "Petty")).toBeNull();
-    expect(leaveField(typeInto(mappingDraftOf(s), f(s, "main_bank"), "Petty"), f(s, "main_bank")).main_bank).toEqual({ text: "Petty", id: "", left: true });
+    expect(
+      leaveField(typeInto(mappingDraftOf(s), f(s, "main_bank"), "Petty"), f(s, "main_bank"))
+        .main_bank,
+    ).toEqual({ text: "Petty", id: "", left: true });
   });
 
   it("narrows the options as typed, and shows them all while the field holds its choice", () => {
     const s = xero();
     const d = mappingDraftOf(s);
     expect(optionMatches(f(s, "main_bank"), d.main_bank)).toHaveLength(2);
-    expect(optionMatches(f(s, "cashsale_account"), { text: "429", id: "", left: false }).map((o) => o.id)).toEqual(["a-cashsale_account"]);
-    expect(optionMatches(f(s, "cashsale_account"), { text: "sal", id: "", left: false }).map((o) => o.name)).toEqual(["Sales"]);
+    expect(
+      optionMatches(f(s, "cashsale_account"), { text: "429", id: "", left: false }).map(
+        (o) => o.id,
+      ),
+    ).toEqual(["a-cashsale_account"]);
+    expect(
+      optionMatches(f(s, "cashsale_account"), { text: "sal", id: "", left: false }).map(
+        (o) => o.name,
+      ),
+    ).toEqual(["Sales"]);
   });
 });
 
@@ -145,20 +169,27 @@ describe("the mapping's checks, as typed", () => {
     const s = xero();
     const typed = typeInto(mappingDraftOf(s), f(s, "owners_contact"), "Nobody");
     expect(mappingProblem(s, typed, "owners_contact", false)).toBeNull();
-    const want = "Nobody isn't in the list. Choose the Director / Responsible person from the list.";
-    expect(mappingProblem(s, leaveField(typed, f(s, "owners_contact")), "owners_contact", false)).toBe(want);
+    const want =
+      "Nobody isn't in the list. Choose the Director / Responsible person from the list.";
+    expect(
+      mappingProblem(s, leaveField(typed, f(s, "owners_contact")), "owners_contact", false),
+    ).toBe(want);
     expect(mappingProblem(s, typed, "owners_contact", true)).toBe(want);
   });
 
   it("empty: at once when a saved choice is emptied, otherwise only after a refused Save", () => {
     const saved = xero();
     const emptied = typeInto(mappingDraftOf(saved), f(saved, "cashsale_account"), "");
-    expect(mappingProblem(saved, emptied, "cashsale_account", false)).toBe("The Cash Sales account code is still empty. Choose one from the list to save.");
+    expect(mappingProblem(saved, emptied, "cashsale_account", false)).toBe(
+      "The Cash Sales account code is still empty. Choose one from the list to save.",
+    );
     const fresh = xero({}, false);
     expect(mappingProblems(fresh, mappingDraftOf(fresh), false)).toEqual([]);
     const refused = mappingProblems(fresh, mappingDraftOf(fresh), true);
     expect(refused.map((p) => p.key)).toEqual([...MAPPING_KEYS]);
-    expect(refused[0].message).toBe("The Petty Cash Account is still empty. Choose one from the list to save.");
+    expect(refused[0].message).toBe(
+      "The Petty Cash Account is still empty. Choose one from the list to save.",
+    );
   });
 });
 
@@ -175,16 +206,26 @@ describe("a new contact", () => {
   it("checks the name as typed: empty only after Add, too long and a duplicate at once", () => {
     const c = f(xero(), "owners_contact");
     expect(newContactProblem("", c, false)).toBeNull();
-    expect(newContactProblem("", c, true)).toBe("The contact's name is still empty. Add the name to continue.");
-    expect(newContactProblem("x".repeat(151), c, false)).toBe("The name is 151 characters. Keep it to 150 characters or fewer.");
-    expect(newContactProblem("olive tan", c, false)).toBe("Olive Tan is already a contact. Choose it from the list.");
+    expect(newContactProblem("", c, true)).toBe(
+      "The contact's name is still empty. Add the name to continue.",
+    );
+    expect(newContactProblem("x".repeat(151), c, false)).toBe(
+      "The name is 151 characters. Keep it to 150 characters or fewer.",
+    );
+    expect(newContactProblem("olive tan", c, false)).toBe(
+      "Olive Tan is already a contact. Choose it from the list.",
+    );
     expect(newContactProblem("Walk-in", c, false)).toBeNull();
   });
 
   it("is offered in every contact field, A to Z, and not in the account fields", () => {
     const s = withContact(xero(), { id: "c-new", name: "Andy Lau" });
     for (const key of ["cashsale_contact", "owners_contact", "discrepancy_contact"] as const) {
-      expect(f(s, key).options.map((o) => o.name)).toEqual(["Andy Lau", "Cash Customer", "Olive Tan"]);
+      expect(f(s, key).options.map((o) => o.name)).toEqual([
+        "Andy Lau",
+        "Cash Customer",
+        "Olive Tan",
+      ]);
     }
     expect(f(s, "main_bank").options).toHaveLength(2);
   });
@@ -193,13 +234,19 @@ describe("a new contact", () => {
 describe("the save's toast", () => {
   it("says what the first save unlocks", () => {
     const answer = { ...xero(), message: "Xero account mapping saved.", first_save: true };
-    expect(mappingSavedMessage(answer)).toBe("Xero account mapping saved. Daily Reports can be published to Xero now.");
-    expect(mappingSavedMessage({ ...answer, first_save: false })).toBe("Xero account mapping saved.");
+    expect(mappingSavedMessage(answer)).toBe(
+      "Xero account mapping saved. Daily Reports can be published to Xero now.",
+    );
+    expect(mappingSavedMessage({ ...answer, first_save: false })).toBe(
+      "Xero account mapping saved.",
+    );
   });
 
   it("keeps the read an answer carries, without its sentence", () => {
     const read = xero();
-    expect(readOf({ ...read, message: "Account codes saved.", first_save: false } as XeroSettings)).toEqual(read);
+    expect(
+      readOf({ ...read, message: "Account codes saved.", first_save: false } as XeroSettings),
+    ).toEqual(read);
   });
 });
 

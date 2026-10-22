@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { denominationLabel, depositResult, differenceText, expectedCash, type CashCountPage, type Denomination } from "@/lib/cashCount";
+import {
+  denominationLabel,
+  depositResult,
+  differenceText,
+  expectedCash,
+  type CashCountPage,
+  type Denomination,
+} from "@/lib/cashCount";
 import { money } from "@/lib/money";
 import { kpiCards } from "@/lib/report";
 import { salesTotals } from "@/lib/sales";
@@ -11,13 +18,22 @@ import { salesTotals } from "@/lib/sales";
 // (owner 2026-10-22: no silent fallback); extra decimals are cut, not rounded;
 // an empty field parses to null, and each call site says what that counts as.
 
-const kpi = (kpis: Parameters<typeof kpiCards>[0], code: string | null = "HKD") => kpiCards(kpis, null, code).map((k) => k.value);
-const note = (value: number): Denomination => ({ id: String(value), value, kind: value >= 10 ? "note" : "coin", count: 0 });
+const kpi = (kpis: Parameters<typeof kpiCards>[0], code: string | null = "HKD") =>
+  kpiCards(kpis, null, code).map((k) => k.value);
+const note = (value: number): Denomination => ({
+  id: String(value),
+  value,
+  kind: value >= 10 ? "note" : "coin",
+  count: 0,
+});
 
 describe("an amount on the page", () => {
   it("is the code, a non-breaking space, then the number grouped in threes with two places", () => {
     // owner 2026-10-21: one money rule (@minty/shared/money) - was "HKD1,234.50", no space
-    expect(kpi({ total_sales: 1234.5, total_expenses: 0 })).toEqual(["HKD\u00a01,234.50", "HKD\u00a00.00"]);
+    expect(kpi({ total_sales: 1234.5, total_expenses: 0 })).toEqual([
+      "HKD\u00a01,234.50",
+      "HKD\u00a00.00",
+    ]);
     expect(kpi({ total_sales: 99999999999.99 })).toEqual(["HKD\u00a099,999,999,999.99"]);
   });
 

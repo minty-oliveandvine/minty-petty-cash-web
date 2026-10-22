@@ -31,7 +31,8 @@ import { historyHref } from "@/lib/wizardPages";
 const SETTINGS_PAGE = /^\/entity\/[^/]+\/[^/]+\/settings\/petty-cash\/?$/;
 
 /** Flask's hub API for a decoration: a 401 only rejects, it never moves the page. */
-const mintyDecoration = <T>(path: string, init: ApiRequest = {}) => mintyFetch<T>(path, { ...init, onUnauthorized: "reject" });
+const mintyDecoration = <T>(path: string, init: ApiRequest = {}) =>
+  mintyFetch<T>(path, { ...init, onUnauthorized: "reject" });
 
 function home(): string {
   const auth = getAuth();
@@ -72,7 +73,8 @@ export const sidebarHost: SidebarHost = {
     },
     // minty-web's My Profile, scoped to the company it was opened from (Flask's `/profile` page
     // only redirected there).
-    profile: () => hubHandoffUrl(env.ACCOUNTS_API_URL, "/profile", getAuth()?.entityId || undefined),
+    profile: () =>
+      hubHandoffUrl(env.ACCOUNTS_API_URL, "/profile", getAuth()?.entityId || undefined),
   },
 
   /**
@@ -104,7 +106,10 @@ export const sidebarHost: SidebarHost = {
    * The public share page has no viewer: a signed-in person's token never leaves on it, so no
    * profile read is made there (lib/share.ts).
    */
-  currentToken: () => (typeof window !== "undefined" && isSharePage(window.location.pathname) ? "" : (getAuth()?.token ?? "")),
+  currentToken: () =>
+    typeof window !== "undefined" && isSharePage(window.location.pathname)
+      ? ""
+      : (getAuth()?.token ?? ""),
 
   /**
    * Flask's hub surface. DECORATION: a read that fails must never move the page, so a 401 only

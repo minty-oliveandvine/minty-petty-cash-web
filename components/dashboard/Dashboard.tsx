@@ -4,11 +4,25 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { Button, buttonClass, EmptyState, Icon, InlineAlert, PageBanner, Skeleton, StatusPill } from "@minty/shared/ui";
+import {
+  Button,
+  buttonClass,
+  EmptyState,
+  Icon,
+  InlineAlert,
+  PageBanner,
+  Skeleton,
+  StatusPill,
+} from "@minty/shared/ui";
 import { useViewer } from "@minty/shared/viewer";
 
 import { AppBar } from "@/components/layout/AppBar";
-import { BeforeYouStartModal, DepositModal, SetupRequiredModal, type Confirmation } from "@/components/dashboard/DepositModals";
+import {
+  BeforeYouStartModal,
+  DepositModal,
+  SetupRequiredModal,
+  type Confirmation,
+} from "@/components/dashboard/DepositModals";
 import { SubscriptionNoticeModal } from "@/components/dashboard/SubscriptionNoticeModal";
 import { StepProgress, type StepProgressStep } from "@/components/ui/StepProgress";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
@@ -40,7 +54,11 @@ import { takeFlash, type FlashKind } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
 import { money } from "@/lib/money";
 import { subscriptionSettingsUrl } from "@/lib/hub";
-import { claimSubscriptionNotice, fetchSubscriptionNotice, type SubscriptionNotice } from "@/lib/subscriptionNotice";
+import {
+  claimSubscriptionNotice,
+  fetchSubscriptionNotice,
+  type SubscriptionNotice,
+} from "@/lib/subscriptionNotice";
 import { historyHref, reportHref, resumeHref, stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
@@ -48,11 +66,19 @@ const READ_ONLY = "Read-only access";
 
 // `now` is the device's clock when /home answered: the greeting and "Saved 6:02 pm" read it, so
 // rendering stays pure and the server's HTML (which never has the data) cannot disagree with it.
-type Load = { kind: "loading" } | { kind: "ready"; home: Home; now: Date } | { kind: "failed"; message: string };
+type Load =
+  | { kind: "loading" }
+  | { kind: "ready"; home: Home; now: Date }
+  | { kind: "failed"; message: string };
 type Flash = { message: string; kind: FlashKind } | null;
 
 /** A flash's tone as a Page banner - an error is Danger, and never a toast (Part 14, 15.10). */
-const FLASH_TONE = { error: "danger", warning: "warning", success: "success", info: "info" } as const;
+const FLASH_TONE = {
+  error: "danger",
+  warning: "warning",
+  success: "success",
+  info: "info",
+} as const;
 
 /**
  * The Petty Cash launch page - Part 15.6a "Action Dashboard": the greeting, ONE primary work card
@@ -118,9 +144,16 @@ export function Dashboard() {
       <main className="mx-auto flex w-full max-w-[640px] flex-col gap-5 px-4 pb-16 pt-6 sm:px-6 lg:max-w-[1200px] lg:px-8 lg:pt-8">
         {/* The App bar names the module for screen readers only, so the page keeps its own h1. */}
         <h1 className="text-display-m text-text-primary">Petty Cash</h1>
-        {shownFlash ? <PageBanner tone={FLASH_TONE[shownFlash.kind]}>{shownFlash.message}</PageBanner> : null}
+        {shownFlash ? (
+          <PageBanner tone={FLASH_TONE[shownFlash.kind]}>{shownFlash.message}</PageBanner>
+        ) : null}
         {load.kind === "loading" ? (
-          <div className="flex flex-col gap-4 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6" role="status" aria-busy="true" aria-label="Loading">
+          <div
+            className="flex flex-col gap-4 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6"
+            role="status"
+            aria-busy="true"
+            aria-label="Loading"
+          >
             <Skeleton className="h-6 w-1/2" />
             <Skeleton className="h-[70px] w-full" />
             <Skeleton className="h-5 w-2/3" />
@@ -129,17 +162,36 @@ export function Dashboard() {
         ) : load.kind === "failed" ? (
           <InlineAlert tone="danger">{load.message}</InlineAlert>
         ) : (
-          <LaunchBody home={load.home} now={load.now} entityId={entityId} entityName={companyName} />
+          <LaunchBody
+            home={load.home}
+            now={load.now}
+            entityId={entityId}
+            entityName={companyName}
+          />
         )}
       </main>
-      <SubscriptionNoticeModal notice={notice} settingsHref={subscriptionSettingsUrl(entityId, companyName)} onClose={() => setNotice(null)} />
+      <SubscriptionNoticeModal
+        notice={notice}
+        settingsHref={subscriptionSettingsUrl(entityId, companyName)}
+        onClose={() => setNotice(null)}
+      />
     </>
   );
 }
 
 type Confirming = { startDay: string; day: string; deposit: number; submitter: string | null };
 
-function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date; entityId: string; entityName: string }) {
+function LaunchBody({
+  home,
+  now,
+  entityId,
+  entityName,
+}: {
+  home: Home;
+  now: Date;
+  entityId: string;
+  entityName: string;
+}) {
   const [problem, setProblem] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [step, setStep] = useState<"confirm" | "amount">("confirm");
@@ -170,7 +222,12 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
     if (!previous) return open(day);
     setCorrectionProblem(null);
     setStep("confirm");
-    setConfirming({ startDay: day, day: previous.day, deposit: previous.report.bank_deposit, submitter: previous.report.submitter_first_name });
+    setConfirming({
+      startDay: day,
+      day: previous.day,
+      deposit: previous.report.bank_deposit,
+      submitter: previous.report.submitter_first_name,
+    });
   }
 
   async function correct(kind: "change" | "no", amount: number) {
@@ -178,10 +235,13 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
     setBusy(true);
     setCorrectionProblem(null);
     try {
-      const answer = await pettyCashFetch<{ next_transaction_date: string }>("/deposit-correction", {
-        method: "POST",
-        body: { kind, date: confirming.day, amount },
-      });
+      const answer = await pettyCashFetch<{ next_transaction_date: string }>(
+        "/deposit-correction",
+        {
+          method: "POST",
+          body: { kind, date: confirming.day, amount },
+        },
+      );
       leaveTo(stepHref(entityId, entityName, "opening", answer.next_transaction_date));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
@@ -220,9 +280,12 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
               </Button>
             }
           >
-            Count the drawer, add the day&apos;s sales and expenses, then close the day. Each day&apos;s report appears here once it is submitted.
+            Count the drawer, add the day&apos;s sales and expenses, then close the day. Each
+            day&apos;s report appears here once it is submitted.
           </EmptyState>
-          {readOnly ? <p className="text-center text-body-s text-text-secondary">{READ_ONLY}</p> : null}
+          {readOnly ? (
+            <p className="text-center text-body-s text-text-secondary">{READ_ONLY}</p>
+          ) : null}
           {problemAlert}
         </div>
       ) : (
@@ -251,7 +314,8 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
                   )
                 }
               >
-                {formatWeekdayShort(gate)} has no submitted report yet. Submit it before closing today.
+                {formatWeekdayShort(gate)} has no submitted report yet. Submit it before closing
+                today.
               </PageBanner>
             ) : null}
           </div>
@@ -292,7 +356,11 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
         </>
       ) : null}
 
-      <SetupRequiredModal open={setup.open} items={setup.items} fallbackHref={xeroSettingsHref(entityId, entityName)} />
+      <SetupRequiredModal
+        open={setup.open}
+        items={setup.items}
+        fallbackHref={xeroSettingsHref(entityId, entityName)}
+      />
     </>
   );
 }
@@ -302,13 +370,28 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
  * heading, and only when the person's name is known. On first use the empty state already
  * carries Minty, so the greeting goes without.
  */
-function Greeting({ today, now, withCharacter }: { today: string; now: Date; withCharacter: boolean }) {
+function Greeting({
+  today,
+  now,
+  withCharacter,
+}: {
+  today: string;
+  now: Date;
+  withCharacter: boolean;
+}) {
   const name = firstName(useViewer()?.name);
   if (!name) return null;
   return (
     <div className="flex min-w-0 items-center gap-3">
       {withCharacter ? (
-        <Image src="/cat-hole.png" alt="" width={40} height={40} unoptimized className="size-10 shrink-0 object-contain" />
+        <Image
+          src="/cat-hole.png"
+          alt=""
+          width={40}
+          height={40}
+          unoptimized
+          className="size-10 shrink-0 object-contain"
+        />
       ) : null}
       <p className="min-w-0">
         <span className="block text-title-m text-text-primary">
@@ -344,38 +427,75 @@ function ClosingCard({
   problem: ReactNode;
 }) {
   const progress: StageProgress =
-    launch.kind === "in-progress" ? stageProgress(launch.draft) : launch.kind === "done" ? submittedProgress() : notStartedProgress();
-  const title = launch.day === today ? "Today's Daily Closing" : `Daily Closing · ${formatWeekdayShort(launch.day)}`;
+    launch.kind === "in-progress"
+      ? stageProgress(launch.draft)
+      : launch.kind === "done"
+        ? submittedProgress()
+        : notStartedProgress();
+  const title =
+    launch.day === today
+      ? "Today's Daily Closing"
+      : `Daily Closing · ${formatWeekdayShort(launch.day)}`;
 
   // Done and current stages open where they were left (Part 14: free navigation) - this app's
   // own stage page; never for read-only.
   const stageHref = (index: number): string | undefined => {
     if (readOnly || launch.kind !== "in-progress") return undefined;
-    return stepHref(entityId, entityName, stageSection(STAGES[index], launch.draft.current_section), launch.day);
+    return stepHref(
+      entityId,
+      entityName,
+      stageSection(STAGES[index], launch.draft.current_section),
+      launch.day,
+    );
   };
   // Continue: the report's section's stage in this app, or Addition to Drawer when it has none.
-  const continueHref = (draft: NonNullable<Home["draft"]>, day: string): string => resumeHref(entityId, entityName, draft.current_section, day);
-  const steps: StepProgressStep[] = progress.stages.map(({ stage, state }, i) => ({ label: stage.short, state, href: stageHref(i) }));
+  const continueHref = (draft: NonNullable<Home["draft"]>, day: string): string =>
+    resumeHref(entityId, entityName, draft.current_section, day);
+  const steps: StepProgressStep[] = progress.stages.map(({ stage, state }, i) => ({
+    label: stage.short,
+    state,
+    href: stageHref(i),
+  }));
 
-  const reason = readOnly ? READ_ONLY : blockedBy ? `Finish ${formatWeekdayShort(blockedBy)} first.` : null;
+  const reason = readOnly
+    ? READ_ONLY
+    : blockedBy
+      ? `Finish ${formatWeekdayShort(blockedBy)} first.`
+      : null;
   const action =
     launch.kind === "done" ? (
       // The day's Daily Report, this app's own (15.7).
-      <Link href={reportHref(entityId, entityName, launch.reportId)} className={`${buttonClass("primary")} w-full sm:w-auto`}>
+      <Link
+        href={reportHref(entityId, entityName, launch.reportId)}
+        className={`${buttonClass("primary")} w-full sm:w-auto`}
+      >
         View report
       </Link>
     ) : launch.kind === "in-progress" ? (
-      <Button kind="primary" className="w-full sm:w-auto" disabled={readOnly} onClick={() => leaveTo(continueHref(launch.draft, launch.day))}>
+      <Button
+        kind="primary"
+        className="w-full sm:w-auto"
+        disabled={readOnly}
+        onClick={() => leaveTo(continueHref(launch.draft, launch.day))}
+      >
         Continue Daily Closing
       </Button>
     ) : (
-      <Button kind="primary" className="w-full sm:w-auto" disabled={!!reason} onClick={() => onStart(launch.day)}>
+      <Button
+        kind="primary"
+        className="w-full sm:w-auto"
+        disabled={!!reason}
+        onClick={() => onStart(launch.day)}
+      >
         Start today&apos;s Daily Closing
       </Button>
     );
 
   return (
-    <section aria-labelledby="closing-title" className="flex min-w-0 flex-col gap-4 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6">
+    <section
+      aria-labelledby="closing-title"
+      className="flex min-w-0 flex-col gap-4 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 id="closing-title" className="text-title-l text-text-primary">
           {title}
@@ -390,10 +510,15 @@ function ClosingCard({
           <span className="font-semibold">
             {progress.done} of {STAGES.length} done
           </span>
-          {launch.kind !== "done" && progress.next ? <> &middot; Next: {progress.next.label}</> : null}
+          {launch.kind !== "done" && progress.next ? (
+            <> &middot; Next: {progress.next.label}</>
+          ) : null}
         </p>
         {launch.kind === "in-progress" ? (
-          <p className="flex items-center gap-1.5 text-body-s text-text-secondary" aria-live="polite">
+          <p
+            className="flex items-center gap-1.5 text-body-s text-text-secondary"
+            aria-live="polite"
+          >
             <Icon name="cloud_done" size="sm" />
             {savedText(launch.draft.last_edit_seconds, now)}
           </p>
@@ -407,7 +532,9 @@ function ClosingCard({
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         {action}
-        {reason && launch.kind !== "done" ? <p className="text-body-s text-text-secondary">{reason}</p> : null}
+        {reason && launch.kind !== "done" ? (
+          <p className="text-body-s text-text-secondary">{reason}</p>
+        ) : null}
       </div>
       {problem}
     </section>
@@ -415,7 +542,15 @@ function ClosingCard({
 }
 
 /** "Recent reports": the newest 2-3 submitted days as Record rows, each opening its Daily Report, and See all - the report history. */
-function RecentReports({ home, entityId, entityName }: { home: Home; entityId: string; entityName: string }) {
+function RecentReports({
+  home,
+  entityId,
+  entityName,
+}: {
+  home: Home;
+  entityId: string;
+  entityName: string;
+}) {
   const rows = recentReports(home);
   return (
     <section aria-labelledby="recent-title" className="flex min-w-0 flex-col gap-3">
@@ -436,7 +571,9 @@ function RecentReports({ home, entityId, entityName }: { home: Home; entityId: s
                 className="flex min-h-11 min-w-0 items-center gap-3 rounded-lg border border-border-subtle bg-surface-card p-3 hover:bg-state-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block text-body-m font-semibold text-text-primary">{formatWeekdayDay(day)}</span>
+                  <span className="block text-body-m font-semibold text-text-primary">
+                    {formatWeekdayDay(day)}
+                  </span>
                   <span className="block text-body-s text-text-secondary">Closing balance</span>
                 </span>
                 <span className="flex shrink-0 flex-col items-end gap-1">

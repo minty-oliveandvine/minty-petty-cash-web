@@ -9,7 +9,9 @@ import { AmountInput } from "@/components/closing/Stage";
 
 function Harness({ code, initial = "" }: { code: string | null; initial?: string }) {
   const [value, setValue] = useState(initial);
-  return <AmountInput label="Cash sales" name="cash" code={code} value={value} onChange={setValue} />;
+  return (
+    <AmountInput label="Cash sales" name="cash" code={code} value={value} onChange={setValue} />
+  );
 }
 
 const box = () => screen.getByRole("textbox") as HTMLInputElement;
@@ -54,7 +56,9 @@ describe("AmountInput", () => {
 
   it("names the company's currency as the prefix and in the label", () => {
     render(<Harness code="HKD" />);
-    expect(document.querySelector(`label[for="${box().id}"]`)?.textContent).toBe("Cash sales in HKD");
+    expect(document.querySelector(`label[for="${box().id}"]`)?.textContent).toBe(
+      "Cash sales in HKD",
+    );
     expect(box().previousElementSibling?.textContent).toBe("HKD");
     expect(box().className).toContain("pl-14");
   });

@@ -10,9 +10,9 @@ npm run dev          # http://localhost:3010
 
 You enter the app through Minty: open a company's Petty Cash there, or go straight to `/` and Flask's `/handoff/petty-cash-web` signs you in.
 
-| | |
-|---|---|
-| `npm run lint` / `npm run typecheck` / `npm test` | the per-commit gate (CI runs these and a build) |
-| `npm run test:e2e` | Playwright, desktop and a 360 px phone, against local Flask (`e2e/README.md`) |
+|                                                   |                                                                               |
+| ------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `npm run lint` / `npm run typecheck` / `npm test` | the per-commit gate (CI runs these and a build)                               |
+| `npm run test:e2e`                                | Playwright, desktop and a 360 px phone, against local Flask (`e2e/README.md`) |
 
 How it signs in, which backends it calls and what it holds: `docs/features/petty-cash-web.md`. The workspace rules are in `C:\Github\CLAUDE.md`.

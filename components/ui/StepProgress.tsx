@@ -30,7 +30,11 @@ export function StepProgress({
   onStepClick?: (event: MouseEvent<HTMLAnchorElement>, step: StepProgressStep) => void;
 }) {
   return (
-    <ol className="grid min-h-[70px] gap-1 sm:gap-2" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} aria-label={label}>
+    <ol
+      className="grid min-h-[70px] gap-1 sm:gap-2"
+      style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+      aria-label={label}
+    >
       {steps.map((step, i) => {
         const indicator =
           step.state === "current"
@@ -40,8 +44,15 @@ export function StepProgress({
               : "border border-border-default bg-surface-sunk text-text-muted";
         const body = (
           <>
-            <span className={`flex h-7 w-full items-center justify-center rounded-md ${indicator}`} aria-hidden="true">
-              {step.state === "done" ? <Icon name="check" size="sm" /> : <span className="text-label">{i + 1}</span>}
+            <span
+              className={`flex h-7 w-full items-center justify-center rounded-md ${indicator}`}
+              aria-hidden="true"
+            >
+              {step.state === "done" ? (
+                <Icon name="check" size="sm" />
+              ) : (
+                <span className="text-label">{i + 1}</span>
+              )}
             </span>
             <span
               className={`mt-1 block text-center text-caption break-words ${
@@ -58,7 +69,11 @@ export function StepProgress({
         );
         const clickable = step.href && step.state !== "upcoming";
         return (
-          <li key={step.label} className="min-w-0" aria-current={step.state === "current" ? "step" : undefined}>
+          <li
+            key={step.label}
+            className="min-w-0"
+            aria-current={step.state === "current" ? "step" : undefined}
+          >
             {clickable ? (
               <a
                 href={step.href}

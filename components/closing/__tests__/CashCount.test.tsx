@@ -9,7 +9,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: vi.fn(), back: vi.fn() }), usePathname: () => "/" }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push, replace: vi.fn(), back: vi.fn() }),
+  usePathname: () => "/",
+}));
 
 const fetchMock = vi.fn();
 vi.mock("@/lib/apiClient", async (importOriginal) => ({
@@ -23,7 +26,14 @@ import type { CashCountPage } from "@/lib/cashCount";
 const page = (over: Partial<CashCountPage> = {}): CashCountPage => ({
   transaction_date: "2026-10-13",
   currency_code: "HKD",
-  draft: { id: "d", status: "draft", current_section: "deposit", completed_sections: ["opening", "sales", "expenses"], xero_integrated: false, publishing_status: null },
+  draft: {
+    id: "d",
+    status: "draft",
+    current_section: "deposit",
+    completed_sections: ["opening", "sales", "expenses"],
+    xero_integrated: false,
+    publishing_status: null,
+  },
   opening_balance: 500,
   cash_addition: 100,
   cash_sales: 520,
@@ -42,7 +52,15 @@ const page = (over: Partial<CashCountPage> = {}): CashCountPage => ({
 });
 
 function renderStage(p: CashCountPage = page()) {
-  return render(<CashCountForm page={p} entityId="e1" entityName="Olive" home="/entity/e1/olive/petty-cash" notice={null} />);
+  return render(
+    <CashCountForm
+      page={p}
+      entityId="e1"
+      entityName="Olive"
+      home="/entity/e1/olive/petty-cash"
+      notice={null}
+    />,
+  );
 }
 
 const saveNext = () => screen.getByRole("button", { name: /Save & Next/ });
@@ -59,7 +77,9 @@ describe("Cash Count, one task at a time", () => {
     expect(task("Cash taken to the bank")).toHaveAttribute("data-state", "current");
     expect(task("Cash taken to the bank")).toHaveAttribute("aria-current", "step");
     expect(task("Count the drawer")).toHaveAttribute("data-state", "next");
-    expect(within(task("Count the drawer")).getByText("Next, after the bank deposit.")).toBeInTheDocument();
+    expect(
+      within(task("Count the drawer")).getByText("Next, after the bank deposit."),
+    ).toBeInTheDocument();
     expect(within(task("Safe box")).getByText("Next, after the count.")).toBeInTheDocument();
     expect(screen.getByText("In the drawer before any deposit")).toBeInTheDocument();
     expect(screen.getByLabelText(/Deposit amount/)).toHaveAttribute("inputmode", "decimal");
@@ -76,7 +96,9 @@ describe("Cash Count, one task at a time", () => {
     await user.type(screen.getByLabelText(/Deposit amount/), "300");
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(task("Cash taken to the bank")).toHaveAttribute("data-state", "done");
-    expect(within(task("Cash taken to the bank")).getByText("HKD 300.00").closest("p")).toHaveTextContent("HKD 300.00 to the bank");
+    expect(
+      within(task("Cash taken to the bank")).getByText("HKD 300.00").closest("p"),
+    ).toHaveTextContent("HKD 300.00 to the bank");
     expect(task("Count the drawer")).toHaveAttribute("data-state", "current");
     expect(screen.getByRole("button", { name: "Count notes and coins" })).toHaveFocus();
     await user.click(screen.getByRole("button", { name: "Change the cash taken to the bank" }));
@@ -113,12 +135,16 @@ describe("the Count the drawer sheet", () => {
 
   it("names each row by the catalogue's cash_name without its symbol, or by its value when it has none", async () => {
     const user = userEvent.setup();
-    renderStage(page({ denominations: [
-      { id: "n500", value: 500, kind: "note", name: "$500", count: 0 },
-      { id: "n1000", value: 1000, kind: "note", name: "HK$1,000", count: 0 },
-      { id: "c050", value: 0.5, kind: "coin", name: "50c", count: 0 },
-      { id: "c010", value: 0.1, kind: "coin", name: null, count: 0 },
-    ] }));
+    renderStage(
+      page({
+        denominations: [
+          { id: "n500", value: 500, kind: "note", name: "$500", count: 0 },
+          { id: "n1000", value: 1000, kind: "note", name: "HK$1,000", count: 0 },
+          { id: "c050", value: 0.5, kind: "coin", name: "50c", count: 0 },
+          { id: "c010", value: 0.1, kind: "coin", name: null, count: 0 },
+        ],
+      }),
+    );
     const sheet = await openSheet(user);
     expect(within(sheet).getByLabelText(/Number of HKD 500 notes/)).toBeInTheDocument();
     expect(within(sheet).getByLabelText(/Number of HKD 1,000 notes/)).toBeInTheDocument();
@@ -139,7 +165,9 @@ describe("the Count the drawer sheet", () => {
     expect(within(sheet).getAllByText("—")).toHaveLength(3);
     await user.type(five, "1");
     await user.type(within(sheet).getByLabelText(/Number of HKD 100 notes/), "5");
-    expect(within(sheet).getByText("Total in the drawer").nextSibling).toHaveTextContent("HKD 1,000.00");
+    expect(within(sheet).getByText("Total in the drawer").nextSibling).toHaveTextContent(
+      "HKD 1,000.00",
+    );
     await user.click(within(sheet).getByRole("button", { name: "Save count" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(task("Count the drawer")).toHaveAttribute("data-state", "done");
@@ -196,7 +224,9 @@ describe("problems on a refused save", () => {
     await user.click(screen.getByRole("button", { name: "Change the cash taken to the bank" }));
     await user.type(screen.getByLabelText(/Deposit amount/), "2000");
     await user.click(screen.getByRole("button", { name: /Save & Exit/ }));
-    const summary = screen.getAllByRole("alert").find((a) => a.textContent?.includes("details need a look")) as HTMLElement;
+    const summary = screen
+      .getAllByRole("alert")
+      .find((a) => a.textContent?.includes("details need a look")) as HTMLElement;
     expect(summary).toHaveTextContent("2 details need a look");
     expect(within(summary).getAllByRole("link")).toHaveLength(2);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -210,9 +240,18 @@ describe("the Check and the reason", () => {
   it("opens with every task done once the stage was saved, and holds Save & Next for a difference's reason", async () => {
     const user = userEvent.setup();
     fetchMock.mockResolvedValue({ next: "ending", transaction_date: "2026-10-13" });
-    renderStage(page({ denominations: [{ id: "n500", value: 500, kind: "note", count: 1 }, { id: "n100", value: 100, kind: "note", count: 4 }, { id: "c5", value: 5, kind: "coin", count: 0 }] }));
+    renderStage(
+      page({
+        denominations: [
+          { id: "n500", value: 500, kind: "note", count: 1 },
+          { id: "n100", value: 100, kind: "note", count: 4 },
+          { id: "c5", value: 5, kind: "coin", count: 0 },
+        ],
+      }),
+    );
     expect(screen.getByText("All three checks are done.")).toBeInTheDocument();
-    for (const name of ["Cash taken to the bank", "Count the drawer", "Safe box"]) expect(task(name)).toHaveAttribute("data-state", "done");
+    for (const name of ["Cash taken to the bank", "Count the drawer", "Safe box"])
+      expect(task(name)).toHaveAttribute("data-state", "done");
     // 900 counted against 1,000 expected
     expect(screen.queryByText("The numbers match")).toBeNull();
     expect(screen.getByText("The count is HKD 100.00 short.")).toBeInTheDocument();
@@ -223,13 +262,29 @@ describe("the Check and the reason", () => {
     await user.type(reason, "Float swap");
     expect(saveNext()).toBeEnabled();
     await user.click(saveNext());
-    expect(fetchMock).toHaveBeenCalledWith("/reports/cash-count", expect.objectContaining({ method: "PUT" }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/reports/cash-count",
+      expect.objectContaining({ method: "PUT" }),
+    );
     const body = fetchMock.mock.calls[0][1].body;
-    expect(body).toMatchObject({ bank_deposit: 0, counts: { n500: 1, n100: 4, c5: 0 }, discrepancy_reason: "Float swap", action: "next" });
+    expect(body).toMatchObject({
+      bank_deposit: 0,
+      counts: { n500: 1, n100: 4, c5: 0 },
+      discrepancy_reason: "Float swap",
+      action: "next",
+    });
   });
 
   it("counts any cent as a difference", () => {
-    renderStage(page({ cash_on_hand: 900.01, denominations: [{ id: "n500", value: 500, kind: "note", count: 1 }, { id: "n100", value: 100, kind: "note", count: 4 }] }));
+    renderStage(
+      page({
+        cash_on_hand: 900.01,
+        denominations: [
+          { id: "n500", value: 500, kind: "note", count: 1 },
+          { id: "n100", value: 100, kind: "note", count: 4 },
+        ],
+      }),
+    );
     expect(screen.getByText("The count is HKD 0.01 short.")).toBeInTheDocument();
   });
 

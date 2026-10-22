@@ -48,7 +48,10 @@ export function canRemoveReceipt(kept: Receipt[], replacing: boolean): boolean {
 }
 
 /** The account list for an edit: the line's own account stays choosable even when it is no longer switched on. */
-export function accountsFor(line: ExpenseLine | null, accounts: ExpenseAccount[]): ExpenseAccount[] {
+export function accountsFor(
+  line: ExpenseLine | null,
+  accounts: ExpenseAccount[],
+): ExpenseAccount[] {
   if (!line?.account || accounts.some((a) => a.id === line.account?.id)) return accounts;
   return [line.account, ...accounts];
 }

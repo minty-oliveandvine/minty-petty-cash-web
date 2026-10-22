@@ -5,10 +5,30 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FocusEvent, type ReactNode, type Ref } from "react";
 
-import { Button, buttonClass, Drawer, ErrorSummary, Field, Icon, InlineAlert, inputClass, PageBanner } from "@minty/shared/ui";
+import {
+  Button,
+  buttonClass,
+  Drawer,
+  ErrorSummary,
+  Field,
+  Icon,
+  InlineAlert,
+  inputClass,
+  PageBanner,
+} from "@minty/shared/ui";
 import { parseAmount } from "@minty/shared/money";
 
-import { AmountInput, openStep, refused, StageActions, StagePage, stageSteps, useLeaveHold, WorkflowHeader, type StageContext } from "@/components/closing/Stage";
+import {
+  AmountInput,
+  openStep,
+  refused,
+  StageActions,
+  StagePage,
+  stageSteps,
+  useLeaveHold,
+  WorkflowHeader,
+  type StageContext,
+} from "@/components/closing/Stage";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import {
   belowZero,
@@ -76,7 +96,13 @@ const countId = (d: Denomination) => `cash-count-${d.id}`;
  */
 export function CashCount({ day }: { day: string | null }) {
   return (
-    <StagePage<CashCountPage> path="/reports/cash-count" day={day} title={STAGE} guidance={GUIDANCE} here="cash_count">
+    <StagePage<CashCountPage>
+      path="/reports/cash-count"
+      day={day}
+      title={STAGE}
+      guidance={GUIDANCE}
+      here="cash_count"
+    >
       {(page, context) => <CashCountForm page={page} {...context} />}
     </StagePage>
   );
@@ -85,12 +111,21 @@ export function CashCount({ day }: { day: string | null }) {
 type FieldError = { field: string; message: string } | null;
 
 /** The stage's form once the read has answered (exported for its component tests). */
-export function CashCountForm({ page, entityId, entityName, home, notice }: { page: CashCountPage } & StageContext) {
+export function CashCountForm({
+  page,
+  entityId,
+  entityName,
+  home,
+  notice,
+}: { page: CashCountPage } & StageContext) {
   const router = useRouter();
   const [values, setValues] = useState<CashCountValues>(() => initialValues(page));
   const [done, setDone] = useState<TasksDone>(() => initialTasks(page));
   // The count sheet: open, and the row to focus when it opens on a problem.
-  const [sheet, setSheet] = useState<{ open: boolean; focus: string | null }>({ open: false, focus: null });
+  const [sheet, setSheet] = useState<{ open: boolean; focus: string | null }>({
+    open: false,
+    focus: null,
+  });
   const [submitted, setSubmitted] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState<"next" | "exit" | null>(null);
@@ -113,11 +148,17 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
   const server = (field: string) => (serverError?.field === field ? serverError.message : null);
   const problems = (asSubmitted: boolean, action: "next" | "exit") => {
     const list: { fieldId: string; message: string }[] = [];
-    const add = (fieldId: string, message: string | null) => message && list.push({ fieldId, message });
+    const add = (fieldId: string, message: string | null) =>
+      message && list.push({ fieldId, message });
     add(DEPOSIT, depositProblem(page, values.deposit) ?? server("bank_deposit"));
-    for (const d of page.denominations) add(countId(d), countProblem(values.counts[d.id] ?? "") ?? server(d.id));
+    for (const d of page.denominations)
+      add(countId(d), countProblem(values.counts[d.id] ?? "") ?? server(d.id));
     add(SAFEBOX, server("safe_box_balance"));
-    add(REASON, reasonProblem(values.reason, diff, code, { submitted: asSubmitted && action === "next" }) ?? server("discrepancy_reason"));
+    add(
+      REASON,
+      reasonProblem(values.reason, diff, code, { submitted: asSubmitted && action === "next" }) ??
+        server("discrepancy_reason"),
+    );
     return list;
   };
   // Shown now: as typed, plus what a refused Save & Next found.
@@ -129,7 +170,9 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
   const summaryItems = (list: { fieldId: string; message: string }[]) => {
     const inSheet = (id: string) => id.startsWith("cash-count-");
     const firstCount = list.find((p) => inSheet(p.fieldId));
-    return list.filter((p) => !inSheet(p.fieldId) || p === firstCount).map((p) => (inSheet(p.fieldId) ? { ...p, fieldId: COUNT_OPEN } : p));
+    return list
+      .filter((p) => !inSheet(p.fieldId) || p === firstCount)
+      .map((p) => (inSheet(p.fieldId) ? { ...p, fieldId: COUNT_OPEN } : p));
   };
 
   const set = (patch: Partial<CashCountValues>, field: string) => {
@@ -139,17 +182,31 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
 
   // Where the focus goes once a task moves: the open task's control, else the reason a
   // difference still needs, else Save & Next. After React has drawn the new state.
-  const [focusAfter, setFocusAfter] = useState<{ to: "current" | CashTask; n: number } | null>(null);
+  const [focusAfter, setFocusAfter] = useState<{ to: "current" | CashTask; n: number } | null>(
+    null,
+  );
   const reasonEmpty = values.reason.trim() === "";
   useEffect(() => {
     if (!focusAfter) return;
     const task = focusAfter.to === "current" ? currentTask(done) : focusAfter.to;
-    const id = task === "deposit" ? DEPOSIT : task === "count" ? COUNT_OPEN : task === "safe" ? SAFEBOX : reasonShown && reasonEmpty ? REASON : null;
-    const target = id ? document.getElementById(id) : document.querySelector<HTMLElement>('[data-stage-save="next"]:not([disabled])');
+    const id =
+      task === "deposit"
+        ? DEPOSIT
+        : task === "count"
+          ? COUNT_OPEN
+          : task === "safe"
+            ? SAFEBOX
+            : reasonShown && reasonEmpty
+              ? REASON
+              : null;
+    const target = id
+      ? document.getElementById(id)
+      : document.querySelector<HTMLElement>('[data-stage-save="next"]:not([disabled])');
     target?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only when a move asks for it
   }, [focusAfter]);
-  const moveFocus = (to: "current" | CashTask) => setFocusAfter((f) => ({ to, n: (f?.n ?? 0) + 1 }));
+  const moveFocus = (to: "current" | CashTask) =>
+    setFocusAfter((f) => ({ to, n: (f?.n ?? 0) + 1 }));
 
   /** A typed task is done once it is left with a valid value (or empty: "none"). */
   function finish(task: "deposit" | "safe", focus: boolean): boolean {
@@ -209,7 +266,8 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
       if (action === "next") setSubmitted(true);
       setAttempt((n) => n + 1);
       // Every task with a problem opens; a count's opens the sheet on its row, over the summary.
-      for (const p of failing) if (p.fieldId === DEPOSIT || p.fieldId === SAFEBOX) reveal(p.fieldId, false);
+      for (const p of failing)
+        if (p.fieldId === DEPOSIT || p.fieldId === SAFEBOX) reveal(p.fieldId, false);
       const badCount = failing.find((p) => p.fieldId.startsWith("cash-count-"));
       if (badCount) reveal(badCount.fieldId);
       // One problem: its field takes focus. Two or more: the summary does (ErrorSummary).
@@ -222,15 +280,27 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
         method: "PUT",
         body: savePayload(day, page, values, diff, action),
       });
-      if (answer.next === "ending") openStep(push, entityId, entityName, "ending", answer.transaction_date);
+      if (answer.next === "ending")
+        openStep(push, entityId, entityName, "ending", answer.transaction_date);
       else push(home);
     } catch (err) {
-      const field = err instanceof ApiError && err.status === 422 ? (err.body as { field?: unknown } | null)?.field : undefined;
+      const field =
+        err instanceof ApiError && err.status === 422
+          ? (err.body as { field?: unknown } | null)?.field
+          : undefined;
       if (typeof field === "string" && err instanceof ApiError) {
         // A rule about one input: on that input, which takes the focus.
         setSaving(null);
         setServerError({ field, message: err.message });
-        reveal(field === "bank_deposit" ? DEPOSIT : field === "safe_box_balance" ? SAFEBOX : field === "discrepancy_reason" ? REASON : `cash-count-${field}`);
+        reveal(
+          field === "bank_deposit"
+            ? DEPOSIT
+            : field === "safe_box_balance"
+              ? SAFEBOX
+              : field === "discrepancy_reason"
+                ? REASON
+                : `cash-count-${field}`,
+        );
         return;
       }
       // No draft any more: to Addition to Drawer, which says why (`to: "opening"`).
@@ -268,16 +338,32 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
           tone="warning"
           title="The cash on hand is below zero"
           action={
-            <Link href={stepHref(entityId, entityName, "expenses", day)} className={buttonClass("link")}>
+            <Link
+              href={stepHref(entityId, entityName, "expenses", day)}
+              className={buttonClass("link")}
+            >
               Go to Expenses
             </Link>
           }
         >
-          Opening cash <span translate="no" className="whitespace-nowrap">{money(openingCash(page), code)}</span> plus cash sales{" "}
-          <span translate="no" className="whitespace-nowrap">{money(page.cash_sales, code)}</span>, less expenses{" "}
-          <span translate="no" className="whitespace-nowrap">{money(page.expenses, code)}</span>, comes to{" "}
-          <span translate="no" className="whitespace-nowrap">{money(page.cash_on_hand, code)}</span>, and cash can&apos;t be counted against less
-          than zero. Check the expenses and the cash sales, then come back to Cash Count.
+          Opening cash{" "}
+          <span translate="no" className="whitespace-nowrap">
+            {money(openingCash(page), code)}
+          </span>{" "}
+          plus cash sales{" "}
+          <span translate="no" className="whitespace-nowrap">
+            {money(page.cash_sales, code)}
+          </span>
+          , less expenses{" "}
+          <span translate="no" className="whitespace-nowrap">
+            {money(page.expenses, code)}
+          </span>
+          , comes to{" "}
+          <span translate="no" className="whitespace-nowrap">
+            {money(page.cash_on_hand, code)}
+          </span>
+          , and cash can&apos;t be counted against less than zero. Check the expenses and the cash
+          sales, then come back to Cash Count.
         </PageBanner>
       </>
     );
@@ -294,16 +380,29 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
           void save("next");
         }}
       >
-        <ErrorSummary items={shown.length > 1 && attempt > 0 ? summaryItems(shown) : []} attempt={attempt} />
+        <ErrorSummary
+          items={shown.length > 1 && attempt > 0 ? summaryItems(shown) : []}
+          attempt={attempt}
+        />
 
         {/* The three tasks; a polite live region, so a task opening or closing is announced. */}
         <div className="flex flex-col gap-3" aria-live="polite">
           {/* 1. The cash taken to the bank - optional, and first (A15-02). */}
-          <TaskCard task="deposit" number={1} title="Cash taken to the bank" state={taskState("deposit", done)} onBlur={leaveCard("deposit")}>
+          <TaskCard
+            task="deposit"
+            number={1}
+            title="Cash taken to the bank"
+            state={taskState("deposit", done)}
+            onBlur={leaveCard("deposit")}
+          >
             {{
               body: (
                 <>
-                  <TotalBand label="In the drawer before any deposit" amount={money(page.cash_on_hand, code)} onCard />
+                  <TotalBand
+                    label="In the drawer before any deposit"
+                    amount={money(page.cash_on_hand, code)}
+                    onCard
+                  />
                   <AmountInput
                     id={DEPOSIT}
                     label="Deposit amount"
@@ -316,7 +415,13 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
                     disabled={busy}
                   />
                   <div>
-                    <Button kind="secondary" disabled={busy} onClick={() => finish("deposit", true) || document.getElementById(DEPOSIT)?.focus()}>
+                    <Button
+                      kind="secondary"
+                      disabled={busy}
+                      onClick={() =>
+                        finish("deposit", true) || document.getElementById(DEPOSIT)?.focus()
+                      }
+                    >
                       Continue
                     </Button>
                   </div>
@@ -327,13 +432,19 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
                   <p className="min-w-0 text-body-m text-text-secondary">
                     {(parseAmount(values.deposit) ?? 0) > 0 ? (
                       <>
-                        <span translate="no">{money(parseAmount(values.deposit) ?? 0, code)}</span> to the bank
+                        <span translate="no">{money(parseAmount(values.deposit) ?? 0, code)}</span>{" "}
+                        to the bank
                       </>
                     ) : (
                       depositResult(values.deposit, code)
                     )}
                   </p>
-                  <Button kind="link" disabled={busy} aria-label="Change the cash taken to the bank" onClick={() => reopen("deposit")}>
+                  <Button
+                    kind="link"
+                    disabled={busy}
+                    aria-label="Change the cash taken to the bank"
+                    onClick={() => reopen("deposit")}
+                  >
                     Change
                   </Button>
                 </>
@@ -342,19 +453,32 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
           </TaskCard>
 
           {/* 2. The count, in the sheet. */}
-          <TaskCard task="count" number={2} title="Count the drawer" sub="Notes and coins in the till right now" state={taskState("count", done)} next={TASK_NEXT.count}>
+          <TaskCard
+            task="count"
+            number={2}
+            title="Count the drawer"
+            sub="Notes and coins in the till right now"
+            state={taskState("count", done)}
+            next={TASK_NEXT.count}
+          >
             {{
               body: (
                 <>
                   <Scene src="/cash-register.webp" size={128} />
                   {page.denominations.length ? (
-                    <Button id={COUNT_OPEN} kind="primary" full disabled={busy} onClick={() => setSheet({ open: true, focus: null })}>
+                    <Button
+                      id={COUNT_OPEN}
+                      kind="primary"
+                      full
+                      disabled={busy}
+                      onClick={() => setSheet({ open: true, focus: null })}
+                    >
                       Count notes and coins
                     </Button>
                   ) : (
                     <InlineAlert tone="info">
-                      This company has no notes or coins set up yet, so the drawer can&apos;t be counted here. Check the company&apos;s
-                      country in Settings.
+                      This company has no notes or coins set up yet, so the drawer can&apos;t be
+                      counted here. Check the company&apos;s country in Settings.
                     </InlineAlert>
                   )}
                 </>
@@ -362,7 +486,13 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
               result: (
                 <>
                   <TotalBand label="Counted in the drawer" amount={money(drawer, code)} />
-                  <Button id={COUNT_OPEN} kind="link" disabled={busy} aria-label="Edit the count" onClick={() => setSheet({ open: true, focus: null })}>
+                  <Button
+                    id={COUNT_OPEN}
+                    kind="link"
+                    disabled={busy}
+                    aria-label="Edit the count"
+                    onClick={() => setSheet({ open: true, focus: null })}
+                  >
                     Edit
                   </Button>
                 </>
@@ -371,7 +501,14 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
           </TaskCard>
 
           {/* 3. The safe box - part of the cash counted. */}
-          <TaskCard task="safe" number={3} title="Safe box" state={taskState("safe", done)} next={TASK_NEXT.safe} onBlur={leaveCard("safe")}>
+          <TaskCard
+            task="safe"
+            number={3}
+            title="Safe box"
+            state={taskState("safe", done)}
+            next={TASK_NEXT.safe}
+            onBlur={leaveCard("safe")}
+          >
             {{
               body: (
                 <div className="flex min-w-0 items-center gap-3">
@@ -396,7 +533,12 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
                   <p className="min-w-0 text-body-m text-text-secondary" translate="no">
                     {money(parseAmount(values.safebox) ?? 0, code)}
                   </p>
-                  <Button kind="link" disabled={busy} aria-label="Edit the safe box" onClick={() => reopen("safe")}>
+                  <Button
+                    kind="link"
+                    disabled={busy}
+                    aria-label="Edit the safe box"
+                    onClick={() => reopen("safe")}
+                  >
                     Edit
                   </Button>
                 </>
@@ -412,8 +554,14 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
               Check
             </h2>
             {diff.kind === "none" ? (
-              <div className="flex items-start gap-3 rounded-lg bg-status-success-bg p-4 text-status-success-ink" role="status">
-                <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-card" aria-hidden>
+              <div
+                className="flex items-start gap-3 rounded-lg bg-status-success-bg p-4 text-status-success-ink"
+                role="status"
+              >
+                <span
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-card"
+                  aria-hidden
+                >
                   <Icon name="check" size="md" />
                 </span>
                 <div className="min-w-0">
@@ -431,7 +579,13 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
               </InlineAlert>
             )}
             {reasonShown ? (
-              <Field id={REASON} label="Reason for the difference" required={diff.kind !== "none"} error={errorOf(REASON)} helper={reasonHelper(values.reason)}>
+              <Field
+                id={REASON}
+                label="Reason for the difference"
+                required={diff.kind !== "none"}
+                error={errorOf(REASON)}
+                helper={reasonHelper(values.reason)}
+              >
                 {(a11y) => (
                   <textarea
                     {...a11y}
@@ -495,7 +649,9 @@ function TaskCard({
 }) {
   const titleId = `task-${task}-title`;
   const frame =
-    state === "current" ? "border-2 border-border-selected bg-state-selected p-5" : "border border-border-subtle bg-surface-card p-4";
+    state === "current"
+      ? "border-2 border-border-selected bg-state-selected p-5"
+      : "border border-border-subtle bg-surface-card p-4";
   const mark =
     state === "done"
       ? "bg-border-selected text-action-on-primary"
@@ -513,33 +669,58 @@ function TaskCard({
       className={`flex min-w-0 flex-col gap-4 rounded-xl ${frame}`}
     >
       <div className="flex min-w-0 items-start gap-3">
-        <span className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full text-label font-bold ${mark}`} aria-hidden>
+        <span
+          className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full text-label font-bold ${mark}`}
+          aria-hidden
+        >
           {state === "done" ? <Icon name="check" size="sm" /> : number}
         </span>
         <div className="min-w-0 flex-1 pt-0.5">
-          <h2 id={titleId} className={`text-title-m ${state === "next" ? "text-text-muted" : "text-text-primary"}`}>
+          <h2
+            id={titleId}
+            className={`text-title-m ${state === "next" ? "text-text-muted" : "text-text-primary"}`}
+          >
             {title}
           </h2>
-          {sub && state === "current" ? <p className="mt-0.5 text-body-s text-text-secondary">{sub}</p> : null}
+          {sub && state === "current" ? (
+            <p className="mt-0.5 text-body-s text-text-secondary">{sub}</p>
+          ) : null}
         </div>
       </div>
-      {state === "current" ? <div className="flex min-w-0 flex-col gap-4">{children.body}</div> : null}
-      {state === "done" ? (
-        <div className="-mt-2 flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 pl-10">{children.result}</div>
+      {state === "current" ? (
+        <div className="flex min-w-0 flex-col gap-4">{children.body}</div>
       ) : null}
-      {state === "next" && next ? <p className="-mt-2 ml-10 text-body-s text-text-muted">{next}</p> : null}
+      {state === "done" ? (
+        <div className="-mt-2 flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 pl-10">
+          {children.result}
+        </div>
+      ) : null}
+      {state === "next" && next ? (
+        <p className="-mt-2 ml-10 text-body-s text-text-muted">{next}</p>
+      ) : null}
     </section>
   );
 }
 
 /** A total band: a mint tint for a total (never on a warning or an error); white on the open task's mint. */
-function TotalBand({ label, amount, onCard = false }: { label: string; amount: string; onCard?: boolean }) {
+function TotalBand({
+  label,
+  amount,
+  onCard = false,
+}: {
+  label: string;
+  amount: string;
+  onCard?: boolean;
+}) {
   return (
     <div
       className={`flex min-w-0 flex-[1_1_220px] flex-wrap items-baseline justify-between gap-x-3 rounded-lg px-4 py-3 ${onCard ? "bg-surface-card" : "bg-state-selected"}`}
     >
       <span className="min-w-0 text-body-m text-text-secondary">{label}</span>
-      <span className="ml-auto min-w-0 break-all text-right text-title-l font-bold text-text-primary" translate="no">
+      <span
+        className="ml-auto min-w-0 break-all text-right text-title-l font-bold text-text-primary"
+        translate="no"
+      >
         {amount}
       </span>
     </div>
@@ -620,7 +801,9 @@ function CountSheet({
       <div className="flex flex-col gap-6">
         {denominationGroups(page.denominations).map((group) => (
           <fieldset key={group.kind} className="flex min-w-0 flex-col">
-            <legend className="mb-1 text-label font-semibold uppercase tracking-wider text-text-secondary">{group.title}</legend>
+            <legend className="mb-1 text-label font-semibold uppercase tracking-wider text-text-secondary">
+              {group.title}
+            </legend>
             {group.items.map((d) => (
               <CountRow
                 key={d.id}
@@ -692,11 +875,19 @@ function CountRow({
       <span className="text-center text-text-muted" aria-hidden>
         =
       </span>
-      <span className="min-w-0 break-all text-right text-body-m text-text-secondary" translate="no" aria-hidden>
+      <span
+        className="min-w-0 break-all text-right text-body-m text-text-secondary"
+        translate="no"
+        aria-hidden
+      >
         {rowTotalText(denomination, value, code)}
       </span>
       {error ? (
-        <p id={`${id}-note`} role="alert" className="col-span-full mt-1 text-caption text-status-danger-ink">
+        <p
+          id={`${id}-note`}
+          role="alert"
+          className="col-span-full mt-1 text-caption text-status-danger-ink"
+        >
           {error}
         </p>
       ) : null}

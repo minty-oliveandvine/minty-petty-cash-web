@@ -19,7 +19,15 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
-import { buttonClass, Button, ErrorSummary, Field, Icon, InlineAlert, inputClass } from "@minty/shared/ui";
+import {
+  buttonClass,
+  Button,
+  ErrorSummary,
+  Field,
+  Icon,
+  InlineAlert,
+  inputClass,
+} from "@minty/shared/ui";
 
 import { Card, CardSave, NOT_SAVED } from "@/components/settings/SettingsCard";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
@@ -79,9 +87,14 @@ function refusal(err: unknown, fallback: string): string | null {
 
 export function NotConnectedCard({ href }: { href: string }) {
   return (
-    <Card id="xero" title="Xero" sub="The Xero accounts, contacts and account codes a Daily Report is published to.">
+    <Card
+      id="xero"
+      title="Xero"
+      sub="The Xero accounts, contacts and account codes a Daily Report is published to."
+    >
       <p className="text-body-m text-text-primary">
-        Xero isn&apos;t connected for this company. Connect it in Entity &amp; Integration, then the account mapping and the account codes can be set here.
+        Xero isn&apos;t connected for this company. Connect it in Entity &amp; Integration, then the
+        account mapping and the account codes can be set here.
       </p>
       <a href={href} className={`${buttonClass("secondary")} w-full sm:w-auto sm:self-start`}>
         Connect Xero in Entity &amp; Integration
@@ -114,7 +127,12 @@ export function MappingCard({
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const dirty = mappingDirty(xero, draft);
-  const summary = attempted ? mappingProblems(xero, draft, true).map((p) => ({ fieldId: fieldId(p.key), message: p.message })) : [];
+  const summary = attempted
+    ? mappingProblems(xero, draft, true).map((p) => ({
+        fieldId: fieldId(p.key),
+        message: p.message,
+      }))
+    : [];
 
   function change(next: MappingDraft) {
     onDraft(next);
@@ -134,7 +152,10 @@ export function MappingCard({
     setSaving(true);
     setProblem(null);
     try {
-      const answer = await pettyCashFetch<MappingAnswer>("/settings/xero/mapping", { method: "PUT", body: mappingBody(draft) });
+      const answer = await pettyCashFetch<MappingAnswer>("/settings/xero/mapping", {
+        method: "PUT",
+        body: mappingBody(draft),
+      });
       setAttempted(false);
       onSaved(answer);
     } catch (err) {
@@ -144,10 +165,15 @@ export function MappingCard({
   }
 
   return (
-    <Card id="xero-mapping" title="Xero account mapping" sub="The Xero accounts and contacts a Daily Report is published to.">
+    <Card
+      id="xero-mapping"
+      title="Xero account mapping"
+      sub="The Xero accounts and contacts a Daily Report is published to."
+    >
       {xero.organisation ? (
         <p className="min-w-0 break-words text-body-s text-text-secondary">
-          Xero organisation: <span className="font-semibold text-text-primary">{xero.organisation}</span>
+          Xero organisation:{" "}
+          <span className="font-semibold text-text-primary">{xero.organisation}</span>
         </p>
       ) : null}
       {!xero.mapping_saved ? (
@@ -182,15 +208,25 @@ export function MappingCard({
             return (
               <div key={field.key} className="contents">
                 <dt className="text-text-secondary">{field.label}</dt>
-                <dd className="min-w-0 break-words text-text-primary">{chosen ? optionLabel(chosen) : "Not chosen yet"}</dd>
+                <dd className="min-w-0 break-words text-text-primary">
+                  {chosen ? optionLabel(chosen) : "Not chosen yet"}
+                </dd>
               </div>
             );
           })}
         </dl>
       )}
-      <p className="text-body-s text-text-secondary">A cash difference is recorded against the Petty Cash Account.</p>
+      <p className="text-body-s text-text-secondary">
+        A cash difference is recorded against the Petty Cash Account.
+      </p>
       {problem ? <InlineAlert tone="danger">{problem}</InlineAlert> : null}
-      <CardSave id="xero-mapping" may={may} dirty={dirty} saving={saving} onSave={() => void save()} />
+      <CardSave
+        id="xero-mapping"
+        may={may}
+        dirty={dirty}
+        saving={saving}
+        onSave={() => void save()}
+      />
     </Card>
   );
 }
@@ -274,7 +310,13 @@ function XeroPicker({
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <Field id={id} label={field.label} required error={newName === null ? problem : undefined} helper={HELPER[field.key]}>
+      <Field
+        id={id}
+        label={field.label}
+        required
+        error={newName === null ? problem : undefined}
+        helper={HELPER[field.key]}
+      >
         {(a11y) => (
           <div className="flex min-w-0 flex-col gap-1">
             <div className="relative">
@@ -306,7 +348,10 @@ function XeroPicker({
                 onKeyDown={onKeyDown}
                 className={`${inputClass(Boolean(problem) && newName === null)} pr-10`}
               />
-              <Icon name="search" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+              <Icon
+                name="search"
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary"
+              />
               {/* Over the page, not in its flow: closing it on a blur never moves the Save under a click. */}
               {open ? (
                 <ul
@@ -342,12 +387,16 @@ function XeroPicker({
                       } ${active === matches.length ? "bg-state-selected" : ""}`}
                     >
                       <Icon name="add" />
-                      <span className="min-w-0 flex-1 break-words">Add &ldquo;{pick.text.trim()}&rdquo; as a new contact</span>
+                      <span className="min-w-0 flex-1 break-words">
+                        Add &ldquo;{pick.text.trim()}&rdquo; as a new contact
+                      </span>
                     </li>
                   ) : null}
                   {count === 0 ? (
                     <li role="presentation" className="px-3 py-3 text-body-m text-text-secondary">
-                      {field.options.length ? `No ${noun} matches that.` : `No ${noun}s are synced from Xero yet.`}
+                      {field.options.length
+                        ? `No ${noun} matches that.`
+                        : `No ${noun}s are synced from Xero yet.`}
                     </li>
                   ) : null}
                 </ul>
@@ -380,7 +429,17 @@ function XeroPicker({
 }
 
 /** The New contact panel: its name (checked as typed, duplicates refused), then Add contact - made in Xero at once. */
-function NewContact({ initial, field, onCancel, onAdded }: { initial: string; field: MappingField; onCancel: () => void; onAdded: (contact: XeroOption) => void }) {
+function NewContact({
+  initial,
+  field,
+  onCancel,
+  onAdded,
+}: {
+  initial: string;
+  field: MappingField;
+  onCancel: () => void;
+  onAdded: (contact: XeroOption) => void;
+}) {
   const titleId = useId();
   const input = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(initial);
@@ -403,7 +462,12 @@ function NewContact({ initial, field, onCancel, onAdded }: { initial: string; fi
     }
     setSaving(true);
     try {
-      onAdded(await pettyCashFetch<XeroOption>("/suppliers", { method: "POST", body: { name: name.trim() } }));
+      onAdded(
+        await pettyCashFetch<XeroOption>("/suppliers", {
+          method: "POST",
+          body: { name: name.trim() },
+        }),
+      );
     } catch (err) {
       const sentence = refusal(err, CONTACT_NOT_ADDED);
       if (sentence === null) return;
@@ -413,11 +477,20 @@ function NewContact({ initial, field, onCancel, onAdded }: { initial: string; fi
   }
 
   return (
-    <div role="group" aria-labelledby={titleId} className="flex min-w-0 flex-col gap-3 rounded-lg border border-border-default bg-surface-card p-4">
+    <div
+      role="group"
+      aria-labelledby={titleId}
+      className="flex min-w-0 flex-col gap-3 rounded-lg border border-border-default bg-surface-card p-4"
+    >
       <h3 id={titleId} className="text-title-m text-text-primary">
         New contact
       </h3>
-      <Field label="Contact's name" required error={problem} helper="It's added to your Xero contacts now and chosen here. The mapping is saved with Save.">
+      <Field
+        label="Contact's name"
+        required
+        error={problem}
+        helper="It's added to your Xero contacts now and chosen here. The mapping is saved with Save."
+      >
         {(a11y) => (
           <input
             {...a11y}
@@ -442,7 +515,13 @@ function NewContact({ initial, field, onCancel, onAdded }: { initial: string; fi
         <Button kind="ghost" onClick={onCancel} disabled={saving} className="w-full sm:w-auto">
           Cancel
         </Button>
-        <Button kind="secondary" onClick={() => void create()} processing={saving} processingLabel="Adding…" className="w-full sm:w-auto">
+        <Button
+          kind="secondary"
+          onClick={() => void create()}
+          processing={saving}
+          processingLabel="Adding…"
+          className="w-full sm:w-auto"
+        >
           Add contact
         </Button>
       </div>
@@ -489,7 +568,12 @@ export function CodesCard({
     setSaving(true);
     setProblem(null);
     try {
-      onSaved(await pettyCashFetch<CodesAnswer>("/settings/xero/account-codes", { method: "PUT", body: { codes: ticked } }));
+      onSaved(
+        await pettyCashFetch<CodesAnswer>("/settings/xero/account-codes", {
+          method: "PUT",
+          body: { codes: ticked },
+        }),
+      );
     } catch (err) {
       setProblem(refusal(err, NOT_SAVED));
     }
@@ -499,9 +583,15 @@ export function CodesCard({
   const picked = rows.filter((c) => ticked.includes(c.code));
 
   return (
-    <Card id="account-codes" title="Petty Cash account codes" sub="Only the picked account codes appear when adding an expense in Petty Cash.">
+    <Card
+      id="account-codes"
+      title="Petty Cash account codes"
+      sub="Only the picked account codes appear when adding an expense in Petty Cash."
+    >
       {!rows.length ? (
-        <p className="text-body-m text-text-secondary">No account codes are synced from Xero yet.</p>
+        <p className="text-body-m text-text-secondary">
+          No account codes are synced from Xero yet.
+        </p>
       ) : may ? (
         <>
           <Field label="Search account codes">
@@ -520,7 +610,10 @@ export function CodesCard({
                   }}
                   className={`${inputClass(false)} pr-10`}
                 />
-                <Icon name="search" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                <Icon
+                  name="search"
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary"
+                />
               </div>
             )}
           </Field>
@@ -528,7 +621,10 @@ export function CodesCard({
             {picked.length} of {rows.length} picked
           </p>
           {shown.length ? (
-            <ul aria-label="Account codes" className="flex min-w-0 flex-col divide-y divide-border-subtle rounded-lg border border-border-subtle">
+            <ul
+              aria-label="Account codes"
+              className="flex min-w-0 flex-col divide-y divide-border-subtle rounded-lg border border-border-subtle"
+            >
               <li>
                 <label className="flex min-h-11 cursor-pointer items-center gap-3 px-4 py-2 text-body-m font-semibold text-text-primary hover:bg-state-hover has-focus-visible:outline-2 has-focus-visible:outline-border-focus">
                   <input
@@ -562,7 +658,10 @@ export function CodesCard({
           )}
         </>
       ) : picked.length ? (
-        <ul aria-label="Picked account codes" className="flex min-w-0 flex-col gap-1 text-body-m text-text-primary">
+        <ul
+          aria-label="Picked account codes"
+          className="flex min-w-0 flex-col gap-1 text-body-m text-text-primary"
+        >
           {picked.map((c) => (
             <li key={c.code} className="flex min-w-0 items-start gap-2">
               <Icon name="check" size="sm" className="mt-0.5 text-text-link" />
@@ -574,8 +673,14 @@ export function CodesCard({
         <p className="text-body-m text-text-secondary">No account code is picked yet.</p>
       )}
       {problem ? <InlineAlert tone="danger">{problem}</InlineAlert> : null}
-      <CardSave id="account-codes" may={may} dirty={dirty} saving={saving} blocked={rule} onSave={() => void save()} />
+      <CardSave
+        id="account-codes"
+        may={may}
+        dirty={dirty}
+        saving={saving}
+        blocked={rule}
+        onSave={() => void save()}
+      />
     </Card>
   );
 }
-

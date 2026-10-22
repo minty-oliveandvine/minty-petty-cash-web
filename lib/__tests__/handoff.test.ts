@@ -5,7 +5,14 @@ import { withReturnOrigin } from "@minty/shared/previewSibling";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getAuth, setAuth } from "@/lib/auth";
-import { _resetHandoffForTests, APP_HOME, handoffUrl, leaveTo, redirectToHandoff, safeNext } from "@/lib/handoff";
+import {
+  _resetHandoffForTests,
+  APP_HOME,
+  handoffUrl,
+  leaveTo,
+  redirectToHandoff,
+  safeNext,
+} from "@/lib/handoff";
 
 const ENTITY = "360812e1-9f94-46a3-aa31-347e21afde8e";
 
@@ -13,7 +20,9 @@ afterEach(() => _resetHandoffForTests());
 
 describe("handoffUrl", () => {
   it("is Flask's petty-cash hand-off with the page and the company", () => {
-    const url = new URL(handoffUrl("/entity/360812e1/olive-and-vine/petty-cash", ENTITY, "http://localhost:3010"));
+    const url = new URL(
+      handoffUrl("/entity/360812e1/olive-and-vine/petty-cash", ENTITY, "http://localhost:3010"),
+    );
     expect(url.origin).toBe("http://localhost:8000");
     expect(url.pathname).toBe("/handoff/petty-cash-web");
     expect(url.searchParams.get("next")).toBe("/entity/360812e1/olive-and-vine/petty-cash");
@@ -62,7 +71,12 @@ describe("the hand-off's edges", () => {
     expect(withReturnOrigin("http://localhost:8000/logout")).toBe(
       "http://localhost:8000/logout?return_origin=http%3A%2F%2Flocalhost%3A3000",
     );
-    expect(withReturnOrigin("http://localhost:8000/x?return_origin=old&a=1", "https://pr-dev-pettycash.dailyminty.com")).toBe(
+    expect(
+      withReturnOrigin(
+        "http://localhost:8000/x?return_origin=old&a=1",
+        "https://pr-dev-pettycash.dailyminty.com",
+      ),
+    ).toBe(
       "http://localhost:8000/x?return_origin=https%3A%2F%2Fpr-dev-pettycash.dailyminty.com&a=1",
     );
   });
@@ -73,20 +87,32 @@ describe("the hand-off's edges", () => {
         `&entity_id=${ENTITY}&return_origin=http%3A%2F%2Flocalhost%3A3000`,
     );
     // no company anywhere: no entity_id at all
-    expect(handoffUrl("/landing")).toBe("http://localhost:8000/handoff/petty-cash-web?next=%2Flanding&return_origin=http%3A%2F%2Flocalhost%3A3000");
+    expect(handoffUrl("/landing")).toBe(
+      "http://localhost:8000/handoff/petty-cash-web?next=%2Flanding&return_origin=http%3A%2F%2Flocalhost%3A3000",
+    );
   });
 
   it("takes the company from the address when the one given is empty, and decodes its name", () => {
-    expect(new URL(handoffUrl("/entity/360812e1/vine-caf%C3%A9/petty-cash", "")).searchParams.get("entity_id")).toBe("360812e1/vine-café");
+    expect(
+      new URL(handoffUrl("/entity/360812e1/vine-caf%C3%A9/petty-cash", "")).searchParams.get(
+        "entity_id",
+      ),
+    ).toBe("360812e1/vine-café");
   });
 
   it("goes back to the page it is on, by the address's company when the cookie has none", () => {
     const go = vi.fn();
     _resetHandoffForTests(go);
-    window.history.replaceState(null, "", "/entity/360812e1/olive-and-vine/petty-cash/reports?page=2");
+    window.history.replaceState(
+      null,
+      "",
+      "/entity/360812e1/olive-and-vine/petty-cash/reports?page=2",
+    );
     redirectToHandoff();
     const url = new URL(go.mock.calls[0][0]);
-    expect(url.searchParams.get("next")).toBe("/entity/360812e1/olive-and-vine/petty-cash/reports?page=2");
+    expect(url.searchParams.get("next")).toBe(
+      "/entity/360812e1/olive-and-vine/petty-cash/reports?page=2",
+    );
     expect(url.searchParams.get("entity_id")).toBe("360812e1/olive-and-vine");
   });
 

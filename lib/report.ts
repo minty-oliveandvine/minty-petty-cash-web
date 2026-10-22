@@ -56,13 +56,24 @@ export type DailyReport = {
   };
   closing_balance: number;
   /** `edit_details`: the details that move no balance may be changed (lib/reportEdits.ts) - any submitted report, not only the latest. */
-  permissions: { edit: boolean; delete: boolean; publish: boolean; share: boolean; edit_details: boolean };
+  permissions: {
+    edit: boolean;
+    delete: boolean;
+    publish: boolean;
+    share: boolean;
+    edit_details: boolean;
+  };
   /** What an expense line may be changed to - only while `edit_details`, else null. */
   options: { suppliers: Supplier[]; accounts: ExpenseAccount[] } | null;
 };
 
 /** What `POST /reports/<id>/reopen` answers: the report is a draft again, at Addition to Drawer. */
-export type Reopened = { report_id: string; transaction_date: string; status: "draft"; next: "opening" };
+export type Reopened = {
+  report_id: string;
+  transaction_date: string;
+  status: "draft";
+  next: "opening";
+};
 
 /** What `DELETE /reports/<id>` answers. */
 export type Deleted = { deleted: string; transaction_date: string; next: "dashboard" };
@@ -70,7 +81,10 @@ export type Deleted = { deleted: string; transaction_date: string; next: "dashbo
 const TONES: readonly StatusTone[] = ["success", "warning", "danger", "info", "neutral"];
 
 /** The Status pill (the header's, and each history row's): the API's label and tone, as they stand. */
-export function reportPill(report: Pick<DailyReport, "status_label" | "status_tone">): { label: string; tone: StatusTone } {
+export function reportPill(report: Pick<DailyReport, "status_label" | "status_tone">): {
+  label: string;
+  tone: StatusTone;
+} {
   const tone = TONES.find((t) => t === report.status_tone);
   // A tone outside Part 13's five is the API's mistake: say so, and draw it Neutral rather than guess.
   if (!tone) console.error(`Unknown status tone from the API: ${report.status_tone}`);
@@ -99,14 +113,27 @@ export function reportKpis(report: DailyReport): Kpi[] {
  * The KPI cards from whichever figures arrived - all three on the Daily Report, only those sent on
  * a shared one (lib/share.ts). `expenseCount` null: the expenses' meta line is left out.
  */
-export function kpiCards(kpis: Partial<DailyReport["kpis"]>, expenseCount: number | null, code: string | null): Kpi[] {
+export function kpiCards(
+  kpis: Partial<DailyReport["kpis"]>,
+  expenseCount: number | null,
+  code: string | null,
+): Kpi[] {
   const cards: Kpi[] = [];
-  if (typeof kpis.total_sales === "number") cards.push({ label: "Total sales", value: money(kpis.total_sales, code), meta: null });
+  if (typeof kpis.total_sales === "number")
+    cards.push({ label: "Total sales", value: money(kpis.total_sales, code), meta: null });
   if (typeof kpis.total_expenses === "number") {
-    const meta = expenseCount === null ? null : `${expenseCount} ${expenseCount === 1 ? "expense" : "expenses"}`;
+    const meta =
+      expenseCount === null
+        ? null
+        : `${expenseCount} ${expenseCount === 1 ? "expense" : "expenses"}`;
     cards.push({ label: "Total expenses", value: money(kpis.total_expenses, code), meta });
   }
-  if (typeof kpis.cash_position === "number") cards.push({ label: CASH_POSITION, value: money(kpis.cash_position, code), meta: "Counted, with the safe box" });
+  if (typeof kpis.cash_position === "number")
+    cards.push({
+      label: CASH_POSITION,
+      value: money(kpis.cash_position, code),
+      meta: "Counted, with the safe box",
+    });
   return cards;
 }
 
@@ -138,7 +165,8 @@ export type ExpenseBar = {
   width: number;
 };
 
-const toCents = (amount: number | null | undefined) => (typeof amount === "number" && Number.isFinite(amount) ? Math.round(amount * 100) : 0);
+const toCents = (amount: number | null | undefined) =>
+  typeof amount === "number" && Number.isFinite(amount) ? Math.round(amount * 100) : 0;
 const twoPlaces = (n: number) => Math.round(n * 100) / 100;
 
 /** Whole percentages of the total that add up to exactly 100 (largest remainder), in integer cents. */
@@ -146,7 +174,9 @@ function wholePercents(cents: number[]): number[] {
   const total = cents.reduce((a, b) => a + b, 0);
   const shares = cents.map((c) => Math.floor((c * 100) / total));
   const remainders = cents.map((c) => (c * 100) % total);
-  const order = cents.map((_, i) => i).sort((a, b) => remainders[b] - remainders[a] || cents[b] - cents[a]);
+  const order = cents
+    .map((_, i) => i)
+    .sort((a, b) => remainders[b] - remainders[a] || cents[b] - cents[a]);
   const left = 100 - shares.reduce((a, b) => a + b, 0);
   for (const i of order.slice(0, left)) shares[i] += 1;
   return shares;
@@ -158,9 +188,16 @@ function wholePercents(cents: number[]): number[] {
  * A row with nothing sold is left out; the rest run largest first (equal amounts keep the list's
  * order), each with its whole percentage and a tone. No sales: an empty list.
  */
-export function salesMix(report: { sales: { methods: DailyReport["sales"]["methods"]; cash?: number | null } }): MixSegment[] {
-  const rows = [...salesRows(report), { key: "cash", label: "Cash", amount: report.sales.cash ?? 0 }];
-  const kept = rows.map((row) => ({ ...row, cents: toCents(row.amount) })).filter((row) => row.cents > 0);
+export function salesMix(report: {
+  sales: { methods: DailyReport["sales"]["methods"]; cash?: number | null };
+}): MixSegment[] {
+  const rows = [
+    ...salesRows(report),
+    { key: "cash", label: "Cash", amount: report.sales.cash ?? 0 },
+  ];
+  const kept = rows
+    .map((row) => ({ ...row, cents: toCents(row.amount) }))
+    .filter((row) => row.cents > 0);
   if (!kept.length) return [];
   kept.sort((a, b) => b.cents - a.cents);
   const total = kept.reduce((sum, row) => sum + row.cents, 0);
@@ -183,16 +220,24 @@ export const NO_ACCOUNT = "No account";
  * grouping this file makes - the note at the top), "No account" for a line without one; a zero
  * total left out; largest first, then by name.
  */
-export function expenseBars(report: { expenses: { lines: Pick<ExpenseLine, "account" | "amount">[] } }): ExpenseBar[] {
+export function expenseBars(report: {
+  expenses: { lines: Pick<ExpenseLine, "account" | "amount">[] };
+}): ExpenseBar[] {
   const sums = new Map<string, number>();
   for (const line of report.expenses.lines) {
     const name = line.account?.name?.trim() || NO_ACCOUNT;
     sums.set(name, (sums.get(name) ?? 0) + toCents(line.amount));
   }
-  const rows = [...sums].filter(([, cents]) => cents > 0).sort(([an, a], [bn, b]) => b - a || (an < bn ? -1 : an > bn ? 1 : 0));
+  const rows = [...sums]
+    .filter(([, cents]) => cents > 0)
+    .sort(([an, a], [bn, b]) => b - a || (an < bn ? -1 : an > bn ? 1 : 0));
   if (!rows.length) return [];
   const top = rows[0][1];
-  return rows.map(([name, cents]) => ({ name, amount: cents / 100, width: twoPlaces((cents * 100) / top) }));
+  return rows.map(([name, cents]) => ({
+    name,
+    amount: cents / 100,
+    width: twoPlaces((cents * 100) / top),
+  }));
 }
 
 /** The proportion bar as text (its `role="img"` label): "Sales by method: Cash HKD 300.00, 71%; Visa HKD 120.00, 29%". */
@@ -214,12 +259,18 @@ export function differenceAlert(report: DailyReport): { title: string; body: str
 }
 
 /** `differenceAlert` from the difference alone (a shared report's may come without its reason). */
-export function differenceAlertOf(difference: { amount?: number; reason?: string | null } | null | undefined, code: string | null): { title: string; body: string } | null {
+export function differenceAlertOf(
+  difference: { amount?: number; reason?: string | null } | null | undefined,
+  code: string | null,
+): { title: string; body: string } | null {
   if (typeof difference?.amount !== "number") return null;
   const diff = differenceOf(difference.amount);
   if (diff.kind === "none") return null;
   const reason = (difference.reason ?? "").trim();
-  return { title: `Cash was ${differenceText(diff, code)}`, body: reason ? `Note: ${reason}` : "No reason was given." };
+  return {
+    title: `Cash was ${differenceText(diff, code)}`,
+    body: reason ? `Note: ${reason}` : "No reason was given.",
+  };
 }
 
 /** An expense row's title: the account's name, as the Expenses stage shows it. */
@@ -229,12 +280,18 @@ export function expenseTitle(line: ExpenseLine): string {
 
 /** An expense row's meta line: "ParknShop · Account 429" (or "No supplier"). */
 export function expenseMeta(line: ExpenseLine): string {
-  return [line.supplier?.name, line.account?.code ? `Account ${line.account.code}` : null].filter(Boolean).join(" · ") || "No supplier";
+  return (
+    [line.supplier?.name, line.account?.code ? `Account ${line.account.code}` : null]
+      .filter(Boolean)
+      .join(" · ") || "No supplier"
+  );
 }
 
 /** Every receipt of the day, with the expense it belongs to - the Receipts section's File cards. */
 export function reportReceipts(report: DailyReport): { line: ExpenseLine; receipt: Receipt }[] {
-  return report.expenses.lines.flatMap((line) => line.receipts.map((receipt) => ({ line, receipt })));
+  return report.expenses.lines.flatMap((line) =>
+    line.receipts.map((receipt) => ({ line, receipt })),
+  );
 }
 
 /** Where the cash added came from, in the Addition to Drawer stage's words. */
@@ -252,19 +309,31 @@ export function cashRowsOf(cash: Partial<DailyReport["cash"]>, code: string | nu
   const amountText = (amount: number) => money(amount, code);
   const has = (n: unknown): n is number => typeof n === "number";
   const added = cash.cash_addition;
-  const source = has(added) && added > 0 && cash.cash_addition_type ? (ADDITION_SOURCE[cash.cash_addition_type] ?? cash.cash_addition_type) : null;
+  const source =
+    has(added) && added > 0 && cash.cash_addition_type
+      ? (ADDITION_SOURCE[cash.cash_addition_type] ?? cash.cash_addition_type)
+      : null;
   const rows: (CashRow | null)[] = [
-    has(cash.opening_balance) ? { label: "Starting cash balance", value: amountText(cash.opening_balance) } : null,
+    has(cash.opening_balance)
+      ? { label: "Starting cash balance", value: amountText(cash.opening_balance) }
+      : null,
     has(added) ? { label: "Added to the drawer", value: amountText(added) } : null,
     source ? { label: "Where the cash came from", value: source, words: true } : null,
     has(cash.cash_sales) ? { label: "Cash sales", value: amountText(cash.cash_sales) } : null,
     has(cash.expenses) ? { label: "Expenses", value: amountText(cash.expenses) } : null,
-    has(cash.bank_deposit) ? { label: "Cash taken for bank deposit", value: amountText(cash.bank_deposit) } : null,
+    has(cash.bank_deposit)
+      ? { label: "Cash taken for bank deposit", value: amountText(cash.bank_deposit) }
+      : null,
     has(cash.expected) ? { label: "Expected in drawer", value: money(cash.expected, code) } : null,
     has(cash.counted) ? { label: "Counted in the drawer", value: amountText(cash.counted) } : null,
     has(cash.safe_box) ? { label: "In the safe box", value: amountText(cash.safe_box) } : null,
     has(cash.difference?.amount)
-      ? { label: "Difference", value: differenceText(differenceOf(cash.difference.amount), code), total: true, words: true }
+      ? {
+          label: "Difference",
+          value: differenceText(differenceOf(cash.difference.amount), code),
+          total: true,
+          words: true,
+        }
       : null,
   ];
   return rows.filter((row): row is CashRow => row !== null);

@@ -45,7 +45,10 @@ const SKIPPED = "deliveroo_sales";
 const cents = (amount: number) => Math.round(amount * 100) / 100;
 
 /** The methods each section lists, in Settings order (Deliveroo dropped from delivery, as Flask does). */
-export function sections(methods: SalesMethod[]): { electronic: SalesMethod[]; delivery: SalesMethod[] } {
+export function sections(methods: SalesMethod[]): {
+  electronic: SalesMethod[];
+  delivery: SalesMethod[];
+} {
   return {
     electronic: methods.filter((m) => m.type === "electronic"),
     delivery: methods.filter((m) => m.type === "delivery" && m.value_name !== SKIPPED),
@@ -61,10 +64,19 @@ export function shownMethods(methods: SalesMethod[]): SalesMethod[] {
 export type SalesTotals = { electronic: number; delivery: number; cash: number; total: number };
 
 /** The running subtotals and the day's total sales, from what the fields show. */
-export function salesTotals(methods: SalesMethod[], values: Record<string, string>, cash: string): SalesTotals {
+export function salesTotals(
+  methods: SalesMethod[],
+  values: Record<string, string>,
+  cash: string,
+): SalesTotals {
   const { electronic, delivery } = sections(methods);
-  const sum = (list: SalesMethod[]) => cents(list.reduce((total, m) => total + (parseAmount(values[m.value_name] ?? "") ?? 0), 0));
-  const totals = { electronic: sum(electronic), delivery: sum(delivery), cash: cents(parseAmount(cash) ?? 0) };
+  const sum = (list: SalesMethod[]) =>
+    cents(list.reduce((total, m) => total + (parseAmount(values[m.value_name] ?? "") ?? 0), 0));
+  const totals = {
+    electronic: sum(electronic),
+    delivery: sum(delivery),
+    cash: cents(parseAmount(cash) ?? 0),
+  };
   return { ...totals, total: cents(totals.electronic + totals.delivery + totals.cash) };
 }
 
@@ -76,7 +88,9 @@ export function shownAmount(amount: number | null): string {
 /** The fields as the page first shows them. */
 export function initialValues(page: SalesPage): { values: Record<string, string>; cash: string } {
   return {
-    values: Object.fromEntries(shownMethods(page.methods).map((m) => [m.value_name, shownAmount(m.amount)])),
+    values: Object.fromEntries(
+      shownMethods(page.methods).map((m) => [m.value_name, shownAmount(m.amount)]),
+    ),
     cash: shownAmount(page.cash_sales),
   };
 }
@@ -87,10 +101,17 @@ export function initialValues(page: SalesPage): { values: Record<string, string>
  */
 export function salesDirty(page: SalesPage, values: Record<string, string>, cash: string): boolean {
   if ((parseAmount(cash) ?? 0) !== (page.cash_sales ?? 0)) return true;
-  return shownMethods(page.methods).some((m) => (parseAmount(values[m.value_name] ?? "") ?? 0) !== (m.amount ?? 0));
+  return shownMethods(page.methods).some(
+    (m) => (parseAmount(values[m.value_name] ?? "") ?? 0) !== (m.amount ?? 0),
+  );
 }
 
 /** The save's `amounts`: every method the stage shows, an empty field as zero. */
-export function salesAmounts(methods: SalesMethod[], values: Record<string, string>): Record<string, number> {
-  return Object.fromEntries(shownMethods(methods).map((m) => [m.value_name, parseAmount(values[m.value_name] ?? "") ?? 0]));
+export function salesAmounts(
+  methods: SalesMethod[],
+  values: Record<string, string>,
+): Record<string, number> {
+  return Object.fromEntries(
+    shownMethods(methods).map((m) => [m.value_name, parseAmount(values[m.value_name] ?? "") ?? 0]),
+  );
 }

@@ -24,7 +24,13 @@ const LIFE_MS = 5000;
 /** A message to show; a new `id` shows it again even when the words are the same. */
 export type ToastMessage = { id: number; message: string };
 
-export function ToastRegion({ toast, onDismiss }: { toast: ToastMessage | null; onDismiss: () => void }) {
+export function ToastRegion({
+  toast,
+  onDismiss,
+}: {
+  toast: ToastMessage | null;
+  onDismiss: () => void;
+}) {
   const mounted = useMounted();
   if (!mounted) return null;
   return createPortal(

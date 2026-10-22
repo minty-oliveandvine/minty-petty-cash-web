@@ -42,23 +42,31 @@ describe("the landing page", () => {
     });
     render(<Landing />);
     expect(screen.getByRole("status")).toHaveTextContent("Loading…");
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/entity/360812e1/olive-and-vine/petty-cash"));
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith("/entity/360812e1/olive-and-vine/petty-cash"),
+    );
     expect(getAuth()).toEqual({ token: "a.b.c", entityId: ENTITY, entityName: "Olive & Vine" });
     expect(go).not.toHaveBeenCalled();
   });
 
-  it.each([null, "//evil.example/x", "https://evil.example"])("goes to / for next=%s", async (next) => {
-    params = new URLSearchParams({ token: "a.b.c" });
-    if (next !== null) params.set("next", next);
-    render(<Landing />);
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
-    // no company named: the company cookies hold empty strings
-    expect(getAuth()).toEqual({ token: "a.b.c", entityId: "", entityName: "" });
-  });
+  it.each([null, "//evil.example/x", "https://evil.example"])(
+    "goes to / for next=%s",
+    async (next) => {
+      params = new URLSearchParams({ token: "a.b.c" });
+      if (next !== null) params.set("next", next);
+      render(<Landing />);
+      await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
+      // no company named: the company cookies hold empty strings
+      expect(getAuth()).toEqual({ token: "a.b.c", entityId: "", entityName: "" });
+    },
+  );
 
   it("with no token, goes back to Flask for next and the company it named, forgetting any old token", async () => {
     setAuth("old", "old-company", "Old");
-    params = new URLSearchParams({ entity_id: ENTITY, next: "/entity/360812e1/olive-and-vine/petty-cash/reports" });
+    params = new URLSearchParams({
+      entity_id: ENTITY,
+      next: "/entity/360812e1/olive-and-vine/petty-cash/reports",
+    });
     render(<Landing />);
     await waitFor(() => expect(go).toHaveBeenCalledTimes(1));
     const url = new URL(go.mock.calls[0][0]);

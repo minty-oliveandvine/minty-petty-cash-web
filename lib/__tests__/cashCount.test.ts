@@ -37,14 +37,32 @@ import {
 
 // Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
 
-const d = (id: string, value: number, kind: string, count = 0): Denomination => ({ id, value, kind, count });
+const d = (id: string, value: number, kind: string, count = 0): Denomination => ({
+  id,
+  value,
+  kind,
+  count,
+});
 
-const denominations = [d("n500", 500, "note"), d("n100", 100, "note", 2), d("c5", 5, "coin"), d("c050", 0.5, "coin"), d("c010", 0.1, "coin")];
+const denominations = [
+  d("n500", 500, "note"),
+  d("n100", 100, "note", 2),
+  d("c5", 5, "coin"),
+  d("c050", 0.5, "coin"),
+  d("c010", 0.1, "coin"),
+];
 
 const page = (over: Partial<CashCountPage> = {}): CashCountPage => ({
   transaction_date: "2026-10-13",
   currency_code: "HKD",
-  draft: { id: "d", status: "draft", current_section: "deposit", completed_sections: ["opening", "sales", "expenses"], xero_integrated: false, publishing_status: null },
+  draft: {
+    id: "d",
+    status: "draft",
+    current_section: "deposit",
+    completed_sections: ["opening", "sales", "expenses"],
+    xero_integrated: false,
+    publishing_status: null,
+  },
   opening_balance: 500,
   cash_addition: 100,
   cash_sales: 820.5,
@@ -70,7 +88,9 @@ describe("the figures", () => {
     expect(rowTotal(d("c050", 0.5, "coin"), "3")).toBe(1.5);
     expect(rowTotal(d("c010", 0.1, "coin"), "3")).toBe(0.3);
     expect(rowTotal(d("n500", 500, "note"), "")).toBe(0);
-    expect(drawerTotal(denominations, { n500: "2", n100: "3", c5: "1", c050: "3", c010: "3" })).toBe(1306.8);
+    expect(
+      drawerTotal(denominations, { n500: "2", n100: "3", c5: "1", c050: "3", c010: "3" }),
+    ).toBe(1306.8);
     expect(drawerTotal(denominations, {})).toBe(0);
   });
 
@@ -100,7 +120,9 @@ describe("the difference", () => {
     expect(differenceText({ amount: 0, kind: "none" }, "HKD")).toBe("None");
     // owner 2026-10-21: one money rule (@minty/shared/money) - was "HKD20.00", and "$1,234.50" with no currency;
     // owner 2026-10-22: no silent fallback - an amount with no currency says so
-    expect(differenceText({ amount: -1234.5, kind: "short" }, null)).toBe("1,234.50 (No currency selected) short");
+    expect(differenceText({ amount: -1234.5, kind: "short" }, null)).toBe(
+      "1,234.50 (No currency selected) short",
+    );
   });
 });
 
@@ -108,7 +130,9 @@ describe("the deposit limit", () => {
   it("allows up to the cash on hand, and names the amount allowed above it", () => {
     expect(depositProblem(page(), "")).toBeNull();
     expect(depositProblem(page(), "1,300.50")).toBeNull();
-    expect(depositProblem(page(), "1300.51")).toBe("The deposit can't be more than the cash on hand. Enter HKD\u00a01,300.50 or less.");
+    expect(depositProblem(page(), "1300.51")).toBe(
+      "The deposit can't be more than the cash on hand. Enter HKD\u00a01,300.50 or less.",
+    );
   });
 
   it("leaves a cash on hand below zero to the gate", () => {
@@ -141,23 +165,35 @@ describe("the reason", () => {
 
   it("is asked for only after a refused Save & Next, and only while there is a difference", () => {
     expect(reasonProblem("", short, "HKD", { submitted: false })).toBeNull();
-    expect(reasonProblem("", short, "HKD", { submitted: true })).toBe("The count is HKD\u00a020.00 short. Add the reason to continue.");
-    expect(reasonProblem("   ", short, "HKD", { submitted: true })).toBe("The count is HKD\u00a020.00 short. Add the reason to continue.");
+    expect(reasonProblem("", short, "HKD", { submitted: true })).toBe(
+      "The count is HKD\u00a020.00 short. Add the reason to continue.",
+    );
+    expect(reasonProblem("   ", short, "HKD", { submitted: true })).toBe(
+      "The count is HKD\u00a020.00 short. Add the reason to continue.",
+    );
     expect(reasonProblem("Float swap", short, "HKD", { submitted: true })).toBeNull();
     expect(reasonProblem("", none, "HKD", { submitted: true })).toBeNull();
-    expect(reasonProblem("", { amount: 0.01, kind: "over" }, "HKD", { submitted: true })).toBe("The count is HKD\u00a00.01 over. Add the reason to continue.");
+    expect(reasonProblem("", { amount: 0.01, kind: "over" }, "HKD", { submitted: true })).toBe(
+      "The count is HKD\u00a00.01 over. Add the reason to continue.",
+    );
   });
 
   it("over 300 characters says so at once; the helper counts live", () => {
     expect(reasonProblem("x".repeat(300), short, "HKD", { submitted: false })).toBeNull();
-    expect(reasonProblem("x".repeat(301), none, "HKD", { submitted: false })).toBe("The reason is 301 characters. Shorten it to 300 characters or fewer.");
-    expect(reasonHelper(" Float swap ")).toBe("So the reviewer knows what happened. 10 of 300 characters.");
+    expect(reasonProblem("x".repeat(301), none, "HKD", { submitted: false })).toBe(
+      "The reason is 301 characters. Shorten it to 300 characters or fewer.",
+    );
+    expect(reasonHelper(" Float swap ")).toBe(
+      "So the reviewer knows what happened. 10 of 300 characters.",
+    );
   });
 });
 
 describe("the denominations", () => {
   it("are named by the currency code, a non-breaking space and their cash_name without its symbol", () => {
-    expect(denominationLabel({ ...d("a", 1000, "note"), name: "$1,000" }, "HKD")).toBe("HKD\u00a01,000");
+    expect(denominationLabel({ ...d("a", 1000, "note"), name: "$1,000" }, "HKD")).toBe(
+      "HKD\u00a01,000",
+    );
     expect(denominationLabel({ ...d("g", 50, "note"), name: "S$50" }, "HKD")).toBe("HKD\u00a050");
     expect(denominationLabel({ ...d("g", 10, "note"), name: "S$10" }, "SGD")).toBe("SGD\u00a010");
     expect(denominationLabel({ ...d("b", 0.5, "coin"), name: "50c" }, "HKD")).toBe("HKD\u00a050c");
@@ -178,7 +214,12 @@ describe("the denominations", () => {
   });
 
   it("group notes, then coins, then anything else, in the company's order", () => {
-    const groups = denominationGroups([d("c1", 1, "coin"), d("x", 3, "token"), d("n1", 20, "note"), d("n2", 10, "note")]);
+    const groups = denominationGroups([
+      d("c1", 1, "coin"),
+      d("x", 3, "token"),
+      d("n1", 20, "note"),
+      d("n2", 10, "note"),
+    ]);
     expect(groups.map((g) => [g.title, g.items.map((i) => i.id)])).toEqual([
       ["Notes", ["n1", "n2"]],
       ["Coins", ["c1"]],
@@ -189,8 +230,19 @@ describe("the denominations", () => {
 
 describe("the fields and the save", () => {
   it("show the saved values grouped, a zero as an empty field", () => {
-    const values = initialValues(page({ bank_deposit: 300, safe_box_balance: 1200, discrepancy: { amount: -5, kind: "short", reason: "Float" } }));
-    expect(values).toEqual({ deposit: "300.00", counts: { n500: "", n100: "2", c5: "", c050: "", c010: "" }, safebox: "1,200.00", reason: "Float" });
+    const values = initialValues(
+      page({
+        bank_deposit: 300,
+        safe_box_balance: 1200,
+        discrepancy: { amount: -5, kind: "short", reason: "Float" },
+      }),
+    );
+    expect(values).toEqual({
+      deposit: "300.00",
+      counts: { n500: "", n100: "2", c5: "", c050: "", c010: "" },
+      safebox: "1,200.00",
+      reason: "Float",
+    });
   });
 
   it("count a change by value - grouping is no change, putting a value back clears it", () => {
@@ -206,7 +258,12 @@ describe("the fields and the save", () => {
 
   it("send the deposit every time, every denomination, and the reason only while there is a difference", () => {
     const p = page();
-    const values = { deposit: "1,000.00", counts: { n100: "3", c050: "1" }, safebox: "", reason: "  Float swap " };
+    const values = {
+      deposit: "1,000.00",
+      counts: { n100: "3", c050: "1" },
+      safebox: "",
+      reason: "  Float swap ",
+    };
     expect(savePayload("2026-10-13", p, values, { amount: -0.5, kind: "short" }, "next")).toEqual({
       transaction_date: "2026-10-13",
       bank_deposit: 1000,
@@ -215,7 +272,9 @@ describe("the fields and the save", () => {
       discrepancy_reason: "Float swap",
       action: "next",
     });
-    expect(savePayload("2026-10-13", p, { ...values, deposit: "" }, { amount: 0, kind: "none" }, "exit")).toMatchObject({
+    expect(
+      savePayload("2026-10-13", p, { ...values, deposit: "" }, { amount: 0, kind: "none" }, "exit"),
+    ).toMatchObject({
       bank_deposit: 0,
       discrepancy_reason: "",
       action: "exit",
@@ -224,13 +283,16 @@ describe("the fields and the save", () => {
 });
 
 describe("one task at a time (Daily Closing Phase 1, Flask 4e004d2)", () => {
-  const fresh = (over: Partial<CashCountPage> = {}) => page({ denominations: denominations.map((x) => ({ ...x, count: 0 })), ...over });
+  const fresh = (over: Partial<CashCountPage> = {}) =>
+    page({ denominations: denominations.map((x) => ({ ...x, count: 0 })), ...over });
 
   it("opens a fresh stage on the deposit, the count and the safe box waiting in that order", () => {
     const done = initialTasks(fresh());
     expect(done).toEqual({ deposit: false, count: false, safe: false });
     expect(currentTask(done)).toBe("deposit");
-    expect([taskState("deposit", done), taskState("count", done), taskState("safe", done)]).toEqual(["current", "next", "next"]);
+    expect([taskState("deposit", done), taskState("count", done), taskState("safe", done)]).toEqual(
+      ["current", "next", "next"],
+    );
     expect(cashGuidance(done)).toBe("Three quick checks. We'll go one at a time.");
   });
 
@@ -244,7 +306,12 @@ describe("one task at a time (Daily Closing Phase 1, Flask 4e004d2)", () => {
   it("opens every task done once the stage was saved: a counted note, or Cash Count completed", () => {
     expect(countSaved(page())).toBe(true); // the fixture counts two HKD 100 notes
     expect(countSaved(fresh())).toBe(false);
-    const completed = fresh({ draft: { ...page().draft!, completed_sections: ["opening", "sales", "expenses", "deposit", "cash_count"] } });
+    const completed = fresh({
+      draft: {
+        ...page().draft!,
+        completed_sections: ["opening", "sales", "expenses", "deposit", "cash_count"],
+      },
+    });
     expect(countSaved(completed)).toBe(true);
     const done = initialTasks(completed);
     expect(done).toEqual({ deposit: true, count: true, safe: true });
@@ -272,15 +339,21 @@ describe("one task at a time (Daily Closing Phase 1, Flask 4e004d2)", () => {
 
   it("keeps the sheet open on the first row with a problem", () => {
     expect(sheetProblem(denominations, { n500: "1", c5: "2" })).toBeNull();
-    expect(sheetProblem(denominations, { n500: "1", c5: "2000000", c010: "3000000" })?.id).toBe("c5");
+    expect(sheetProblem(denominations, { n500: "1", c5: "2000000", c010: "3000000" })?.id).toBe(
+      "c5",
+    );
   });
 
   it("holds Save & Next for the count first, then for a difference's reason - any cent counts", () => {
     const counted = { deposit: true, count: true, safe: true };
-    expect(nextGate({ deposit: true, count: false, safe: true }, difference(0, 0), "")).toBe(COUNT_FIRST);
+    expect(nextGate({ deposit: true, count: false, safe: true }, difference(0, 0), "")).toBe(
+      COUNT_FIRST,
+    );
     expect(COUNT_FIRST).toBe("Count the drawer to continue");
     expect(nextGate(counted, difference(980, 1000), "")).toBe(REASON_FIRST);
-    expect(nextGate(counted, difference(1000.01, 1000), "  ")).toBe("Add a reason for the difference to continue.");
+    expect(nextGate(counted, difference(1000.01, 1000), "  ")).toBe(
+      "Add a reason for the difference to continue.",
+    );
     expect(nextGate(counted, difference(980, 1000), "Float swap")).toBeNull();
     expect(nextGate(counted, difference(1000, 1000), "")).toBeNull();
   });

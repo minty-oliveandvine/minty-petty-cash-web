@@ -48,7 +48,9 @@ describe("profileApi", () => {
 
   it("saves with a PATCH of the changes as JSON, for the company", async () => {
     fetchMock.mockResolvedValue(json({ user: { first_name: "Jo" } }));
-    await expect(profileApi.save({ first_name: "Jo" }, ENTITY)).resolves.toEqual({ user: { first_name: "Jo" } });
+    await expect(profileApi.save({ first_name: "Jo" }, ENTITY)).resolves.toEqual({
+      user: { first_name: "Jo" },
+    });
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(`http://localhost:8000/api/me/profile?entity=${ENTITY}`);
     expect(init.method).toBe("PATCH");
@@ -58,7 +60,10 @@ describe("profileApi", () => {
 
   it("refuses with Flask's sentence", async () => {
     fetchMock.mockResolvedValue(json({ error: "That name is too long." }, 422));
-    await expect(profileApi.save({ first_name: "x" }, ENTITY)).rejects.toMatchObject({ status: 422, message: "That name is too long." });
+    await expect(profileApi.save({ first_name: "x" }, ENTITY)).rejects.toMatchObject({
+      status: 422,
+      message: "That name is too long.",
+    });
   });
 });
 
@@ -70,8 +75,19 @@ describe("loadSubscriptions", () => {
 
   it("walks every page at 100 a page, in order, with the signal, with page 1's payer and billing", async () => {
     fetchMock
-      .mockResolvedValueOnce(json({ payer: { id: "p" }, billing: { currency: "HKD" }, entities: [{ id: "a" }], page: 1, pages: 3, total: 3 }))
-      .mockResolvedValueOnce(json({ payer: { id: "other" }, entities: [{ id: "b" }], page: 2, pages: 3 }))
+      .mockResolvedValueOnce(
+        json({
+          payer: { id: "p" },
+          billing: { currency: "HKD" },
+          entities: [{ id: "a" }],
+          page: 1,
+          pages: 3,
+          total: 3,
+        }),
+      )
+      .mockResolvedValueOnce(
+        json({ payer: { id: "other" }, entities: [{ id: "b" }], page: 2, pages: 3 }),
+      )
       .mockResolvedValueOnce(json({ entities: [{ id: "c" }], page: 3, pages: 3 }));
     const signal = new AbortController().signal;
     await expect(loadSubscriptions(signal)).resolves.toEqual({
@@ -92,7 +108,9 @@ describe("loadSubscriptions", () => {
     for (const pages of [1, 0, undefined]) {
       fetchMock.mockReset();
       fetchMock.mockResolvedValueOnce(json({ entities: [{ id: "a" }], pages }));
-      await expect(loadSubscriptions(new AbortController().signal)).resolves.toMatchObject({ entities: [{ id: "a" }] });
+      await expect(loadSubscriptions(new AbortController().signal)).resolves.toMatchObject({
+        entities: [{ id: "a" }],
+      });
       expect(fetchMock).toHaveBeenCalledTimes(1);
     }
   });
@@ -101,13 +119,19 @@ describe("loadSubscriptions", () => {
     fetchMock
       .mockResolvedValueOnce(json({ entities: [{ id: "a" }], pages: 2 }))
       .mockResolvedValueOnce(json({ error: "Try again later." }, 503));
-    await expect(loadSubscriptions(new AbortController().signal)).rejects.toMatchObject({ status: 503, message: "Try again later." });
+    await expect(loadSubscriptions(new AbortController().signal)).rejects.toMatchObject({
+      status: 503,
+      message: "Try again later.",
+    });
   });
 
   it("refuses a page with no entities list as an ApiError 502", async () => {
     fetchMock.mockResolvedValueOnce(json({ pages: 1 }));
     const error = await loadSubscriptions(new AbortController().signal).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiError);
-    expect(error).toMatchObject({ status: 502, message: "That came back in a shape I didn't expect. Mind trying again?" });
+    expect(error).toMatchObject({
+      status: 502,
+      message: "That came back in a shape I didn't expect. Mind trying again?",
+    });
   });
 });

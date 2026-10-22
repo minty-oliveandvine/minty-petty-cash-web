@@ -65,7 +65,9 @@ export function savedText(lastEditSeconds: number, now: Date): string {
   const saved = new Date(now.getTime() - Math.max(0, lastEditSeconds) * 1000);
   const time = clockTime(saved);
   const sameDay =
-    saved.getFullYear() === now.getFullYear() && saved.getMonth() === now.getMonth() && saved.getDate() === now.getDate();
+    saved.getFullYear() === now.getFullYear() &&
+    saved.getMonth() === now.getMonth() &&
+    saved.getDate() === now.getDate();
   if (sameDay) return `Saved ${time}`;
   const day = `${WEEKDAYS_SHORT[saved.getDay()]} ${saved.getDate()} ${MONTHS[saved.getMonth()]}`;
   return `Saved ${day}${saved.getFullYear() === now.getFullYear() ? "" : ` ${saved.getFullYear()}`}, ${time}`;

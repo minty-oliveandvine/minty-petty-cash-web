@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { accountsFor, canRemoveReceipt, draftLineChanges, draftLineForm, keptReceipts, withLine } from "@/lib/expenseEdit";
+import {
+  accountsFor,
+  canRemoveReceipt,
+  draftLineChanges,
+  draftLineForm,
+  keptReceipts,
+  withLine,
+} from "@/lib/expenseEdit";
 import type { ExpenseLine } from "@/lib/expenses";
 
 const LINE: ExpenseLine = {
@@ -16,25 +23,40 @@ const LINE: ExpenseLine = {
   ],
 };
 
-const same = { amount: "120.50", remarks: "Printer paper", supplier: LINE.supplier, accountId: "a1", receipt: null, removeReceiptIds: [] as string[] };
+const same = {
+  amount: "120.50",
+  remarks: "Printer paper",
+  supplier: LINE.supplier,
+  accountId: "a1",
+  receipt: null,
+  removeReceiptIds: [] as string[],
+};
 
 describe("what an edit sends", () => {
   it("nothing when nothing changed - grouping and spaces are no change", () => {
     expect(draftLineChanges(LINE, same)).toEqual({});
-    expect(draftLineChanges(LINE, { ...same, amount: "120.5", remarks: " Printer paper " })).toEqual({});
+    expect(
+      draftLineChanges(LINE, { ...same, amount: "120.5", remarks: " Printer paper " }),
+    ).toEqual({});
   });
 
   it("each changed field alone", () => {
     expect(draftLineChanges(LINE, { ...same, amount: "1,200.00" })).toEqual({ amount: "1200" });
     expect(draftLineChanges(LINE, { ...same, remarks: "" })).toEqual({ remarks: "" });
-    expect(draftLineChanges(LINE, { ...same, supplier: { id: "c3", name: "Wellcome" } })).toEqual({ supplier_id: "c3" });
+    expect(draftLineChanges(LINE, { ...same, supplier: { id: "c3", name: "Wellcome" } })).toEqual({
+      supplier_id: "c3",
+    });
     expect(draftLineChanges(LINE, { ...same, accountId: "a2" })).toEqual({ account_id: "a2" });
   });
 
   it("a removal travels without a new receipt; a new receipt replaces them all, so then it alone", () => {
-    expect(draftLineChanges(LINE, { ...same, removeReceiptIds: ["r2"] })).toEqual({ remove_receipt_ids: ["r2"] });
+    expect(draftLineChanges(LINE, { ...same, removeReceiptIds: ["r2"] })).toEqual({
+      remove_receipt_ids: ["r2"],
+    });
     const file = new File(["x"], "new.png", { type: "image/png" });
-    expect(draftLineChanges(LINE, { ...same, receipt: file, removeReceiptIds: ["r2"] })).toEqual({ receipt: file });
+    expect(draftLineChanges(LINE, { ...same, receipt: file, removeReceiptIds: ["r2"] })).toEqual({
+      receipt: file,
+    });
     // an id not on the line is never sent
     expect(draftLineChanges(LINE, { ...same, removeReceiptIds: ["zz"] })).toEqual({});
   });

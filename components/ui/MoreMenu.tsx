@@ -16,7 +16,9 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { buttonClass, Icon } from "@minty/shared/ui";
 
-export type MoreItem = { key: string; label: string; icon: string; danger?: boolean } & ({ onSelect: () => void } | { href: string });
+export type MoreItem = { key: string; label: string; icon: string; danger?: boolean } & (
+  { onSelect: () => void } | { href: string }
+);
 
 const ITEM =
   "flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-3 px-4 py-2 text-left text-body-m hover:bg-state-hover focus-visible:bg-state-hover focus-visible:outline-none";
@@ -28,7 +30,8 @@ export function MoreMenu({ label, items }: { label: string; items: MoreItem[] })
   const menu = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 
-  const entries = () => Array.from(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+  const entries = () =>
+    Array.from(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
 
   useEffect(() => {
     if (!open) return;
@@ -81,7 +84,11 @@ export function MoreMenu({ label, items }: { label: string; items: MoreItem[] })
       {open ? (
         <>
           {/* The phone's bottom sheet sits over the Part 13 scrim; a click on it closes the menu. */}
-          <div className="fixed inset-0 z-[200] bg-overlay-scrim sm:hidden" aria-hidden onClick={() => close(true)} />
+          <div
+            className="fixed inset-0 z-[200] bg-overlay-scrim sm:hidden"
+            aria-hidden
+            onClick={() => close(true)}
+          />
           <div
             ref={menu}
             id={menuId}
@@ -91,7 +98,9 @@ export function MoreMenu({ label, items }: { label: string; items: MoreItem[] })
             className="fixed inset-x-0 bottom-0 z-[210] flex flex-col rounded-t-xl bg-surface-raised py-2 pb-[max(8px,env(safe-area-inset-bottom))] shadow-modal sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-1 sm:w-60 sm:rounded-lg sm:border sm:border-border-default sm:py-1 sm:shadow-overlay"
           >
             {items.map((item) => {
-              const tone = item.danger ? "border-t border-border-subtle text-action-danger" : "text-text-primary";
+              const tone = item.danger
+                ? "border-t border-border-subtle text-action-danger"
+                : "text-text-primary";
               const body = (
                 <>
                   <Icon name={item.icon} size="md" />
@@ -100,7 +109,13 @@ export function MoreMenu({ label, items }: { label: string; items: MoreItem[] })
               );
               return "href" in item ? (
                 // A full-page address (another app's page): a plain link.
-                <a key={item.key} role="menuitem" tabIndex={-1} href={item.href} className={`${ITEM} ${tone}`}>
+                <a
+                  key={item.key}
+                  role="menuitem"
+                  tabIndex={-1}
+                  href={item.href}
+                  className={`${ITEM} ${tone}`}
+                >
                   {body}
                 </a>
               ) : (

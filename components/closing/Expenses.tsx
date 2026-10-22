@@ -7,10 +7,27 @@ import { useRef, useState } from "react";
 import { Button, EmptyState, Icon, InlineAlert, Modal } from "@minty/shared/ui";
 
 import type { ViewerFile } from "@/components/closing/ReceiptViewer";
-import { openStep, refused, StageActions, StagePage, stageSteps, WorkflowHeader, type StageContext } from "@/components/closing/Stage";
+import {
+  openStep,
+  refused,
+  StageActions,
+  StagePage,
+  stageSteps,
+  WorkflowHeader,
+  type StageContext,
+} from "@/components/closing/Stage";
 import { ApiError, pettyCashBlob, pettyCashFetch } from "@/lib/apiClient";
 import { withLine } from "@/lib/expenseEdit";
-import { canEditLines, expenseCount, receiptKind, withoutLine, type ExpenseLine, type ExpensesPage, type ExpensesSaved, type Supplier } from "@/lib/expenses";
+import {
+  canEditLines,
+  expenseCount,
+  receiptKind,
+  withoutLine,
+  type ExpenseLine,
+  type ExpensesPage,
+  type ExpensesSaved,
+  type Supplier,
+} from "@/lib/expenses";
 import { money } from "@/lib/money";
 import { reportStatus } from "@/lib/reportStatus";
 
@@ -36,13 +53,25 @@ const NOT_DELETED = "We couldn't delete this expense. Check your connection, the
  */
 export function Expenses({ day }: { day: string | null }) {
   return (
-    <StagePage<ExpensesPage> path="/reports/expenses" day={day} title={STAGE} guidance={GUIDANCE} here="expenses">
+    <StagePage<ExpensesPage>
+      path="/reports/expenses"
+      day={day}
+      title={STAGE}
+      guidance={GUIDANCE}
+      here="expenses"
+    >
       {(page, context) => <StageBody page={page} {...context} />}
     </StagePage>
   );
 }
 
-function StageBody({ page, entityId, entityName, home, notice }: { page: ExpensesPage } & StageContext) {
+function StageBody({
+  page,
+  entityId,
+  entityName,
+  home,
+  notice,
+}: { page: ExpensesPage } & StageContext) {
   const router = useRouter();
   const [lines, setLines] = useState(page.lines);
   const [total, setTotal] = useState(page.total);
@@ -68,9 +97,13 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
     setProblem(null);
     setSaving(action);
     try {
-      const answer = await pettyCashFetch<ExpensesSaved>("/reports/expenses", { method: "PUT", body: { transaction_date: day, action } });
+      const answer = await pettyCashFetch<ExpensesSaved>("/reports/expenses", {
+        method: "PUT",
+        body: { transaction_date: day, action },
+      });
       // Next is Cash Count, whose first section is the deposit - this app's own stage since Wave 2d.
-      if (answer.next === "deposit") openStep(push, entityId, entityName, "deposit", answer.transaction_date);
+      if (answer.next === "deposit")
+        openStep(push, entityId, entityName, "deposit", answer.transaction_date);
       else push(home);
     } catch (err) {
       const message = refused(err, { here: "expenses", day, ...route });
@@ -84,7 +117,10 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
     setViewing({
       name: receipt.name,
       mime: receipt.mime_type,
-      source: () => pettyCashBlob(`/expense-lines/${encodeURIComponent(line.id)}/receipts/${encodeURIComponent(receipt.id)}`),
+      source: () =>
+        pettyCashBlob(
+          `/expense-lines/${encodeURIComponent(line.id)}/receipts/${encodeURIComponent(receipt.id)}`,
+        ),
     });
 
   return (
@@ -100,13 +136,22 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
       {notice}
 
       {/* Part 15.15c: the day's entries, each a Record row (stacked on a phone). */}
-      <section aria-labelledby="expenses-list" className="flex flex-col gap-4 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6">
+      <section
+        aria-labelledby="expenses-list"
+        className="flex flex-col gap-4 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6"
+      >
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <h2 id="expenses-list" className="min-w-0 text-title-m text-text-primary">
             {lines.length ? expenseCount(lines.length) : "Expenses added"}
           </h2>
           {editable && lines.length ? (
-            <Button ref={addButton} kind="secondary" icon={<Icon name="add" />} className="w-full sm:w-auto" onClick={() => setAdding(true)}>
+            <Button
+              ref={addButton}
+              kind="secondary"
+              icon={<Icon name="add" />}
+              className="w-full sm:w-auto"
+              onClick={() => setAdding(true)}
+            >
               Add expense
             </Button>
           ) : null}
@@ -133,13 +178,19 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
             className="py-6"
             action={
               editable ? (
-                <Button ref={addButton} kind="secondary" icon={<Icon name="add" />} onClick={() => setAdding(true)}>
+                <Button
+                  ref={addButton}
+                  kind="secondary"
+                  icon={<Icon name="add" />}
+                  onClick={() => setAdding(true)}
+                >
                   Add expense
                 </Button>
               ) : null
             }
           >
-            Add an expense when you&apos;re ready. A day with no expenses can go straight on with Save &amp; Next.
+            Add an expense when you&apos;re ready. A day with no expenses can go straight on with
+            Save &amp; Next.
           </EmptyState>
         )}
         <p className="sr-only" aria-live="polite">
@@ -159,10 +210,16 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
         <div className="flex flex-col gap-3">
           <dl className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-lg bg-surface-sunk px-4 py-3">
             <dt className="min-w-0 text-title-m text-text-primary">Total expenses</dt>
-            <dd className="shrink-0 text-title-m text-text-primary" translate="no" aria-live="polite">
+            <dd
+              className="shrink-0 text-title-m text-text-primary"
+              translate="no"
+              aria-live="polite"
+            >
               {money(total, code)}
             </dd>
-            <dd className="basis-full text-body-s text-text-secondary">Every expense above, paid from the cash drawer.</dd>
+            <dd className="basis-full text-body-s text-text-secondary">
+              Every expense above, paid from the cash drawer.
+            </dd>
           </dl>
           {problem ? <InlineAlert tone="danger">{problem}</InlineAlert> : null}
         </div>
@@ -188,7 +245,9 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
           onSaved={({ line, total: newTotal }) => {
             setLines((all) => (editing ? withLine(all, line) : [...all, line]));
             setTotal(newTotal);
-            setAnnounce(`${editing ? "Expense saved" : "Expense added"}. Total expenses ${money(newTotal, code)}.`);
+            setAnnounce(
+              `${editing ? "Expense saved" : "Expense added"}. Total expenses ${money(newTotal, code)}.`,
+            );
             setAdding(false);
             setEditing(null);
           }}
@@ -206,7 +265,9 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
             setDeleting(null);
             setAnnounce(`Expense deleted. Total expenses ${money(newTotal, code)}.`);
             // The row (and its Delete) is gone: the focus goes to the list's way on.
-            requestAnimationFrame(() => (addButton.current ?? document.getElementById("expenses-list"))?.focus());
+            requestAnimationFrame(() =>
+              (addButton.current ?? document.getElementById("expenses-list"))?.focus(),
+            );
           }}
         />
       ) : null}
@@ -241,15 +302,21 @@ function ExpenseRow({
   return (
     <li className="flex min-w-0 flex-col gap-2 border-t border-border-subtle py-4 first:border-t-0 first:pt-0 last:pb-0">
       <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
-        <p className="min-w-0 flex-1 basis-40 break-words text-body-m font-semibold text-text-primary">{title}</p>
+        <p className="min-w-0 flex-1 basis-40 break-words text-body-m font-semibold text-text-primary">
+          {title}
+        </p>
         <p className="shrink-0 text-body-m font-semibold text-text-primary" translate="no">
           {amount}
         </p>
       </div>
       <p className="min-w-0 break-words text-body-s text-text-secondary">
-        {[line.supplier?.name, line.account?.code ? `Account ${line.account.code}` : null].filter(Boolean).join(" · ") || "No supplier"}
+        {[line.supplier?.name, line.account?.code ? `Account ${line.account.code}` : null]
+          .filter(Boolean)
+          .join(" · ") || "No supplier"}
       </p>
-      {line.remarks ? <p className="min-w-0 break-words text-body-s text-text-muted">{line.remarks}</p> : null}
+      {line.remarks ? (
+        <p className="min-w-0 break-words text-body-s text-text-muted">{line.remarks}</p>
+      ) : null}
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 basis-48 flex-col gap-1">
           {line.receipts.map((receipt) => (
@@ -260,18 +327,33 @@ function ExpenseRow({
               aria-label={`View receipt ${receipt.name}`}
               className="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-border-default bg-surface-card px-3 text-left hover:bg-state-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus sm:w-fit sm:max-w-full"
             >
-              <Icon name={receiptKind(receipt.mime_type) === "pdf" ? "picture_as_pdf" : "image"} className="text-text-secondary" />
-              <span className="min-w-0 flex-1 truncate text-body-s text-text-primary">{receipt.name}</span>
+              <Icon
+                name={receiptKind(receipt.mime_type) === "pdf" ? "picture_as_pdf" : "image"}
+                className="text-text-secondary"
+              />
+              <span className="min-w-0 flex-1 truncate text-body-s text-text-primary">
+                {receipt.name}
+              </span>
               <span className="shrink-0 text-body-s font-medium text-text-link">View</span>
             </button>
           ))}
         </div>
         {editable ? (
           <div className="flex shrink-0 gap-1">
-            <Button kind="ghost" icon={<Icon name="edit" />} onClick={onEdit} aria-label={`Edit expense: ${line.account?.name || line.item}, ${amount}`}>
+            <Button
+              kind="ghost"
+              icon={<Icon name="edit" />}
+              onClick={onEdit}
+              aria-label={`Edit expense: ${line.account?.name || line.item}, ${amount}`}
+            >
               Edit
             </Button>
-            <Button kind="ghost" icon={<Icon name="delete" />} onClick={onDelete} aria-label={`Delete expense: ${line.account?.name || line.item}, ${amount}`}>
+            <Button
+              kind="ghost"
+              icon={<Icon name="delete" />}
+              onClick={onDelete}
+              aria-label={`Delete expense: ${line.account?.name || line.item}, ${amount}`}
+            >
               Delete
             </Button>
           </div>
@@ -303,7 +385,10 @@ function DeleteExpense({
     setProblem(null);
     setDeleting(true);
     try {
-      const answer = await pettyCashFetch<{ total: number }>(`/expense-lines/${encodeURIComponent(line.id)}`, { method: "DELETE" });
+      const answer = await pettyCashFetch<{ total: number }>(
+        `/expense-lines/${encodeURIComponent(line.id)}`,
+        { method: "DELETE" },
+      );
       onDeleted(answer.total);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
@@ -333,7 +418,12 @@ function DeleteExpense({
           <Button ref={cancel} kind="secondary" onClick={onCancel} disabled={deleting}>
             Cancel
           </Button>
-          <Button kind="danger" onClick={() => void confirm()} processing={deleting} processingLabel="Deleting…">
+          <Button
+            kind="danger"
+            onClick={() => void confirm()}
+            processing={deleting}
+            processingLabel="Deleting…"
+          >
             Delete expense
           </Button>
         </>

@@ -19,9 +19,22 @@ const DRAWER_URL = `${BASE}/reports/new/opening?transaction_date=${DAY}`;
 
 type Json = Record<string, unknown>;
 
-const DRAFT = { id: "d", status: "draft", current_section: "sales", completed_sections: ["opening"], xero_integrated: false, publishing_status: "unpublished" };
+const DRAFT = {
+  id: "d",
+  status: "draft",
+  current_section: "sales",
+  completed_sections: ["opening"],
+  xero_integrated: false,
+  publishing_status: "unpublished",
+};
 
-const method = (value_name: string, name: string, type: string, amount: number | null = null) => ({ sale_id: value_name, name, value_name, type, amount });
+const method = (value_name: string, name: string, type: string, amount: number | null = null) => ({
+  sale_id: value_name,
+  name,
+  value_name,
+  type,
+  amount,
+});
 
 function salesAnswer(over: Json = {}): Json {
   return {
@@ -40,19 +53,51 @@ function salesAnswer(over: Json = {}): Json {
   };
 }
 
-const SAVED = { draft_id: "d", transaction_date: DAY, current_section: "expenses", completed_sections: ["opening", "sales"], next: "expenses" };
+const SAVED = {
+  draft_id: "d",
+  transaction_date: DAY,
+  current_section: "expenses",
+  completed_sections: ["opening", "sales"],
+  next: "expenses",
+};
 
-const OPENING = { transaction_date: DAY, currency_code: "HKD", draft: DRAFT, starting_cash_balance: 500, yesterday_closing_balance: 500, safebox_balance: 0, cash_addition: null, withdrawal: "personal" };
+const OPENING = {
+  transaction_date: DAY,
+  currency_code: "HKD",
+  draft: DRAFT,
+  starting_cash_balance: 500,
+  yesterday_closing_balance: 500,
+  safebox_balance: 0,
+  cash_addition: null,
+  withdrawal: "personal",
+};
 
 function homeAnswer(over: Json = {}): Json {
   return {
     server_today: "2026-10-14",
     user_count: 1,
     currency_code: "HKD",
-    latest: { date: "2026-10-12", closing_balance: 500, deposit: 0, deposit_bank_name: "No deposit", deposit_bank_number: "", deposit_correction_missing_settings: [], can_correct_deposit: true, submitter_first_name: "Olive" },
+    latest: {
+      date: "2026-10-12",
+      closing_balance: 500,
+      deposit: 0,
+      deposit_bank_name: "No deposit",
+      deposit_bank_number: "",
+      deposit_correction_missing_settings: [],
+      can_correct_deposit: true,
+      submitter_first_name: "Olive",
+    },
     draft: null,
     draft_date: null,
-    published: { "2026-10-12": { id: "r", closing_balance: 500, bank_deposit: 0, xero_integrated: true, submitter_first_name: "Olive" } },
+    published: {
+      "2026-10-12": {
+        id: "r",
+        closing_balance: 500,
+        bank_deposit: 0,
+        xero_integrated: true,
+        submitter_first_name: "Olive",
+      },
+    },
     today_has_report: false,
     today_is_latest_report: false,
     xero_settings: { complete: true, missing: [] },
@@ -80,18 +125,39 @@ async function stub(page: Page, answer: Json, { onSave, home }: Setup = {}): Pro
   });
   await page.route("**/api/petty-cash/v1/companies/*/reports/opening**", async (route) => {
     if (route.request().method() === "PUT") {
-      await route.fulfill({ json: { draft_id: "d", transaction_date: DAY, current_section: "sales", completed_sections: ["opening"], next: "sales" } });
+      await route.fulfill({
+        json: {
+          draft_id: "d",
+          transaction_date: DAY,
+          current_section: "sales",
+          completed_sections: ["opening"],
+          next: "sales",
+        },
+      });
       return;
     }
     await route.fulfill({ json: OPENING });
   });
   await page.route("**/api/petty-cash/v1/companies/*/reports/expenses**", (route) =>
     route.fulfill({
-      json: { transaction_date: DAY, currency_code: "HKD", draft: DRAFT, lines: [], total: 0, suppliers: [], accounts: [], permissions: { create_supplier: false } },
+      json: {
+        transaction_date: DAY,
+        currency_code: "HKD",
+        draft: DRAFT,
+        lines: [],
+        total: 0,
+        suppliers: [],
+        accounts: [],
+        permissions: { create_supplier: false },
+      },
     }),
   );
-  await page.route("**/api/petty-cash/v1/companies/*/home", (route) => route.fulfill({ json: home ?? homeAnswer() }));
-  await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
+  await page.route("**/api/petty-cash/v1/companies/*/home", (route) =>
+    route.fulfill({ json: home ?? homeAnswer() }),
+  );
+  await page.route("**/api/me/profile**", (route) =>
+    route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }),
+  );
   // Flask's pages (the Cash Count stage onwards, by the company's full id): caught.
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports(?:[/?]|$)/, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
@@ -100,8 +166,15 @@ async function stub(page: Page, answer: Json, { onSave, home }: Setup = {}): Pro
 }
 
 async function arrive(page: Page, next: string) {
-  const token = mintModuleToken({ secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME });
-  await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next })}`);
+  const token = mintModuleToken({
+    secret: "stub",
+    userId: "u",
+    entityId: ENTITY,
+    entityName: NAME,
+  });
+  await page.goto(
+    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next })}`,
+  );
 }
 
 async function openWith(page: Page, answer: Json, setup: Setup = {}): Promise<Saves> {
@@ -112,24 +185,45 @@ async function openWith(page: Page, answer: Json, setup: Setup = {}): Promise<Sa
   return saves;
 }
 
-const amount = (page: Page, name: string) => page.getByRole("textbox", { name: `${name} in HKD`, exact: true });
+const amount = (page: Page, name: string) =>
+  page.getByRole("textbox", { name: `${name} in HKD`, exact: true });
 const stages = (page: Page) => page.getByRole("list", { name: "Daily Closing stages" });
 const row = (page: Page, label: string) => page.locator("dl").filter({ hasText: label });
 
-test("the methods in Settings order with the catalogue's names, grouped, with the Workflow header", async ({ page }) => {
+test("the methods in Settings order with the catalogue's names, grouped, with the Workflow header", async ({
+  page,
+}) => {
   await openWith(page, salesAnswer());
   await expect(page.getByText("Daily Closing · Tue 13 Oct 2026")).toBeVisible();
   await expect(page.getByText("Draft", { exact: true })).toHaveAttribute("data-tone", "neutral");
-  await expect(page.getByRole("link", { name: "Petty Cash", exact: true })).toHaveAttribute("href", BASE);
-  await expect(page.getByText("Add the day's sales for each way your customers paid.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Petty Cash", exact: true })).toHaveAttribute(
+    "href",
+    BASE,
+  );
+  await expect(
+    page.getByText("Add the day's sales for each way your customers paid."),
+  ).toBeVisible();
 
-  await expect(stages(page).getByRole("listitem")).toHaveText([/Drawer/, /Sales/, /Expenses/, /Cash Count/, /Close/]);
+  await expect(stages(page).getByRole("listitem")).toHaveText([
+    /Drawer/,
+    /Sales/,
+    /Expenses/,
+    /Cash Count/,
+    /Close/,
+  ]);
   await expect(stages(page).locator('[aria-current="step"]')).toContainText("Sales, current step");
   // the done Drawer stage is this app's own page; nothing after Sales opens from here
-  await expect(stages(page).getByRole("link", { name: "Drawer, done" })).toHaveAttribute("href", DRAWER_URL);
+  await expect(stages(page).getByRole("link", { name: "Drawer, done" })).toHaveAttribute(
+    "href",
+    DRAWER_URL,
+  );
   await expect(stages(page).getByRole("link")).toHaveCount(1);
 
-  await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Electronic payments", "Delivery", "Cash"]);
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText([
+    "Electronic payments",
+    "Delivery",
+    "Cash",
+  ]);
   // names as the catalogue has them ("WeChat Pay", not Flask's "Wechat Pay"); Deliveroo is not listed
   const fields = page.getByRole("textbox");
   const names = ["Visa", "WeChat Pay", "Food Panda", "OpenRice", "Cash sales"];
@@ -148,11 +242,16 @@ test("the methods in Settings order with the catalogue's names, grouped, with th
   await expectNoHorizontalScroll(page);
 });
 
-test("a draft's amounts come back grouped - a zero as an empty field - with their totals", async ({ page }) => {
+test("a draft's amounts come back grouped - a zero as an empty field - with their totals", async ({
+  page,
+}) => {
   await openWith(
     page,
     salesAnswer({
-      methods: [method("visa_sales", "Visa", "electronic", 1200.5), method("foodpanda_sales", "Food Panda", "delivery", 0)],
+      methods: [
+        method("visa_sales", "Visa", "electronic", 1200.5),
+        method("foodpanda_sales", "Food Panda", "delivery", 0),
+      ],
       cash_sales: 300,
     }),
   );
@@ -171,7 +270,9 @@ test("a company with no electronic or delivery methods has only Cash", async ({ 
   await expect(row(page, "Electronic payments total")).toHaveCount(0);
 });
 
-test("typing moves the subtotals and the total live, and Save & Next sends every method and opens Expenses", async ({ page }) => {
+test("typing moves the subtotals and the total live, and Save & Next sends every method and opens Expenses", async ({
+  page,
+}) => {
   const saves = await openWith(page, salesAnswer());
   const visa = amount(page, "Visa");
   // owner 2026-10-21: one money rule (@minty/shared/money) - a stray key is refused, not stripped
@@ -190,7 +291,9 @@ test("typing moves the subtotals and the total live, and Save & Next sends every
   await page.getByRole("button", { name: "Save & Next" }).click();
 
   // Expenses is this app's own stage since Wave 2c
-  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/expense\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${BASE}/reports/new/expense\\?transaction_date=${DAY}$`),
+  );
   await expect(page.getByRole("heading", { level: 1, name: "Expenses" })).toBeVisible();
   expect(saves).toEqual([
     {
@@ -210,22 +313,30 @@ test("Enter in an amount saves and moves on, as Save & Next", async ({ page }) =
   expect(saves).toMatchObject([{ amounts: { openrice_sales: 7 }, action: "next" }]);
 });
 
-test("a long amount with its currency is never clipped, and the page never scrolls sideways", async ({ page }) => {
+test("a long amount with its currency is never clipped, and the page never scrolls sideways", async ({
+  page,
+}) => {
   await openWith(page, salesAnswer());
   for (const name of ["Visa", "Food Panda", "Cash sales"]) {
     await amount(page, name).fill("12345678.90");
     await amount(page, name).blur();
     await expect(amount(page, name)).toHaveValue("12,345,678.90");
   }
-  const clipped = await page.getByRole("textbox").evaluateAll((inputs) =>
-    (inputs as HTMLInputElement[]).filter((input) => input.scrollWidth > input.clientWidth).map((input) => input.name),
-  );
+  const clipped = await page
+    .getByRole("textbox")
+    .evaluateAll((inputs) =>
+      (inputs as HTMLInputElement[])
+        .filter((input) => input.scrollWidth > input.clientWidth)
+        .map((input) => input.name),
+    );
   expect(clipped).toEqual([]);
   await expect(row(page, "Total sales")).toContainText("HKD 37,037,036.70");
   await expectNoHorizontalScroll(page);
 });
 
-test("Save & Exit saves - empty fields as zero - and goes back to the launch page", async ({ page }) => {
+test("Save & Exit saves - empty fields as zero - and goes back to the launch page", async ({
+  page,
+}) => {
   const saves = await openWith(page, salesAnswer(), {
     onSave: async (_body, route) => {
       await route.fulfill({ json: { ...SAVED, current_section: "sales", next: "dashboard" } });
@@ -235,25 +346,38 @@ test("Save & Exit saves - empty fields as zero - and goes back to the launch pag
   await expect(page).toHaveURL(new RegExp(`${BASE}$`));
   await expect(page.getByRole("heading", { level: 1, name: "Petty Cash" })).toBeVisible();
   expect(saves).toEqual([
-    { transaction_date: DAY, cash_sales: 0, amounts: { visa_sales: 0, wechat_sales: 0, foodpanda_sales: 0, openrice_sales: 0 }, action: "exit" },
+    {
+      transaction_date: DAY,
+      cash_sales: 0,
+      amounts: { visa_sales: 0, wechat_sales: 0, foodpanda_sales: 0, openrice_sales: 0 },
+      action: "exit",
+    },
   ]);
 });
 
-test("a day with no Daily Closing yet says so on arrival, with the way to Addition to Drawer", async ({ page }) => {
+test("a day with no Daily Closing yet says so on arrival, with the way to Addition to Drawer", async ({
+  page,
+}) => {
   await openWith(page, salesAnswer({ draft: null }));
 
-  const banner = page.getByRole("status").filter({ hasText: "This day's Daily Closing hasn't started" });
+  const banner = page
+    .getByRole("status")
+    .filter({ hasText: "This day's Daily Closing hasn't started" });
   await expect(banner).toBeVisible();
   await expect(banner).toHaveAttribute("data-tone", "warning");
   // no form to type into, so nothing can be lost
   await expect(page.getByRole("textbox")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Save & Next" })).toHaveCount(0);
   await banner.getByRole("link", { name: "Go to Addition to Drawer" }).click();
-  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/opening\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${BASE}/reports/new/opening\\?transaction_date=${DAY}$`),
+  );
   await expect(page.getByRole("heading", { level: 1, name: "Addition to Drawer" })).toBeVisible();
 });
 
-test("a draft gone by the time of the save: Addition to Drawer says why in a Page banner, once", async ({ page }) => {
+test("a draft gone by the time of the save: Addition to Drawer says why in a Page banner, once", async ({
+  page,
+}) => {
   const why = "I don't see a draft yet - let's start with the opening entry.";
   await openWith(page, salesAnswer(), {
     onSave: async (_body, route) => {
@@ -263,7 +387,9 @@ test("a draft gone by the time of the save: Addition to Drawer says why in a Pag
   await amount(page, "Visa").fill("5");
   await page.getByRole("button", { name: "Save & Next" }).click();
 
-  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/opening\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${BASE}/reports/new/opening\\?transaction_date=${DAY}$`),
+  );
   await expect(page.getByRole("heading", { level: 1, name: "Addition to Drawer" })).toBeVisible();
   const banner = page.getByRole("status").filter({ hasText: why });
   await expect(banner).toBeVisible();
@@ -275,25 +401,35 @@ test("a draft gone by the time of the save: Addition to Drawer says why in a Pag
   await expect(page.getByText(why)).toHaveCount(0);
 });
 
-test("any other refusal stays on the stage, inline, and the actions come back", async ({ page }) => {
-  const why = "One of those sales methods isn't switched on for this company. Reload the page to see its methods.";
+test("any other refusal stays on the stage, inline, and the actions come back", async ({
+  page,
+}) => {
+  const why =
+    "One of those sales methods isn't switched on for this company. Reload the page to see its methods.";
   await openWith(page, salesAnswer(), {
     onSave: async (_body, route) => {
       await route.fulfill({ status: 422, json: { error: why } });
     },
   });
   await page.getByRole("button", { name: "Save & Next" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: why })).toHaveAttribute("data-tone", "danger");
+  await expect(page.getByRole("alert").filter({ hasText: why })).toHaveAttribute(
+    "data-tone",
+    "danger",
+  );
   await expect(page).toHaveURL(/\/reports\/new\/sale\?/);
   await expect(page.getByRole("button", { name: "Save & Next" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Save & Exit" })).toBeEnabled();
 });
 
-test("unsaved changes hold the stage links and the way back, with an inline warning and a way to leave anyway", async ({ page }) => {
+test("unsaved changes hold the stage links and the way back, with an inline warning and a way to leave anyway", async ({
+  page,
+}) => {
   await openWith(page, salesAnswer());
   await amount(page, "Cash sales").fill("5");
   await stages(page).getByRole("link", { name: "Drawer, done" }).click();
-  const warning = page.locator("[data-tone=warning]").filter({ hasText: "Your changes to this stage are not saved yet." });
+  const warning = page
+    .locator("[data-tone=warning]")
+    .filter({ hasText: "Your changes to this stage are not saved yet." });
   await expect(warning).toBeVisible();
   await expect(page.locator("[data-toast-type]")).toHaveCount(0);
   await expect(page).toHaveURL(/\/reports\/new\/sale\?/);
@@ -311,7 +447,9 @@ test("unsaved changes hold the stage links and the way back, with an inline warn
   await expect(page.getByRole("heading", { level: 1, name: "Addition to Drawer" })).toBeVisible();
 });
 
-test("Addition to Drawer's Save & Next opens this stage without leaving the app", async ({ page }) => {
+test("Addition to Drawer's Save & Next opens this stage without leaving the app", async ({
+  page,
+}) => {
   await stub(page, salesAnswer());
   await arrive(page, DRAWER_URL);
   await expect(page.getByRole("heading", { level: 1, name: "Addition to Drawer" })).toBeVisible();
@@ -321,20 +459,33 @@ test("Addition to Drawer's Save & Next opens this stage without leaving the app"
   await page.getByRole("button", { name: "Save & Next" }).click();
   await expect(page).toHaveURL(STAGE_URL);
   await expect(page.getByRole("heading", { level: 1, name: "Sales" })).toBeVisible();
-  expect(await page.evaluate(() => (window as unknown as { __stayed?: boolean }).__stayed)).toBe(true);
+  expect(await page.evaluate(() => (window as unknown as { __stayed?: boolean }).__stayed)).toBe(
+    true,
+  );
 });
 
-test("the launch page's Continue opens this stage when the report is on Sales", async ({ page }) => {
+test("the launch page's Continue opens this stage when the report is on Sales", async ({
+  page,
+}) => {
   await stub(page, salesAnswer(), {
-    home: homeAnswer({ draft: { id: "d", current_section: "sales", completed_sections: ["opening"], last_edit_seconds: 60 }, draft_date: DAY }),
+    home: homeAnswer({
+      draft: {
+        id: "d",
+        current_section: "sales",
+        completed_sections: ["opening"],
+        last_edit_seconds: 60,
+      },
+      draft_date: DAY,
+    }),
   });
   await arrive(page, BASE);
   const card = page.getByRole("region", { name: /Daily Closing/ });
   await expect(card).toContainText("Next: Sales");
-  await expect(card.getByRole("list", { name: "Daily Closing stages" }).getByRole("link", { name: /Sales, current step/ })).toHaveAttribute(
-    "href",
-    STAGE_URL,
-  );
+  await expect(
+    card
+      .getByRole("list", { name: "Daily Closing stages" })
+      .getByRole("link", { name: /Sales, current step/ }),
+  ).toHaveAttribute("href", STAGE_URL);
   await card.getByRole("button", { name: "Continue Daily Closing" }).click();
   await expect(page).toHaveURL(STAGE_URL);
   await expect(page.getByRole("heading", { level: 1, name: "Sales" })).toBeVisible();

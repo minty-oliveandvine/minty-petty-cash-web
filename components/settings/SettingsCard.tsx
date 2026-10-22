@@ -7,12 +7,26 @@ import { Button } from "@minty/shared/ui";
 /** Flask's page, word for word: the reason beside a Save this person may not press. */
 export const NO_RIGHT = "Only Accountants and Admins can change these.";
 export const NOTHING_YET = "No changes to save yet.";
-export const NOT_SAVED = "We couldn't reach Petty Cash, so this wasn't saved. Check your connection, then try again.";
+export const NOT_SAVED =
+  "We couldn't reach Petty Cash, so this wasn't saved. Check your connection, then try again.";
 
 /** A settings card (15.20b): a Section header (h2 + why), its fields, then its own Save. */
-export function Card({ id, title, sub, children }: { id: string; title: string; sub: string; children: ReactNode }) {
+export function Card({
+  id,
+  title,
+  sub,
+  children,
+}: {
+  id: string;
+  title: string;
+  sub: string;
+  children: ReactNode;
+}) {
   return (
-    <section aria-labelledby={`${id}-title`} className="flex min-w-0 flex-col gap-4 rounded-lg border border-border-subtle bg-surface-card p-4 sm:p-6">
+    <section
+      aria-labelledby={`${id}-title`}
+      className="flex min-w-0 flex-col gap-4 rounded-lg border border-border-subtle bg-surface-card p-4 sm:p-6"
+    >
       <div className="flex flex-col gap-1">
         <h2 id={`${id}-title`} className="text-title-l text-text-primary">
           {title}

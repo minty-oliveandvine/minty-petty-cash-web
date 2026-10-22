@@ -11,7 +11,6 @@
  * read's `yesterday_total` and `history` are the Daily Report's, not this stage's.
  */
 
-
 import { differenceText, type Difference } from "@/lib/cashCount";
 import { stageOf } from "@/lib/dailyClosing";
 import { money } from "@/lib/money";
@@ -74,15 +73,23 @@ export type Submitted = {
 export function differenceOf(amount: number): Difference {
   const cents = Math.round(Math.abs(Number.isFinite(amount) ? amount : 0) * 100);
   if (cents === 0) return { amount: 0, kind: "none" };
-  return amount < 0 ? { amount: -cents / 100, kind: "short" } : { amount: cents / 100, kind: "over" };
+  return amount < 0
+    ? { amount: -cents / 100, kind: "short" }
+    : { amount: cents / 100, kind: "over" };
 }
 
 /**
  * The sales rows: every method the Sales stage shows (Deliveroo left out, as there), in Settings
  * order - Close's and the Daily Report's (lib/report.ts).
  */
-export function salesRows(page: { sales: { methods: ClosePage["sales"]["methods"] } }): { key: string; label: string; amount: number }[] {
-  return shownMethods(page.sales.methods).map((m) => ({ key: m.value_name, label: m.name, amount: m.amount ?? 0 }));
+export function salesRows(page: {
+  sales: { methods: ClosePage["sales"]["methods"] };
+}): { key: string; label: string; amount: number }[] {
+  return shownMethods(page.sales.methods).map((m) => ({
+    key: m.value_name,
+    label: m.name,
+    amount: m.amount ?? 0,
+  }));
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -92,7 +99,8 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
  * "3 methods · Cash HKD 820.50" - the methods that took money, cash among them.
  */
 export function salesSummary(page: Pick<ClosePage, "sales" | "currency_code">): string {
-  const methods = salesRows(page).filter((row) => row.amount > 0).length + (page.sales.cash > 0 ? 1 : 0);
+  const methods =
+    salesRows(page).filter((row) => row.amount > 0).length + (page.sales.cash > 0 ? 1 : 0);
   return `${plural(methods, "method", "methods")} · Cash ${money(page.sales.cash, page.currency_code)}`;
 }
 
@@ -104,14 +112,15 @@ export function expensesSummary(lines: CloseExpense[]): string {
 
 /** The Cash Count row's line: "HKD 300.00 to the bank · Counted in the drawer", or "None today · ...". */
 export function cashSummary(page: Pick<ClosePage, "cash" | "currency_code">): string {
-  const deposit = page.cash.bank_deposit > 0 ? `${money(page.cash.bank_deposit, page.currency_code)} to the bank` : "None today";
+  const deposit =
+    page.cash.bank_deposit > 0
+      ? `${money(page.cash.bank_deposit, page.currency_code)} to the bank`
+      : "None today";
   return `${deposit} · Counted in the drawer`;
 }
 
 export type Readiness =
-  | { kind: "gate" }
-  | { kind: "no-reason"; title: string }
-  | { kind: "ready"; text: string };
+  { kind: "gate" } | { kind: "no-reason"; title: string } | { kind: "ready"; text: string };
 
 /**
  * "Is this correct and ready to submit?" - the banner over the summary: the business-rule gate
@@ -125,7 +134,10 @@ export function closeReadiness(page: ClosePage): Readiness {
   if (diff.kind !== "none" && !page.cash.difference.reason.trim()) {
     return { kind: "no-reason", title: `The count is ${differenceText(diff, page.currency_code)}` };
   }
-  return { kind: "ready", text: `All five stages are filled in.${diff.kind !== "none" ? " One note for the reviewer below." : ""}` };
+  return {
+    kind: "ready",
+    text: `All five stages are filled in.${diff.kind !== "none" ? " One note for the reviewer below." : ""}`,
+  };
 }
 
 /** A place to fix the day, as one link: the stage's own page, or the launch page. */
@@ -134,7 +146,8 @@ export type FixLink = { label: string; step: WizardStep } | { label: string; hom
 /** The link a refusal or the gate offers for `to` - null for a place this stage cannot open. */
 export function fixLink(to: string | null | undefined): FixLink | null {
   if (to === "dashboard") return { label: "Go to Petty Cash", home: true };
-  if (to === "cash_count" || to === "deposit") return { label: "Go to Cash Count", step: "deposit" };
+  if (to === "cash_count" || to === "deposit")
+    return { label: "Go to Cash Count", step: "deposit" };
   const stage = stageOf(to ?? null);
   if (!stage || stage.key === "close") return null;
   return { label: `Go to ${stage.label}`, step: stage.sections[0] };
@@ -166,7 +179,10 @@ export function closeGate(page: ClosePage): CloseGate | null {
 }
 
 /** A refused submit (409 `{error, to}`): the sentence, and the link to where it is fixed. */
-export function submitRefusal(message: string, to: unknown): { message: string; action: FixLink | null } {
+export function submitRefusal(
+  message: string,
+  to: unknown,
+): { message: string; action: FixLink | null } {
   return { message, action: typeof to === "string" ? fixLink(to) : null };
 }
 

@@ -7,7 +7,17 @@ import { useRef, useState } from "react";
 import { buttonClass, InlineAlert, PageBanner } from "@minty/shared/ui";
 import { formatAmount, parseAmount } from "@minty/shared/money";
 
-import { AmountInput, openStep, refused, StageActions, StagePage, stageSteps, useLeaveHold, WorkflowHeader, type StageContext } from "@/components/closing/Stage";
+import {
+  AmountInput,
+  openStep,
+  refused,
+  StageActions,
+  StagePage,
+  stageSteps,
+  useLeaveHold,
+  WorkflowHeader,
+  type StageContext,
+} from "@/components/closing/Stage";
 import { negativeGate, openingCash, startingSource, startingSplit } from "@/lib/addition";
 import { pettyCashFetch } from "@/lib/apiClient";
 import { money } from "@/lib/money";
@@ -36,11 +46,19 @@ export function AdditionToDrawer({ day }: { day: string | null }) {
   );
 }
 
-function StageForm({ page, entityId, entityName, home, notice }: { page: OpeningPage } & StageContext) {
+function StageForm({
+  page,
+  entityId,
+  entityName,
+  home,
+  notice,
+}: { page: OpeningPage } & StageContext) {
   const router = useRouter();
   const savedAddition = page.cash_addition ?? 0;
   const savedWithdrawal: Withdrawal = page.withdrawal === "company" ? "company" : "personal";
-  const [addition, setAddition] = useState(page.cash_addition ? formatAmount(page.cash_addition) : "");
+  const [addition, setAddition] = useState(
+    page.cash_addition ? formatAmount(page.cash_addition) : "",
+  );
   const [withdrawal, setWithdrawal] = useState<Withdrawal>(savedWithdrawal);
   const [saving, setSaving] = useState<"next" | "exit" | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -70,9 +88,15 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
     try {
       const answer = await pettyCashFetch<OpeningSaved>("/reports/opening", {
         method: "PUT",
-        body: { transaction_date: day, cash_addition: parseAmount(addition) ?? 0, withdrawal, action },
+        body: {
+          transaction_date: day,
+          cash_addition: parseAmount(addition) ?? 0,
+          withdrawal,
+          action,
+        },
       });
-      if (answer.next === "sales") openStep(push, entityId, entityName, "sales", answer.transaction_date);
+      if (answer.next === "sales")
+        openStep(push, entityId, entityName, "sales", answer.transaction_date);
       else push(home);
     } catch (err) {
       const message = refused(err, { here: "drawer", push, entityId, entityName, home, day });
@@ -112,9 +136,9 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
             </Link>
           }
         >
-          It closed at <span translate="no">{money(gate.balance, code)}</span>, and a day can&apos;t start from
-          negative cash. This usually means the bank deposit was more than the cash in the drawer. Correct the deposit
-          from Petty Cash, then start this day again.
+          It closed at <span translate="no">{money(gate.balance, code)}</span>, and a day can&apos;t
+          start from negative cash. This usually means the bank deposit was more than the cash in
+          the drawer. Correct the deposit from Petty Cash, then start this day again.
         </PageBanner>
       </>
     );
@@ -131,7 +155,10 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
           void save("next");
         }}
       >
-        <section aria-label={STAGE} className="flex flex-col gap-5 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6">
+        <section
+          aria-label={STAGE}
+          className="flex flex-col gap-5 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6"
+        >
           <dl className="flex flex-col gap-2">
             <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
               <dt className="min-w-0 text-body-m font-semibold text-text-primary">Starting cash</dt>
@@ -140,7 +167,9 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
               </dd>
               {source !== "none" ? (
                 <dd className="basis-full text-body-s text-text-secondary">
-                  {source === "last-closing" ? "Carried over from your last Daily Closing." : "Your opening balance from setup."}
+                  {source === "last-closing"
+                    ? "Carried over from your last Daily Closing."
+                    : "Your opening balance from setup."}
                 </dd>
               ) : null}
             </div>
@@ -176,7 +205,9 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
           />
 
           <fieldset className="flex min-w-0 flex-col gap-1.5">
-            <legend className="mb-1.5 text-label text-text-secondary">Where the cash came from</legend>
+            <legend className="mb-1.5 text-label text-text-secondary">
+              Where the cash came from
+            </legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {(
                 [
@@ -187,7 +218,9 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
                 <label
                   key={value}
                   className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 text-body-m text-text-primary has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-border-focus ${
-                    withdrawal === value ? "border-2 border-border-focus bg-state-selected" : "border border-border-default hover:bg-state-hover"
+                    withdrawal === value
+                      ? "border-2 border-border-focus bg-state-selected"
+                      : "border border-border-default hover:bg-state-hover"
                   }`}
                 >
                   <input
@@ -210,14 +243,21 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
         <div className="flex flex-col gap-3">
           <dl className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-lg bg-surface-sunk px-4 py-3">
             <dt className="min-w-0 text-title-m text-text-primary">Opening cash</dt>
-            <dd className="shrink-0 text-title-m text-text-primary" translate="no" aria-live="polite">
+            <dd
+              className="shrink-0 text-title-m text-text-primary"
+              translate="no"
+              aria-live="polite"
+            >
               {money(opening, code)}
             </dd>
-            <dd className="basis-full text-body-s text-text-secondary">Starting cash plus the cash added.</dd>
+            <dd className="basis-full text-body-s text-text-secondary">
+              Starting cash plus the cash added.
+            </dd>
           </dl>
           {gate?.kind === "short" ? (
             <InlineAlert tone="warning" title="Opening cash is below zero">
-              Add at least <span translate="no">{money(gate.addAtLeast, code)}</span> to the drawer to continue.
+              Add at least <span translate="no">{money(gate.addAtLeast, code)}</span> to the drawer
+              to continue.
             </InlineAlert>
           ) : null}
           {problem ? <InlineAlert tone="danger">{problem}</InlineAlert> : null}

@@ -5,12 +5,30 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { Button, buttonClass, Icon, InlineAlert, inputClass, Modal, PageBanner, Skeleton, StatusPill } from "@minty/shared/ui";
+import {
+  Button,
+  buttonClass,
+  Icon,
+  InlineAlert,
+  inputClass,
+  Modal,
+  PageBanner,
+  Skeleton,
+  StatusPill,
+} from "@minty/shared/ui";
 
 import type { ViewerFile } from "@/components/closing/ReceiptViewer";
 import { PublishDialog, PublishProgress, usePublish } from "@/components/closing/Publish";
 import { DeleteReportDialog, EditReportDialog } from "@/components/closing/ReportDialogs";
-import { AuditFacts, ClosingBalance, Disclosure, MoneyFlow, OutcomeBand, Row, Rows } from "@/components/closing/ReportParts";
+import {
+  AuditFacts,
+  ClosingBalance,
+  Disclosure,
+  MoneyFlow,
+  OutcomeBand,
+  Row,
+  Rows,
+} from "@/components/closing/ReportParts";
 import { AppBar } from "@/components/layout/AppBar";
 import { MoreMenu, type MoreItem } from "@/components/ui/MoreMenu";
 import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
@@ -47,18 +65,29 @@ import { historyHref, stepHref } from "@/lib/wizardPages";
 // The full-screen receipt view loads when first opened (the app's one viewer).
 const ReceiptViewer = dynamic(() => import("@/components/closing/ReceiptViewer"), { ssr: false });
 // The detail edits (Wave 2i) load when first opened.
-const EditReasonDialog = dynamic(() => import("@/components/closing/ReportEdits").then((m) => m.EditReasonDialog), { ssr: false });
-const EditWithdrawalDialog = dynamic(() => import("@/components/closing/ReportEdits").then((m) => m.EditWithdrawalDialog), { ssr: false });
-const EditLineDrawer = dynamic(() => import("@/components/closing/ReportEdits").then((m) => m.EditLineDrawer), { ssr: false });
+const EditReasonDialog = dynamic(
+  () => import("@/components/closing/ReportEdits").then((m) => m.EditReasonDialog),
+  { ssr: false },
+);
+const EditWithdrawalDialog = dynamic(
+  () => import("@/components/closing/ReportEdits").then((m) => m.EditWithdrawalDialog),
+  { ssr: false },
+);
+const EditLineDrawer = dynamic(
+  () => import("@/components/closing/ReportEdits").then((m) => m.EditLineDrawer),
+  { ssr: false },
+);
 
 const TITLE = "Daily Report";
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const NO_LINK = "We couldn't make the link. Check your connection, then try again.";
 const NOT_COPIED = "We couldn't copy the link. Select it above, then copy it yourself.";
 
-type Load = { kind: "loading" } | { kind: "ready"; report: Report } | { kind: "failed"; message: string };
+type Load =
+  { kind: "loading" } | { kind: "ready"; report: Report } | { kind: "failed"; message: string };
 type Editing = { kind: "reason" } | { kind: "withdrawal" } | { kind: "line"; line: ExpenseLine };
-type Share = { kind: "making" } | { kind: "ready"; url: string } | { kind: "failed"; message: string };
+type Share =
+  { kind: "making" } | { kind: "ready"; url: string } | { kind: "failed"; message: string };
 
 /**
  * The Daily Report of a submitted day - Part 15.7 Report page (15.15f; Flask's report summary,
@@ -113,7 +142,11 @@ export function DailyReport({ reportId }: { reportId: string }) {
             <ReportBody
               report={load.report}
               onReport={(report) => setLoad({ kind: "ready", report })}
-              onPatch={(patch) => setLoad((l) => (l.kind === "ready" ? { kind: "ready", report: { ...l.report, ...patch } } : l))}
+              onPatch={(patch) =>
+                setLoad((l) =>
+                  l.kind === "ready" ? { kind: "ready", report: { ...l.report, ...patch } } : l,
+                )
+              }
               entityId={entityId}
               entityName={entityName}
               home={home}
@@ -132,7 +165,12 @@ export function DailyReport({ reportId }: { reportId: string }) {
           ) : (
             <>
               <ReportHeader reports={reports} />
-              <div className="flex flex-col gap-4" role="status" aria-busy="true" aria-label="Loading">
+              <div
+                className="flex flex-col gap-4"
+                role="status"
+                aria-busy="true"
+                aria-label="Loading"
+              >
                 <Skeleton className="h-44 w-full rounded-xl" />
                 <Skeleton className="h-14 w-full" />
                 <Skeleton className="h-14 w-full" />
@@ -187,12 +225,24 @@ function ReportHeader({
             <h1 className="min-w-0 break-words text-display-m text-text-primary">{TITLE}</h1>
             {status}
           </div>
-          {day ? <p className="text-body-m text-text-secondary">{formatWeekdayDay(day)}</p> : <Skeleton className="h-5 w-40" />}
+          {day ? (
+            <p className="text-body-m text-text-secondary">{formatWeekdayDay(day)}</p>
+          ) : (
+            <Skeleton className="h-5 w-40" />
+          )}
         </div>
         {actions || primary || more ? (
           <div className="flex min-w-0 flex-wrap items-center gap-2 md:shrink-0 md:flex-nowrap md:justify-end md:gap-3">
-            {primary ? <div className="flex w-full md:order-2 md:w-auto [&>*]:w-full md:[&>*]:w-auto">{primary}</div> : null}
-            {actions ? <div className="flex min-w-0 grow flex-wrap gap-2 md:order-1 md:grow-0 md:flex-nowrap [&>*]:grow md:[&>*]:grow-0">{actions}</div> : null}
+            {primary ? (
+              <div className="flex w-full md:order-2 md:w-auto [&>*]:w-full md:[&>*]:w-auto">
+                {primary}
+              </div>
+            ) : null}
+            {actions ? (
+              <div className="flex min-w-0 grow flex-wrap gap-2 md:order-1 md:grow-0 md:flex-nowrap [&>*]:grow md:[&>*]:grow-0">
+                {actions}
+              </div>
+            ) : null}
             {more ? <div className="flex shrink-0 md:order-3">{more}</div> : null}
           </div>
         ) : null}
@@ -254,7 +304,11 @@ function ReportBody({
     onPublished: () => setToast({ id: Date.now(), message: publishedMessage(day) }),
   });
   // While Xero works on it, there is nothing to publish.
-  const canPublish = !draft && can.publish && !isWorking(publishing.state) && report.publishing_status !== "publishing";
+  const canPublish =
+    !draft &&
+    can.publish &&
+    !isWorking(publishing.state) &&
+    report.publishing_status !== "publishing";
   // A detail edit went through: redraw from the API's answer (out of Xero, so Submitted again), then say so.
   const onSaved = (answer: Report, message: string) => {
     onReport(answer);
@@ -266,7 +320,10 @@ function ReportBody({
     const call = ++shareCall.current;
     setShare({ kind: "making" });
     try {
-      const answer = await pettyCashFetch<{ path?: string }>(`/reports/${encodeURIComponent(report.report_id)}/share-link`, { method: "POST" });
+      const answer = await pettyCashFetch<{ path?: string }>(
+        `/reports/${encodeURIComponent(report.report_id)}/share-link`,
+        { method: "POST" },
+      );
       if (call !== shareCall.current) return;
       // This app's public page (app/share), on this origin - never the API's `url` (Flask's page).
       const url = shareLinkUrl(window.location.origin, answer.path);
@@ -294,10 +351,29 @@ function ReportBody({
     ? []
     : [
         ...(canPublish && report.xero_integrated
-          ? [{ key: "publish", label: publishLabel(report), icon: "cloud_upload", onSelect: () => setDialog("publish") }]
+          ? [
+              {
+                key: "publish",
+                label: publishLabel(report),
+                icon: "cloud_upload",
+                onSelect: () => setDialog("publish"),
+              },
+            ]
           : []),
-        ...(can.edit ? [{ key: "edit", label: "Edit report", icon: "edit", onSelect: () => setDialog("edit") }] : []),
-        ...(can.delete ? [{ key: "delete", label: "Delete report", icon: "delete", danger: true, onSelect: () => setDialog("delete") }] : []),
+        ...(can.edit
+          ? [{ key: "edit", label: "Edit report", icon: "edit", onSelect: () => setDialog("edit") }]
+          : []),
+        ...(can.delete
+          ? [
+              {
+                key: "delete",
+                label: "Delete report",
+                icon: "delete",
+                danger: true,
+                onSelect: () => setDialog("delete"),
+              },
+            ]
+          : []),
       ];
   // Not yet in Xero: publishing is the one way on, so it is the Primary.
   const publish =
@@ -331,7 +407,10 @@ function ReportBody({
           tone="info"
           title="This report isn't submitted yet"
           action={
-            <Link href={stepHref(entityId, entityName, "ending", day)} className={buttonClass("link")}>
+            <Link
+              href={stepHref(entityId, entityName, "ending", day)}
+              className={buttonClass("link")}
+            >
               Go to Close
             </Link>
           }
@@ -340,7 +419,11 @@ function ReportBody({
         </PageBanner>
       ) : null}
 
-      <PublishProgress state={publishing.state} onCheckAgain={publishing.begin} onRetry={canPublish ? () => setDialog("publish") : undefined} />
+      <PublishProgress
+        state={publishing.state}
+        onCheckAgain={publishing.begin}
+        onRetry={canPublish ? () => setDialog("publish") : undefined}
+      />
 
       {/* 15.7's KPIs as one outcome band: Cash position the hero, sales and expenses secondary (the owner, 2026-10-19). */}
       <OutcomeBand kpis={reportKpis(report)} />
@@ -380,15 +463,29 @@ function ReportBody({
           {lines.length ? (
             <ul className="flex flex-col">
               {lines.map((line) => (
-                <li key={line.id} className="flex min-w-0 flex-col gap-1 border-t border-border-subtle py-3 first:border-t-0 first:pt-0 last:pb-0">
+                <li
+                  key={line.id}
+                  className="flex min-w-0 flex-col gap-1 border-t border-border-subtle py-3 first:border-t-0 first:pt-0 last:pb-0"
+                >
                   <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
-                    <p className="min-w-0 flex-1 basis-40 break-words text-body-m font-semibold text-text-primary">{expenseTitle(line)}</p>
-                    <p className="min-w-0 break-all text-right text-body-m font-semibold text-text-primary" translate="no">
+                    <p className="min-w-0 flex-1 basis-40 break-words text-body-m font-semibold text-text-primary">
+                      {expenseTitle(line)}
+                    </p>
+                    <p
+                      className="min-w-0 break-all text-right text-body-m font-semibold text-text-primary"
+                      translate="no"
+                    >
                       {amountText(line.amount)}
                     </p>
                   </div>
-                  <p className="min-w-0 break-words text-body-s text-text-secondary">{expenseMeta(line)}</p>
-                  {line.remarks ? <p className="min-w-0 break-words text-body-s text-text-muted">{line.remarks}</p> : null}
+                  <p className="min-w-0 break-words text-body-s text-text-secondary">
+                    {expenseMeta(line)}
+                  </p>
+                  {line.remarks ? (
+                    <p className="min-w-0 break-words text-body-s text-text-muted">
+                      {line.remarks}
+                    </p>
+                  ) : null}
                   {editLines ? (
                     <Button
                       kind="link"
@@ -423,13 +520,19 @@ function ReportBody({
                       setViewing({
                         name: receipt.name,
                         mime: receipt.mime_type,
-                        source: () => pettyCashBlob(`/expense-lines/${encodeURIComponent(line.id)}/receipts/${encodeURIComponent(receipt.id)}`),
+                        source: () =>
+                          pettyCashBlob(
+                            `/expense-lines/${encodeURIComponent(line.id)}/receipts/${encodeURIComponent(receipt.id)}`,
+                          ),
                       })
                     }
                     aria-label={`View receipt ${receipt.name}`}
                     className="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-3 rounded-lg border border-border-default bg-surface-card px-3 py-2 text-left hover:bg-state-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
                   >
-                    <Icon name={receiptKind(receipt.mime_type) === "pdf" ? "picture_as_pdf" : "image"} className="text-text-secondary" />
+                    <Icon
+                      name={receiptKind(receipt.mime_type) === "pdf" ? "picture_as_pdf" : "image"}
+                      className="text-text-secondary"
+                    />
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-body-m text-text-primary">{receipt.name}</span>
                       <span className="break-words text-body-s text-text-secondary">
@@ -453,7 +556,11 @@ function ReportBody({
             ))}
           </Rows>
           {canEditWithdrawal(report) ? (
-            <Button kind="link" className="w-fit" onClick={() => setEditing({ kind: "withdrawal" })}>
+            <Button
+              kind="link"
+              className="w-fit"
+              onClick={() => setEditing({ kind: "withdrawal" })}
+            >
               Edit where the cash came from
             </Button>
           ) : null}
@@ -467,7 +574,12 @@ function ReportBody({
       <AuditFacts facts={auditFacts(report)} />
 
       {dialog === "edit" ? (
-        <EditReportDialog report={dialogReport} entityId={entityId} entityName={entityName} onCancel={() => setDialog(null)} />
+        <EditReportDialog
+          report={dialogReport}
+          entityId={entityId}
+          entityName={entityName}
+          onCancel={() => setDialog(null)}
+        />
       ) : null}
       {dialog === "delete" ? (
         <DeleteReportDialog
@@ -500,14 +612,27 @@ function ReportBody({
           onClose={closeShare}
           onCopied={() => {
             closeShare();
-            setToast({ id: Date.now(), message: `The link to the Daily Report for ${formatWeekdayDay(day)} is copied.` });
+            setToast({
+              id: Date.now(),
+              message: `The link to the Daily Report for ${formatWeekdayDay(day)} is copied.`,
+            });
           }}
         />
       ) : null}
-      {editing?.kind === "reason" ? <EditReasonDialog report={report} onCancel={() => setEditing(null)} onSaved={onSaved} /> : null}
-      {editing?.kind === "withdrawal" ? <EditWithdrawalDialog report={report} onCancel={() => setEditing(null)} onSaved={onSaved} /> : null}
+      {editing?.kind === "reason" ? (
+        <EditReasonDialog report={report} onCancel={() => setEditing(null)} onSaved={onSaved} />
+      ) : null}
+      {editing?.kind === "withdrawal" ? (
+        <EditWithdrawalDialog report={report} onCancel={() => setEditing(null)} onSaved={onSaved} />
+      ) : null}
       {editing?.kind === "line" ? (
-        <EditLineDrawer report={report} line={editing.line} onCancel={() => setEditing(null)} onSaved={onSaved} onView={setViewing} />
+        <EditLineDrawer
+          report={report}
+          line={editing.line}
+          onCancel={() => setEditing(null)}
+          onSaved={onSaved}
+          onView={setViewing}
+        />
       ) : null}
       {viewing ? <ReceiptViewer file={viewing} onClose={() => setViewing(null)} /> : null}
       <ToastRegion toast={toast} onDismiss={() => setToast(null)} />
@@ -521,7 +646,17 @@ function ReportBody({
  * Copy link, which copies it and confirms with a toast. A link that can't be made shows the API's
  * sentence; a copy the browser refuses says so, and the link stays there to copy by hand.
  */
-function ShareReport({ share, day, onClose, onCopied }: { share: Share; day: string; onClose: () => void; onCopied: () => void }) {
+function ShareReport({
+  share,
+  day,
+  onClose,
+  onCopied,
+}: {
+  share: Share;
+  day: string;
+  onClose: () => void;
+  onCopied: () => void;
+}) {
   const field = useRef<HTMLInputElement>(null);
   const [copyProblem, setCopyProblem] = useState(false);
 
@@ -547,7 +682,12 @@ function ShareReport({ share, day, onClose, onCopied }: { share: Share; day: str
           <Button kind="secondary" onClick={onClose}>
             Close
           </Button>
-          <Button kind="primary" icon={<Icon name="content_copy" />} disabled={share.kind !== "ready"} onClick={() => void copy()}>
+          <Button
+            kind="primary"
+            icon={<Icon name="content_copy" />}
+            disabled={share.kind !== "ready"}
+            onClick={() => void copy()}
+          >
             Copy link
           </Button>
         </>

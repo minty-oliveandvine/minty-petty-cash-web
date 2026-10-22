@@ -21,7 +21,13 @@ test.use({ timezoneId: "Asia/Hong_Kong" });
 type Json = Record<string, unknown>;
 
 function day(closing: number, deposit = 0): Json {
-  return { id: `r-${closing}`, closing_balance: closing, bank_deposit: deposit, xero_integrated: true, submitter_first_name: "Olive" };
+  return {
+    id: `r-${closing}`,
+    closing_balance: closing,
+    bank_deposit: deposit,
+    xero_integrated: true,
+    submitter_first_name: "Olive",
+  };
 }
 
 function homeAnswer(over: Json = {}): Json {
@@ -63,12 +69,20 @@ type Enter = {
 };
 
 async function enterWith(page: Page, home: Json, { onCorrection, clock, notice }: Enter = {}) {
-  await page.route("**/api/petty-cash/v1/companies/*/home", (route) => route.fulfill({ json: home }));
+  await page.route("**/api/petty-cash/v1/companies/*/home", (route) =>
+    route.fulfill({ json: home }),
+  );
   // minty-subscription-api (SUBSCRIPTION_API_URL): the launch page's subscription notice
   await page.route("**/api/entities/*/subscription-notice", (route) =>
-    route.fulfill(notice === "fail" ? { status: 500, json: { error: "Boom" } } : { json: notice ?? { items: [] } }),
+    route.fulfill(
+      notice === "fail"
+        ? { status: 500, json: { error: "Boom" } }
+        : { json: notice ?? { items: [] } },
+    ),
   );
-  await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
+  await page.route("**/api/me/profile**", (route) =>
+    route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }),
+  );
   if (onCorrection) {
     await page.route("**/api/petty-cash/v1/companies/*/deposit-correction", async (route) => {
       await onCorrection(route.request().postDataJSON() as Json, route);
@@ -78,19 +92,47 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock, notice }
   // following Start reads nothing real.
   await page.route("**/api/petty-cash/v1/companies/*/reports/opening**", (route) =>
     route.fulfill({
-      json: { transaction_date: TODAY, currency_code: "HKD", draft: null, starting_cash_balance: 0, yesterday_closing_balance: 0, safebox_balance: 0, cash_addition: null, withdrawal: "personal" },
+      json: {
+        transaction_date: TODAY,
+        currency_code: "HKD",
+        draft: null,
+        starting_cash_balance: 0,
+        yesterday_closing_balance: 0,
+        safebox_balance: 0,
+        cash_addition: null,
+        withdrawal: "personal",
+      },
     }),
   );
   // This app's own Sales stage (e2e/04_sales.spec.ts covers it): a quiet stub too.
   await page.route("**/api/petty-cash/v1/companies/*/reports/sales**", (route) =>
-    route.fulfill({ json: { transaction_date: TODAY, currency_code: "HKD", draft: null, methods: [], cash_sales: null } }),
+    route.fulfill({
+      json: {
+        transaction_date: TODAY,
+        currency_code: "HKD",
+        draft: null,
+        methods: [],
+        cash_sales: null,
+      },
+    }),
   );
   // This app's own Cash Count stage (e2e/06_cash_count.spec.ts covers it): a quiet stub too.
   await page.route("**/api/petty-cash/v1/companies/*/reports/cash-count**", (route) =>
     route.fulfill({
       json: {
-        transaction_date: TODAY, currency_code: "HKD", draft: null, opening_balance: 0, cash_addition: 0, cash_sales: 0, expenses: 0, bank_deposit: 0,
-        cash_on_hand: 0, expected_cash: 0, denominations: [], safe_box_balance: 0, discrepancy: { amount: 0, kind: "none", reason: "" },
+        transaction_date: TODAY,
+        currency_code: "HKD",
+        draft: null,
+        opening_balance: 0,
+        cash_addition: 0,
+        cash_sales: 0,
+        expenses: 0,
+        bank_deposit: 0,
+        cash_on_hand: 0,
+        expected_cash: 0,
+        denominations: [],
+        safe_box_balance: 0,
+        discrepancy: { amount: 0, kind: "none", reason: "" },
       },
     }),
   );
@@ -98,9 +140,22 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock, notice }
   await page.route("**/api/petty-cash/v1/companies/*/reports/close**", (route) =>
     route.fulfill({
       json: {
-        transaction_date: TODAY, currency_code: "HKD", draft: null, opening_balance: 0, cash_addition: 0,
-        sales: { methods: [], cash: 0, total: 0, yesterday_total: null, history: [] }, expenses: { lines: [], total: 0 },
-        cash: { bank_deposit: 0, expected: 0, counted: 0, safe_box: 0, difference: { amount: 0, kind: "none", reason: "" } }, closing_balance: 0, problem: null,
+        transaction_date: TODAY,
+        currency_code: "HKD",
+        draft: null,
+        opening_balance: 0,
+        cash_addition: 0,
+        sales: { methods: [], cash: 0, total: 0, yesterday_total: null, history: [] },
+        expenses: { lines: [], total: 0 },
+        cash: {
+          bank_deposit: 0,
+          expected: 0,
+          counted: 0,
+          safe_box: 0,
+          difference: { amount: 0, kind: "none", reason: "" },
+        },
+        closing_balance: 0,
+        problem: null,
       },
     }),
   );
@@ -108,33 +163,93 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock, notice }
   await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/reports\/r-[^/?]+$/, (route) =>
     route.fulfill({
       json: {
-        report_id: "r", transaction_date: "2026-10-13", currency_code: "HKD", company_name: NAME, status: "submitted", status_label: "Submitted", status_tone: "info",
-        is_latest: true, submitted_at: null, submitted_by: null, published_at: null, publishing_status: "unpublished", xero_integrated: false, was_published: false,
-        kpis: { total_sales: 0, total_expenses: 0, cash_position: 0 }, sales: { methods: [], cash: 0, total: 0 }, expenses: { lines: [], total: 0 },
-        cash: { opening_balance: 0, cash_addition: 0, cash_addition_type: null, cash_sales: 0, expenses: 0, bank_deposit: 0, expected: 0, counted: 0, safe_box: 0, difference: { amount: 0, kind: "none", reason: "" } },
-        closing_balance: 0, permissions: { edit: false, delete: false, publish: false, share: false },
+        report_id: "r",
+        transaction_date: "2026-10-13",
+        currency_code: "HKD",
+        company_name: NAME,
+        status: "submitted",
+        status_label: "Submitted",
+        status_tone: "info",
+        is_latest: true,
+        submitted_at: null,
+        submitted_by: null,
+        published_at: null,
+        publishing_status: "unpublished",
+        xero_integrated: false,
+        was_published: false,
+        kpis: { total_sales: 0, total_expenses: 0, cash_position: 0 },
+        sales: { methods: [], cash: 0, total: 0 },
+        expenses: { lines: [], total: 0 },
+        cash: {
+          opening_balance: 0,
+          cash_addition: 0,
+          cash_addition_type: null,
+          cash_sales: 0,
+          expenses: 0,
+          bank_deposit: 0,
+          expected: 0,
+          counted: 0,
+          safe_box: 0,
+          difference: { amount: 0, kind: "none", reason: "" },
+        },
+        closing_balance: 0,
+        permissions: { edit: false, delete: false, publish: false, share: false },
       },
     }),
   );
   // This app's own report history (e2e/09_report_history.spec.ts covers it): a quiet stub too.
   await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/reports(\?.*)?$/, (route) =>
-    route.fulfill({ json: { reports: [], page: 1, per_page: 10, total_pages: 1, total_count: 0, latest_report_id: null, currency_code: "HKD", can_publish: true } }),
+    route.fulfill({
+      json: {
+        reports: [],
+        page: 1,
+        per_page: 10,
+        total_pages: 1,
+        total_count: 0,
+        latest_report_id: null,
+        currency_code: "HKD",
+        can_publish: true,
+      },
+    }),
   );
   // This app's own settings page (e2e/10_settings.spec.ts covers it), where the Xero settings are
   // set up: quiet stubs, Xero not live.
   await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/settings$/, (route) =>
     route.fulfill({
       json: {
-        country: { country_code: "HK", currency_id: "cur-hkd", countries: [{ code: "HK", name: "Hong Kong" }], currencies: [{ id: "cur-hkd", name: "HKD" }], selected_country: "Hong Kong", selected_currency: "HKD" },
+        country: {
+          country_code: "HK",
+          currency_id: "cur-hkd",
+          countries: [{ code: "HK", name: "Hong Kong" }],
+          currencies: [{ id: "cur-hkd", name: "HKD" }],
+          selected_country: "Hong Kong",
+          selected_currency: "HKD",
+        },
         sales_methods: { electronic: [], delivery: [] },
         available: { electronic: [], delivery: [] },
         xero_connected: true,
-        permissions: { edit_country: true, view_sales_methods: true, add_sales_method: true, rename_sales_method: true, remove_sales_method: true, reorder_sales_methods: true },
+        permissions: {
+          edit_country: true,
+          view_sales_methods: true,
+          add_sales_method: true,
+          rename_sales_method: true,
+          remove_sales_method: true,
+          reorder_sales_methods: true,
+        },
       },
     }),
   );
   await page.route(/\/api\/petty-cash\/v1\/companies\/[^/]+\/settings\/xero$/, (route) =>
-    route.fulfill({ json: { live: false, organisation: null, mapping: null, mapping_saved: false, account_codes: null, permissions: { edit_mapping: true, edit_account_codes: true } } }),
+    route.fulfill({
+      json: {
+        live: false,
+        organisation: null,
+        mapping: null,
+        mapping_saved: false,
+        account_codes: null,
+        permissions: { edit_mapping: true, edit_account_codes: true },
+      },
+    }),
   );
   let overrides: Record<string, unknown> = {};
   if (clock) {
@@ -143,8 +258,13 @@ async function enterWith(page: Page, home: Json, { onCorrection, clock, notice }
     const now = Math.floor(clock.getTime() / 1000);
     overrides = { iat: now, exp: now + 1800 };
   }
-  const token = mintModuleToken({ secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME }, overrides);
-  await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: HOME_PATH })}`);
+  const token = mintModuleToken(
+    { secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME },
+    overrides,
+  );
+  await page.goto(
+    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: HOME_PATH })}`,
+  );
   await expect(page.getByRole("heading", { level: 1, name: "Petty Cash" })).toBeVisible();
   await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
 }
@@ -165,7 +285,8 @@ async function expectXeroSettings(page: Page) {
 }
 
 /** This app's own Addition to Drawer stage for `day`, in the company's address. */
-const addition = (day: string) => new RegExp(`${HOME_PATH}/reports/new/opening\\?transaction_date=${day}$`);
+const addition = (day: string) =>
+  new RegExp(`${HOME_PATH}/reports/new/opening\\?transaction_date=${day}$`);
 
 test("the page loads with no console error - a hydration mismatch included", async ({ page }) => {
   const errors: string[] = [];
@@ -178,23 +299,24 @@ test("the page loads with no console error - a hydration mismatch included", asy
   // the browser then hydrates - where a mismatch shows (the cookie is set by now).
   await page.reload();
   await expect(page.getByRole("heading", { name: "Today's Daily Closing" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Back to your companies" })).toHaveAttribute("href", /\/handoff\/minty-web/);
+  await expect(page.getByRole("link", { name: "Back to your companies" })).toHaveAttribute(
+    "href",
+    /\/handoff\/minty-web/,
+  );
   expect(errors).toEqual([]);
 });
 
-test("not started: the greeting, the five stages and Start - no calendar, no Quick Actions", async ({ page }) => {
+test("not started: the greeting, the five stages and Start - no calendar, no Quick Actions", async ({
+  page,
+}) => {
   await enterWith(page, homeAnswer());
   await expect(page.getByText(/^Good (morning|afternoon|evening), Tess$/)).toBeVisible();
   await expect(page.getByText("Wed 14 Oct 2026").first()).toBeVisible();
   const c = card(page);
   await expect(c.getByRole("heading", { name: "Today's Daily Closing" })).toBeVisible();
-  await expect(c.getByRole("list", { name: "Daily Closing stages" }).getByRole("listitem")).toHaveText([
-    /Drawer/,
-    /Sales/,
-    /Expenses/,
-    /Cash Count/,
-    /Close/,
-  ]);
+  await expect(
+    c.getByRole("list", { name: "Daily Closing stages" }).getByRole("listitem"),
+  ).toHaveText([/Drawer/, /Sales/, /Expenses/, /Cash Count/, /Close/]);
   await expect(c).toContainText("0 of 5 done");
   await expect(c).toContainText("Next: Addition to Drawer");
   await expect(c.getByRole("button", { name: "Start today's Daily Closing" })).toBeEnabled();
@@ -207,7 +329,9 @@ test("Start passes through Before You Start, and a changed deposit is sent", asy
   await enterWith(page, homeAnswer(), {
     onCorrection: async (body, route) => {
       sent = body;
-      await route.fulfill({ json: { status: "success", message: "ok", next_transaction_date: TODAY } });
+      await route.fulfill({
+        json: { status: "success", message: "ok", next_transaction_date: TODAY },
+      });
     },
   });
 
@@ -242,7 +366,10 @@ test("Start passes through Before You Start, and a changed deposit is sent", asy
 test("a refused correction is said in the dialog, not lost", async ({ page }) => {
   await enterWith(page, homeAnswer(), {
     onCorrection: async (_body, route) => {
-      await route.fulfill({ status: 409, json: { error: "Configure the Deposit Bank Account first." } });
+      await route.fulfill({
+        status: 409,
+        json: { error: "Configure the Deposit Bank Account first." },
+      });
     },
   });
   await page.getByRole("button", { name: "Start today's Daily Closing" }).click();
@@ -256,7 +383,11 @@ test("a deposit the company cannot correct offers only 'as stated'", async ({ pa
   await enterWith(
     page,
     homeAnswer({
-      latest: { ...(homeAnswer().latest as Json), deposit_correction_missing_settings: ["Deposit Bank Account"], can_correct_deposit: false },
+      latest: {
+        ...(homeAnswer().latest as Json),
+        deposit_correction_missing_settings: ["Deposit Bank Account"],
+        can_correct_deposit: false,
+      },
     }),
   );
   await page.getByRole("button", { name: "Start today's Daily Closing" }).click();
@@ -268,11 +399,17 @@ test("a deposit the company cannot correct offers only 'as stated'", async ({ pa
   await expect(page).toHaveURL(addition(TODAY));
 });
 
-test("a deposit correction's missing accounts link to this app's settings, at its Xero cards", async ({ page }) => {
+test("a deposit correction's missing accounts link to this app's settings, at its Xero cards", async ({
+  page,
+}) => {
   await enterWith(
     page,
     homeAnswer({
-      latest: { ...(homeAnswer().latest as Json), deposit_correction_missing_settings: ["Deposit Bank Account"], can_correct_deposit: false },
+      latest: {
+        ...(homeAnswer().latest as Json),
+        deposit_correction_missing_settings: ["Deposit Bank Account"],
+        can_correct_deposit: false,
+      },
     }),
   );
   await page.getByRole("button", { name: "Start today's Daily Closing" }).click();
@@ -283,11 +420,18 @@ test("a deposit correction's missing accounts link to this app's settings, at it
   await expectXeroSettings(page);
 });
 
-test("in progress: 3 of 5 done, the next stage, when it was saved, and Continue opens this app's Cash Count", async ({ page }) => {
+test("in progress: 3 of 5 done, the next stage, when it was saved, and Continue opens this app's Cash Count", async ({
+  page,
+}) => {
   await enterWith(
     page,
     homeAnswer({
-      draft: { id: "d", current_section: "deposit", completed_sections: ["opening", "sales", "expenses", "deposit"], last_edit_seconds: 180 },
+      draft: {
+        id: "d",
+        current_section: "deposit",
+        completed_sections: ["opening", "sales", "expenses", "deposit"],
+        last_edit_seconds: 180,
+      },
       draft_date: TODAY,
     }),
     // 6:05 pm in Hong Kong (the browser's zone is pinned below), years ahead of the real clock.
@@ -302,17 +446,25 @@ test("in progress: 3 of 5 done, the next stage, when it was saved, and Continue 
   await expect(stages.locator('[aria-current="step"]')).toContainText("Cash Count");
   // done and current stages open where they were left - Cash Count is this app's own stage, the
   // deposit its first section (Wave 2d)
-  await expect(stages.getByRole("link", { name: /Sales, done/ })).toHaveAttribute("href", /\/reports\/new\/sale\?transaction_date=2026-10-14/);
+  await expect(stages.getByRole("link", { name: /Sales, done/ })).toHaveAttribute(
+    "href",
+    /\/reports\/new\/sale\?transaction_date=2026-10-14/,
+  );
   await expect(stages.getByRole("link", { name: /Cash Count, current step/ })).toHaveAttribute(
     "href",
     `${HOME_PATH}/reports/new/cash-count?transaction_date=2026-10-14`,
   );
   await expect(stages.getByRole("link", { name: /Close/ })).toHaveCount(0);
   // Addition to Drawer is this app's own stage page
-  await expect(stages.getByRole("link", { name: /Drawer, done/ })).toHaveAttribute("href", addition(TODAY));
+  await expect(stages.getByRole("link", { name: /Drawer, done/ })).toHaveAttribute(
+    "href",
+    addition(TODAY),
+  );
   await expect(page.getByRole("button", { name: "Start today's Daily Closing" })).toHaveCount(0);
   await c.getByRole("button", { name: "Continue Daily Closing" }).click();
-  await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports/new/cash-count\\?transaction_date=2026-10-14$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${HOME_PATH}/reports/new/cash-count\\?transaction_date=2026-10-14$`),
+  );
   await expect(page.getByRole("heading", { level: 1, name: "Cash Count" })).toBeVisible();
 });
 
@@ -320,7 +472,12 @@ test("in progress on Close: Continue opens this app's own Close stage", async ({
   await enterWith(
     page,
     homeAnswer({
-      draft: { id: "d", current_section: "ending", completed_sections: ["opening", "sales", "expenses", "deposit", "cash_count"], last_edit_seconds: 60 },
+      draft: {
+        id: "d",
+        current_section: "ending",
+        completed_sections: ["opening", "sales", "expenses", "deposit", "cash_count"],
+        last_edit_seconds: 60,
+      },
       draft_date: TODAY,
     }),
   );
@@ -328,14 +485,19 @@ test("in progress on Close: Continue opens this app's own Close stage", async ({
   await expect(c).toContainText("4 of 5 done");
   await expect(c).toContainText("Next: Close");
   await c.getByRole("button", { name: "Continue Daily Closing" }).click();
-  await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports/new/ending\\?transaction_date=2026-10-14$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${HOME_PATH}/reports/new/ending\\?transaction_date=2026-10-14$`),
+  );
   await expect(page.getByRole("heading", { level: 1, name: "Close" })).toBeVisible();
 });
 
 test("in progress on Addition to Drawer: Continue opens this app's own stage", async ({ page }) => {
   await enterWith(
     page,
-    homeAnswer({ draft: { id: "d", current_section: "opening", completed_sections: [], last_edit_seconds: 60 }, draft_date: TODAY }),
+    homeAnswer({
+      draft: { id: "d", current_section: "opening", completed_sections: [], last_edit_seconds: 60 },
+      draft_date: TODAY,
+    }),
   );
   const c = card(page);
   await expect(c).toContainText("Next: Addition to Drawer");
@@ -343,14 +505,27 @@ test("in progress on Addition to Drawer: Continue opens this app's own stage", a
   await expect(page).toHaveURL(addition(TODAY));
 });
 
-test("in progress with no section named: Continue opens this app's Addition to Drawer", async ({ page }) => {
-  await enterWith(page, homeAnswer({ draft: { id: "d", current_section: null, completed_sections: [], last_edit_seconds: 60 }, draft_date: TODAY }));
+test("in progress with no section named: Continue opens this app's Addition to Drawer", async ({
+  page,
+}) => {
+  await enterWith(
+    page,
+    homeAnswer({
+      draft: { id: "d", current_section: null, completed_sections: [], last_edit_seconds: 60 },
+      draft_date: TODAY,
+    }),
+  );
   await card(page).getByRole("button", { name: "Continue Daily Closing" }).click();
   await expect(page).toHaveURL(addition(TODAY));
 });
 
-test("yesterday unfinished: the gate banner holds today and starts the day it names", async ({ page }) => {
-  await enterWith(page, homeAnswer({ published: { "2026-10-11": day(700), "2026-10-12": day(800) } }));
+test("yesterday unfinished: the gate banner holds today and starts the day it names", async ({
+  page,
+}) => {
+  await enterWith(
+    page,
+    homeAnswer({ published: { "2026-10-11": day(700), "2026-10-12": day(800) } }),
+  );
   const banner = page.getByRole("status").filter({ hasText: "Finish Tue 13 Oct first" });
   await expect(banner).toBeVisible();
   await expect(banner).toContainText("Tue 13 Oct has no submitted report yet.");
@@ -363,7 +538,13 @@ test("yesterday unfinished: the gate banner holds today and starts the day it na
 });
 
 test("done: today's report is submitted, and View report opens it", async ({ page }) => {
-  await enterWith(page, homeAnswer({ published: { "2026-10-13": day(1250.5), [TODAY]: day(1320) }, today_has_report: true }));
+  await enterWith(
+    page,
+    homeAnswer({
+      published: { "2026-10-13": day(1250.5), [TODAY]: day(1320) },
+      today_has_report: true,
+    }),
+  );
   const c = card(page);
   await expect(c).toContainText("Today's report is submitted");
   await expect(c).toContainText("5 of 5 done");
@@ -375,7 +556,13 @@ test("done: today's report is submitted, and View report opens it", async ({ pag
 });
 
 test("first use: Minty's empty state starts the first Daily Closing", async ({ page }) => {
-  await enterWith(page, homeAnswer({ published: {}, latest: { ...(homeAnswer().latest as Json), date: null, deposit: 0 } }));
+  await enterWith(
+    page,
+    homeAnswer({
+      published: {},
+      latest: { ...(homeAnswer().latest as Json), date: null, deposit: 0 },
+    }),
+  );
   await expect(page.getByText("Your first Daily Closing")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recent reports" })).toHaveCount(0);
   await page.getByRole("button", { name: "Start today's Daily Closing" }).click();
@@ -383,20 +570,33 @@ test("first use: Minty's empty state starts the first Daily Closing", async ({ p
   await expect(page.getByRole("heading", { level: 1, name: "Addition to Drawer" })).toBeVisible();
 });
 
-test("first use after onboarding: the first Daily Closing is on the start date", async ({ page }) => {
+test("first use after onboarding: the first Daily Closing is on the start date", async ({
+  page,
+}) => {
   await enterWith(
     page,
-    homeAnswer({ published: {}, start_date: "2026-10-07", latest: { ...(homeAnswer().latest as Json), date: null, deposit: 0 } }),
+    homeAnswer({
+      published: {},
+      start_date: "2026-10-07",
+      latest: { ...(homeAnswer().latest as Json), date: null, deposit: 0 },
+    }),
   );
   await page.getByRole("button", { name: "Start the Daily Closing for Wed 7 Oct" }).click();
   await expect(page).toHaveURL(addition("2026-10-07"));
 });
 
-test("recent reports: the newest three, Submitted, each opening its report, and See all", async ({ page }) => {
+test("recent reports: the newest three, Submitted, each opening its report, and See all", async ({
+  page,
+}) => {
   await enterWith(
     page,
     homeAnswer({
-      published: { "2026-10-10": day(900), "2026-10-11": day(950), "2026-10-12": day(1000), "2026-10-13": day(1250.5, 300) },
+      published: {
+        "2026-10-10": day(900),
+        "2026-10-11": day(950),
+        "2026-10-12": day(1000),
+        "2026-10-13": day(1250.5, 300),
+      },
     }),
   );
   const recent = page.getByRole("region", { name: "Recent reports" });
@@ -407,7 +607,10 @@ test("recent reports: the newest three, Submitted, each opening its report, and 
   await expect(rows.nth(0)).toContainText("Submitted");
   await expect(rows.nth(2)).toContainText("Sun 11 Oct 2026");
   await expect(recent).not.toContainText("10 Oct");
-  await expect(recent.getByRole("link", { name: "See all" })).toHaveAttribute("href", `${HOME_PATH}/reports`);
+  await expect(recent.getByRole("link", { name: "See all" })).toHaveAttribute(
+    "href",
+    `${HOME_PATH}/reports`,
+  );
   await rows.nth(1).getByRole("link").click();
   await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports/r-1000/summary$`));
   await expect(page.getByRole("heading", { level: 1, name: "Daily Report" })).toBeVisible();
@@ -419,7 +622,12 @@ test("recent reports: the newest three, Submitted, each opening its report, and 
 });
 
 test("missing Xero settings hold the page with the way to set them up", async ({ page }) => {
-  await enterWith(page, homeAnswer({ xero_settings: { complete: false, missing: ["Main Bank Account", "Cash Sale Contact"] } }));
+  await enterWith(
+    page,
+    homeAnswer({
+      xero_settings: { complete: false, missing: ["Main Bank Account", "Cash Sale Contact"] },
+    }),
+  );
   const dialog = page.getByRole("alertdialog", { name: "Setup Required" });
   await expect(dialog).toContainText("Main Bank Account");
   await page.keyboard.press("Escape");
@@ -430,14 +638,19 @@ test("missing Xero settings hold the page with the way to set them up", async ({
   await expectXeroSettings(page);
 });
 
-test("no currency holds the page: no report can start until one is chosen in Country & currency (owner 2026-10-22)", async ({ page }) => {
+test("no currency holds the page: no report can start until one is chosen in Country & currency (owner 2026-10-22)", async ({
+  page,
+}) => {
   await enterWith(page, homeAnswer({ currency_code: null }));
   const dialog = page.getByRole("alertdialog", { name: "Setup Required" });
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
   const choose = dialog.getByRole("link", { name: "Choose your company's currency" });
   await expect(choose).toHaveAttribute("href", SETTINGS_COUNTRY);
-  await expect(dialog.getByRole("link", { name: "Set Up Settings" })).toHaveAttribute("href", SETTINGS_COUNTRY);
+  await expect(dialog.getByRole("link", { name: "Set Up Settings" })).toHaveAttribute(
+    "href",
+    SETTINGS_COUNTRY,
+  );
   await choose.click();
   await expect(page).toHaveURL(new RegExp(`${SETTINGS_COUNTRY}$`));
   await expect(page.getByRole("region", { name: "Country & currency" })).toBeInViewport();
@@ -454,7 +667,15 @@ test("read-only access cannot start, and says why beside the button", async ({ p
 function noticeAnswer(over: Json = {}): Json {
   return {
     items: [
-      { kind: "past_due", severity: "critical", module: "Petty Cash", module_code: "petty_cash", title: "Petty Cash payment failed", detail: "Update the card by Tue 20 Oct to keep Petty Cash.", deadline: "2026-10-20" },
+      {
+        kind: "past_due",
+        severity: "critical",
+        module: "Petty Cash",
+        module_code: "petty_cash",
+        title: "Petty Cash payment failed",
+        detail: "Update the card by Tue 20 Oct to keep Petty Cash.",
+        deadline: "2026-10-20",
+      },
     ],
     can_manage: true,
     payer: { name: "Olive Tan", email: "olive@example.com" },
@@ -464,15 +685,22 @@ function noticeAnswer(over: Json = {}): Json {
   };
 }
 
-test("the subscription notice: the payer goes to minty-web's subscription settings; shown once per sign-in", async ({ page }) => {
+test("the subscription notice: the payer goes to minty-web's subscription settings; shown once per sign-in", async ({
+  page,
+}) => {
   await enterWith(page, homeAnswer(), { notice: noticeAnswer() });
   const dialog = page.getByRole("dialog", { name: "Action needed" });
-  await expect(dialog.getByRole("alert").filter({ hasText: "Petty Cash payment failed" })).toHaveAttribute("data-tone", "danger");
+  await expect(
+    dialog.getByRole("alert").filter({ hasText: "Petty Cash payment failed" }),
+  ).toHaveAttribute("data-tone", "danger");
   await expect(dialog).toContainText("Update the card by Tue 20 Oct to keep Petty Cash.");
   await expect(dialog).not.toContainText("managed by");
   // minty-web's Module page through Flask's hand-off - never a Flask page
   const settings = dialog.getByRole("link", { name: "Go to subscription settings" });
-  await expect(settings).toHaveAttribute("href", /\/handoff\/minty-web\?next=%2Fentity%2F3d65f186%2F[^&]+%2Fsettings%2Fmodules&entity_id=3d65f186-/);
+  await expect(settings).toHaveAttribute(
+    "href",
+    /\/handoff\/minty-web\?next=%2Fentity%2F3d65f186%2F[^&]+%2Fsettings%2Fmodules&entity_id=3d65f186-/,
+  );
   await dialog.getByRole("button", { name: "Dismiss" }).click();
   await expect(dialog).toHaveCount(0);
   await page.reload();
@@ -480,17 +708,43 @@ test("the subscription notice: the payer goes to minty-web's subscription settin
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("the subscription notice tells anyone but the payer who pays, with no settings button", async ({ page }) => {
-  await enterWith(page, homeAnswer(), { notice: noticeAnswer({ can_manage: false, severity: "warning", items: [{ kind: "pending_cancel", severity: "warning", module: "Bills", module_code: "billing", title: "Bills ends on Sat 31 Oct", detail: "Undo the cancellation to keep it.", deadline: null }] }) });
+test("the subscription notice tells anyone but the payer who pays, with no settings button", async ({
+  page,
+}) => {
+  await enterWith(page, homeAnswer(), {
+    notice: noticeAnswer({
+      can_manage: false,
+      severity: "warning",
+      items: [
+        {
+          kind: "pending_cancel",
+          severity: "warning",
+          module: "Bills",
+          module_code: "billing",
+          title: "Bills ends on Sat 31 Oct",
+          detail: "Undo the cancellation to keep it.",
+          deadline: null,
+        },
+      ],
+    }),
+  });
   const dialog = page.getByRole("dialog", { name: "Your subscription" });
-  await expect(dialog).toContainText("Billing for this company is managed by Olive Tan (olive@example.com). Only they can change its subscription.");
+  await expect(dialog).toContainText(
+    "Billing for this company is managed by Olive Tan (olive@example.com). Only they can change its subscription.",
+  );
   await expect(dialog.getByRole("link", { name: "Go to subscription settings" })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
 });
 
-test("the subscription notice sits over Setup Required; dismissing it reveals what is beneath", async ({ page }) => {
-  await enterWith(page, homeAnswer({ xero_settings: { complete: false, missing: ["Main Bank Account"] } }), { notice: noticeAnswer() });
+test("the subscription notice sits over Setup Required; dismissing it reveals what is beneath", async ({
+  page,
+}) => {
+  await enterWith(
+    page,
+    homeAnswer({ xero_settings: { complete: false, missing: ["Main Bank Account"] } }),
+    { notice: noticeAnswer() },
+  );
   const notice = page.getByRole("dialog", { name: "Action needed" });
   await expect(notice).toBeVisible();
   await notice.getByRole("button", { name: "Dismiss" }).click();
@@ -502,4 +756,3 @@ test("a failed subscription read shows no notice and leaves the page alone", asy
   await expect(page.getByRole("heading", { name: "Today's Daily Closing" })).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
-

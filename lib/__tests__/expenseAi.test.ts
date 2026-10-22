@@ -30,16 +30,32 @@ const ACCOUNTS = [
   { id: "a1", code: "429", name: "General Expenses" },
   { id: "a2", code: "461", name: "Printing & Stationery" },
 ];
-const CTX = { suppliers: SUPPLIERS, accounts: ACCOUNTS, code: "HKD", day: "2026-10-13", canCreateSupplier: true };
+const CTX = {
+  suppliers: SUPPLIERS,
+  accounts: ACCOUNTS,
+  code: "HKD",
+  day: "2026-10-13",
+  canCreateSupplier: true,
+};
 
-const read = (value: string, band: Band, applied = band !== "low"): ReadField => ({ value, confidence: band === "high" ? 0.95 : band === "medium" ? 0.7 : 0.3, band, applied });
+const read = (value: string, band: Band, applied = band !== "low"): ReadField => ({
+  value,
+  confidence: band === "high" ? 0.95 : band === "medium" ? 0.7 : 0.3,
+  band,
+  applied,
+});
 
 function answer(band: Band = "high"): Suggestions {
   return {
     amount: read("448.80", band),
     description: read("Courier delivery", band),
     supplier: { ...read("Wellcome", band), contact_id: "c3" },
-    account: { ...read("461 Printing & Stationery", band), account_id: "a2", code: "461", name: "Printing & Stationery" },
+    account: {
+      ...read("461 Printing & Stationery", band),
+      account_id: "a2",
+      code: "461",
+      name: "Printing & Stationery",
+    },
     document_date: read("2026-10-12", "high"),
     currency: "HKD",
     entity_currency: "HKD",
@@ -49,10 +65,23 @@ function answer(band: Band = "high"): Suggestions {
 describe("an answer on an empty form", () => {
   it("fills every applied field, marks each with its band, and says so once", () => {
     const next = withSuggestions(entryState(), answer("high"), CTX);
-    expect(next.values).toEqual({ amount: "448.80", query: "Wellcome", supplier: { id: "c3", name: "Wellcome" }, accountId: "a2", remarks: "Courier delivery" });
-    expect(next.marks).toEqual({ amount: "high", description: "high", supplier: "high", account: "high" });
+    expect(next.values).toEqual({
+      amount: "448.80",
+      query: "Wellcome",
+      supplier: { id: "c3", name: "Wellcome" },
+      accountId: "a2",
+      remarks: "Courier delivery",
+    });
+    expect(next.marks).toEqual({
+      amount: "high",
+      description: "high",
+      supplier: "high",
+      account: "high",
+    });
     expect(next.notes).toEqual({});
-    expect(next.announcement).toBe("Suggestions from the receipt filled 4 fields: amount, description, supplier, account. Check them before you go on.");
+    expect(next.announcement).toBe(
+      "Suggestions from the receipt filled 4 fields: amount, description, supplier, account. Check them before you go on.",
+    );
   });
 
   it("marks the medium band for checking - it is filled all the same", () => {
@@ -67,11 +96,17 @@ describe("an answer on an empty form", () => {
     const next = withSuggestions(entryState(), answer("low"), CTX);
     expect(next.values).toEqual(entryState().values);
     expect(next.marks).toEqual({});
-    expect(next.notes.amount).toEqual({ text: "The receipt might read HKD\u00a0448.80.", fill: { amount: "448.80" }, band: "low" });
+    expect(next.notes.amount).toEqual({
+      text: "The receipt might read HKD\u00a0448.80.",
+      fill: { amount: "448.80" },
+      band: "low",
+    });
     expect(next.notes.supplier?.text).toBe('The receipt might read like "Wellcome".');
     expect(next.notes.account?.text).toBe('The receipt might read like "Printing & Stationery".');
     expect(next.notes.description).toBeUndefined();
-    expect(next.announcement).toBe("The receipt reads differently for: amount, supplier, account. Nothing was changed.");
+    expect(next.announcement).toBe(
+      "The receipt reads differently for: amount, supplier, account. Nothing was changed.",
+    );
   });
 
   it("groups a large amount as the Amount input shows it", () => {
@@ -80,12 +115,15 @@ describe("an answer on an empty form", () => {
   });
 
   it("reads an amount sent with currency letters, a symbol or spaces as its digits alone", () => {
-    const filled = (value: string) => withSuggestions(entryState(), { amount: read(value, "high") }, CTX).values.amount;
+    const filled = (value: string) =>
+      withSuggestions(entryState(), { amount: read(value, "high") }, CTX).values.amount;
     expect(filled("448.80 HKD")).toBe("448.80");
     expect(filled("HKD 448.80")).toBe("448.80");
     expect(filled("HK$1,234.5")).toBe("1,234.50");
     expect(filled(" $ 12345 ")).toBe("12,345.00");
-    expect(withSuggestions(entryState(), { amount: read("HKD 448.80", "low") }, CTX).notes.amount?.text).toBe("The receipt might read HKD\u00a0448.80.");
+    expect(
+      withSuggestions(entryState(), { amount: read("HKD 448.80", "low") }, CTX).notes.amount?.text,
+    ).toBe("The receipt might read HKD\u00a0448.80.");
     // nothing to read, or below zero: no suggestion at all
     for (const none of ["HKD", "-12.00", "0.00", "1.2.3"]) expect(filled(none)).toBe("");
   });
@@ -93,7 +131,10 @@ describe("an answer on an empty form", () => {
   it("chooses a supplier and an account only by an id the company has", () => {
     const next = withSuggestions(
       entryState(),
-      { supplier: { ...read("Ghost Ltd", "high"), contact_id: "nope" }, account: { ...read("999 Gone", "high"), account_id: "gone", code: "999", name: "Gone" } },
+      {
+        supplier: { ...read("Ghost Ltd", "high"), contact_id: "nope" },
+        account: { ...read("999 Gone", "high"), account_id: "gone", code: "999", name: "Gone" },
+      },
       CTX,
     );
     expect(next.values.supplier).toBeNull();
@@ -102,17 +143,32 @@ describe("an answer on an empty form", () => {
   });
 
   it("offers a supplier name that is not on the list for New supplier - only to someone who may add one", () => {
-    const unknown: Suggestions = { supplier: { value: "", confidence: 0, band: "low", applied: false, contact_id: "", detected_name: " Kwok Transport " } };
+    const unknown: Suggestions = {
+      supplier: {
+        value: "",
+        confidence: 0,
+        band: "low",
+        applied: false,
+        contact_id: "",
+        detected_name: " Kwok Transport ",
+      },
+    };
     const next = withSuggestions(entryState(), unknown, CTX);
     expect(next.detectedName).toBe("Kwok Transport");
     expect(next.values.supplier).toBeNull();
-    expect(next.announcement).toBe("The receipt names a supplier that is not in your list: Kwok Transport.");
-    expect(withSuggestions(entryState(), unknown, { ...CTX, canCreateSupplier: false }).detectedName).toBeNull();
+    expect(next.announcement).toBe(
+      "The receipt names a supplier that is not in your list: Kwok Transport.",
+    );
+    expect(
+      withSuggestions(entryState(), unknown, { ...CTX, canCreateSupplier: false }).detectedName,
+    ).toBeNull();
   });
 
   it("adds a far-off receipt date to the announcement, and never blocks anything", () => {
     const s = { ...answer("high"), document_date: read("2026-09-01", "high") };
-    expect(withSuggestions(entryState(), s, CTX).announcement).toContain("This receipt is dated 2026-09-01, more than a week from this report's day.");
+    expect(withSuggestions(entryState(), s, CTX).announcement).toContain(
+      "This receipt is dated 2026-09-01, more than a week from this report's day.",
+    );
     expect(dateNote(read("2026-10-07", "high"), "2026-10-13")).toBe("");
     expect(dateNote(read("2026-10-01", "low"), "2026-10-13")).toBe("");
   });
@@ -124,7 +180,13 @@ describe("an answer on an empty form", () => {
 });
 
 describe("never overwriting the person", () => {
-  const typed = entryState({ amount: "44.80", query: "ParknShop", supplier: SUPPLIERS[0], accountId: "a1", remarks: "Taxi" });
+  const typed = entryState({
+    amount: "44.80",
+    query: "ParknShop",
+    supplier: SUPPLIERS[0],
+    accountId: "a1",
+    remarks: "Taxi",
+  });
 
   it("leaves every filled field alone and offers the receipt's different reading instead", () => {
     const next = withSuggestions(typed, answer("high"), CTX);
@@ -132,17 +194,27 @@ describe("never overwriting the person", () => {
     expect(next.marks).toEqual({});
     expect(next.notes.amount?.text).toBe("The receipt reads HKD\u00a0448.80, not HKD\u00a044.80.");
     expect(next.notes.supplier?.text).toBe('The receipt reads like "Wellcome", not "ParknShop".');
-    expect(next.notes.account?.text).toBe('The receipt reads more like "Printing & Stationery" than "General Expenses".');
+    expect(next.notes.account?.text).toBe(
+      'The receipt reads more like "Printing & Stationery" than "General Expenses".',
+    );
     expect(next.notes.description).toBeUndefined();
   });
 
   it("says nothing where the receipt agrees", () => {
-    const same = entryState({ amount: "448.80", query: "wellcome", supplier: SUPPLIERS[1], accountId: "a2", remarks: "" });
+    const same = entryState({
+      amount: "448.80",
+      query: "wellcome",
+      supplier: SUPPLIERS[1],
+      accountId: "a2",
+      remarks: "",
+    });
     expect(withSuggestions(same, answer("high"), CTX).notes).toEqual({});
   });
 
   it("hedges a low-band disagreement", () => {
-    expect(withSuggestions(typed, answer("low"), CTX).notes.amount?.text).toBe("The receipt might read HKD\u00a0448.80, not HKD\u00a044.80.");
+    expect(withSuggestions(typed, answer("low"), CTX).notes.amount?.text).toBe(
+      "The receipt might read HKD\u00a0448.80, not HKD\u00a044.80.",
+    );
   });
 
   it("uses the receipt's reading only on its button, marked as suggested", () => {
@@ -168,10 +240,16 @@ describe("after the answer", () => {
   });
 
   it("the amount grouped on blur keeps its note - leaving the field to press 'Use' must not withdraw the offer", () => {
-    const typed = withSuggestions(entryState({ ...entryState().values, amount: "45" }), { amount: read("48.80", "high") }, CTX);
+    const typed = withSuggestions(
+      entryState({ ...entryState().values, amount: "45" }),
+      { amount: read("48.80", "high") },
+      CTX,
+    );
     const blurred = edited(typed, "amount", { amount: "45.00" });
     expect(blurred.values.amount).toBe("45.00");
-    expect(blurred.notes.amount?.text).toBe("The receipt reads HKD\u00a048.80, not HKD\u00a045.00.");
+    expect(blurred.notes.amount?.text).toBe(
+      "The receipt reads HKD\u00a048.80, not HKD\u00a045.00.",
+    );
     expect(edited(typed, "amount", { amount: "46" }).notes.amount).toBeUndefined();
   });
 
@@ -188,7 +266,13 @@ describe("after the answer", () => {
   it("another receipt takes the old suggestions' values with them - and leaves what the person typed", () => {
     const state = edited(filled(), "description", { remarks: "Mine" });
     const next = withoutSuggestions(state);
-    expect(next.values).toEqual({ amount: "", query: "", supplier: null, accountId: "", remarks: "Mine" });
+    expect(next.values).toEqual({
+      amount: "",
+      query: "",
+      supplier: null,
+      accountId: "",
+      remarks: "Mine",
+    });
     expect(next).toMatchObject({ marks: {}, notes: {}, detectedName: null, announcement: "" });
   });
 
@@ -206,7 +290,9 @@ describe("the answer and the session latch", () => {
     expect(suggestionsOf({ suggestions: null, reason: "rate_limited" })).toBeNull();
     expect(suggestionsOf(null)).toBeNull();
     expect(suggestionsOf({ lines: [] })).toBeNull();
-    expect(suggestionsOf({ suggestions: { amount: read("1.00", "high") }, reason: null })).toEqual({ amount: read("1.00", "high") });
+    expect(suggestionsOf({ suggestions: { amount: read("1.00", "high") }, reason: null })).toEqual({
+      amount: read("1.00", "high"),
+    });
   });
 
   it("switches off for the session on 'disabled' (and 'not_configured'), never on a passing failure", () => {

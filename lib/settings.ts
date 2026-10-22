@@ -15,7 +15,10 @@ export type MethodType = (typeof METHOD_TYPES)[number];
 /** The API's limit on a method's name (`NAME_MAX`). */
 export const NAME_MAX = 100;
 
-export const TYPE_LABEL: Record<MethodType, string> = { electronic: "Electronic", delivery: "Delivery" };
+export const TYPE_LABEL: Record<MethodType, string> = {
+  electronic: "Electronic",
+  delivery: "Delivery",
+};
 
 /** `shared`: another company has the same catalogue method, so the API refuses to rename it (409). */
 export type SalesMethod = { id: string; name: string; value_name: string; shared: boolean };
@@ -60,7 +63,10 @@ const fold = (name: string) => name.trim().toLowerCase();
 export type CountryChoice = { country: string; currency: string };
 
 export function countryChoiceOf(settings: Settings): CountryChoice {
-  return { country: settings.country.country_code ?? "", currency: settings.country.currency_id ?? "" };
+  return {
+    country: settings.country.country_code ?? "",
+    currency: settings.country.currency_id ?? "",
+  };
 }
 
 /**
@@ -76,7 +82,10 @@ export function chooseCountry(settings: Settings, country: string): CountryChoic
  * The body for `PUT /settings/country`: only what changed, or null when nothing did. A country
  * alone brings its currency; a currency chosen too wins (the API's rule).
  */
-export function countryBody(settings: Settings, choice: CountryChoice): { country_code?: string; currency_id?: string } | null {
+export function countryBody(
+  settings: Settings,
+  choice: CountryChoice,
+): { country_code?: string; currency_id?: string } | null {
   const saved = countryChoiceOf(settings);
   const body: { country_code?: string; currency_id?: string } = {};
   if (choice.country && choice.country !== saved.country) body.country_code = choice.country;
@@ -108,7 +117,14 @@ let seq = 0;
 export function draftOf(settings: Settings): Draft {
   const lists = {} as Record<MethodType, DraftRow[]>;
   for (const type of METHOD_TYPES) {
-    lists[type] = settings.sales_methods[type].map((m) => ({ key: m.id, id: m.id, name: m.name, savedName: m.name, catalogueId: null, shared: m.shared }));
+    lists[type] = settings.sales_methods[type].map((m) => ({
+      key: m.id,
+      id: m.id,
+      name: m.name,
+      savedName: m.name,
+      catalogueId: null,
+      shared: m.shared,
+    }));
   }
   return { lists, removed: [] };
 }
@@ -126,20 +142,48 @@ function catalogueMatch(available: CatalogueMethod[], name: string): CatalogueMe
  * Add `name` to `type`'s list, at its end. A name the catalogue has is that catalogue method (its
  * own spelling); a method removed on this page and not saved yet comes back as it was.
  */
-export function addMethod(draft: Draft, type: MethodType, name: string, available: CatalogueMethod[]): Draft {
+export function addMethod(
+  draft: Draft,
+  type: MethodType,
+  name: string,
+  available: CatalogueMethod[],
+): Draft {
   const gone = draft.removed.find((r) => r.type === type && fold(r.name) === fold(name));
   if (gone) {
-    const back: DraftRow = { key: gone.id, id: gone.id, name: gone.name, savedName: gone.name, catalogueId: null, shared: gone.shared };
-    return { lists: { ...draft.lists, [type]: [...draft.lists[type], back] }, removed: draft.removed.filter((r) => r !== gone) };
+    const back: DraftRow = {
+      key: gone.id,
+      id: gone.id,
+      name: gone.name,
+      savedName: gone.name,
+      catalogueId: null,
+      shared: gone.shared,
+    };
+    return {
+      lists: { ...draft.lists, [type]: [...draft.lists[type], back] },
+      removed: draft.removed.filter((r) => r !== gone),
+    };
   }
   const match = catalogueMatch(available, name);
   seq += 1;
-  const row: DraftRow = { key: `new-${seq}`, id: null, name: match?.name ?? name.trim(), savedName: null, catalogueId: match?.id ?? null, shared: false };
+  const row: DraftRow = {
+    key: `new-${seq}`,
+    id: null,
+    name: match?.name ?? name.trim(),
+    savedName: null,
+    catalogueId: match?.id ?? null,
+    shared: false,
+  };
   return withList(draft, type, [...draft.lists[type], row]);
 }
 
 /** A new name for a method on the page. One not saved yet picks the catalogue method again, if any. */
-export function renameMethod(draft: Draft, type: MethodType, key: string, name: string, available: CatalogueMethod[]): Draft {
+export function renameMethod(
+  draft: Draft,
+  type: MethodType,
+  key: string,
+  name: string,
+  available: CatalogueMethod[],
+): Draft {
   return withList(
     draft,
     type,
@@ -156,8 +200,20 @@ export function renameMethod(draft: Draft, type: MethodType, key: string, name: 
 export function removeMethod(draft: Draft, type: MethodType, key: string): Draft {
   const row = draft.lists[type].find((r) => r.key === key);
   if (!row) return draft;
-  const next = withList(draft, type, draft.lists[type].filter((r) => r !== row));
-  return row.id ? { ...next, removed: [...draft.removed, { id: row.id, name: row.savedName ?? row.name, type, shared: row.shared }] } : next;
+  const next = withList(
+    draft,
+    type,
+    draft.lists[type].filter((r) => r !== row),
+  );
+  return row.id
+    ? {
+        ...next,
+        removed: [
+          ...draft.removed,
+          { id: row.id, name: row.savedName ?? row.name, type, shared: row.shared },
+        ],
+      }
+    : next;
 }
 
 /** Move a method one place up (-1) or down (+1); nothing at either end. */
@@ -195,7 +251,19 @@ const EMPTY = {
  */
 export function nameProblem(
   name: string,
-  { draft, type, purpose, attempted, except }: { draft: Draft; type: MethodType; purpose: "add" | "rename"; attempted: boolean; except?: string },
+  {
+    draft,
+    type,
+    purpose,
+    attempted,
+    except,
+  }: {
+    draft: Draft;
+    type: MethodType;
+    purpose: "add" | "rename";
+    attempted: boolean;
+    except?: string;
+  },
 ): string | null {
   const t = name.trim();
   if (!t) return attempted ? EMPTY[purpose] : null;
@@ -203,8 +271,10 @@ export function nameProblem(
   if (renamed?.shared && renamed.savedName !== null && t !== renamed.savedName) {
     return `Other companies use ${renamed.savedName} too, so it can't be renamed here. Remove it and add a new method instead.`;
   }
-  if (t.length > NAME_MAX) return `The name is ${t.length} characters. Shorten it to ${NAME_MAX} characters or fewer.`;
-  if (draft.lists[type].some((r) => r.key !== except && fold(r.name) === fold(t))) return `${t} is already on the list. Type another name.`;
+  if (t.length > NAME_MAX)
+    return `The name is ${t.length} characters. Shorten it to ${NAME_MAX} characters or fewer.`;
+  if (draft.lists[type].some((r) => r.key !== except && fold(r.name) === fold(t)))
+    return `${t} is already on the list. Type another name.`;
   return null;
 }
 
@@ -213,10 +283,18 @@ export function nameProblem(
  * removed on this page and not saved yet (adding one back undoes the removal), narrowed by the
  * query (any case, anywhere in the name), A to Z.
  */
-export function catalogueOptions(draft: Draft, type: MethodType, available: CatalogueMethod[], query: string): CatalogueMethod[] {
+export function catalogueOptions(
+  draft: Draft,
+  type: MethodType,
+  available: CatalogueMethod[],
+  query: string,
+): CatalogueMethod[] {
   const listed = new Set(draft.lists[type].map((r) => fold(r.name)));
   const q = fold(query);
-  const pool = [...available, ...draft.removed.filter((r) => r.type === type).map((r) => ({ id: r.id, name: r.name }))];
+  const pool = [
+    ...available,
+    ...draft.removed.filter((r) => r.type === type).map((r) => ({ id: r.id, name: r.name })),
+  ];
   const seen = new Set<string>();
   return pool
     .filter((m) => {
@@ -242,15 +320,29 @@ export type MethodOp =
  * removals and additions is its saved methods still on it, then the additions, in page order.
  */
 export function pendingOps(draft: Draft, settings: Settings): MethodOp[] {
-  const ops: MethodOp[] = draft.removed.map((r) => ({ kind: "remove", type: r.type, id: r.id, name: r.name }));
+  const ops: MethodOp[] = draft.removed.map((r) => ({
+    kind: "remove",
+    type: r.type,
+    id: r.id,
+    name: r.name,
+  }));
   for (const type of METHOD_TYPES) {
     for (const row of draft.lists[type]) {
-      if (!row.id) ops.push({ kind: "add", type, key: row.key, name: row.name, catalogueId: row.catalogueId });
+      if (!row.id)
+        ops.push({ kind: "add", type, key: row.key, name: row.name, catalogueId: row.catalogueId });
     }
   }
   for (const type of METHOD_TYPES) {
     for (const row of draft.lists[type]) {
-      if (row.id && row.savedName !== null && row.name !== row.savedName) ops.push({ kind: "rename", type, key: row.key, id: row.id, from: row.savedName, name: row.name });
+      if (row.id && row.savedName !== null && row.name !== row.savedName)
+        ops.push({
+          kind: "rename",
+          type,
+          key: row.key,
+          id: row.id,
+          from: row.savedName,
+          name: row.name,
+        });
     }
   }
   for (const type of METHOD_TYPES) {
@@ -267,7 +359,10 @@ export function pendingOps(draft: Draft, settings: Settings): MethodOp[] {
 }
 
 /** One call to the API: the path under the company, the method, the JSON body. */
-export type MethodCall = (path: string, init: { method: "POST" | "PUT" | "DELETE"; body?: unknown }) => Promise<SettingsAnswer>;
+export type MethodCall = (
+  path: string,
+  init: { method: "POST" | "PUT" | "DELETE"; body?: unknown },
+) => Promise<SettingsAnswer>;
 
 export type SaveOutcome = {
   /** The newest answer (the read the page shows now). */
@@ -303,8 +398,19 @@ function placeAdded(draft: Draft, type: MethodType, key: string, answer: Setting
     type,
     draft.lists[type].map((row) => {
       if (row.key !== key) return row;
-      const saved = answer.sales_methods[type].find((m) => !held.has(m.id) && fold(m.name) === fold(row.name));
-      return saved ? { ...row, id: saved.id, name: saved.name, savedName: saved.name, catalogueId: null, shared: saved.shared } : row;
+      const saved = answer.sales_methods[type].find(
+        (m) => !held.has(m.id) && fold(m.name) === fold(row.name),
+      );
+      return saved
+        ? {
+            ...row,
+            id: saved.id,
+            name: saved.name,
+            savedName: saved.name,
+            catalogueId: null,
+            shared: saved.shared,
+          }
+        : row;
     }),
   );
 }
@@ -314,7 +420,11 @@ function placeAdded(draft: Draft, type: MethodType, key: string, answer: Setting
  * refusal. A list whose order the page set is put in that order once its additions have ids -
  * also when the API placed an addition elsewhere - but only for someone who may reorder.
  */
-export async function saveMethods(draft: Draft, settings: Settings, call: MethodCall): Promise<SaveOutcome> {
+export async function saveMethods(
+  draft: Draft,
+  settings: Settings,
+  call: MethodCall,
+): Promise<SaveOutcome> {
   const ops = pendingOps(draft, settings);
   let current = settings;
   let page = draft;
@@ -323,7 +433,11 @@ export async function saveMethods(draft: Draft, settings: Settings, call: Method
   const touched = new Set<MethodType>(ops.map((op) => op.type));
 
   /** One call; the refusal that stops the save, or null when it went through. */
-  const run = async (op: MethodOp, path: string, init: Parameters<MethodCall>[1]): Promise<SaveOutcome["failure"]> => {
+  const run = async (
+    op: MethodOp,
+    path: string,
+    init: Parameters<MethodCall>[1],
+  ): Promise<SaveOutcome["failure"]> => {
     try {
       const { message, ...read } = await call(path, init);
       current = read;
@@ -342,14 +456,23 @@ export async function saveMethods(draft: Draft, settings: Settings, call: Method
       if (failure) break;
       page = { ...page, removed: page.removed.filter((r) => r.id !== op.id) };
     } else if (op.kind === "add") {
-      const body = op.catalogueId ? { type: op.type, sale_info_id: op.catalogueId } : { type: op.type, name: op.name };
+      const body = op.catalogueId
+        ? { type: op.type, sale_info_id: op.catalogueId }
+        : { type: op.type, name: op.name };
       failure = await run(op, "/sales-methods", { method: "POST", body });
       if (failure) break;
       page = placeAdded(page, op.type, op.key, current);
     } else if (op.kind === "rename") {
-      failure = await run(op, `/sales-methods/${encodeURIComponent(op.id)}`, { method: "PUT", body: { name: op.name } });
+      failure = await run(op, `/sales-methods/${encodeURIComponent(op.id)}`, {
+        method: "PUT",
+        body: { name: op.name },
+      });
       if (failure) break;
-      page = withList(page, op.type, page.lists[op.type].map((r) => (r.key === op.key ? { ...r, savedName: r.name } : r)));
+      page = withList(
+        page,
+        op.type,
+        page.lists[op.type].map((r) => (r.key === op.key ? { ...r, savedName: r.name } : r)),
+      );
     }
   }
 
@@ -359,11 +482,20 @@ export async function saveMethods(draft: Draft, settings: Settings, call: Method
       const wanted = page.lists[type].map((r) => r.id);
       if (wanted.some((id) => !id)) continue; // an addition the answer did not show: nothing to place
       if (wanted.join("\n") === current.sales_methods[type].map((m) => m.id).join("\n")) continue;
-      failure = await run({ kind: "order", type }, "/sales-methods/order", { method: "PUT", body: { type, method_ids: wanted } });
+      failure = await run({ kind: "order", type }, "/sales-methods/order", {
+        method: "PUT",
+        body: { type, method_ids: wanted },
+      });
       if (failure) break;
     }
   }
 
   if (failure) return { settings: current, draft: page, message: null, failure, sent };
-  return { settings: current, draft: draftOf(current), message: sent === 1 ? last : sent > 1 ? "Sales methods saved." : null, failure: null, sent };
+  return {
+    settings: current,
+    draft: draftOf(current),
+    message: sent === 1 ? last : sent > 1 ? "Sales methods saved." : null,
+    failure: null,
+    sent,
+  };
 }

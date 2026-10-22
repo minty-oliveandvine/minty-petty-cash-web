@@ -55,6 +55,8 @@ describe("env", () => {
     vi.stubEnv("PAYMENT_REQUEST_WEB_URL", "");
     await expect(freshEnv()).rejects.toThrow("PAYMENT_REQUEST_WEB_URL is not set");
     vi.stubEnv("PAYMENT_REQUEST_WEB_URL", "https://payment-request.dailyminty.com/");
-    expect((await freshEnv()).PAYMENT_REQUEST_WEB_URL).toBe("https://payment-request.dailyminty.com");
+    expect((await freshEnv()).PAYMENT_REQUEST_WEB_URL).toBe(
+      "https://payment-request.dailyminty.com",
+    );
   });
 });

@@ -24,7 +24,8 @@ import type { DailyReport } from "@/lib/report";
 export type Withdrawal = "company" | "personal";
 
 /** What may be edited: every detail asks `edit_details` (a submitted report, not publishing, the right). */
-const editable = (report: DailyReport) => Boolean(report.permissions.edit_details) && report.status !== "draft";
+const editable = (report: DailyReport) =>
+  Boolean(report.permissions.edit_details) && report.status !== "draft";
 
 /** The cash was "short" or "over" (any cent counts), so a reason is needed - or null. */
 export function reasonNeeded(report: DailyReport): "short" | "over" | null {
@@ -59,11 +60,17 @@ export function withdrawalOf(report: DailyReport): Withdrawal {
  */
 export function reasonEditProblem(
   text: string,
-  { needed, changed, submitted }: { needed: "short" | "over" | null; changed: boolean; submitted: boolean },
+  {
+    needed,
+    changed,
+    submitted,
+  }: { needed: "short" | "over" | null; changed: boolean; submitted: boolean },
 ): string | null {
   const length = text.trim().length;
-  if (length > MAX_REASON) return `The reason is ${length.toLocaleString("en-US")} characters. Shorten it to ${MAX_REASON} characters or fewer.`;
-  if (length === 0 && needed && (changed || submitted)) return `The cash was ${needed}, so the reason is still needed. Add the reason to save it.`;
+  if (length > MAX_REASON)
+    return `The reason is ${length.toLocaleString("en-US")} characters. Shorten it to ${MAX_REASON} characters or fewer.`;
+  if (length === 0 && needed && (changed || submitted))
+    return `The cash was ${needed}, so the reason is still needed. Add the reason to save it.`;
   return null;
 }
 
@@ -79,16 +86,29 @@ export function lineSupplierProblem(
   { required, touched, submitted }: { required: boolean; touched: boolean; submitted: boolean },
 ): string | null {
   if (chosen) return null;
-  if (query.trim() === "") return required ? "The supplier is still empty. Choose a supplier from the list to save it." : null;
+  if (query.trim() === "")
+    return required
+      ? "The supplier is still empty. Choose a supplier from the list to save it."
+      : null;
   if (!(touched || submitted)) return null;
   return `"${query.trim()}" is not a supplier yet. Choose one from the list.`;
 }
 
 /** The edit form's values: the description as typed, the supplier chosen, the account's id, a new receipt. */
-export type LineValues = { remarks: string; supplier: Supplier | null; accountId: string; receipt: File | null };
+export type LineValues = {
+  remarks: string;
+  supplier: Supplier | null;
+  accountId: string;
+  receipt: File | null;
+};
 
 /** What the PATCH sends: each field only when it changed. */
-export type LineChanges = { remarks?: string; supplier_id?: string; account_id?: string; receipt?: File };
+export type LineChanges = {
+  remarks?: string;
+  supplier_id?: string;
+  account_id?: string;
+  receipt?: File;
+};
 
 /** The changes from the line as saved - nothing for what is the same, never an empty supplier or account. */
 export function lineChanges(
@@ -98,8 +118,10 @@ export function lineChanges(
   const changes: LineChanges = {};
   const remarks = values.remarks.trim();
   if (remarks !== (line.remarks ?? "").trim()) changes.remarks = remarks;
-  if (values.supplier && values.supplier.id !== line.supplier?.id) changes.supplier_id = values.supplier.id;
-  if (values.accountId && values.accountId !== line.account?.id) changes.account_id = values.accountId;
+  if (values.supplier && values.supplier.id !== line.supplier?.id)
+    changes.supplier_id = values.supplier.id;
+  if (values.accountId && values.accountId !== line.account?.id)
+    changes.account_id = values.accountId;
   if (values.receipt) changes.receipt = values.receipt;
   return changes;
 }
@@ -118,7 +140,9 @@ export function lineEditForm(changes: LineChanges): FormData {
  * Said before a save, inside the dialog, when the report has been to Xero: any edit takes it out
  * of Xero (the API's `mark_diverged_from_xero`), and publishing again does not remove what is there.
  */
-export function xeroNotice(report: Pick<DailyReport, "was_published">): { title: string; body: string } | null {
+export function xeroNotice(
+  report: Pick<DailyReport, "was_published">,
+): { title: string; body: string } | null {
   if (!report.was_published) return null;
   return {
     title: "It will need publishing to Xero again",
@@ -128,5 +152,9 @@ export function xeroNotice(report: Pick<DailyReport, "was_published">): { title:
 
 /** The toast after a save that went through (Flask's words for the first two). */
 export function savedMessage(what: "reason" | "withdrawal" | "line"): string {
-  return what === "reason" ? "The reason is saved." : what === "withdrawal" ? "Where the cash came from is saved." : "The expense is saved.";
+  return what === "reason"
+    ? "The reason is saved."
+    : what === "withdrawal"
+      ? "Where the cash came from is saved."
+      : "The expense is saved.";
 }

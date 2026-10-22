@@ -30,10 +30,28 @@ export type Stage = {
 };
 
 export const STAGES: readonly Stage[] = [
-  { key: "drawer", label: "Addition to Drawer", short: "Drawer", sections: ["opening"], doneWhen: "opening" },
+  {
+    key: "drawer",
+    label: "Addition to Drawer",
+    short: "Drawer",
+    sections: ["opening"],
+    doneWhen: "opening",
+  },
   { key: "sales", label: "Sales", short: "Sales", sections: ["sales"], doneWhen: "sales" },
-  { key: "expenses", label: "Expenses", short: "Expenses", sections: ["expenses"], doneWhen: "expenses" },
-  { key: "cash_count", label: "Cash Count", short: "Cash Count", sections: ["deposit", "cash_count"], doneWhen: "cash_count" },
+  {
+    key: "expenses",
+    label: "Expenses",
+    short: "Expenses",
+    sections: ["expenses"],
+    doneWhen: "expenses",
+  },
+  {
+    key: "cash_count",
+    label: "Cash Count",
+    short: "Cash Count",
+    sections: ["deposit", "cash_count"],
+    doneWhen: "cash_count",
+  },
   { key: "close", label: "Close", short: "Close", sections: ["ending"], doneWhen: "ending" },
 ];
 
@@ -64,7 +82,8 @@ export function stageProgress(draft: NonNullable<Home["draft"]>): StageProgress 
   const isDone = (stage: Stage) => completed.has(stage.doneWhen);
   const done = STAGES.filter(isDone).length;
   const current =
-    stageOf(draft.current_section) ?? (draft.current_section ? (STAGES.find((s) => !isDone(s)) ?? null) : STAGES[0]);
+    stageOf(draft.current_section) ??
+    (draft.current_section ? (STAGES.find((s) => !isDone(s)) ?? null) : STAGES[0]);
   return {
     stages: STAGES.map((stage) => ({
       stage,
@@ -77,14 +96,19 @@ export function stageProgress(draft: NonNullable<Home["draft"]>): StageProgress 
 
 /** The section a stage opens at: the one the report is in when it is inside this stage, else the stage's first. */
 export function stageSection(stage: Stage, currentSection: string | null): WizardStep {
-  return currentSection && stageOf(currentSection) === stage ? (currentSection as WizardStep) : stage.sections[0];
+  return currentSection && stageOf(currentSection) === stage
+    ? (currentSection as WizardStep)
+    : stage.sections[0];
 }
 
 /**
  * The Step progress on a stage's own page (Part 15.9c): that stage is current, whether done or
  * not; any other is done when its `doneWhen` section is, else upcoming.
  */
-export function stagesOnPage(completedSections: readonly string[], here: StageKey): { stage: Stage; state: StageState }[] {
+export function stagesOnPage(
+  completedSections: readonly string[],
+  here: StageKey,
+): { stage: Stage; state: StageState }[] {
   const completed = new Set(completedSections);
   return STAGES.map((stage) => ({
     stage,
@@ -94,10 +118,18 @@ export function stagesOnPage(completedSections: readonly string[], here: StageKe
 
 /** No report yet: every stage ahead. */
 export function notStartedProgress(): StageProgress {
-  return { stages: STAGES.map((stage) => ({ stage, state: "upcoming" })), done: 0, next: STAGES[0] };
+  return {
+    stages: STAGES.map((stage) => ({ stage, state: "upcoming" })),
+    done: 0,
+    next: STAGES[0],
+  };
 }
 
 /** A submitted day: every stage done. */
 export function submittedProgress(): StageProgress {
-  return { stages: STAGES.map((stage) => ({ stage, state: "done" })), done: STAGES.length, next: null };
+  return {
+    stages: STAGES.map((stage) => ({ stage, state: "done" })),
+    done: STAGES.length,
+    next: null,
+  };
 }

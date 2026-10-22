@@ -7,7 +7,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("the server's file name", () => {
   it.each([
-    ["attachment; filename=reports_2026-10-01_to_2026-10-13.csv", "reports_2026-10-01_to_2026-10-13.csv"],
+    [
+      "attachment; filename=reports_2026-10-01_to_2026-10-13.csv",
+      "reports_2026-10-01_to_2026-10-13.csv",
+    ],
     ['attachment; filename="reports 1.csv"', "reports 1.csv"],
     ["attachment; filename*=UTF-8''caf%C3%A9.csv; filename=cafe.csv", "café.csv"],
     ["attachment; filename=../../etc/passwd", "passwd"],
@@ -15,9 +18,12 @@ describe("the server's file name", () => {
     expect(attachmentName(header)).toBe(name);
   });
 
-  it.each([null, undefined, "", "attachment", 'attachment; filename=""'])("finds none in %s", (header) => {
-    expect(attachmentName(header)).toBeNull();
-  });
+  it.each([null, undefined, "", "attachment", 'attachment; filename=""'])(
+    "finds none in %s",
+    (header) => {
+      expect(attachmentName(header)).toBeNull();
+    },
+  );
 });
 
 describe("saving a file", () => {
@@ -27,7 +33,9 @@ describe("saving a file", () => {
     const created = vi.fn(() => "blob:x");
     URL.createObjectURL = created;
     URL.revokeObjectURL = vi.fn();
-    const clicked = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const clicked = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
     saveBlob(new Blob(["a,b"], { type: "text/csv" }), "reports.csv");
     expect(created).toHaveBeenCalledOnce();
     expect(clicked).toHaveBeenCalledOnce();
@@ -70,7 +78,9 @@ describe("the file name and the save, at the edges", () => {
     URL.revokeObjectURL = revoked;
     let inBody = false;
     let hidden = "";
-    const clicked = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+    const clicked = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
       inBody = document.body.contains(this);
       hidden = this.style.display;
     });

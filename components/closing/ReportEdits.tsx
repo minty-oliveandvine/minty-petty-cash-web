@@ -15,14 +15,31 @@
 
 import { useId, useRef, useState } from "react";
 
-import { Button, Drawer, ErrorSummary, Field, Icon, InlineAlert, inputClass, Modal } from "@minty/shared/ui";
+import {
+  Button,
+  Drawer,
+  ErrorSummary,
+  Field,
+  Icon,
+  InlineAlert,
+  inputClass,
+  Modal,
+} from "@minty/shared/ui";
 
 import { ReceiptField, SupplierPicker } from "@/components/closing/ExpenseForm";
 import type { ViewerFile } from "@/components/closing/ReceiptViewer";
 import { ApiError, pettyCashBlob, pettyCashFetch, type ApiRequest } from "@/lib/apiClient";
 import { differenceText, reasonHelper } from "@/lib/cashCount";
 import { differenceOf } from "@/lib/close";
-import { accountLabel, receiptKind, receiptProblem, remarksHelper, remarksProblem, type ExpenseLine, type Supplier } from "@/lib/expenses";
+import {
+  accountLabel,
+  receiptKind,
+  receiptProblem,
+  remarksHelper,
+  remarksProblem,
+  type ExpenseLine,
+  type Supplier,
+} from "@/lib/expenses";
 import { money } from "@/lib/money";
 import { expenseTitle, type DailyReport } from "@/lib/report";
 import {
@@ -86,7 +103,15 @@ function Notices({ report, problem }: { report: DailyReport; problem: string | n
   );
 }
 
-function SaveFooter({ form, busy, onCancel }: { form: string; busy: boolean; onCancel: () => void }) {
+function SaveFooter({
+  form,
+  busy,
+  onCancel,
+}: {
+  form: string;
+  busy: boolean;
+  onCancel: () => void;
+}) {
   return (
     <>
       <Button kind="secondary" onClick={onCancel} disabled={busy}>
@@ -100,14 +125,26 @@ function SaveFooter({ form, busy, onCancel }: { form: string; busy: boolean; onC
 }
 
 /** The difference reason (`PUT difference-reason`): it can't be emptied while the cash was short or over. */
-export function EditReasonDialog({ report, onCancel, onSaved }: { report: DailyReport; onCancel: () => void; onSaved: Saved }) {
+export function EditReasonDialog({
+  report,
+  onCancel,
+  onSaved,
+}: {
+  report: DailyReport;
+  onCancel: () => void;
+  onSaved: Saved;
+}) {
   const formId = useId().replace(/:/g, "");
   const field = useRef<HTMLTextAreaElement>(null);
   const saved = report.cash.difference.reason ?? "";
   const needed = reasonNeeded(report);
   const [text, setText] = useState(saved);
   const [submitted, setSubmitted] = useState(false);
-  const { busy, problem: refusal, save } = useSave(`${reportPath(report)}/difference-reason`, onSaved);
+  const {
+    busy,
+    problem: refusal,
+    save,
+  } = useSave(`${reportPath(report)}/difference-reason`, onSaved);
   const problem = reasonEditProblem(text, { needed, changed: text !== saved, submitted });
 
   function submit() {
@@ -141,7 +178,12 @@ export function EditReasonDialog({ report, onCancel, onSaved }: { report: DailyR
         }}
       >
         <Notices report={report} problem={refusal} />
-        <Field label="Reason for the difference" required={needed !== null} error={problem} helper={reasonHelper(text)}>
+        <Field
+          label="Reason for the difference"
+          required={needed !== null}
+          error={problem}
+          helper={reasonHelper(text)}
+        >
           {(a11y) => (
             <textarea
               {...a11y}
@@ -167,7 +209,15 @@ const SOURCES: readonly (readonly [Withdrawal, string])[] = [
 ];
 
 /** Where the cash added came from (`PUT withdrawal`): the amount stays. */
-export function EditWithdrawalDialog({ report, onCancel, onSaved }: { report: DailyReport; onCancel: () => void; onSaved: Saved }) {
+export function EditWithdrawalDialog({
+  report,
+  onCancel,
+  onSaved,
+}: {
+  report: DailyReport;
+  onCancel: () => void;
+  onSaved: Saved;
+}) {
   const formId = useId().replace(/:/g, "");
   const saved = withdrawalOf(report);
   const [source, setSource] = useState<Withdrawal>(saved);
@@ -198,13 +248,17 @@ export function EditWithdrawalDialog({ report, onCancel, onSaved }: { report: Da
       >
         <Notices report={report} problem={problem} />
         <fieldset className="flex min-w-0 flex-col gap-1.5">
-          <legend className="mb-1.5 text-label text-text-secondary">Where the cash came from</legend>
+          <legend className="mb-1.5 text-label text-text-secondary">
+            Where the cash came from
+          </legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {SOURCES.map(([value, label]) => (
               <label
                 key={value}
                 className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 text-body-m text-text-primary has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-border-focus ${
-                  source === value ? "border-2 border-border-focus bg-state-selected" : "border border-border-default hover:bg-state-hover"
+                  source === value
+                    ? "border-2 border-border-focus bg-state-selected"
+                    : "border border-border-default hover:bg-state-hover"
                 }`}
               >
                 <input
@@ -246,11 +300,18 @@ export function EditLineDrawer({
   onView: (file: ViewerFile) => void;
 }) {
   const formId = useId().replace(/:/g, "");
-  const ids = { receipt: `${formId}-receipt`, supplier: `${formId}-supplier`, remarks: `${formId}-remarks` };
+  const ids = {
+    receipt: `${formId}-receipt`,
+    supplier: `${formId}-supplier`,
+    remarks: `${formId}-remarks`,
+  };
   const code = report.currency_code;
   const options = report.options ?? { suppliers: [], accounts: [] };
   // The line's own account stays choosable even when it is no longer switched on for Petty Cash.
-  const accounts = line.account && !options.accounts.some((a) => a.id === line.account?.id) ? [line.account, ...options.accounts] : options.accounts;
+  const accounts =
+    line.account && !options.accounts.some((a) => a.id === line.account?.id)
+      ? [line.account, ...options.accounts]
+      : options.accounts;
 
   const [file, setFile] = useState<File | null>(null);
   const [fileProblem, setFileProblem] = useState<string | null>(null);
@@ -263,7 +324,11 @@ export function EditLineDrawer({
   const [attempt, setAttempt] = useState(0);
   const [askDiscard, setAskDiscard] = useState(false);
   const top = useRef<HTMLDivElement>(null);
-  const { busy, problem: refusal, save } = useSave(`${reportPath(report)}/expense-lines/${encodeURIComponent(line.id)}`, onSaved);
+  const {
+    busy,
+    problem: refusal,
+    save,
+  } = useSave(`${reportPath(report)}/expense-lines/${encodeURIComponent(line.id)}`, onSaved);
 
   const required = Boolean(line.supplier);
   const problems = {
@@ -272,7 +337,9 @@ export function EditLineDrawer({
     remarks: remarksProblem(remarks),
   };
   const summary = submitted
-    ? (Object.keys(ids) as (keyof typeof ids)[]).flatMap((key) => (problems[key] ? [{ fieldId: ids[key], message: problems[key] as string }] : []))
+    ? (Object.keys(ids) as (keyof typeof ids)[]).flatMap((key) =>
+        problems[key] ? [{ fieldId: ids[key], message: problems[key] as string }] : [],
+      )
     : [];
   const changes = lineChanges(line, { remarks, supplier, accountId, receipt: file });
   const dirty = Object.keys(changes).length > 0 || query !== (line.supplier?.name ?? "");
@@ -286,7 +353,10 @@ export function EditLineDrawer({
   function submit() {
     if (busy) return;
     setAskDiscard(false);
-    const all = { ...problems, supplier: lineSupplierProblem(query, supplier, { required, touched: true, submitted: true }) };
+    const all = {
+      ...problems,
+      supplier: lineSupplierProblem(query, supplier, { required, touched: true, submitted: true }),
+    };
     const failing = (Object.keys(ids) as (keyof typeof ids)[]).filter((key) => all[key]);
     if (failing.length) {
       setSubmitted(true);
@@ -298,7 +368,9 @@ export function EditLineDrawer({
     }
     // Nothing changed: nothing to send.
     if (Object.keys(changes).length === 0) return onCancel();
-    void save({ method: "PATCH", form: lineEditForm(changes) }, savedMessage("line")).then(() => top.current?.scrollIntoView({ block: "start" }));
+    void save({ method: "PATCH", form: lineEditForm(changes) }, savedMessage("line")).then(() =>
+      top.current?.scrollIntoView({ block: "start" }),
+    );
   }
 
   return (
@@ -312,7 +384,13 @@ export function EditLineDrawer({
           <Button kind="ghost" onClick={requestClose} disabled={busy}>
             Cancel
           </Button>
-          <Button type="submit" form={formId} kind="primary" processing={busy} processingLabel="Saving…">
+          <Button
+            type="submit"
+            form={formId}
+            kind="primary"
+            processing={busy}
+            processingLabel="Saving…"
+          >
             Save
           </Button>
         </>
@@ -355,7 +433,9 @@ export function EditLineDrawer({
 
         {line.receipts.length ? (
           <div className="flex min-w-0 flex-col gap-1.5">
-            <p className="text-label text-text-secondary">{file ? "Saved receipt, replaced when you save" : "Saved receipt"}</p>
+            <p className="text-label text-text-secondary">
+              {file ? "Saved receipt, replaced when you save" : "Saved receipt"}
+            </p>
             <ul className="flex flex-col gap-2">
               {line.receipts.map((receipt) => (
                 <li key={receipt.id}>
@@ -365,14 +445,22 @@ export function EditLineDrawer({
                       onView({
                         name: receipt.name,
                         mime: receipt.mime_type,
-                        source: () => pettyCashBlob(`/expense-lines/${encodeURIComponent(line.id)}/receipts/${encodeURIComponent(receipt.id)}`),
+                        source: () =>
+                          pettyCashBlob(
+                            `/expense-lines/${encodeURIComponent(line.id)}/receipts/${encodeURIComponent(receipt.id)}`,
+                          ),
                       })
                     }
                     aria-label={`View receipt ${receipt.name}`}
                     className="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-3 rounded-lg border border-border-default bg-surface-card px-3 py-2 text-left hover:bg-state-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
                   >
-                    <Icon name={receiptKind(receipt.mime_type) === "pdf" ? "picture_as_pdf" : "image"} className="text-text-secondary" />
-                    <span className="min-w-0 flex-1 truncate text-body-m text-text-primary">{receipt.name}</span>
+                    <Icon
+                      name={receiptKind(receipt.mime_type) === "pdf" ? "picture_as_pdf" : "image"}
+                      className="text-text-secondary"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-body-m text-text-primary">
+                      {receipt.name}
+                    </span>
                     <span className="shrink-0 text-body-s font-medium text-text-link">View</span>
                   </button>
                 </li>
@@ -388,7 +476,11 @@ export function EditLineDrawer({
           disabled={busy}
           required={false}
           prompt={line.receipts.length ? "Replace the receipt" : "Add the receipt"}
-          note={line.receipts.length ? "Optional. A new receipt replaces the saved one." : "Optional. One receipt for each expense."}
+          note={
+            line.receipts.length
+              ? "Optional. A new receipt replaces the saved one."
+              : "Optional. One receipt for each expense."
+          }
           onPick={(picked) => {
             const why = receiptProblem(picked);
             setFileProblem(why);
@@ -422,7 +514,11 @@ export function EditLineDrawer({
           onLeave={() => setTouched(true)}
         />
 
-        <Field label="Account" required={Boolean(line.account)} helper="Choosing another account renames the expense to it.">
+        <Field
+          label="Account"
+          required={Boolean(line.account)}
+          helper="Choosing another account renames the expense to it."
+        >
           {(a11y) => (
             <div className="relative">
               <select
@@ -441,12 +537,20 @@ export function EditLineDrawer({
                   </option>
                 ))}
               </select>
-              <Icon name="expand_more" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+              <Icon
+                name="expand_more"
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary"
+              />
             </div>
           )}
         </Field>
 
-        <Field id={ids.remarks} label="Description" error={problems.remarks} helper={remarksHelper(remarks)}>
+        <Field
+          id={ids.remarks}
+          label="Description"
+          error={problems.remarks}
+          helper={remarksHelper(remarks)}
+        >
           {(a11y) => (
             <input
               {...a11y}

@@ -18,10 +18,7 @@ import { loadSubscriptions, profileApi } from "@/lib/apiClient";
 
 export function AppSidebar({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<ToastMessage | null>(null);
-  const notify = useCallback(
-    (message: string) => setToast({ id: Date.now(), message }),
-    [],
-  );
+  const notify = useCallback((message: string) => setToast({ id: Date.now(), message }), []);
   const dismiss = useCallback(() => setToast(null), []);
 
   const profile = (

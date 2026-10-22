@@ -66,13 +66,18 @@ export function payerLine(notice: SubscriptionNotice): string | null {
 }
 
 /** The notice for the company, or null when there is nothing to show or the read failed (logged). */
-export async function fetchSubscriptionNotice(entityId: string): Promise<SubscriptionNotice | null> {
+export async function fetchSubscriptionNotice(
+  entityId: string,
+): Promise<SubscriptionNotice | null> {
   if (!entityId) return null;
   try {
     // A notice must never move the page: a 401 only rejects, it does not go back through the hand-off.
-    const data = await subscriptionFetch<SubscriptionNotice>(`/api/entities/${encodeURIComponent(entityId)}/subscription-notice`, {
-      onUnauthorized: "reject",
-    });
+    const data = await subscriptionFetch<SubscriptionNotice>(
+      `/api/entities/${encodeURIComponent(entityId)}/subscription-notice`,
+      {
+        onUnauthorized: "reject",
+      },
+    );
     if (!data || !Array.isArray(data.items)) {
       console.warn("[subscription-notice] not shown: the answer has no items");
       return null;
@@ -80,7 +85,14 @@ export async function fetchSubscriptionNotice(entityId: string): Promise<Subscri
     return data.items.length ? data : null;
   } catch (err) {
     // The status or the network error's name only - never a token or an answer body.
-    console.warn("[subscription-notice] not shown:", err instanceof ApiError ? `status ${err.status}` : err instanceof Error ? err.name : "unknown error");
+    console.warn(
+      "[subscription-notice] not shown:",
+      err instanceof ApiError
+        ? `status ${err.status}`
+        : err instanceof Error
+          ? err.name
+          : "unknown error",
+    );
     return null;
   }
 }
@@ -102,7 +114,9 @@ export function claimSubscriptionNotice(entityId: string): boolean {
   const key = sid ? `${sid}:${entityId}` : entityId;
   try {
     const parsed: unknown = JSON.parse(sessionStorage.getItem(SEEN_KEY) ?? "[]");
-    const seen = Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === "string") : [];
+    const seen = Array.isArray(parsed)
+      ? parsed.filter((k): k is string => typeof k === "string")
+      : [];
     if (seen.includes(key)) return false;
     // Another sign-in's entries can never match again: drop them rather than grow forever.
     const kept = sid ? seen.filter((k) => k.startsWith(`${sid}:`)) : seen;

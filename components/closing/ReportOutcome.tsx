@@ -13,14 +13,22 @@ import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
 import { integrationUrl } from "@/lib/hub";
 import { money } from "@/lib/money";
-import { countedFact, differencePill, outcomeLine, outcomeTitle, xeroLine, type Outcome } from "@/lib/outcome";
+import {
+  countedFact,
+  differencePill,
+  outcomeLine,
+  outcomeTitle,
+  xeroLine,
+  type Outcome,
+} from "@/lib/outcome";
 import { isWorking, publishedMessage } from "@/lib/publish";
 import { useAuth } from "@/lib/useAuth";
 import { reportHref, stepHref } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 
-type Load = { kind: "loading" } | { kind: "ready"; outcome: Outcome } | { kind: "failed"; message: string };
+type Load =
+  { kind: "loading" } | { kind: "ready"; outcome: Outcome } | { kind: "failed"; message: string };
 
 /**
  * The outcome page after Submit Daily Report - Part 15.12e "Daily Report finalised", a Part 14
@@ -69,7 +77,9 @@ export function ReportOutcome({ reportId }: { reportId: string }) {
           {load.kind === "ready" && auth ? (
             <Done
               outcome={load.outcome}
-              onXero={(xero) => setLoad((l) => (l.kind === "ready" ? { ...l, outcome: { ...l.outcome, xero } } : l))}
+              onXero={(xero) =>
+                setLoad((l) => (l.kind === "ready" ? { ...l, outcome: { ...l.outcome, xero } } : l))
+              }
               entityId={entityId}
               entityName={entityName}
               home={home}
@@ -87,7 +97,12 @@ export function ReportOutcome({ reportId }: { reportId: string }) {
               ) : null}
             </>
           ) : (
-            <div className="flex w-full flex-col items-center gap-4" role="status" aria-busy="true" aria-label="Loading">
+            <div
+              className="flex w-full flex-col items-center gap-4"
+              role="status"
+              aria-busy="true"
+              aria-label="Loading"
+            >
               <Skeleton className="size-[168px] rounded-full" />
               <Skeleton className="h-8 w-3/4" />
               <Skeleton className="h-5 w-1/2" />
@@ -124,7 +139,13 @@ export function Done({
   const publishing = usePublish({
     reportId: outcome.report_id,
     initial: outcome.xero.publishing_status,
-    onStatus: (s) => onXero({ publishing_status: s.publishing_status, published_at: s.published_at, xero_integrated: s.xero_integrated, was_published: s.was_published }),
+    onStatus: (s) =>
+      onXero({
+        publishing_status: s.publishing_status,
+        published_at: s.published_at,
+        xero_integrated: s.xero_integrated,
+        was_published: s.was_published,
+      }),
     onPublished: () => setToast({ id: Date.now(), message: publishedMessage(day) }),
   });
   // Not while Xero works on it.
@@ -141,13 +162,26 @@ export function Done({
     <>
       {outcome.submitted ? (
         // Minty is decoration (Part 14 Character): Flask's happy Minty, no confetti.
-        <Image src="/minty-cat.png" alt="" width={168} height={168} unoptimized className="size-[168px] object-contain" />
+        <Image
+          src="/minty-cat.png"
+          alt=""
+          width={168}
+          height={168}
+          unoptimized
+          className="size-[168px] object-contain"
+        />
       ) : null}
       <div className="flex flex-col gap-2">
-        <h1 ref={title} tabIndex={-1} className="text-display-m text-text-primary focus:outline-none">
+        <h1
+          ref={title}
+          tabIndex={-1}
+          className="text-display-m text-text-primary focus:outline-none"
+        >
           {outcomeTitle(outcome)}
         </h1>
-        {outcome.submitted ? <p className="text-body-m text-text-secondary">{outcomeLine(outcome)}</p> : null}
+        {outcome.submitted ? (
+          <p className="text-body-m text-text-secondary">{outcomeLine(outcome)}</p>
+        ) : null}
       </div>
 
       {outcome.submitted ? (
@@ -179,7 +213,10 @@ export function Done({
           />
           {/* Part 15.2: Back to home is the next action; View report beside it (stacked, primary first, on a phone). */}
           <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-center sm:gap-3">
-            <Link href={reportHref(entityId, entityName, outcome.report_id)} className={`${buttonClass("secondary")} w-full sm:w-auto`}>
+            <Link
+              href={reportHref(entityId, entityName, outcome.report_id)}
+              className={`${buttonClass("secondary")} w-full sm:w-auto`}
+            >
               View report
             </Link>
             <Link href={home} className={`${buttonClass("primary")} w-full sm:w-auto`}>
@@ -190,7 +227,10 @@ export function Done({
       ) : (
         <>
           <p className="text-body-m text-text-secondary">Check the day in Close, then submit it.</p>
-          <Link href={stepHref(entityId, entityName, "ending", day)} className={buttonClass("primary", { full: true })}>
+          <Link
+            href={stepHref(entityId, entityName, "ending", day)}
+            className={buttonClass("primary", { full: true })}
+          >
             Go to Close
           </Link>
           <Link href={home} className={buttonClass("link")}>
@@ -222,7 +262,10 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border-subtle py-3 last:border-b-0">
       <dt className="min-w-0 text-body-m text-text-secondary">{label}</dt>
-      <dd className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 break-words text-right text-body-m font-semibold text-text-primary" translate="no">
+      <dd
+        className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 break-words text-right text-body-m font-semibold text-text-primary"
+        translate="no"
+      >
         {children}
       </dd>
     </div>

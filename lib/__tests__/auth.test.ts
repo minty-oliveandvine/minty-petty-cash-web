@@ -18,7 +18,8 @@ import {
 const moduleClaims = () => claimsOf(getAuth()?.token);
 
 function token(claims: object): string {
-  const b64 = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const b64 = (o: object) =>
+    btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
   return `${b64({ alg: "HS256" })}.${b64(claims)}.sig`;
 }
 
@@ -41,7 +42,9 @@ describe("the token", () => {
   });
 
   it("lives until its exp, and Flask's 30 minutes when it has none", () => {
-    expect(secondsUntilExpiry(token({ exp: Math.floor(Date.now() / 1000) + 600 }))).toBeGreaterThan(590);
+    expect(secondsUntilExpiry(token({ exp: Math.floor(Date.now() / 1000) + 600 }))).toBeGreaterThan(
+      590,
+    );
     expect(secondsUntilExpiry(token({}))).toBe(1800);
   });
 
@@ -92,7 +95,9 @@ describe("the cookie jar, exactly", () => {
     expect(secondsUntilExpiry(token({ exp: NOW / 1000 - 60 }))).toBe(1);
     expect(secondsUntilExpiry(token({ exp: String(NOW / 1000 + 600) }))).toBe(1800);
     expect(secondsUntilExpiry("not-a-token")).toBe(1800);
-    expect(writes(() => setAuth("not-a-token", "id", "n"))[0]).toBe("petty_cash_token=not-a-token;path=/;max-age=1800;SameSite=Lax");
+    expect(writes(() => setAuth("not-a-token", "id", "n"))[0]).toBe(
+      "petty_cash_token=not-a-token;path=/;max-age=1800;SameSite=Lax",
+    );
   });
 
   it("clears with max-age=0 on /", () => {
@@ -142,8 +147,14 @@ describe("moduleClaims, a claim that is not a boolean", () => {
   // "Only a literal false hides a module" - @minty/shared/auth's since the shared-code refactor (2026-10-21).
 
   it.each([
-    [{ petty_cash_enabled: 0, billing_enabled: "false" }, { pettyCash: true, billing: true }],
-    [{ petty_cash_enabled: null, billing_enabled: "" }, { pettyCash: true, billing: true }],
+    [
+      { petty_cash_enabled: 0, billing_enabled: "false" },
+      { pettyCash: true, billing: true },
+    ],
+    [
+      { petty_cash_enabled: null, billing_enabled: "" },
+      { pettyCash: true, billing: true },
+    ],
     [{ petty_cash_enabled: false }, { pettyCash: false, billing: true }],
     [{}, { pettyCash: true, billing: true }],
   ])("reads %j as %j", (claims, expected) => {

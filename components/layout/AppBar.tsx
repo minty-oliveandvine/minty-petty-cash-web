@@ -16,7 +16,13 @@ import { sidebarHost } from "@/components/ui/sidebarHost";
  *
  * The way back is Flask's dashboard chevron: to the company list.
  */
-export function AppBar({ companyName, title = "Petty Cash" }: { companyName: string; title?: string }) {
+export function AppBar({
+  companyName,
+  title = "Petty Cash",
+}: {
+  companyName: string;
+  title?: string;
+}) {
   // The way back reads the cookie and the page's origin, which the server does not have: it gets
   // its address once the browser has taken over, so the server's HTML and the first render agree.
   const mounted = useMounted();
@@ -43,7 +49,9 @@ export function AppBar({ companyName, title = "Petty Cash" }: { companyName: str
         <div className="ml-auto flex min-w-0 shrink items-center gap-1 sm:gap-2">
           <span className="hidden min-w-0 items-center gap-1.5 text-body-m text-text-secondary min-[360px]:flex">
             <Icon name="corporate_fare" size="md" />
-            <span className="min-w-0 max-w-[7rem] truncate sm:max-w-[12rem] lg:max-w-[20rem]">{companyName}</span>
+            <span className="min-w-0 max-w-[7rem] truncate sm:max-w-[12rem] lg:max-w-[20rem]">
+              {companyName}
+            </span>
           </span>
           <ViewerBadge />
           <NavMenu />

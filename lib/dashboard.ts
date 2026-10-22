@@ -64,7 +64,8 @@ export function previousDayUnfinished(home: Home): boolean {
   return !!span && span.earliest <= yesterday && !home.published[yesterday];
 }
 
-export const PREVIOUS_DAY_FIRST = "The previous report needs finishing before today's. Shall we do that first?";
+export const PREVIOUS_DAY_FIRST =
+  "The previous report needs finishing before today's. Shall we do that first?";
 
 /**
  * Whether a new report may start on `day`, and if not, why - Flask's
@@ -83,14 +84,18 @@ export function startProblem(home: Home, day: string): string | null {
   } else {
     // onboarding's start date (the server's own floor), else the earliest draft's day
     const floor = home.start_date ?? home.draft_date;
-    if (floor && day < floor) return `Transaction date must be on or after your onboarding date (${floor}).`;
+    if (floor && day < floor)
+      return `Transaction date must be on or after your onboarding date (${floor}).`;
   }
   if (day === home.server_today && previousDayUnfinished(home)) return PREVIOUS_DAY_FIRST;
   return null;
 }
 
 /** The submitted day before `day`, when it put cash in the bank: "Before You Start" asks about it. */
-export function depositToConfirm(home: Home, day: string): { day: string; report: PublishedDay } | null {
+export function depositToConfirm(
+  home: Home,
+  day: string,
+): { day: string; report: PublishedDay } | null {
   const before = addDays(day, -1);
   const report = home.published[before];
   return report && report.bank_deposit > 0 ? { day: before, report } : null;
@@ -114,7 +119,8 @@ export type Launch =
 export function launchState(home: Home): Launch {
   const today = home.server_today;
   if (home.draft) return { kind: "in-progress", day: home.draft_date ?? today, draft: home.draft };
-  if (home.published[today]) return { kind: "done", day: today, reportId: home.published[today].id };
+  if (home.published[today])
+    return { kind: "done", day: today, reportId: home.published[today].id };
   if (!reportSpan(home)) {
     const start = home.start_date;
     return { kind: "first-use", day: start && start < today ? start : today };
@@ -145,12 +151,20 @@ export const CHOOSE_CURRENCY = "Choose your company's currency";
  * a report save without one) or its Xero settings are incomplete. The currency comes first and opens
  * Petty Cash Settings at Country & currency; each missing Xero setting opens its Xero cards.
  */
-export function setupRequired(home: Home, entityId: string, entityName: string): { open: boolean; items: SetupItem[] } {
+export function setupRequired(
+  home: Home,
+  entityId: string,
+  entityName: string,
+): { open: boolean; items: SetupItem[] } {
   const noCurrency = !home.currency_code?.trim();
   const xero = xeroSettingsHref(entityId, entityName);
   const items: SetupItem[] = [
-    ...(noCurrency ? [{ text: CHOOSE_CURRENCY, href: currencySettingsHref(entityId, entityName) }] : []),
-    ...(home.xero_settings.complete ? [] : home.xero_settings.missing.map((text) => ({ text, href: xero }))),
+    ...(noCurrency
+      ? [{ text: CHOOSE_CURRENCY, href: currencySettingsHref(entityId, entityName) }]
+      : []),
+    ...(home.xero_settings.complete
+      ? []
+      : home.xero_settings.missing.map((text) => ({ text, href: xero }))),
   ];
   return { open: noCurrency || !home.xero_settings.complete, items };
 }

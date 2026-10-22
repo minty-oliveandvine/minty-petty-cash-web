@@ -16,7 +16,10 @@ const BASE = `/entity/${companyRef(ENTITY, NAME)}/petty-cash`;
 const DAY = "2026-10-13";
 const REPORT = "5d6e7f80-0000-4000-8000-000000000002";
 const REPORT_URL = `${BASE}/reports/${REPORT}/summary`;
-const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "base64",
+);
 
 type Json = Record<string, unknown>;
 
@@ -93,7 +96,9 @@ const PUBLISHED = {
 function multipart(route: Route): Json {
   const raw = route.request().postDataBuffer()?.toString("latin1") ?? "";
   const fields: Json = {};
-  for (const m of raw.matchAll(/name="([^"]+)"(?:; filename="([^"]*)"\r\nContent-Type: ([^\r]+))?\r\n\r\n([\s\S]*?)\r\n--/g)) {
+  for (const m of raw.matchAll(
+    /name="([^"]+)"(?:; filename="([^"]*)"\r\nContent-Type: ([^\r]+))?\r\n\r\n([\s\S]*?)\r\n--/g,
+  )) {
     fields[m[1]] = m[2] !== undefined ? { filename: m[2], type: m[3] } : m[4];
   }
   return fields;
@@ -102,10 +107,20 @@ function multipart(route: Route): Json {
 type Handler = (route: Route) => Promise<void>;
 type Calls = { reasons: Json[]; withdrawals: Json[]; lines: Json[] };
 
-async function stub(page: Page, answer: Json, { onReason, onWithdrawal, onLine }: { onReason?: Handler; onWithdrawal?: Handler; onLine?: Handler } = {}): Promise<Calls> {
+async function stub(
+  page: Page,
+  answer: Json,
+  {
+    onReason,
+    onWithdrawal,
+    onLine,
+  }: { onReason?: Handler; onWithdrawal?: Handler; onLine?: Handler } = {},
+): Promise<Calls> {
   const calls: Calls = { reasons: [], withdrawals: [], lines: [] };
   const api = "**/api/petty-cash/v1/companies/*";
-  await page.route(new RegExp(`/api/petty-cash/v1/companies/[^/]+/reports/${REPORT}$`), (route) => route.fulfill({ json: answer }));
+  await page.route(new RegExp(`/api/petty-cash/v1/companies/[^/]+/reports/${REPORT}$`), (route) =>
+    route.fulfill({ json: answer }),
+  );
   await page.route(`${api}/reports/${REPORT}/difference-reason`, async (route) => {
     expect(route.request().method()).toBe("PUT");
     calls.reasons.push(route.request().postDataJSON() as Json);
@@ -121,34 +136,60 @@ async function stub(page: Page, answer: Json, { onReason, onWithdrawal, onLine }
     calls.lines.push(multipart(route));
     if (onLine) await onLine(route);
   });
-  await page.route(`${api}/expense-lines/*/receipts/*`, (route) => route.fulfill({ status: 200, contentType: "image/png", body: PNG }));
-  await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
+  await page.route(`${api}/expense-lines/*/receipts/*`, (route) =>
+    route.fulfill({ status: 200, contentType: "image/png", body: PNG }),
+  );
+  await page.route("**/api/me/profile**", (route) =>
+    route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }),
+  );
   return calls;
 }
 
-async function openWith(page: Page, answer: Json, handlers: Parameters<typeof stub>[2] = {}): Promise<Calls> {
+async function openWith(
+  page: Page,
+  answer: Json,
+  handlers: Parameters<typeof stub>[2] = {},
+): Promise<Calls> {
   const calls = await stub(page, answer, handlers);
-  const token = mintModuleToken({ secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME });
-  await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: REPORT_URL })}`);
+  const token = mintModuleToken({
+    secret: "stub",
+    userId: "u",
+    entityId: ENTITY,
+    entityName: NAME,
+  });
+  await page.goto(
+    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: REPORT_URL })}`,
+  );
   // The dev server compiles on first arrival, slowly under two workers: a longer first wait.
-  await expect(page.getByRole("heading", { level: 1, name: "Daily Report" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { level: 1, name: "Daily Report" })).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
   return calls;
 }
 
 async function open(page: Page, title: string) {
-  const summary = page.locator("summary").filter({ hasText: new RegExp(`^${title.replace(/[()]/g, "\\$&")}`) });
+  const summary = page
+    .locator("summary")
+    .filter({ hasText: new RegExp(`^${title.replace(/[()]/g, "\\$&")}`) });
   await summary.click();
   return page.locator("details").filter({ has: summary });
 }
 
 const toast = (page: Page) => page.locator("[data-toast-type=success]");
 const pill = (page: Page) => page.locator("main h1").locator("..");
-const editLine = (page: Page) => page.getByRole("button", { name: /^Edit expense General Expenses/ });
+const editLine = (page: Page) =>
+  page.getByRole("button", { name: /^Edit expense General Expenses/ });
 const lineDrawer = (page: Page) => page.getByRole("dialog", { name: "Edit expense" });
 
 test("without edit_details nothing can be edited", async ({ page }) => {
-  await openWith(page, reportAnswer({ permissions: { edit: true, delete: true, publish: true, share: true, edit_details: false }, options: null }));
+  await openWith(
+    page,
+    reportAnswer({
+      permissions: { edit: true, delete: true, publish: true, share: true, edit_details: false },
+      options: null,
+    }),
+  );
   await expect(page.getByText("Cash was HKD 20.00 short")).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit reason" })).toHaveCount(0);
   await open(page, "Expenses (1)");
@@ -168,15 +209,26 @@ test("an older report's details are editable, with no Edit report", async ({ pag
 });
 
 test("no difference and no cash added: neither is offered", async ({ page }) => {
-  await openWith(page, reportAnswer({}, { cash_addition: 0, difference: { amount: 0, kind: "none", reason: "" } }));
+  await openWith(
+    page,
+    reportAnswer({}, { cash_addition: 0, difference: { amount: 0, kind: "none", reason: "" } }),
+  );
   await expect(page.getByRole("button", { name: "Edit reason" })).toHaveCount(0);
   await open(page, "Cash");
   await expect(page.getByRole("button", { name: "Edit where the cash came from" })).toHaveCount(0);
 });
 
-test("the reason is saved, the page redraws from the answer and a toast says so", async ({ page }) => {
+test("the reason is saved, the page redraws from the answer and a toast says so", async ({
+  page,
+}) => {
   const calls = await openWith(page, reportAnswer(), {
-    onReason: (route) => route.fulfill({ json: reportAnswer({}, { difference: { amount: -20, kind: "short", reason: "Float swap" } }) }),
+    onReason: (route) =>
+      route.fulfill({
+        json: reportAnswer(
+          {},
+          { difference: { amount: -20, kind: "short", reason: "Float swap" } },
+        ),
+      }),
   });
   await page.getByRole("button", { name: "Edit reason" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit the reason" });
@@ -201,10 +253,16 @@ test("the reason is checked as typed and never sent while it is wrong", async ({
   const dialog = page.getByRole("dialog", { name: "Edit the reason" });
   const field = dialog.getByRole("textbox", { name: /Reason for the difference/ });
   await field.fill("x".repeat(301));
-  await expect(dialog.getByText("The reason is 301 characters. Shorten it to 300 characters or fewer.")).toBeVisible();
+  await expect(
+    dialog.getByText("The reason is 301 characters. Shorten it to 300 characters or fewer."),
+  ).toBeVisible();
   await expect(field).toHaveAttribute("aria-invalid", "true");
   await field.fill("");
-  await expect(dialog.getByText("The cash was short, so the reason is still needed. Add the reason to save it.")).toBeVisible();
+  await expect(
+    dialog.getByText(
+      "The cash was short, so the reason is still needed. Add the reason to save it.",
+    ),
+  ).toBeVisible();
   // Enter in the field is a new line; Save is refused in place.
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(field).toBeFocused();
@@ -220,29 +278,50 @@ test("the reason is checked as typed and never sent while it is wrong", async ({
 
 test("a refused reason shows the API's sentence in the dialog, never a toast", async ({ page }) => {
   const calls = await openWith(page, reportAnswer(), {
-    onReason: (route) => route.fulfill({ status: 409, json: { error: "Xero is still publishing this report. Wait until it finishes, then edit it." } }),
+    onReason: (route) =>
+      route.fulfill({
+        status: 409,
+        json: {
+          error: "Xero is still publishing this report. Wait until it finishes, then edit it.",
+        },
+      }),
   });
   await page.getByRole("button", { name: "Edit reason" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit the reason" });
   await dialog.getByRole("textbox").fill("Float swap");
   await dialog.getByRole("button", { name: "Save" }).click();
-  await expect(dialog.getByText("Xero is still publishing this report. Wait until it finishes, then edit it.")).toBeVisible();
+  await expect(
+    dialog.getByText("Xero is still publishing this report. Wait until it finishes, then edit it."),
+  ).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Save" })).toBeEnabled();
   expect(calls.reasons).toHaveLength(1);
   await expect(toast(page)).toHaveCount(0);
   await expect(page.getByText("Note: Change given twice")).toBeVisible();
 });
 
-test("a report in Xero says first it will need publishing again, and comes back Submitted", async ({ page }) => {
+test("a report in Xero says first it will need publishing again, and comes back Submitted", async ({
+  page,
+}) => {
   await openWith(page, reportAnswer(PUBLISHED), {
     onReason: (route) =>
-      route.fulfill({ json: reportAnswer({ was_published: true, publishing_status: "completed", published_at: PUBLISHED.published_at }, { difference: { amount: -20, kind: "short", reason: "Float swap" } }) }),
+      route.fulfill({
+        json: reportAnswer(
+          {
+            was_published: true,
+            publishing_status: "completed",
+            published_at: PUBLISHED.published_at,
+          },
+          { difference: { amount: -20, kind: "short", reason: "Float swap" } },
+        ),
+      }),
   });
   await expect(pill(page)).toContainText("Published to Xero");
   await page.getByRole("button", { name: "Edit reason" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit the reason" });
   await expect(dialog.getByText("It will need publishing to Xero again")).toBeVisible();
-  await expect(dialog).toContainText("Saving takes this report out of Xero. Publish it again afterwards.");
+  await expect(dialog).toContainText(
+    "Saving takes this report out of Xero. Publish it again afterwards.",
+  );
   await dialog.getByRole("textbox").fill("Float swap");
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toHaveCount(0);
@@ -255,32 +334,52 @@ test("where the cash came from is saved; a refusal stays in the dialog", async (
   const calls = await openWith(page, reportAnswer(), {
     onWithdrawal: (route) =>
       refuse
-        ? route.fulfill({ status: 400, json: { error: "That withdrawal type doesn't look quite right to me." } })
+        ? route.fulfill({
+            status: 400,
+            json: { error: "That withdrawal type doesn't look quite right to me." },
+          })
         : route.fulfill({ json: reportAnswer({}, { cash_addition_type: "personal" }) }),
   });
   const cash = await open(page, "Cash");
   await expect(cash).toContainText("Company bank");
   await page.getByRole("button", { name: "Edit where the cash came from" }).click();
   const dialog = page.getByRole("dialog", { name: "Where the cash came from" });
-  await expect(dialog).toContainText("HKD 100.00 was added to the drawer. The amount stays as it is.");
+  await expect(dialog).toContainText(
+    "HKD 100.00 was added to the drawer. The amount stays as it is.",
+  );
   await expect(dialog.getByRole("radio", { name: "Company bank" })).toBeChecked();
   await dialog.getByText("Personal").click();
   await dialog.getByRole("button", { name: "Save" }).click();
-  await expect(dialog.getByText("That withdrawal type doesn't look quite right to me.")).toBeVisible();
+  await expect(
+    dialog.getByText("That withdrawal type doesn't look quite right to me."),
+  ).toBeVisible();
   await expect(toast(page)).toHaveCount(0);
   refuse = false;
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toHaveCount(0);
-  expect(calls.withdrawals).toEqual([{ withdrawal_type: "personal" }, { withdrawal_type: "personal" }]);
+  expect(calls.withdrawals).toEqual([
+    { withdrawal_type: "personal" },
+    { withdrawal_type: "personal" },
+  ]);
   await expect(toast(page)).toContainText("Where the cash came from is saved.");
-  await expect(page.locator("details").filter({ hasText: "Starting cash balance" })).toContainText("Personal");
+  await expect(page.locator("details").filter({ hasText: "Starting cash balance" })).toContainText(
+    "Personal",
+  );
 });
 
 test("an expense line sends only what changed; a new account renames it", async ({ page }) => {
   const calls = await openWith(page, reportAnswer(), {
     onLine: (route) =>
       route.fulfill({
-        json: reportAnswer({}, {}, { item: "Printing & Stationery", remarks: "Paper bags", account: { id: "a2", code: "461", name: "Printing & Stationery" } }),
+        json: reportAnswer(
+          {},
+          {},
+          {
+            item: "Printing & Stationery",
+            remarks: "Paper bags",
+            account: { id: "a2", code: "461", name: "Printing & Stationery" },
+          },
+        ),
       }),
   });
   await open(page, "Expenses (1)");
@@ -301,18 +400,33 @@ test("an expense line sends only what changed; a new account renames it", async 
   await expectNoHorizontalScroll(page);
 });
 
-test("a new supplier and a new receipt; a wrong file is said the moment it is picked", async ({ page }) => {
+test("a new supplier and a new receipt; a wrong file is said the moment it is picked", async ({
+  page,
+}) => {
   const calls = await openWith(page, reportAnswer(), {
-    onLine: (route) => route.fulfill({ json: reportAnswer({}, {}, { supplier: { id: "c2", name: "Wellcome" } }) }),
+    onLine: (route) =>
+      route.fulfill({ json: reportAnswer({}, {}, { supplier: { id: "c2", name: "Wellcome" } }) }),
   });
   await open(page, "Expenses (1)");
   await editLine(page).click();
   const drawer = lineDrawer(page);
   const file = drawer.locator("input[type=file]:not([capture])");
-  await file.setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hi") });
-  await expect(drawer.getByText("notes.txt isn't a PDF, JPEG or PNG. Attach the receipt as one of those.")).toBeVisible();
-  await file.setInputFiles({ name: "huge.pdf", mimeType: "application/pdf", buffer: Buffer.alloc(10 * 1024 * 1024 + 1) });
-  await expect(drawer.getByText("huge.pdf is 10.0 MB. Attach a file of 10 MB or less.")).toBeVisible();
+  await file.setInputFiles({
+    name: "notes.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("hi"),
+  });
+  await expect(
+    drawer.getByText("notes.txt isn't a PDF, JPEG or PNG. Attach the receipt as one of those."),
+  ).toBeVisible();
+  await file.setInputFiles({
+    name: "huge.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.alloc(10 * 1024 * 1024 + 1),
+  });
+  await expect(
+    drawer.getByText("huge.pdf is 10.0 MB. Attach a file of 10 MB or less."),
+  ).toBeVisible();
   await file.setInputFiles({ name: "new.png", mimeType: "image/png", buffer: PNG });
   await expect(drawer.getByText("Saved receipt, replaced when you save")).toBeVisible();
   const supplier = drawer.getByRole("combobox", { name: /Supplier/ });
@@ -320,13 +434,16 @@ test("a new supplier and a new receipt; a wrong file is said the moment it is pi
   await page.getByRole("option", { name: "Wellcome" }).click();
   await drawer.getByRole("button", { name: "Save" }).click();
   await expect(drawer).toHaveCount(0);
-  expect(calls.lines).toEqual([{ supplier_id: "c2", receipt: { filename: "new.png", type: "image/png" } }]);
+  expect(calls.lines).toEqual([
+    { supplier_id: "c2", receipt: { filename: "new.png", type: "image/png" } },
+  ]);
   await expect(page.getByText("Wellcome · Account 429")).toBeVisible();
 });
 
 test("an expense line is checked as typed; a refusal shows inside the drawer", async ({ page }) => {
   const calls = await openWith(page, reportAnswer(), {
-    onLine: (route) => route.fulfill({ status: 422, json: { error: "Choose an account code from the list." } }),
+    onLine: (route) =>
+      route.fulfill({ status: 422, json: { error: "Choose an account code from the list." } }),
   });
   await open(page, "Expenses (1)");
   await editLine(page).click();
@@ -334,12 +451,18 @@ test("an expense line is checked as typed; a refusal shows inside the drawer", a
   const supplier = drawer.getByRole("combobox", { name: /Supplier/ });
   await expect(supplier).toHaveAttribute("aria-required", "true");
   await supplier.fill("");
-  await expect(drawer.getByText("The supplier is still empty. Choose a supplier from the list to save it.")).toBeVisible();
+  await expect(
+    drawer.getByText("The supplier is still empty. Choose a supplier from the list to save it."),
+  ).toBeVisible();
   await drawer.getByRole("textbox", { name: "Description" }).fill("y".repeat(301));
-  await expect(drawer.getByText("The description is 301 characters. Shorten it to 300 characters or fewer.")).toBeVisible();
+  await expect(
+    drawer.getByText("The description is 301 characters. Shorten it to 300 characters or fewer."),
+  ).toBeVisible();
   // Two problems on a refused Save: the summary takes the focus; nothing is sent.
   await drawer.getByRole("button", { name: "Save" }).click();
-  const summary = drawer.getByRole("alert").filter({ hasText: "2 details need a look before this can be sent." });
+  const summary = drawer
+    .getByRole("alert")
+    .filter({ hasText: "2 details need a look before this can be sent." });
   await expect(summary).toBeFocused();
   await expect(summary.getByRole("link")).toHaveCount(2);
   expect(calls.lines).toEqual([]);

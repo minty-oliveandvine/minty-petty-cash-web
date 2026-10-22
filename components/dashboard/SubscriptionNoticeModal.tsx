@@ -2,7 +2,12 @@
 
 import { Button, InlineAlert, Modal, buttonClass } from "@minty/shared/ui";
 
-import { noticeTitle, noticeTone, payerLine, type SubscriptionNotice } from "@/lib/subscriptionNotice";
+import {
+  noticeTitle,
+  noticeTone,
+  payerLine,
+  type SubscriptionNotice,
+} from "@/lib/subscriptionNotice";
 
 /**
  * The launch page's subscription notice (Flask's `subscriptionNoticeModal` in

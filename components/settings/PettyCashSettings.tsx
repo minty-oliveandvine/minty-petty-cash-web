@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
 import { moduleClaims } from "@minty/shared/auth";
 import { useLeaveGuard } from "@minty/shared/leaveGuard";
@@ -43,7 +51,17 @@ import {
   type SettingsAnswer,
 } from "@/lib/settings";
 import { useAuth } from "@/lib/useAuth";
-import { codesDirty, mappingDirty, mappingDraftOf, mappingSavedMessage, readOf, tickedOf, withContact, type MappingDraft, type XeroSettings } from "@/lib/xeroSettings";
+import {
+  codesDirty,
+  mappingDirty,
+  mappingDraftOf,
+  mappingSavedMessage,
+  readOf,
+  tickedOf,
+  withContact,
+  type MappingDraft,
+  type XeroSettings,
+} from "@/lib/xeroSettings";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 
@@ -52,9 +70,13 @@ const GROUP_SUB: Record<MethodType, string> = {
   delivery: "Delivery platforms a Daily Closing can record.",
 };
 
-type Load = { kind: "loading" } | { kind: "ready"; settings: Settings } | { kind: "failed"; message: string };
+type Load =
+  { kind: "loading" } | { kind: "ready"; settings: Settings } | { kind: "failed"; message: string };
 /** `GET /settings/xero`, read once: it asks Xero on the server. */
-type XeroLoad = { kind: "loading" } | { kind: "ready"; xero: XeroSettings } | { kind: "failed"; message: string; forbidden: boolean };
+type XeroLoad =
+  | { kind: "loading" }
+  | { kind: "ready"; xero: XeroSettings }
+  | { kind: "failed"; message: string; forbidden: boolean };
 
 /**
  * Petty Cash settings - Part 15.20 (Business setup) as 15.20b's grouped forms with one Save per
@@ -104,7 +126,11 @@ export function PettyCashSettings() {
       .catch((err: unknown) => {
         if (!live || signedOut(err)) return;
         const forbidden = err instanceof ApiError && err.status === 403;
-        setXeroLoad({ kind: "failed", message: err instanceof ApiError ? err.message : UNREACHABLE, forbidden });
+        setXeroLoad({
+          kind: "failed",
+          message: err instanceof ApiError ? err.message : UNREACHABLE,
+          forbidden,
+        });
       });
     return () => {
       live = false;
@@ -137,18 +163,32 @@ export function PettyCashSettings() {
             {/* The settings pills, as on every other settings page (minty-web's SettingsShell): above the title. */}
             {auth ? (
               <div className="pb-3 pt-1">
-                <SettingsTabs entityId={entityId} entityName={entityName} billing={moduleClaims(auth.token).billing} />
+                <SettingsTabs
+                  entityId={entityId}
+                  entityName={entityName}
+                  billing={moduleClaims(auth.token).billing}
+                />
               </div>
             ) : null}
             <h1 className="text-display-m text-text-primary">Petty Cash settings</h1>
           </div>
 
           {load.kind === "ready" && auth ? (
-            <SettingsCards initial={load.settings} xeroLoad={xeroLoad} entityId={entityId} entityName={entityName} />
+            <SettingsCards
+              initial={load.settings}
+              xeroLoad={xeroLoad}
+              entityId={entityId}
+              entityName={entityName}
+            />
           ) : load.kind === "failed" ? (
             <InlineAlert tone="danger">{load.message}</InlineAlert>
           ) : (
-            <div className="flex flex-col gap-4" role="status" aria-busy="true" aria-label="Loading">
+            <div
+              className="flex flex-col gap-4"
+              role="status"
+              aria-busy="true"
+              aria-label="Loading"
+            >
               <Skeleton className="h-48 w-full rounded-lg" />
               <Skeleton className="h-72 w-full rounded-lg" />
             </div>
@@ -162,13 +202,27 @@ export function PettyCashSettings() {
 /** The Xero cards' read and what waits on them: the mapping's pickers and the ticked codes. */
 type XeroCardsState = { read: XeroSettings; mapping: MappingDraft; ticked: string[] };
 
-const xeroStateOf = (read: XeroSettings): XeroCardsState => ({ read, mapping: mappingDraftOf(read), ticked: tickedOf(read) });
+const xeroStateOf = (read: XeroSettings): XeroCardsState => ({
+  read,
+  mapping: mappingDraftOf(read),
+  ticked: tickedOf(read),
+});
 
 /**
  * The cards, over the two reads: each card's answer is its whole read again. The Xero read may
  * arrive after the others are drawn; the Xero cards start from it then.
  */
-function SettingsCards({ initial, xeroLoad, entityId, entityName }: { initial: Settings; xeroLoad: XeroLoad; entityId: string; entityName: string }) {
+function SettingsCards({
+  initial,
+  xeroLoad,
+  entityId,
+  entityName,
+}: {
+  initial: Settings;
+  xeroLoad: XeroLoad;
+  entityId: string;
+  entityName: string;
+}) {
   const [settings, setSettings] = useState(initial);
   const [choice, setChoice] = useState<CountryChoice>(() => countryChoiceOf(initial));
   const [draft, setDraft] = useState<Draft>(() => draftOf(initial));
@@ -184,8 +238,10 @@ function SettingsCards({ initial, xeroLoad, entityId, entityName }: { initial: S
   }
   const live = xero?.read.live ? xero : null;
 
-  const xeroDirty = live !== null && (mappingDirty(live.read, live.mapping) || codesDirty(live.read, live.ticked));
-  const dirty = countryBody(settings, choice) !== null || pendingOps(draft, settings).length > 0 || xeroDirty;
+  const xeroDirty =
+    live !== null && (mappingDirty(live.read, live.mapping) || codesDirty(live.read, live.ticked));
+  const dirty =
+    countryBody(settings, choice) !== null || pendingOps(draft, settings).length > 0 || xeroDirty;
   const leave = useLeaveGuard(dirty, () => {
     setChoice(countryChoiceOf(settings));
     setDraft(draftOf(settings));
@@ -198,12 +254,15 @@ function SettingsCards({ initial, xeroLoad, entityId, entityName }: { initial: S
   const xeroSettled = xeroLoad.kind !== "loading";
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash === `#${COUNTRY_ANCHOR}`) document.getElementById(COUNTRY_ANCHOR)?.scrollIntoView({ block: "start" });
-    else if (xeroSettled && hash === `#${XERO_ANCHOR}`) document.getElementById(XERO_ANCHOR)?.scrollIntoView({ block: "start" });
+    if (hash === `#${COUNTRY_ANCHOR}`)
+      document.getElementById(COUNTRY_ANCHOR)?.scrollIntoView({ block: "start" });
+    else if (xeroSettled && hash === `#${XERO_ANCHOR}`)
+      document.getElementById(XERO_ANCHOR)?.scrollIntoView({ block: "start" });
   }, [xeroSettled]);
 
   const say = (message: string) => setToast({ id: Date.now(), message });
-  const patchXero = (patch: Partial<XeroCardsState>) => setXero((x) => (x ? { ...x, ...patch } : x));
+  const patchXero = (patch: Partial<XeroCardsState>) =>
+    setXero((x) => (x ? { ...x, ...patch } : x));
 
   return (
     <>
@@ -227,9 +286,15 @@ function SettingsCards({ initial, xeroLoad, entityId, entityName }: { initial: S
             <Skeleton className="h-72 w-full rounded-lg" />
           </div>
         ) : xeroLoad.kind === "failed" ? (
-          <Card id="xero" title="Xero" sub="The Xero accounts, contacts and account codes a Daily Report is published to.">
+          <Card
+            id="xero"
+            title="Xero"
+            sub="The Xero accounts, contacts and account codes a Daily Report is published to."
+          >
             {xeroLoad.forbidden ? (
-              <p className="text-body-m text-text-secondary">Your role can&apos;t see the Xero settings. Ask an Accountant or an Admin.</p>
+              <p className="text-body-m text-text-secondary">
+                Your role can&apos;t see the Xero settings. Ask an Accountant or an Admin.
+              </p>
             ) : (
               <InlineAlert tone="danger">{xeroLoad.message}</InlineAlert>
             )}
@@ -239,11 +304,17 @@ function SettingsCards({ initial, xeroLoad, entityId, entityName }: { initial: S
             xero={live.read}
             draft={live.mapping}
             onDraft={(mapping) => patchXero({ mapping })}
-            onContact={(contact) => setXero((x) => (x ? { ...x, read: withContact(x.read, contact) } : x))}
+            onContact={(contact) =>
+              setXero((x) => (x ? { ...x, read: withContact(x.read, contact) } : x))
+            }
             onSaved={(answer) => {
               const read = readOf(answer);
               // The codes card keeps what is waiting on it.
-              setXero((x) => ({ read, mapping: mappingDraftOf(read), ticked: x ? x.ticked : tickedOf(read) }));
+              setXero((x) => ({
+                read,
+                mapping: mappingDraftOf(read),
+                ticked: x ? x.ticked : tickedOf(read),
+              }));
               say(mappingSavedMessage(answer));
             }}
           />
@@ -269,7 +340,11 @@ function SettingsCards({ initial, xeroLoad, entityId, entityName }: { initial: S
           onSaved={(answer) => {
             const read = readOf(answer);
             // The mapping card keeps what is waiting on it.
-            setXero((x) => ({ read, mapping: x ? x.mapping : mappingDraftOf(read), ticked: tickedOf(read) }));
+            setXero((x) => ({
+              read,
+              mapping: x ? x.mapping : mappingDraftOf(read),
+              ticked: tickedOf(read),
+            }));
             say(answer.message);
           }}
         />
@@ -318,7 +393,12 @@ function SelectField({
     <Field label={label} helper={helper}>
       {(a11y) => (
         <div className="relative">
-          <select {...a11y} value={value} onChange={(e) => onChange(e.target.value)} className={`${inputClass(false)} cursor-pointer appearance-none pr-9`}>
+          <select
+            {...a11y}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className={`${inputClass(false)} cursor-pointer appearance-none pr-9`}
+          >
             {blank !== undefined ? <option value="">{blank}</option> : null}
             {options.map((o) => (
               <option key={o.value} value={o.value}>
@@ -326,7 +406,10 @@ function SelectField({
               </option>
             ))}
           </select>
-          <Icon name="expand_more" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <Icon
+            name="expand_more"
+            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary"
+          />
         </div>
       )}
     </Field>
@@ -360,13 +443,18 @@ function CountryCard({
       onSaved(await pettyCashFetch<SettingsAnswer>("/settings/country", { method: "PUT", body }));
     } catch (err) {
       // A 401 has already gone back through the hand-off.
-      if (!(err instanceof ApiError && err.status === 401)) setProblem(err instanceof ApiError ? err.message : NOT_SAVED);
+      if (!(err instanceof ApiError && err.status === 401))
+        setProblem(err instanceof ApiError ? err.message : NOT_SAVED);
     }
     setSaving(false);
   }
 
   return (
-    <Card id="country" title="Country & currency" sub="Where this company reports from, and the currency its petty cash is counted in.">
+    <Card
+      id="country"
+      title="Country & currency"
+      sub="Where this company reports from, and the currency its petty cash is counted in."
+    >
       {may ? (
         <div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <SelectField
@@ -382,8 +470,18 @@ function CountryCard({
           <SelectField
             label="Currency"
             value={choice.currency}
-            blank={countryChanged ? "The country's own currency" : choice.currency ? undefined : "Choose a currency"}
-            helper={countryChanged && !choice.currency ? "Saving sets the currency that goes with the country. Choose one here to use another." : undefined}
+            blank={
+              countryChanged
+                ? "The country's own currency"
+                : choice.currency
+                  ? undefined
+                  : "Choose a currency"
+            }
+            helper={
+              countryChanged && !choice.currency
+                ? "Saving sets the currency that goes with the country. Choose one here to use another."
+                : undefined
+            }
             options={c.currencies.map((x) => ({ value: x.id, label: x.name }))}
             onChange={(v) => {
               onChoice({ ...choice, currency: v });
@@ -394,13 +492,23 @@ function CountryCard({
       ) : (
         <dl className="grid min-w-0 gap-x-4 gap-y-2 text-body-m sm:grid-cols-[auto_1fr]">
           <dt className="text-text-secondary">Country</dt>
-          <dd className="min-w-0 break-words text-text-primary">{c.selected_country ?? "Not set yet"}</dd>
+          <dd className="min-w-0 break-words text-text-primary">
+            {c.selected_country ?? "Not set yet"}
+          </dd>
           <dt className="text-text-secondary">Currency</dt>
-          <dd className="min-w-0 break-words text-text-primary">{c.selected_currency ?? "Not set yet"}</dd>
+          <dd className="min-w-0 break-words text-text-primary">
+            {c.selected_currency ?? "Not set yet"}
+          </dd>
         </dl>
       )}
       {problem ? <InlineAlert tone="danger">{problem}</InlineAlert> : null}
-      <CardSave id="country" may={may} dirty={body !== null} saving={saving} onSave={() => void save()} />
+      <CardSave
+        id="country"
+        may={may}
+        dirty={body !== null}
+        saving={saving}
+        onSave={() => void save()}
+      />
     </Card>
   );
 }
@@ -422,7 +530,8 @@ function MethodsCard({
   onSaved: (out: SaveOutcome) => void;
 }) {
   const p = settings.permissions;
-  const mayChange = p.add_sales_method || p.rename_sales_method || p.remove_sales_method || p.reorder_sales_methods;
+  const mayChange =
+    p.add_sales_method || p.rename_sales_method || p.remove_sales_method || p.reorder_sales_methods;
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<{ title: string; message: string } | null>(null);
   const [renaming, setRenaming] = useState<{ type: MethodType; row: DraftRow } | null>(null);
@@ -436,7 +545,9 @@ function MethodsCard({
     const key = refocus.current;
     if (!key) return;
     refocus.current = null;
-    lists.current?.querySelector<HTMLElement>(`[data-row="${CSS.escape(key)}"] [aria-haspopup="menu"]`)?.focus();
+    lists.current
+      ?.querySelector<HTMLElement>(`[data-row="${CSS.escape(key)}"] [aria-haspopup="menu"]`)
+      ?.focus();
   }, [draft]);
 
   function change(next: Draft) {
@@ -448,18 +559,29 @@ function MethodsCard({
     if (saving || !dirty) return;
     setSaving(true);
     setFailure(null);
-    const out = await saveMethods(draft, settings, (path, init) => pettyCashFetch<SettingsAnswer>(path, init));
+    const out = await saveMethods(draft, settings, (path, init) =>
+      pettyCashFetch<SettingsAnswer>(path, init),
+    );
     setSaving(false);
     onSaved(out);
     const err = out.failure?.error;
     // A 401 has already gone back through the hand-off.
     if (!out.failure || (err instanceof ApiError && err.status === 401)) return;
     const sentence = err instanceof ApiError ? err.message : NOT_SAVED;
-    setFailure({ title: out.failure.what, message: out.sent ? `${sentence} The changes before it are saved; the rest are still waiting for Save.` : sentence });
+    setFailure({
+      title: out.failure.what,
+      message: out.sent
+        ? `${sentence} The changes before it are saved; the rest are still waiting for Save.`
+        : sentence,
+    });
   }
 
   return (
-    <Card id="sales-methods" title="Sales methods" sub="The ways customers pay, besides cash, that a Daily Closing records.">
+    <Card
+      id="sales-methods"
+      title="Sales methods"
+      sub="The ways customers pay, besides cash, that a Daily Closing records."
+    >
       {p.view_sales_methods ? (
         <>
           <div ref={lists} className="flex min-w-0 flex-col gap-6">
@@ -483,7 +605,8 @@ function MethodsCard({
           </div>
           {draft.removed.length ? (
             <p className="min-w-0 break-words text-body-s text-text-secondary">
-              Removed when you save: {draft.removed.map((r) => r.name).join(", ")}. Reports that used them keep their amounts.
+              Removed when you save: {draft.removed.map((r) => r.name).join(", ")}. Reports that
+              used them keep their amounts.
             </p>
           ) : null}
           {failure ? (
@@ -491,10 +614,18 @@ function MethodsCard({
               {failure.message}
             </InlineAlert>
           ) : null}
-          <CardSave id="sales-methods" may={mayChange} dirty={dirty} saving={saving} onSave={() => void save()} />
+          <CardSave
+            id="sales-methods"
+            may={mayChange}
+            dirty={dirty}
+            saving={saving}
+            onSave={() => void save()}
+          />
         </>
       ) : (
-        <p className="text-body-m text-text-secondary">Your role can&apos;t see the sales methods. Ask an Accountant or an Admin.</p>
+        <p className="text-body-m text-text-secondary">
+          Your role can&apos;t see the sales methods. Ask an Accountant or an Admin.
+        </p>
       )}
       {renaming ? (
         <RenameDialog
@@ -503,7 +634,15 @@ function MethodsCard({
           draft={draft}
           onCancel={() => setRenaming(null)}
           onRename={(name) => {
-            change(renameMethod(draft, renaming.type, renaming.row.key, name, settings.available[renaming.type]));
+            change(
+              renameMethod(
+                draft,
+                renaming.type,
+                renaming.row.key,
+                name,
+                settings.available[renaming.type],
+              ),
+            );
             setRenaming(null);
           }}
         />
@@ -563,24 +702,63 @@ function MethodGroup({
         <p className="text-body-s text-text-secondary">{GROUP_SUB[type]}</p>
       </div>
       {list.length ? (
-        <ol aria-label={`${label} methods`} className="flex min-w-0 flex-col divide-y divide-border-subtle rounded-lg border border-border-subtle">
+        <ol
+          aria-label={`${label} methods`}
+          className="flex min-w-0 flex-col divide-y divide-border-subtle rounded-lg border border-border-subtle"
+        >
           {list.map((row, i) => {
             const saved = row.id !== null;
             // A method not saved yet is the person's own addition: changing it needs only the right to add.
             const items: MoreItem[] = [
-              ...((saved ? p.rename_sales_method : p.add_sales_method) ? [{ key: "rename", label: "Rename", icon: "edit", onSelect: () => onRename(row) }] : []),
-              ...(p.reorder_sales_methods && i > 0 ? [{ key: "up", label: "Move up", icon: "arrow_upward", onSelect: () => move(row, -1) }] : []),
-              ...(p.reorder_sales_methods && i < list.length - 1 ? [{ key: "down", label: "Move down", icon: "arrow_downward", onSelect: () => move(row, 1) }] : []),
+              ...((saved ? p.rename_sales_method : p.add_sales_method)
+                ? [{ key: "rename", label: "Rename", icon: "edit", onSelect: () => onRename(row) }]
+                : []),
+              ...(p.reorder_sales_methods && i > 0
+                ? [
+                    {
+                      key: "up",
+                      label: "Move up",
+                      icon: "arrow_upward",
+                      onSelect: () => move(row, -1),
+                    },
+                  ]
+                : []),
+              ...(p.reorder_sales_methods && i < list.length - 1
+                ? [
+                    {
+                      key: "down",
+                      label: "Move down",
+                      icon: "arrow_downward",
+                      onSelect: () => move(row, 1),
+                    },
+                  ]
+                : []),
               ...((saved ? p.remove_sales_method : p.add_sales_method)
-                ? [{ key: "remove", label: "Remove", icon: "delete", danger: true, onSelect: () => onChange(removeMethod(draft, type, row.key)) }]
+                ? [
+                    {
+                      key: "remove",
+                      label: "Remove",
+                      icon: "delete",
+                      danger: true,
+                      onSelect: () => onChange(removeMethod(draft, type, row.key)),
+                    },
+                  ]
                 : []),
             ];
             return (
-              <li key={row.key} data-row={row.key} className="flex min-h-14 min-w-0 items-center gap-3 px-4 py-2">
+              <li
+                key={row.key}
+                data-row={row.key}
+                className="flex min-h-14 min-w-0 items-center gap-3 px-4 py-2"
+              >
                 <div className="min-w-0 flex-1">
                   <p className="break-words text-body-m text-text-primary">{row.name}</p>
                   {isPending(row) ? (
-                    <p className="break-words text-body-s text-text-secondary">{saved ? `Renamed from ${row.savedName} · not saved yet` : "Added · not saved yet"}</p>
+                    <p className="break-words text-body-s text-text-secondary">
+                      {saved
+                        ? `Renamed from ${row.savedName} · not saved yet`
+                        : "Added · not saved yet"}
+                    </p>
                   ) : null}
                 </div>
                 <MoreMenu label={`More actions for ${row.name}`} items={items} />
@@ -593,12 +771,24 @@ function MethodGroup({
       )}
       {p.add_sales_method ? (
         adding ? (
-          <AddMethod type={type} draft={draft} available={available} onCancel={closePanel} onAdd={(name) => {
-            onChange(addMethod(draft, type, name, available));
-            closePanel();
-          }} />
+          <AddMethod
+            type={type}
+            draft={draft}
+            available={available}
+            onCancel={closePanel}
+            onAdd={(name) => {
+              onChange(addMethod(draft, type, name, available));
+              closePanel();
+            }}
+          />
         ) : (
-          <Button ref={addButton} kind="secondary" icon={<Icon name="add" />} className="w-full sm:w-auto sm:self-start" onClick={() => setAdding(true)}>
+          <Button
+            ref={addButton}
+            kind="secondary"
+            icon={<Icon name="add" />}
+            className="w-full sm:w-auto sm:self-start"
+            onClick={() => setAdding(true)}
+          >
             Add {label.toLowerCase()} method
           </Button>
         )
@@ -667,7 +857,9 @@ function AddMethod({
       e.preventDefault();
       if (!open) setOpen(true);
       if (!options.length) return;
-      setActive((i) => (e.key === "ArrowDown" ? (i + 1) % options.length : i <= 0 ? options.length - 1 : i - 1));
+      setActive((i) =>
+        e.key === "ArrowDown" ? (i + 1) % options.length : i <= 0 ? options.length - 1 : i - 1,
+      );
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (open && active >= 0 && options[active]) choose(options[active]);
@@ -679,11 +871,26 @@ function AddMethod({
     }
   }
 
-  const status = !open ? "" : options.length ? `${options.length} ${options.length === 1 ? "method" : "methods"} to choose from.` : "";
+  const status = !open
+    ? ""
+    : options.length
+      ? `${options.length} ${options.length === 1 ? "method" : "methods"} to choose from.`
+      : "";
 
   return (
-    <div ref={panel} role="group" aria-label={`Add ${label.toLowerCase()} method`} className="flex min-w-0 flex-col gap-3 rounded-lg border border-border-default bg-surface-card p-4">
-      <Field id={id} label="Method" required error={problem} helper="Choose one from the list, or type a new name.">
+    <div
+      ref={panel}
+      role="group"
+      aria-label={`Add ${label.toLowerCase()} method`}
+      className="flex min-w-0 flex-col gap-3 rounded-lg border border-border-default bg-surface-card p-4"
+    >
+      <Field
+        id={id}
+        label="Method"
+        required
+        error={problem}
+        helper="Choose one from the list, or type a new name."
+      >
         {(a11y) => (
           <div className="flex min-w-0 flex-col gap-1">
             <div className="relative">
@@ -706,17 +913,26 @@ function AddMethod({
                 }}
                 onClick={() => setOpen(true)}
                 onBlur={(e) => {
-                  if (e.relatedTarget instanceof Node && panel.current?.contains(e.relatedTarget)) return;
+                  if (e.relatedTarget instanceof Node && panel.current?.contains(e.relatedTarget))
+                    return;
                   setOpen(false);
                   setActive(-1);
                 }}
                 onKeyDown={onKeyDown}
                 className={`${inputClass(Boolean(problem))} pr-10`}
               />
-              <Icon name="search" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+              <Icon
+                name="search"
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary"
+              />
             </div>
             {open && options.length ? (
-              <ul id={listId} role="listbox" aria-label={`${label} methods to add`} className="max-h-[264px] overflow-y-auto rounded-lg border border-border-default bg-surface-raised py-1 shadow-modal">
+              <ul
+                id={listId}
+                role="listbox"
+                aria-label={`${label} methods to add`}
+                className="max-h-[264px] overflow-y-auto rounded-lg border border-border-default bg-surface-raised py-1 shadow-modal"
+              >
                 {options.map((o, i) => (
                   <li
                     key={o.id}
@@ -801,7 +1017,17 @@ function RenameDialog({
     >
       <form id={formId} onSubmit={submit} noValidate>
         <Field label="Name" required error={problem}>
-          {(a11y) => <input {...a11y} ref={field} type="text" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} className={inputClass(Boolean(problem))} />}
+          {(a11y) => (
+            <input
+              {...a11y}
+              ref={field}
+              type="text"
+              autoComplete="off"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClass(Boolean(problem))}
+            />
+          )}
         </Field>
       </form>
     </Modal>

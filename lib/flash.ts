@@ -24,7 +24,10 @@ export function takeFlash(): { message: string; kind: FlashKind } | null {
     sessionStorage.removeItem(KEY);
     const value = JSON.parse(raw) as { message?: unknown; kind?: unknown };
     if (typeof value.message !== "string") return null;
-    const kind = value.kind === "success" || value.kind === "warning" || value.kind === "info" ? value.kind : "error";
+    const kind =
+      value.kind === "success" || value.kind === "warning" || value.kind === "info"
+        ? value.kind
+        : "error";
     return { message: value.message, kind };
   } catch {
     return null;

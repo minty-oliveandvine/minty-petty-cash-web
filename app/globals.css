@@ -44,10 +44,22 @@ body {
    Ordered light/dark so neighbouring segments always differ. A class rule, not a `--color-*`
    token: this file declares no tokens of its own (app/__tests__/packagedStyles.test.ts). */
 @layer components {
-  [data-chart-tone="1"] { background-color: var(--minty-brand-400); }
-  [data-chart-tone="2"] { background-color: var(--minty-brand-800); }
-  [data-chart-tone="3"] { background-color: var(--minty-brand-200); }
-  [data-chart-tone="4"] { background-color: var(--minty-brand-600); }
-  [data-chart-tone="5"] { background-color: var(--minty-neutral-400); }
-  [data-chart-tone="6"] { background-color: var(--minty-brand-950); }
+  [data-chart-tone="1"] {
+    background-color: var(--minty-brand-400);
+  }
+  [data-chart-tone="2"] {
+    background-color: var(--minty-brand-800);
+  }
+  [data-chart-tone="3"] {
+    background-color: var(--minty-brand-200);
+  }
+  [data-chart-tone="4"] {
+    background-color: var(--minty-brand-600);
+  }
+  [data-chart-tone="5"] {
+    background-color: var(--minty-neutral-400);
+  }
+  [data-chart-tone="6"] {
+    background-color: var(--minty-brand-950);
+  }
 }

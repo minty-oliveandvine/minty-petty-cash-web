@@ -1,7 +1,7 @@
 // The one way this app talks to its backends (../apiClient.ts): the company in the path, the
 // bearer, a 401 back through Flask, every other failure the API's own sentence.
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import { HOUSE_FALLBACK, filenameFromDisposition, mintyFetch, pettyCashBlob, pettyCashDownload, pettyCashFetch, pettyCashPublicFetch } from "@/lib/apiClient";
 import { setAuth } from "@/lib/auth";
@@ -13,11 +13,12 @@ function answer(status: number, body: unknown) {
   return new Response(body === null ? "" : JSON.stringify(body), { status });
 }
 
-let go: ReturnType<typeof vi.fn>;
+// Typed: Vitest 5's untyped vi.fn() is "any function or class", which the hand-off does not accept.
+let go: Mock<(url: string) => void>;
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  go = vi.fn();
+  go = vi.fn<(url: string) => void>();
   _resetHandoffForTests(go);
   fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);

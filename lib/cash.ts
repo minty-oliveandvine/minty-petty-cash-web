@@ -32,7 +32,7 @@ export type CashFigures = {
 
 export type DepositPage = CashFigures;
 
-export type Denomination = { id: string; value: number; kind: "note" | "coin" | string; count: number };
+export type Denomination = { id: string; value: number; kind: "note" | "coin" | string; name: string | null; count: number };
 
 export type DifferenceKind = "short" | "over" | "none";
 
@@ -63,11 +63,14 @@ export function depositProblem(amount: number, cashOnHand: number, currencyCode:
   return `The deposit can't be more than the cash on hand. Enter ${formatMoney(Math.max(cents(cashOnHand), 0), currencyCode)} or less.`;
 }
 
-/** A denomination's label: Flask's `HKD1000` for a note, and the coin's real value under 1 (`HKD0.50`, never `HKD0`). */
-export function denominationLabel(value: number, currencyCode: string | null): string {
-  const code = currencyCode || "$";
-  if (Number.isInteger(value)) return `${code}${value}`;
-  return `${code}${value.toFixed(2)}`;
+/**
+ * A denomination's label: the currency code, a non-breaking space, and its `cash_info.cash_name` without the symbol
+ * (`$1,000` -> `HKD 1,000`). Without a name, its value: `HKD 1000`, and a coin under 1 as `HKD 0.50`, never `HKD 0`.
+ * With no currency, just the figure - never a "$" (the dashboard keeps a report from starting without a currency).
+ */
+export function denominationLabel(value: number, currencyCode: string | null, name?: string | null): string {
+  const figure = name?.replace(/^\D*\$/, "").trim() || (Number.isInteger(value) ? String(value) : value.toFixed(2));
+  return currencyCode ? `${currencyCode}\u00a0${figure}` : figure;
 }
 
 /** A count as typed: digits only (a whole number), at most seven of them; empty stays empty. */

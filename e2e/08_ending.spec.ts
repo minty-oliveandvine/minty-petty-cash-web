@@ -85,7 +85,7 @@ const COUNT = {
   bank_deposit: 300,
   cash_on_hand: 1471.5,
   expected_cash: 1171.5,
-  denominations: [{ id: "n1000", value: 1000, kind: "note", count: 1 }],
+  denominations: [{ id: "n1000", value: 1000, kind: "note", name: null, count: 1 }],
   safe_box_balance: 160,
   discrepancy: { amount: -11, kind: "short", reason: "Paid a courier" },
 };
@@ -200,7 +200,7 @@ test("Flask's page: the draft callout, the four cards, the figures and the short
   const cash = card(page, "Cash Balance");
   await expect(cash.getByText("1,160.50", { exact: true })).toBeVisible();
 
-  await expect(page.getByText("Cash Shortage: HKD11.00")).toBeVisible();
+  await expect(page.getByText("Cash Shortage: HKD 11.00")).toBeVisible();
   await expect(page.getByText("Paid a courier")).toBeVisible();
   await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
   await expect(finish(page)).toHaveText("Finish Daily Report");
@@ -268,7 +268,7 @@ test("a fall against yesterday is red and points down; a surplus is green", asyn
     }),
   );
   await expect(card(page, "Total Sales").getByText("50.0%")).toHaveClass(/text-flask-red-500/);
-  await expect(page.getByText("Cash Surplus: HKD8.50")).toBeVisible();
+  await expect(page.getByText("Cash Surplus: HKD 8.50")).toBeVisible();
 });
 
 test("Finish posts the day once, shows Finishing..., then the Submitted page", async ({ page }) => {
@@ -371,7 +371,7 @@ test("a drawer below zero holds the page on Fix Negative Balance, and Finish nev
   );
   const dialog = page.getByRole("alertdialog", { name: "Fix Negative Balance" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText("(HKD128.50)")).toBeVisible();
+  await expect(dialog.getByText("(HKD 128.50)")).toBeVisible();
   for (const name of ["Opening (Cash in: HKD 0.00)", "Sales (Cash in: HKD 600.00)", "Expenses (Cash out: HKD 128.50)", "Deposit (Cash out: HKD 1,600.00)", "Cash Count"]) {
     await expect(dialog.getByRole("button", { name, exact: true })).toBeVisible();
   }

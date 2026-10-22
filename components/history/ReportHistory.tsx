@@ -485,11 +485,11 @@ function HistoryEntry({
             <div className="flex min-w-0 flex-col items-start gap-1 min-[640px]:flex-1 min-[640px]:flex-row min-[640px]:items-center min-[640px]:justify-center min-[640px]:gap-12 min-[1024px]:gap-16 min-[1280px]:gap-40">
               <div className={AMOUNT_COL}>
                 <span className={AMOUNT_LABEL}>Sales</span>
-                <span className={`${AMOUNT_SIZE[sales.tier]} whitespace-nowrap font-semibold text-flask-green`}>{sales.text}</span>
+                <span className={`${AMOUNT_SIZE[sales.tier]} font-semibold text-flask-green`}>{sales.text}</span>
               </div>
               <div className={AMOUNT_COL}>
                 <span className={AMOUNT_LABEL}>Expenses</span>
-                <span className={`${AMOUNT_SIZE[expenses.tier]} whitespace-nowrap font-semibold text-flask-red-500`}>{expenses.text}</span>
+                <span className={`${AMOUNT_SIZE[expenses.tier]} font-semibold text-flask-red-500`}>{expenses.text}</span>
               </div>
             </div>
             <div className="flex flex-col min-[414px]:mr-4 min-[640px]:mr-6 min-[1024px]:mr-20">

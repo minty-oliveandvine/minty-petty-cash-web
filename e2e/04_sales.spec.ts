@@ -94,7 +94,7 @@ test("Flask's sections, its labels and its order", async ({ page }) => {
   expect(labels).toEqual(["Visa", "Wechat Pay", "Food Panda", "Openrice"]);
   await expect(page.getByRole("textbox", { name: "Cash Sales" })).toHaveAttribute("placeholder", "0.00");
   await expect(page.getByText("Total Electronic Payment Sales")).toBeVisible();
-  await expect(page.getByText("HKD0.00")).toHaveCount(3);
+  await expect(page.getByText("HKD 0.00")).toHaveCount(3);
 });
 
 test("a draft's amounts come back grouped, and zeroes as empty fields", async ({ page }) => {
@@ -108,8 +108,8 @@ test("a draft's amounts come back grouped, and zeroes as empty fields", async ({
   await expect(page.getByRole("textbox", { name: "Visa" })).toHaveValue("1,200.50");
   await expect(page.getByRole("textbox", { name: "Food Panda" })).toHaveValue("");
   await expect(page.getByRole("textbox", { name: "Cash Sales" })).toHaveValue("300.00");
-  await expect(page.getByText("HKD1,200.50")).toBeVisible();
-  await expect(page.getByText("HKD300.00")).toBeVisible();
+  await expect(page.getByText("HKD 1,200.50")).toBeVisible();
+  await expect(page.getByText("HKD 300.00")).toBeVisible();
 });
 
 test("amounts are cleaned as typed, totalled, and sent by method", async ({ page }) => {
@@ -126,9 +126,9 @@ test("amounts are cleaned as typed, totalled, and sent by method", async ({ page
   await page.getByRole("textbox", { name: "Wechat Pay" }).fill("10");
   await page.getByRole("textbox", { name: "Food Panda" }).fill("33.25");
   await page.getByRole("textbox", { name: "Cash Sales" }).fill("500");
-  await expect(page.getByText("HKD1,210.55")).toBeVisible();
-  await expect(page.getByText("HKD33.25")).toBeVisible();
-  await expect(page.getByText("HKD500.00")).toBeVisible();
+  await expect(page.getByText("HKD 1,210.55")).toBeVisible();
+  await expect(page.getByText("HKD 33.25")).toBeVisible();
+  await expect(page.getByText("HKD 500.00")).toBeVisible();
 
   await page.getByRole("button", { name: "Save & Next" }).click();
 

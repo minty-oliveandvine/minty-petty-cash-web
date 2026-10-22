@@ -175,8 +175,8 @@ test("the header, the date filter and the list: each day, its figures, badge, ti
   const latest = entry(page, LATEST);
   await expect(latest.getByText("13 OCT 2026", { exact: true })).toBeVisible();
   await expect(latest.getByText("TUE", { exact: true })).toBeVisible();
-  await expect(latest.getByText("HKD1,234.50")).toBeVisible();
-  await expect(latest.getByText("HKD128.50")).toBeVisible();
+  await expect(latest.getByText("HKD 1,234.50")).toBeVisible();
+  await expect(latest.getByText("HKD 128.50")).toBeVisible();
   await expect(latest.getByText("Submitted", { exact: true })).toBeVisible();
   await expect(latest.getByText("13 Oct 2026 20:05")).toBeVisible();
   await expect(latest.getByText("by Tess")).toBeVisible();
@@ -190,7 +190,7 @@ test("the header, the date filter and the list: each day, its figures, badge, ti
 
   const failed = entry(page, FAILED);
   await expect(failed.getByText("SAT", { exact: true })).toBeVisible();
-  await expect(failed.getByText("HKD1,234,567.50")).toBeVisible();
+  await expect(failed.getByText("HKD 1,234,567.50")).toBeVisible();
   await expect(failed.getByText("Publish failed", { exact: true })).toBeVisible();
   await expect(page.getByText("No reports found")).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Pages" })).toHaveCount(0);

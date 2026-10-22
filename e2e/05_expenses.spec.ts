@@ -155,13 +155,13 @@ test("Flask's list: each line, its supplier and description, the red amount, and
   await openWith(page, expensesAnswer());
   await expect(page.getByText("13 OCT")).toBeVisible();
   await expect(page.getByText("Draft", { exact: true })).toBeVisible();
-  const row = page.getByRole("button", { name: "General Expenses, HKD1,200.50" });
+  const row = page.getByRole("button", { name: "General Expenses, HKD 1,200.50" });
   await expect(row).toContainText("Wellcome");
   // a description is text, never markup
   await expect(row).toContainText("Milk and <b>tea</b>");
-  await expect(page.getByRole("button", { name: "N/A, HKD34.00" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "N/A, HKD 34.00" })).toBeVisible();
   await expect(page.getByText("Total Expense")).toBeVisible();
-  await expect(page.getByText("HKD1,234.50")).toBeVisible();
+  await expect(page.getByText("HKD 1,234.50")).toBeVisible();
   await expect(page.getByRole("button", { name: "Delete expense" })).toHaveCount(2);
   await expect(page.getByText("No expenses added yet")).toHaveCount(0);
 });
@@ -169,7 +169,7 @@ test("Flask's list: each line, its supplier and description, the red amount, and
 test("no lines yet: Flask's empty line and a zero total", async ({ page }) => {
   await openWith(page, expensesAnswer({ lines: [], total: 0 }));
   await expect(page.getByText("No expenses added yet")).toBeVisible();
-  await expect(page.getByText("HKD0.00")).toBeVisible();
+  await expect(page.getByText("HKD 0.00")).toBeVisible();
 });
 
 test("Add checks the required fields, then sends the line with its receipt", async ({ page }) => {
@@ -207,8 +207,8 @@ test("Add checks the required fields, then sends the line with its receipt", asy
   await page.getByRole("button", { name: "Add", exact: true }).click();
 
   await expect(toast(page, "Expense added successfully!")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Printing & Stationery, HKD1,200.50" })).toBeVisible();
-  await expect(page.getByText("HKD2,435.00")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Printing & Stationery, HKD 1,200.50" })).toBeVisible();
+  await expect(page.getByText("HKD 2,435.00")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Add New Expense" })).toHaveCount(0);
   const body = sent ?? "";
   for (const [field, value] of [
@@ -319,21 +319,21 @@ test("a line is deleted through Flask's modal, and a refusal says the server's s
   await page.getByRole("button", { name: "Delete expense" }).first().click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(toast(page, "It looks like you don't have permission to delete this expense.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "General Expenses, HKD1,200.50" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "General Expenses, HKD 1,200.50" })).toBeVisible();
 
   await page.getByRole("button", { name: "Delete expense" }).first().click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(toast(page, "Expense deleted successfully!")).toBeVisible();
-  await expect(page.getByRole("button", { name: "General Expenses, HKD1,200.50" })).toHaveCount(0);
-  await expect(page.getByText("HKD34.00").last()).toBeVisible();
+  await expect(page.getByRole("button", { name: "General Expenses, HKD 1,200.50" })).toHaveCount(0);
+  await expect(page.getByText("HKD 34.00").last()).toBeVisible();
 });
 
 test("a line opens Expense Details with its receipt, which opens full screen", async ({ page }) => {
   await openWith(page, expensesAnswer());
-  await page.getByRole("button", { name: "General Expenses, HKD1,200.50" }).click();
+  await page.getByRole("button", { name: "General Expenses, HKD 1,200.50" }).click();
   const dialog = page.getByRole("dialog", { name: "Expense Details" });
   await expect(dialog.getByText("Amount Paid")).toBeVisible();
-  await expect(dialog.getByText("HKD1,200.50")).toBeVisible();
+  await expect(dialog.getByText("HKD 1,200.50")).toBeVisible();
   await expect(dialog).toContainText("Contact NameWellcome");
   await expect(dialog).toContainText("DescriptionMilk and <b>tea</b>");
   await expect(dialog).toContainText("Account429 General Expenses");
@@ -351,7 +351,7 @@ test("a line opens Expense Details with its receipt, which opens full screen", a
   await dialog.getByRole("button", { name: "Close" }).click();
   await expect(dialog).toHaveCount(0);
 
-  await page.getByRole("button", { name: "N/A, HKD34.00" }).click();
+  await page.getByRole("button", { name: "N/A, HKD 34.00" }).click();
   await expect(page.getByRole("dialog", { name: "Expense Details" })).toContainText("Contact NameN/A");
   await expect(page.getByRole("dialog", { name: "Expense Details" })).toContainText("Description-");
 });
@@ -424,7 +424,7 @@ test("the page reloads with no console error", async ({ page }) => {
   await openWith(page, expensesAnswer());
   await page.reload();
   await expect(page.getByRole("heading", { name: "Expenses", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "General Expenses, HKD1,200.50" }).click();
+  await page.getByRole("button", { name: "General Expenses, HKD 1,200.50" }).click();
   await expect(page.getByRole("dialog", { name: "Expense Details" }).getByRole("img", { name: "milk.png" })).toBeVisible();
   expect(errors).toEqual([]);
 });

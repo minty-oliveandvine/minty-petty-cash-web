@@ -115,11 +115,29 @@ export function previousDayUnfinished(home: Home): boolean {
 
 export const PREVIOUS_DAY_FIRST = "The previous report needs finishing before today's. Shall we do that first?";
 
+/** The petty-cash API's own refusal (409, `to: "dashboard"`) of a report for a company with no currency. */
+export const NO_CURRENCY = "No currency is selected for this company. Choose one in Petty Cash Settings to start a report.";
+
+/** Setup Required's line for a company with no currency; it links to Petty Cash Settings' Country & currency. */
+export const CHOOSE_CURRENCY = "Choose your company's currency";
+
+/**
+ * What Setup Required lists, empty when nothing is missing: the currency first (owner, 2026-10-21 -
+ * no report without one), then the Xero settings, or Flask's catch-all when the API names none.
+ */
+export function setupMissing(home: Home): string[] {
+  const currency = home.currency_code ? [] : [CHOOSE_CURRENCY];
+  if (home.xero_settings.complete) return currency;
+  const xero = home.xero_settings.missing.length ? home.xero_settings.missing : ["One or more required settings are missing"];
+  return [...currency, ...xero];
+}
+
 /**
  * Whether a new report may start on `day`, and if not, why - Flask's
- * `showStartNewReportMessage`, wording kept.
+ * `showStartNewReportMessage`, wording kept; and never while the company has no currency.
  */
 export function startProblem(home: Home, day: string): string | null {
+  if (!home.currency_code) return NO_CURRENCY;
   const span = reportSpan(home);
   if (span) {
     const expected = addDays(span.latest, 1);

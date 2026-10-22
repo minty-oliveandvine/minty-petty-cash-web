@@ -107,13 +107,13 @@ test("a deposit yesterday is confirmed before today's report, and a change is se
     await route.fulfill({ json: { status: "success", message: "ok", next_transaction_date: TODAY } });
   });
 
-  await expect(page.getByText("HKD1,250.50")).toBeVisible();
+  await expect(page.getByText("HKD 1,250.50")).toBeVisible();
   await expect(page.getByRole("button", { name: "12 Oct 2026, not submitted" })).toBeVisible();
 
   await page.getByRole("button", { name: "Start New Report" }).click();
   const dialog = page.getByRole("dialog", { name: "Before You Start" });
   await expect(dialog).toContainText("Previous report submitted by Olive");
-  await expect(dialog).toContainText("HKD300.00");
+  await expect(dialog).toContainText("HKD 300.00");
   await expect(dialog).toContainText("HSBC Current (***-123)");
   await expect(dialog).toContainText("13 Oct 2026");
 
@@ -260,7 +260,7 @@ test("a submitted day shows its balance and opens its report, in this app", asyn
   await enterWith(page, homeAnswer());
   await page.getByRole("button", { name: "10 Oct 2026, submitted" }).click();
   await expect(page.getByText("10 Oct 2026")).toBeVisible();
-  await expect(page.getByText("HKD900.00")).toBeVisible();
+  await expect(page.getByText("HKD 900.00")).toBeVisible();
   await page.getByRole("button", { name: "View Report" }).click();
   await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports/a/summary$`));
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
@@ -274,6 +274,20 @@ test("missing Xero settings hold the page with the way to set them up", async ({
   await expect(dialog).toBeVisible();
   // this app's settings page, whose Xero card leads on to Flask's
   await expect(dialog.getByRole("link", { name: "Set Up Settings" })).toHaveAttribute("href", /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/);
+});
+
+test("a company with no currency is asked to choose one before any report, and no amount reads \"$\"", async ({ page }) => {
+  await enterWith(page, homeAnswer({ currency_code: null }));
+  const dialog = page.getByRole("dialog", { name: "Setup Required" });
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  // Petty Cash Settings, whose first card is Country & currency
+  await expect(dialog.getByRole("link", { name: "Choose your company's currency" })).toHaveAttribute(
+    "href",
+    /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/,
+  );
+  await expect(page.getByText("(No currency selected)").first()).toBeVisible();
+  await expect(page.getByText(/\$\d/)).toHaveCount(0);
 });
 
 test("read-only access cannot start a report", async ({ page }) => {

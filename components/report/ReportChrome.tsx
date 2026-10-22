@@ -166,9 +166,9 @@ export function FixStepButton({ label, note, noteClass, onClick }: { label: stri
   );
 }
 
-/** A figure as the Fix modal's buttons write it: Flask's `HKD 1,234.50` (a space after the code). */
+/** A figure as the Fix modal's buttons write it: `formatMoney`'s `HKD 1,234.50` (Flask's had the same space after the code). */
 export function fixNote(kind: "Cash in" | "Cash out", amount: number, currencyCode: string | null): string {
-  return `(${kind}: ${currencyCode || "$"} ${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+  return `(${kind}: ${formatMoney(amount, currencyCode)})`;
 }
 
 /** Flask's Save & Next (the teal bar with its arrow, a form's submit) and Save & Exit under it. */

@@ -539,13 +539,13 @@ function CalculatorModal({
 
           {denominations.map((d) => {
             const id = `count_${d.id}`;
-            const label = denominationLabel(d.value, code);
+            const label = denominationLabel(d.value, code, d.name);
             const value = typed[d.id] ?? "";
             const problem = countProblem(value);
             return (
               <div key={d.id} className="mb-4">
-                <div className="grid grid-cols-[4rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 sm:flex sm:gap-3">
-                  <label htmlFor={id} className="w-16 whitespace-nowrap text-base font-medium text-flask-gray-500">
+                <div className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 sm:flex sm:gap-3">
+                  <label htmlFor={id} className="w-24 shrink-0 whitespace-nowrap text-base font-medium text-flask-gray-500">
                     {label}
                   </label>
                   <div className="relative min-w-0 sm:flex-1">
@@ -573,7 +573,7 @@ function CalculatorModal({
                   <div
                     className="col-start-2 flex min-w-0 items-center justify-between gap-2 rounded-flask-2xl border border-flask-gray-500 bg-flask-gray-300/20 px-3 py-3 sm:w-40 sm:shrink-0"
                   >
-                    <span className="font-medium text-flask-gray-500/60">{code || "$"}</span>
+                    <span className="font-medium text-flask-gray-500/60">{code}</span>
                     <output htmlFor={id} className="min-w-0 break-all text-right text-flask-gray-700">
                       {rowTotal(d.value, parseCount(value)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </output>

@@ -211,7 +211,7 @@ function OpeningForm({ page, entityId, entityName, acronym }: { page: OpeningPag
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <span className="text-sm text-flask-gray-500">{code || "$"}</span>
+                <span className="text-sm text-flask-gray-500">{code}</span>
               </div>
               <input
                 ref={field}
@@ -300,7 +300,6 @@ function OpeningForm({ page, entityId, entityName, acronym }: { page: OpeningPag
  * It cannot be dismissed - the one way on is the dashboard.
  */
 function OpeningNegativeModal({ balance, currencyCode, onDashboard }: { balance: number; currencyCode: string | null; onDashboard: () => void }) {
-  const code = currencyCode || "$";
   return (
     <FixNegativeBalanceModal
       balance={balance}
@@ -309,7 +308,7 @@ function OpeningNegativeModal({ balance, currencyCode, onDashboard }: { balance:
     >
       <FixStepButton
         label="Dashboard"
-        note={`(Balance: ${code} ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
+        note={`(Balance: ${formatMoney(balance, currencyCode)})`}
         noteClass="text-flask-red"
         onClick={onDashboard}
       />

@@ -18,10 +18,10 @@ type Json = Record<string, unknown>;
 const DRAFT = { id: "d", status: "draft", current_section: "cash_count", completed_sections: ["opening", "sales", "expenses", "deposit"], xero_integrated: false, publishing_status: "unpublished" };
 
 const DENOMINATIONS = [
-  { id: "n1000", value: 1000, kind: "note", count: 0 },
-  { id: "n100", value: 100, kind: "note", count: 0 },
-  { id: "c1", value: 1, kind: "coin", count: 0 },
-  { id: "c050", value: 0.5, kind: "coin", count: 0 },
+  { id: "n1000", value: 1000, kind: "note", name: "$1,000", count: 0 },
+  { id: "n100", value: 100, kind: "note", name: "$100", count: 0 },
+  { id: "c1", value: 1, kind: "coin", name: "$1", count: 0 },
+  { id: "c050", value: 0.5, kind: "coin", name: null, count: 0 }, // no cash_name: labelled by its value
 ];
 
 /** Cash on hand 1,511.50 less a 300 deposit: 1,211.50 expected. */
@@ -135,17 +135,17 @@ async function count(page: Page, rows: Record<string, string>) {
 test("Flask's page: the expected cash, the two fields, the total and the shortage so far", async ({ page }) => {
   await openWith(page, countAnswer());
   await expect(page.getByText("Expected Cash Count Balance")).toBeVisible();
-  await expect(page.getByText("HKD1,211.50").first()).toBeVisible();
+  await expect(page.getByText("HKD 1,211.50").first()).toBeVisible();
   await expect(page.getByRole("img", { name: "Cash Count" })).toBeVisible();
   await expect(page.getByRole("img", { name: "Safe Box" })).toBeVisible();
   await expect(cashBox(page)).toHaveAttribute("placeholder", "Actual Cash Balance");
   await expect(cashBox(page)).toHaveAttribute("readonly", "");
   await expect(safebox(page)).toHaveAttribute("placeholder", "Please enter Balance of the safebox");
   await expect(page.getByText("Total Cash Count")).toBeVisible();
-  await expect(page.getByText("HKD0.00")).toBeVisible();
+  await expect(page.getByText("HKD 0.00")).toBeVisible();
   await expect(page.getByRole("heading", { name: /Discrepancy Details/ })).toBeVisible();
   // nothing counted yet: 1,211.50 short, so the reason is open and asked for
-  await expect(page.getByText("Cash Shortage: HKD1,211.50")).toBeVisible();
+  await expect(page.getByText("Cash Shortage: HKD 1,211.50")).toBeVisible();
   await expect(page.getByText("Please review your entries or provide a reason for the discrepancy below.")).toBeVisible();
   await expect(reason(page)).toHaveAttribute("aria-required", "true");
   await expectNoHorizontalScroll(page);
@@ -156,33 +156,33 @@ test("the calculator: a 0.50 coin, its row totals, and Save fills the cash box",
   await page.getByRole("button", { name: "Calculator" }).click();
   const dialog = calculator(page);
   const labels = await dialog.locator("label").allTextContents();
-  expect(labels).toEqual(["HKD1000", "HKD100", "HKD1", "HKD0.50"]);
-  const coin = dialog.getByRole("textbox", { name: "HKD0.50", exact: true });
+  expect(labels).toEqual(["HKD\u00a01,000", "HKD\u00a0100", "HKD\u00a01", "HKD\u00a00.50"]);
+  const coin = dialog.getByRole("textbox", { name: "HKD 0.50", exact: true });
   await coin.fill("3.7x");
   await expect(coin).toHaveValue("37");
   await coin.fill("3");
-  await dialog.getByRole("textbox", { name: "HKD1000", exact: true }).fill("1");
-  await dialog.getByRole("textbox", { name: "HKD100", exact: true }).fill("2");
+  await dialog.getByRole("textbox", { name: "HKD 1,000", exact: true }).fill("1");
+  await dialog.getByRole("textbox", { name: "HKD 100", exact: true }).fill("2");
   await expect(dialog.getByText("1.50", { exact: true })).toBeVisible();
   await expect(dialog.getByText("200.00", { exact: true })).toBeVisible();
-  await expect(dialog.getByText("HKD1,201.50")).toBeVisible();
+  await expect(dialog.getByText("HKD 1,201.50")).toBeVisible();
   // nothing counts until Save: the page still shows the full shortage
-  await expect(page.getByText("Cash Shortage: HKD1,211.50")).toBeAttached();
+  await expect(page.getByText("Cash Shortage: HKD 1,211.50")).toBeAttached();
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(cashBox(page)).toHaveValue("HKD1,201.50");
-  await expect(page.getByText("Cash Shortage: HKD10.00")).toBeVisible();
+  await expect(cashBox(page)).toHaveValue("HKD\u00a01,201.50");
+  await expect(page.getByText("Cash Shortage: HKD 10.00")).toBeVisible();
 });
 
 test("Escape and the X close the calculator without applying", async ({ page }) => {
   await openWith(page, countAnswer());
   await page.getByRole("button", { name: "Calculator" }).click();
-  await calculator(page).getByRole("textbox", { name: "HKD1000", exact: true }).fill("5");
+  await calculator(page).getByRole("textbox", { name: "HKD 1,000", exact: true }).fill("5");
   await page.keyboard.press("Escape");
   await expect(calculator(page)).toHaveCount(0);
   await expect(cashBox(page)).toHaveValue("");
   await page.getByRole("button", { name: "Calculator" }).click();
-  await expect(calculator(page).getByRole("textbox", { name: "HKD1000", exact: true })).toHaveValue("");
+  await expect(calculator(page).getByRole("textbox", { name: "HKD 1,000", exact: true })).toHaveValue("");
   await calculator(page).getByRole("button", { name: "Close" }).click();
   await expect(calculator(page)).toHaveCount(0);
 });
@@ -191,7 +191,7 @@ test("a count past the limit is said in the row and not applied", async ({ page 
   await openWith(page, countAnswer());
   await page.getByRole("button", { name: "Calculator" }).click();
   const dialog = calculator(page);
-  const row = dialog.getByRole("textbox", { name: "HKD1", exact: true });
+  const row = dialog.getByRole("textbox", { name: "HKD 1", exact: true });
   await row.fill("2000000");
   await expect(dialog.getByText("A count can't be more than 1,000,000. Enter 1,000,000 or less.")).toBeVisible();
   await dialog.getByRole("button", { name: "Save" }).click();
@@ -201,9 +201,9 @@ test("a count past the limit is said in the row and not applied", async ({ page 
 
 test("a surplus is green, and none locks the reason", async ({ page }) => {
   await openWith(page, countAnswer());
-  await count(page, { HKD1000: "1", HKD100: "2" });
+  await count(page, { "HKD 1,000": "1", "HKD 100": "2" });
   await safebox(page).fill("25");
-  await expect(page.getByText("Cash Surplus: HKD13.50")).toBeVisible();
+  await expect(page.getByText("Cash Surplus: HKD 13.50")).toBeVisible();
   await expect(reason(page)).toHaveAttribute("placeholder", "Description");
   await expect(reason(page)).not.toHaveAttribute("readonly", "");
   await reason(page).fill("Tips jar");
@@ -213,7 +213,7 @@ test("a surplus is green, and none locks the reason", async ({ page }) => {
   await expect(reason(page)).toHaveAttribute("readonly", "");
   // the reason for a difference now gone is dropped, as Flask does
   await expect(reason(page)).toHaveValue("");
-  await expect(page.getByText("HKD1,211.50").first()).toBeVisible();
+  await expect(page.getByText("HKD 1,211.50").first()).toBeVisible();
 });
 
 test("one cent short counts, and Save & Next needs a reason", async ({ page }) => {
@@ -224,17 +224,17 @@ test("one cent short counts, and Save & Next needs a reason", async ({ page }) =
       await route.fulfill({ json: saved("ending", { amount: -0.01, kind: "short" }) });
     },
   });
-  await count(page, { HKD1000: "1", HKD100: "2", HKD1: "11" });
+  await count(page, { "HKD 1,000": "1", "HKD 100": "2", "HKD 1": "11" });
   await safebox(page).fill("0.49");
-  await expect(page.getByText("Cash Shortage: HKD0.01")).toBeVisible();
+  await expect(page.getByText("Cash Shortage: HKD 0.01")).toBeVisible();
   await page.getByRole("button", { name: "Save & Next" }).click();
   await expect(toast(page, "Please enter description")).toBeVisible();
-  await expect(page.getByText("The count is HKD0.01 short. Add the reason to continue.")).toBeVisible();
+  await expect(page.getByText("The count is HKD 0.01 short. Add the reason to continue.")).toBeVisible();
   await expect(reason(page)).toBeFocused();
   await expect(reason(page)).toHaveAttribute("aria-invalid", "true");
   expect(sent).toBeNull();
   await reason(page).fill("Rounding at the till");
-  await expect(page.getByText("The count is HKD0.01 short. Add the reason to continue.")).toHaveCount(0);
+  await expect(page.getByText("The count is HKD 0.01 short. Add the reason to continue.")).toHaveCount(0);
   await page.getByRole("button", { name: "Save & Next" }).click();
   await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/ending\\?transaction_date=${DAY}$`));
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
@@ -261,7 +261,7 @@ test("Save & Exit keeps a difference without a reason", async ({ page }) => {
 });
 
 test("the server's 422 shows on its field", async ({ page }) => {
-  const why = "The count is HKD1,211.50 short. Add the reason to continue.";
+  const why = "The count is HKD 1,211.50 short. Add the reason to continue.";
   await openWith(page, countAnswer(), {
     onSave: (_body, route) => route.fulfill({ status: 422, json: { error: why, field: "discrepancy_reason" } }),
   });
@@ -280,18 +280,18 @@ test("a saved count comes back: the cash box, the safebox and the reason", async
       discrepancy: { amount: -11, kind: "short", reason: "Paid a courier" },
     }),
   );
-  await expect(cashBox(page)).toHaveValue("HKD1,000.50");
+  await expect(cashBox(page)).toHaveValue("HKD\u00a01,000.50");
   await expect(safebox(page)).toHaveValue("200.00");
   await expect(reason(page)).toHaveValue("Paid a courier");
-  await expect(page.getByText("Cash Shortage: HKD11.00")).toBeVisible();
-  await expect(page.getByText("HKD1,200.50")).toBeVisible();
+  await expect(page.getByText("Cash Shortage: HKD 11.00")).toBeVisible();
+  await expect(page.getByText("HKD 1,200.50")).toBeVisible();
 });
 
 test("a negative expected cash holds the page on Fix Negative Balance", async ({ page }) => {
   await openWith(page, countAnswer({ bank_deposit: 1600, expected_cash: -88.5 }));
   const dialog = page.getByRole("alertdialog", { name: "Fix Negative Balance" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText("(HKD88.50)")).toBeVisible();
+  await expect(dialog.getByText("(HKD 88.50)")).toBeVisible();
   await expect(dialog.getByText("Cash balance cannot be negative, let's go back to")).toBeVisible();
   for (const name of ["Opening (Cash in: HKD 0.00)", "Sales (Cash in: HKD 600.00)", "Expenses (Cash out: HKD 88.50)"]) {
     await expect(dialog.getByRole("button", { name })).toBeVisible();

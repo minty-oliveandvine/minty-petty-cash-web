@@ -41,18 +41,32 @@ describe("the deposit's limit", () => {
   });
 
   it("names the amount allowed when it is more", () => {
-    expect(depositProblem(155.01, 155, "HKD")).toBe("The deposit can't be more than the cash on hand. Enter HKD155.00 or less.");
-    expect(depositProblem(2000, 1234.5, null)).toBe("The deposit can't be more than the cash on hand. Enter $1,234.50 or less.");
+    expect(depositProblem(155.01, 155, "HKD")).toBe("The deposit can't be more than the cash on hand. Enter HKD\u00a0155.00 or less.");
+    expect(depositProblem(2000, 1234.5, null)).toBe("The deposit can't be more than the cash on hand. Enter 1,234.50 (No currency selected) or less.");
   });
 });
 
 describe("denomination labels", () => {
-  it("keep Flask's whole-number label for notes and name coins under 1 by their value", () => {
-    expect(denominationLabel(1000, "HKD")).toBe("HKD1000");
-    expect(denominationLabel(1, "HKD")).toBe("HKD1");
-    expect(denominationLabel(0.5, "HKD")).toBe("HKD0.50");
-    expect(denominationLabel(0.2, "HKD")).toBe("HKD0.20");
-    expect(denominationLabel(0.1, null)).toBe("$0.10");
+  it("are the currency code, a space and the denomination's name (cash_info.cash_name) without its symbol", () => {
+    expect(denominationLabel(1000, "HKD", "$1,000")).toBe("HKD\u00a01,000");
+    expect(denominationLabel(10, "SGD", "S$10")).toBe("SGD\u00a010");
+    expect(denominationLabel(0.5, "HKD", "50c")).toBe("HKD\u00a050c");
+  });
+
+  it("are just the figure with no currency - never a \"$\" (the dashboard keeps a report from starting without one)", () => {
+    expect(denominationLabel(5, null, "$5")).toBe("5");
+    expect(denominationLabel(1000, null, "$1,000")).toBe("1,000");
+    expect(denominationLabel(0.1, null)).toBe("0.10");
+    expect(denominationLabel(20, "", null)).toBe("20");
+  });
+
+  it("without a name, keep Flask's whole-number label for notes and name coins under 1 by their value", () => {
+    expect(denominationLabel(1000, "HKD")).toBe("HKD\u00a01000");
+    expect(denominationLabel(1, "HKD")).toBe("HKD\u00a01");
+    expect(denominationLabel(0.5, "HKD")).toBe("HKD\u00a00.50");
+    expect(denominationLabel(0.2, "HKD")).toBe("HKD\u00a00.20");
+    expect(denominationLabel(100, "HKD", null)).toBe("HKD\u00a0100");
+    expect(denominationLabel(100, "HKD", "")).toBe("HKD\u00a0100");
   });
 });
 
@@ -96,8 +110,8 @@ describe("the difference", () => {
   });
 
   it("asks for a reason in the API's words", () => {
-    expect(reasonNeeded(-0.01, "HKD")).toBe("The count is HKD0.01 short. Add the reason to continue.");
-    expect(reasonNeeded(25, "HKD")).toBe("The count is HKD25.00 over. Add the reason to continue.");
+    expect(reasonNeeded(-0.01, "HKD")).toBe("The count is HKD\u00a00.01 short. Add the reason to continue.");
+    expect(reasonNeeded(25, "HKD")).toBe("The count is HKD\u00a025.00 over. Add the reason to continue.");
   });
 
   it("keeps the reason to 300 characters", () => {

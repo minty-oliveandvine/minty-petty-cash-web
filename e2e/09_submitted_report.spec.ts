@@ -304,7 +304,7 @@ test("View: the header, the summary from the report, and Share, Delete, Edit Rep
   await expect(expenses.getByRole("img", { name: "Expenses by account, 128.50 in all" })).toBeVisible();
   await expect(expenses.getByRole("listitem")).toHaveText(["Food and Drink", "Cleaning"]);
   await expect(card(page, "Cash Balance").getByText("1,160.50", { exact: true })).toBeVisible();
-  await expect(page.getByText("Cash Shortage: HKD11.00")).toBeVisible();
+  await expect(page.getByText("Cash Shortage: HKD 11.00")).toBeVisible();
   await expect(page.getByText("Paid a courier")).toBeVisible();
 
   await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
@@ -605,7 +605,7 @@ test("Edit Details: Withdrawal from saves Company Bank; a refusal is said under 
     },
   });
   const withdrawal = page.locator("form").filter({ has: page.getByRole("heading", { name: "Addition to Cash Drawer" }) });
-  await expect(withdrawal.getByText("HKD200.00")).toBeVisible();
+  await expect(withdrawal.getByText("HKD 200.00")).toBeVisible();
   await expect(withdrawal.getByRole("radio", { name: "Personal" })).toBeChecked();
   await withdrawal.getByRole("radio", { name: "Company Bank" }).check();
   await withdrawal.getByRole("button", { name: "Save changes" }).click();
@@ -633,7 +633,7 @@ test("Edit Details: a line sends only what changed; a new account renames it", a
   const sent = await openDetails(page, { onEdit: fulfil(answer) });
   await linesCard(page).getByRole("button", { name: /Food & Drink/ }).click();
   const modal = dialog(page);
-  await expect(modal.getByText("HKD78.50")).toBeVisible();
+  await expect(modal.getByText("HKD 78.50")).toBeVisible();
   // the amount is never a field
   await expect(modal.getByRole("textbox")).toHaveCount(1);
   await expect(modal.getByLabel("Supplier")).toHaveValue("s");

@@ -52,7 +52,7 @@ const OPENING = { transaction_date: DAY, currency_code: "HKD", draft: DRAFT, sta
 
 const CASH_COUNT = {
   ...depositAnswer(),
-  denominations: [{ id: "n100", value: 100, kind: "note", count: 0 }],
+  denominations: [{ id: "n100", value: 100, kind: "note", name: null, count: 0 }],
   safe_box_balance: 0,
   discrepancy: { amount: 0, kind: "none", reason: "" },
 };
@@ -106,7 +106,7 @@ test("Flask's page: the illustration, the cash on hand and the amount field", as
   await expect(page.getByText("Draft", { exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "Deposit" })).toBeVisible();
   await expect(page.getByText("Current Balance:")).toBeVisible();
-  await expect(page.getByText("HKD155.00")).toBeVisible();
+  await expect(page.getByText("HKD 155.00")).toBeVisible();
   await expect(field(page)).toHaveAttribute("placeholder", "0.00");
   await expect(field(page)).toHaveValue("");
   await expect(page.getByRole("button", { name: "Save & Next" })).toBeVisible();
@@ -127,7 +127,7 @@ test("the limit is said as you type, and nothing is sent past it", async ({ page
       await route.fulfill({ json: saved("cash_count") });
     },
   });
-  const message = page.getByText("The deposit can't be more than the cash on hand. Enter HKD155.00 or less.");
+  const message = page.getByText("The deposit can't be more than the cash on hand. Enter HKD 155.00 or less.");
   await field(page).fill("155");
   await expect(message).toHaveCount(0);
   await field(page).fill("155.01");
@@ -142,7 +142,7 @@ test("the limit is said as you type, and nothing is sent past it", async ({ page
 });
 
 test("the server's 422 shows on the field", async ({ page }) => {
-  const why = "The deposit can't be more than the cash on hand. Enter HKD120.00 or less.";
+  const why = "The deposit can't be more than the cash on hand. Enter HKD 120.00 or less.";
   await openWith(page, depositAnswer(), {
     onSave: (_body, route) => route.fulfill({ status: 422, json: { error: why, field: "bank_deposit" } }),
   });
@@ -188,7 +188,7 @@ test("a negative cash on hand holds the page on Fix Negative Balance", async ({ 
   await openWith(page, depositAnswer({ opening_balance: 10, cash_addition: 0, cash_sales: 5, expenses: 27, cash_on_hand: -12, expected_cash: -12 }));
   const dialog = page.getByRole("alertdialog", { name: "Fix Negative Balance" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText("(HKD12.00)")).toBeVisible();
+  await expect(dialog.getByText("(HKD 12.00)")).toBeVisible();
   await expect(dialog.getByText("Cash balance cannot be negative. Choose from below to edit the error:")).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Opening (Cash in: HKD 0.00)" })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Sales (Cash in: HKD 5.00)" })).toBeVisible();

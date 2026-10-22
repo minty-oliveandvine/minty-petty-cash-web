@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
+import { CHOOSE_CURRENCY } from "@/lib/dashboard";
 import { formatDay } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 
@@ -288,7 +289,7 @@ export function DepositModal({
           </label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <span className="text-sm text-flask-gray-500">{currencyCode || "$"}</span>
+              <span className="text-sm text-flask-gray-500">{currencyCode}</span>
             </div>
             <input
               id={fieldId}
@@ -326,7 +327,11 @@ export function DepositModal({
   );
 }
 
-/** Flask's "Setup Required" (#setupSettingsModal), exactly: it cannot be dismissed - the only way on is the settings. */
+/**
+ * Flask's "Setup Required" (#setupSettingsModal), exactly: it cannot be dismissed - the only way on is the settings.
+ * `missing` is lib/dashboard.ts `setupMissing`; its currency line links to Petty Cash Settings, whose first card is
+ * Country & currency.
+ */
 export function SetupRequiredModal({ missing, settingsHref }: { missing: string[]; settingsHref: string }) {
   return (
     <Frame title="Setup Required" z="z-50">
@@ -341,7 +346,17 @@ export function SetupRequiredModal({ missing, settingsHref }: { missing: string[
             <div className="ml-3 flex-1">
               <p className="mb-2 text-sm font-semibold text-flask-amber-ink">Missing Settings:</p>
               <ul className="list-inside list-disc space-y-1 text-sm text-flask-amber-ink">
-                {missing.length ? missing.map((m) => <li key={m}>{m}</li>) : <li>One or more required settings are missing</li>}
+                {missing.map((m) => (
+                  <li key={m}>
+                    {m === CHOOSE_CURRENCY ? (
+                      <a href={settingsHref} className="underline">
+                        {m}
+                      </a>
+                    ) : (
+                      m
+                    )}
+                  </li>
+                ))}
               </ul>
             </div>
           </div>

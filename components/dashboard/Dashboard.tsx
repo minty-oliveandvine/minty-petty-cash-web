@@ -18,6 +18,7 @@ import {
   PREVIOUS_DAY_FIRST,
   previousDayUnfinished,
   reportSpan,
+  setupMissing,
   startProblem,
   STEPS,
   type Home,
@@ -109,6 +110,7 @@ function DashboardBody({
   const [busy, setBusy] = useState(false);
 
   const code = home.currency_code;
+  const setupNeeded = setupMissing(home);
   const readOnly = home.permissions.read_only;
   const draft = home.draft;
   const hasReports = reportSpan(home) !== null;
@@ -216,7 +218,7 @@ function DashboardBody({
           onProceed={proceedAmount}
         />
       ) : null}
-      {!home.xero_settings.complete ? <SetupRequiredModal missing={home.xero_settings.missing} settingsHref={settingsHref(entityId, entityName)} /> : null}
+      {setupNeeded.length ? <SetupRequiredModal missing={setupNeeded} settingsHref={settingsHref(entityId, entityName)} /> : null}
     </>
   );
 

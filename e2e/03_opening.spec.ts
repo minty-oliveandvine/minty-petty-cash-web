@@ -76,9 +76,9 @@ test("Flask's report header and the balances the day opens from", async ({ page 
   await expect(page.getByRole("heading", { level: 1, name: "EPCS" })).toBeVisible();
   await expect(page.getByText("Draft", { exact: true })).toBeVisible();
   await expect(page.getByText("Starting Cash Balance")).toBeVisible();
-  await expect(page.getByText("HKD1,200.00").first()).toBeVisible();
-  await expect(page.getByText("HKD1,000.00")).toBeVisible(); // the till: 1,200 less the 200 safebox
-  await expect(page.getByText("HKD200.00")).toBeVisible();
+  await expect(page.getByText("HKD 1,200.00").first()).toBeVisible();
+  await expect(page.getByText("HKD 1,000.00")).toBeVisible(); // the till: 1,200 less the 200 safebox
+  await expect(page.getByText("HKD 200.00")).toBeVisible();
   await expect(page.getByRole("radio", { name: "Personal" })).toBeChecked();
 });
 
@@ -93,7 +93,7 @@ test("the addition is cleaned as typed, grouped on leaving, and moves the Openin
   await expect(field).toHaveValue("1250.55");
   await field.blur();
   await expect(field).toHaveValue("1,250.55");
-  await expect(page.getByText("HKD2,450.55")).toBeVisible();
+  await expect(page.getByText("HKD 2,450.55")).toBeVisible();
   await page.getByRole("radio", { name: "Company Bank" }).check();
 
   await page.getByRole("button", { name: "Save & Next" }).click();
@@ -113,7 +113,7 @@ test("a draft brings its own values", async ({ page }) => {
   );
   await expect(page.getByRole("textbox", { name: "Addition to Cash Drawer" })).toHaveValue("30.00");
   await expect(page.getByRole("radio", { name: "Company Bank" })).toBeChecked();
-  await expect(page.getByText("HKD1,230.00")).toBeVisible();
+  await expect(page.getByText("HKD 1,230.00")).toBeVisible();
 });
 
 test("unsaved changes hold the stepper back", async ({ page }) => {
@@ -153,7 +153,7 @@ test("a day the rules refuse goes to the dashboard and says why there", async ({
 test("a negative yesterday holds the page on Fix Negative Balance", async ({ page }) => {
   await openWith(page, openingAnswer({ starting_cash_balance: -120, yesterday_closing_balance: -120, safebox_balance: 0 }));
   const dialog = page.getByRole("alertdialog", { name: "Fix Negative Balance" });
-  await expect(dialog).toContainText("(HKD120.00)");
+  await expect(dialog).toContainText("(HKD 120.00)");
   await expect(dialog).toContainText("(Balance: HKD -120.00)");
   await dialog.getByRole("button", { name: /Dashboard/ }).click();
   await expect(page).toHaveURL(new RegExp(`${BASE}$`));

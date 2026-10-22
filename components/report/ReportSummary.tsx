@@ -22,7 +22,7 @@ import {
   type Slice,
   type SummarySales,
 } from "@/lib/ending";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, NO_CURRENCY_NOTE } from "@/lib/money";
 import { flaskLabel, sections } from "@/lib/sales";
 
 /** Flask's slice colours, in its order, as whole class names (Tailwind reads them from here). */
@@ -68,7 +68,7 @@ export function ReportSummary({
     <>
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-lg font-bold text-flask-gray-700 sm:text-xl">Summary</h2>
-        <span className="text-sm text-flask-gray-300">{code || "$"}</span>
+        <span className="text-sm text-flask-gray-300">{code || NO_CURRENCY_NOTE}</span>
       </div>
 
       <TotalSales sales={sales} yesterday={yesterday} />

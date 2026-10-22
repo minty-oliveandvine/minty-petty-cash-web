@@ -6,7 +6,7 @@
 
 import { pettyCashHome } from "@/lib/companyPages";
 import { formatDay } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, NO_CURRENCY_NOTE } from "@/lib/money";
 import { sectionStep, type WizardStep } from "@/lib/wizardPages";
 
 /** One report on the list. Edit and delete are only ever on the latest, never on a draft. */
@@ -153,11 +153,13 @@ export function historyStamp(row: HistoryRow): string {
 /**
  * A Sales or Expenses figure as Flask's `amount()` macro writes it: "-" for nothing, else the
  * currency code and the amount. Its columns are a fixed width, so a longer figure steps down a
- * size (`tier` 0, 1, 2: up to 10, 13, then more characters).
+ * size (`tier` 0, 1, 2: up to 11, 14, then more characters - Flask's 10 and 13, plus the space
+ * after the code). With no currency, the figure alone sets the size; the note wraps under it.
  */
 export function historyAmount(value: number, currencyCode: string | null): { text: string; tier: 0 | 1 | 2 } {
   const text = value ? formatMoney(value, currencyCode) : "-";
-  return { text, tier: text.length <= 10 ? 0 : text.length <= 13 ? 1 : 2 };
+  const figure = text.replace(` ${NO_CURRENCY_NOTE}`, "");
+  return { text, tier: figure.length <= 11 ? 0 : figure.length <= 14 ? 1 : 2 };
 }
 
 /** The wizard step a draft resumes at: its own, else Opening - Flask's `resume_report` rule. */

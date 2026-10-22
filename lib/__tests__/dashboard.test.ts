@@ -4,12 +4,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   balanceFor,
+  CHOOSE_CURRENCY,
   dayState,
   depositToConfirm,
   firstReportDay,
   isClickable,
   lastEditText,
+  NO_CURRENCY,
   PREVIOUS_DAY_FIRST,
+  setupMissing,
   startProblem,
   stepStates,
   type Home,
@@ -129,6 +132,33 @@ describe("starting a report", () => {
     const noYesterday = home({ published: { "2026-10-10": day() }, server_today: "2026-10-11" });
     expect(startProblem(noYesterday, "2026-10-11")).toBeNull();
     expect(PREVIOUS_DAY_FIRST).toMatch(/previous report needs finishing/);
+  });
+
+  it("never while the company has no currency (owner, 2026-10-21), in the API's words, before any date rule", () => {
+    expect(startProblem(home({ currency_code: null }), TODAY)).toBe(NO_CURRENCY);
+    expect(startProblem(home({ currency_code: null, published: { "2026-10-12": day() } }), "2026-10-20")).toBe(NO_CURRENCY);
+    expect(NO_CURRENCY).toBe("No currency is selected for this company. Choose one in Petty Cash Settings to start a report.");
+  });
+});
+
+describe("Setup Required", () => {
+  it("is not needed while the currency and Xero settings are there", () => {
+    expect(setupMissing(home())).toEqual([]);
+  });
+
+  it("asks for the company's currency first when it has none", () => {
+    expect(setupMissing(home({ currency_code: null }))).toEqual([CHOOSE_CURRENCY]);
+    expect(CHOOSE_CURRENCY).toBe("Choose your company's currency");
+    const both = home({ currency_code: null, xero_settings: { complete: false, missing: ["Main Bank Account"] } });
+    expect(setupMissing(both)).toEqual([CHOOSE_CURRENCY, "Main Bank Account"]);
+  });
+
+  it("lists the missing Xero settings, or Flask's catch-all when the API names none", () => {
+    expect(setupMissing(home({ xero_settings: { complete: false, missing: ["Main Bank Account", "Cash Sale Contact"] } }))).toEqual([
+      "Main Bank Account",
+      "Cash Sale Contact",
+    ]);
+    expect(setupMissing(home({ xero_settings: { complete: false, missing: [] } }))).toEqual(["One or more required settings are missing"]);
   });
 });
 

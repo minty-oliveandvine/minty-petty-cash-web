@@ -133,10 +133,14 @@ describe("a row, as Flask's original history draws it", () => {
 
   it("writes an amount with the currency code, a dash for nothing, smaller as it grows", () => {
     expect(historyAmount(0, "HKD")).toEqual({ text: "-", tier: 0 });
-    expect(historyAmount(1234.5, "HKD")).toEqual({ text: "HKD1,234.50", tier: 1 });
-    expect(historyAmount(99.5, "HKD")).toEqual({ text: "HKD99.50", tier: 0 });
-    expect(historyAmount(1234567.5, "HKD")).toEqual({ text: "HKD1,234,567.50", tier: 2 });
-    expect(historyAmount(12, null)).toEqual({ text: "$12.00", tier: 0 });
+    expect(historyAmount(1234.5, "HKD")).toEqual({ text: "HKD\u00a01,234.50", tier: 1 });
+    expect(historyAmount(99.5, "HKD")).toEqual({ text: "HKD\u00a099.50", tier: 0 });
+    expect(historyAmount(1234567.5, "HKD")).toEqual({ text: "HKD\u00a01,234,567.50", tier: 2 });
+  });
+
+  it("with no currency says so, never a \"$\", and sizes by the figure alone (the note wraps under it)", () => {
+    expect(historyAmount(12, null)).toEqual({ text: "12.00 (No currency selected)", tier: 0 });
+    expect(historyAmount(1234567.5, null)).toEqual({ text: "1,234,567.50 (No currency selected)", tier: 1 });
   });
 
   it("resumes a draft at its step, Opening when it has none (Flask's resume)", () => {

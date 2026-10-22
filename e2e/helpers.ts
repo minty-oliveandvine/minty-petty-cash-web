@@ -1,49 +1,40 @@
 // What every spec needs: a module token as Flask's /handoff/petty-cash-web would mint it, and the
 // way in through /landing. Signed here with Minty's SECRET_KEY (E2E_JWT_SECRET), so a spec needs
 // no Flask sign-in - the token is the same shape, and Flask's API verifies it the same way.
-
-import { createHmac } from "node:crypto";
+//
+// The token, the credentials it names and the sideways-scroll check are @minty/shared/e2e's, the
+// same in every app's suite; specs take `companyRef` from there too. This file keeps what is
+// Petty Cash's own.
 
 import { test, type Page } from "@playwright/test";
+import {
+  credentials as sharedCredentials,
+  mintModuleToken as sharedMintModuleToken,
+  type Credentials,
+} from "@minty/shared/e2e";
 
-export type Credentials = { secret: string; userId: string; entityId: string; entityName: string };
+/**
+ * The package's token, typed to take this suite's whole Credentials: the specs that stub the API
+ * pass an object literal with `entityName`, which the package's narrower parameter type refuses.
+ */
+export const mintModuleToken: (creds: Credentials, overrides?: Record<string, unknown>) => string =
+  sharedMintModuleToken;
+export { expectNoSideScroll as expectNoHorizontalScroll } from "@minty/shared/e2e";
+export type { Credentials } from "@minty/shared/e2e";
 
-const b64url = (input: string | Buffer) => Buffer.from(input).toString("base64url");
-
-/** The spec's credentials, or the spec is skipped with what to set (e2e/README.md). */
+/**
+ * The spec's credentials, or the spec is SKIPPED with what to set (e2e/README.md). Stricter than
+ * the package's `credentials()`, which returns null, and its `requireCredentials()`, which throws:
+ * this suite also needs E2E_MINTY_ENTITY_NAME set (no seed-name default), and an unconfigured run
+ * reads as "not run here", never as a failure.
+ */
 export function credentials(): Credentials {
-  const secret = process.env.E2E_JWT_SECRET ?? "";
-  const userId = process.env.E2E_MINTY_USER ?? "";
-  const entityId = process.env.E2E_MINTY_ENTITY ?? "";
-  const entityName = process.env.E2E_MINTY_ENTITY_NAME ?? "";
+  const creds = sharedCredentials();
   test.skip(
-    !(secret && userId && entityId && entityName),
+    !(creds && process.env.E2E_MINTY_ENTITY_NAME),
     "Set E2E_JWT_SECRET (Minty SECRET_KEY), E2E_MINTY_USER, E2E_MINTY_ENTITY and E2E_MINTY_ENTITY_NAME (see e2e/README.md)",
   );
-  return { secret, userId, entityId, entityName };
-}
-
-export function mintModuleToken(creds: Credentials, overrides: Record<string, unknown> = {}): string {
-  const now = Math.floor(Date.now() / 1000);
-  const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const payload = b64url(
-    JSON.stringify({
-      user_id: creds.userId,
-      entity_id: creds.entityId,
-      xero_org_id: "",
-      role: "admin",
-      system_role: "normal",
-      module: "billing",
-      sid: "e2e",
-      billing_enabled: true,
-      petty_cash_enabled: true,
-      exp: now + 1800,
-      iat: now,
-      ...overrides,
-    }),
-  );
-  const signature = b64url(createHmac("sha256", creds.secret).update(`${header}.${payload}`).digest());
-  return `${header}.${payload}.${signature}`;
+  return creds as Credentials;
 }
 
 /** Arrive as Flask's hand-off sends a person: /landing with the token, on to `next`. */
@@ -55,10 +46,4 @@ export async function enter(page: Page, creds: Credentials, next: string) {
     next,
   });
   await page.goto(`/landing?${qs.toString()}`);
-}
-
-/** No page may scroll sideways at any width (CLAUDE.md, Responsive UI rules). */
-export async function expectNoHorizontalScroll(page: Page) {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  if (overflow > 0) throw new Error(`the page scrolls sideways by ${overflow}px`);
 }

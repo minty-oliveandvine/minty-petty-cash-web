@@ -6,7 +6,7 @@
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-import { companyRef } from "./companyRef";
+import { companyRef } from "@minty/shared/e2e";
 import { expectNoHorizontalScroll, mintModuleToken } from "./helpers";
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";

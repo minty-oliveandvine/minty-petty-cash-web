@@ -1,49 +1,37 @@
 /**
- * The one way this app talks to its backends:
+ * The one way this app talks to its backends - its instances of `@minty/shared/apiClient`'s
+ * `createBearerClient`:
  *
- * - `pettyCashFetch` - Petty Cash's bearer API in Flask, `/api/petty-cash/v1/companies/<id>/...`
- *   (Minty `blueprints/petty_cash_api`, docs/features/petty-cash-api.md). The company is in the
- *   path and nowhere else; Flask checks it against membership on every call.
+ * - `pettyCashFetch` - Petty Cash's bearer API, Django `minty-petty-cash-api`,
+ *   `/api/petty-cash/v1/companies/<id>/...` (Flask's paths 1:1). The company is in the path and
+ *   nowhere else; the API checks it against membership on every call.
  * - `mintyFetch` - Flask's hub surface (`/api/me/profile`) for the sidebar's person.
  * - `subscriptionFetch` - minty-subscription-api's person-scoped `/api/me/*` for its Subscriptions.
  *
- * All three share everything below except where they go:
- * - The bearer is the cookie token (lib/auth.ts). Never `X-Entity-Id`: Flask's CORS allows only
- *   `Authorization` and `Content-Type`, so the header would fail every preflight.
- * - A 401 means the token has lapsed (or was never valid): the browser goes back through Flask's
- *   re-handoff (lib/handoff.ts) and the call rejects. Nothing retries, nothing refreshes.
- * - Every other non-2xx rejects with an `ApiError` carrying the status and the body's `error`
- *   sentence - the API answers `{"error": "<sentence>"}`, and screens show it as it stands.
+ * All three share the package's rules (no `X-Entity-Id` - Flask's CORS allows only
+ * `Authorization` and `Content-Type`; no token -> no call; every refusal the body's own sentence
+ * when it reads as one, else HOUSE_FALLBACK). This file adds only what is this app's:
+ * - The bearer is the cookie token (lib/auth.ts).
+ * - A 401, or no token, means the token has lapsed (or was never valid): by default the browser
+ *   goes back through Flask's re-handoff (lib/handoff.ts) and the call rejects. A call that is
+ *   decoration passes `onUnauthorized: "reject"` and only rejects. Nothing retries or refreshes.
+ *
+ * Also here, over these clients: My Profile's calls and its Subscriptions Overview read for the
+ * packaged panel (`@minty/shared/portal`), module-level because the panel reads again whenever
+ * they change identity.
  */
 
+import { ApiError, HOUSE_FALLBACK, SESSION_ENDED, createBearerClient, type BearerClient, type BearerRequest } from "@minty/shared/apiClient";
+import { filenameFromDisposition } from "@minty/shared/download";
+import { createProfileApi, fetchAllSubscriptions, type AllSubscriptions } from "@minty/shared/portal";
+
 import { getAuth } from "@/lib/auth";
-import { attachmentName } from "@/lib/download";
 import { env } from "@/lib/env";
 import { redirectToHandoff } from "@/lib/handoff";
 
-export class ApiError extends Error {
-  readonly status: number;
-  readonly body: unknown;
+export { ApiError, HOUSE_FALLBACK };
 
-  constructor(status: number, message: string, body: unknown = null) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.body = body;
-  }
-}
-
-/** Shown when a backend gave no sentence of its own - the same fallback Flask uses. */
-export const HOUSE_FALLBACK = "Something went wrong on our side. Please try again.";
-const SESSION_ENDED = "Your session has ended. Signing you back in…";
-
-export type ApiRequest = Omit<RequestInit, "body"> & {
-  /** JSON body; serialised here. */
-  json?: unknown;
-  /** A multipart body (a receipt upload); the browser sets its Content-Type and boundary. */
-  form?: FormData;
-  /** Query string, appended to the path. */
-  query?: Record<string, string | number | boolean | undefined>;
+export type ApiRequest = BearerRequest & {
   /**
    * What a 401 means to the caller. `"handoff"` (the default): the token lapsed, so the browser
    * goes back through Flask for a fresh one. `"reject"`: only reject - for a read that is
@@ -52,72 +40,42 @@ export type ApiRequest = Omit<RequestInit, "body"> & {
   onUnauthorized?: "handoff" | "reject";
 };
 
-function withQuery(path: string, query?: ApiRequest["query"]): string {
-  if (!query) return path;
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(query)) {
-    if (v !== undefined) qs.set(k, String(v));
-  }
-  const s = qs.toString();
-  return s ? `${path}${path.includes("?") ? "&" : "?"}${s}` : path;
+type Clients = { handoff: BearerClient; reject: BearerClient };
+
+/** A 401 goes back through Flask for a fresh token; the call still rejects. */
+const backThroughFlask = async (): Promise<boolean> => {
+  redirectToHandoff();
+  return false;
+};
+
+function clients(baseUrl: () => string): Clients {
+  const getToken = () => getAuth()?.token ?? null;
+  return {
+    handoff: createBearerClient({ baseUrl, getToken, onUnauthorized: backThroughFlask }),
+    reject: createBearerClient({ baseUrl, getToken, onUnauthorized: "reject" }),
+  };
 }
 
-async function readBody(res: Response): Promise<unknown> {
-  const text = await res.text();
-  if (!text) return null;
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return text;
-  }
+/** The client for this call's 401 rule, and the request without it (it is never sent on). */
+function pick(set: Clients, init: ApiRequest): [BearerClient, BearerRequest] {
+  const { onUnauthorized = "handoff", ...request } = init;
+  return [onUnauthorized === "reject" ? set.reject : set.handoff, request];
 }
 
-function errorSentence(body: unknown): string | null {
-  if (body && typeof body === "object" && typeof (body as { error?: unknown }).error === "string") {
-    return (body as { error: string }).error;
-  }
-  return null;
-}
+const pettyCash = clients(
+  () => `${env.PETTY_CASH_API_URL}/api/petty-cash/v1/companies/${encodeURIComponent(getAuth()?.entityId ?? "")}`,
+);
+const minty = clients(() => env.ACCOUNTS_API_URL);
+const subscriptions = clients(() => env.SUBSCRIPTION_API_URL);
 
-/** The call itself: the bearer, the body, a 401 back through Flask. Any other status is the caller's. */
-async function send(base: string, path: string, init: ApiRequest, accept: string): Promise<Response> {
-  const { json, form, query, headers: extraHeaders, onUnauthorized = "handoff", ...rest } = init;
-  const auth = getAuth();
-
-  const headers = new Headers(extraHeaders);
-  headers.set("Accept", accept);
-  if (auth?.token) headers.set("Authorization", `Bearer ${auth.token}`);
-  if (json !== undefined) headers.set("Content-Type", "application/json");
-
-  const res = await fetch(`${base}${withQuery(path, query)}`, {
-    ...rest,
-    headers,
-    body: form ?? (json === undefined ? undefined : JSON.stringify(json)),
-  });
-
-  if (res.status === 401) {
-    if (onUnauthorized === "handoff") redirectToHandoff();
-    throw new ApiError(401, SESSION_ENDED);
-  }
-  return res;
-}
-
-async function requestJson<T>(base: string, path: string, init: ApiRequest): Promise<T> {
-  const res = await send(base, path, init, "application/json");
-  const body = await readBody(res);
-  if (!res.ok) throw new ApiError(res.status, errorSentence(body) ?? HOUSE_FALLBACK, body);
-  return body as T;
-}
-
-/** The company the cookie is for - every Petty Cash API path is under it. */
-function companyBase(): string {
-  const entityId = getAuth()?.entityId ?? "";
-  if (!entityId) {
+/** Every Petty Cash API path is under the cookie's company: with none, go and get a token. */
+function companyClient(init: ApiRequest): [BearerClient, BearerRequest] {
+  if (!getAuth()?.entityId) {
     // No company means no token worth sending: go and get one rather than call with a hole.
     redirectToHandoff();
     throw new ApiError(401, SESSION_ENDED);
   }
-  return `${env.PETTY_CASH_API_URL}/api/petty-cash/v1/companies/${encodeURIComponent(entityId)}`;
+  return pick(pettyCash, init);
 }
 
 /**
@@ -125,7 +83,8 @@ function companyBase(): string {
  * the company itself, `"/home"`, `"/reports/<id>"` - and the parsed JSON comes back.
  */
 export async function pettyCashFetch<T = unknown>(path: string, init: ApiRequest = {}): Promise<T> {
-  return requestJson<T>(companyBase(), path, init);
+  const [client, request] = companyClient(init);
+  return client.json<T>(path, request);
 }
 
 /**
@@ -134,12 +93,8 @@ export async function pettyCashFetch<T = unknown>(path: string, init: ApiRequest
  * A refusal rejects with the API's sentence, as `pettyCashFetch` does.
  */
 export async function pettyCashBlob(path: string, init: ApiRequest = {}): Promise<Blob> {
-  const res = await send(companyBase(), path, init, "*/*");
-  if (!res.ok) {
-    const body = await readBody(res);
-    throw new ApiError(res.status, errorSentence(body) ?? HOUSE_FALLBACK, body);
-  }
-  return res.blob();
+  const [client, request] = companyClient(init);
+  return client.blob(path, request);
 }
 
 /**
@@ -148,20 +103,35 @@ export async function pettyCashBlob(path: string, init: ApiRequest = {}): Promis
  * absent or the browser was not let read it). A refusal rejects with the API's sentence.
  */
 export async function pettyCashDownload(path: string, init: ApiRequest = {}): Promise<{ blob: Blob; filename: string | null }> {
-  const res = await send(companyBase(), path, init, "*/*");
-  if (!res.ok) {
-    const body = await readBody(res);
-    throw new ApiError(res.status, errorSentence(body) ?? HOUSE_FALLBACK, body);
-  }
-  return { blob: await res.blob(), filename: attachmentName(res.headers.get("Content-Disposition")) };
+  const [client, request] = companyClient(init);
+  const res = await client.response(path, request);
+  return { blob: await res.blob(), filename: filenameFromDisposition(res.headers.get("Content-Disposition")) };
 }
 
 /** Flask's hub surface (`/api/me/profile`); a company travels as `?entity=`. */
 export function mintyFetch<T = unknown>(path: string, init: ApiRequest = {}): Promise<T> {
-  return requestJson<T>(env.ACCOUNTS_API_URL, path, init);
+  const [client, request] = pick(minty, init);
+  return client.json<T>(path, request);
 }
 
 /** minty-subscription-api's person-scoped `/api/me/*`. */
 export function subscriptionFetch<T = unknown>(path: string, init: ApiRequest = {}): Promise<T> {
-  return requestJson<T>(env.SUBSCRIPTION_API_URL, path, init);
+  const [client, request] = pick(subscriptions, init);
+  return client.json<T>(path, request);
+}
+
+/**
+ * My Profile's two calls (Flask's `GET` / `PATCH /api/me/profile`, the cookie's company as
+ * `?entity=`), in the shape the packaged panel takes. A refusal is an `ApiError`, which the panel
+ * shows as it stands; a 401 has already gone back through the hand-off.
+ */
+export const profileApi = createProfileApi(mintyFetch);
+
+/**
+ * The Subscriptions Overview's read: every page of subscription-api's `GET /api/me/subscriptions`
+ * at 100 a page, so the figures count every company. A page that is not the expected shape is an
+ * `ApiError(502)`; a refusal is the API's own `ApiError`.
+ */
+export function loadSubscriptions(signal: AbortSignal): Promise<AllSubscriptions> {
+  return fetchAllSubscriptions(subscriptionFetch, { signal, shapeError: (status, message) => new ApiError(status, message) });
 }

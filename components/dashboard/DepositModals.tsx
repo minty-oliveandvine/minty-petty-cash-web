@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useId, useState } from "react";
 
+import { formatDay } from "@minty/shared/dates";
 import { Button, buttonClass, Field, InlineAlert, inputClass, Modal } from "@minty/shared/ui";
+import { acceptAmountInput, parseAmount } from "@minty/shared/money";
 
-import { formatDay } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import type { SetupItem } from "@/lib/dashboard";
+import { money } from "@/lib/money";
 
 export type Confirmation = "yes" | "change" | "no";
 
@@ -102,7 +104,7 @@ export function BeforeYouStartModal({
     >
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body-m">
         <dt className="text-text-secondary">Deposited</dt>
-        <dd className="text-right text-text-primary">{formatMoney(amount, currencyCode)}</dd>
+        <dd className="text-right text-text-primary">{money(amount, currencyCode)}</dd>
         <dt className="text-text-secondary">To</dt>
         <dd className="min-w-0 break-words text-right text-text-primary">{to}</dd>
         <dt className="text-text-secondary">On</dt>
@@ -152,13 +154,6 @@ export function BeforeYouStartModal({
   );
 }
 
-/** Digits and one point, at most two decimals - Flask's `formatCurrencyModal`, without the commas. */
-function cleanAmount(raw: string): string {
-  const digits = raw.replace(/[^\d.]/g, "");
-  const [whole, ...rest] = digits.split(".");
-  return rest.length ? `${whole}.${rest.join("").slice(0, 2)}` : whole;
-}
-
 /**
  * Flask's "Deposit to Bank" (#depositModal), reached by "No, there was a change": the amount
  * that was really deposited, never more than the stated one. Checked as it is typed.
@@ -182,11 +177,11 @@ export function DepositModal({
 }) {
   const [value, setValue] = useState("");
   const [refused, setRefused] = useState(false);
-  const amount = value === "" || value === "." ? 0 : Number(value);
+  const amount = parseAmount(value) ?? 0;
   const tooHigh = amount > previousAmount;
   const empty = value === "";
   const error = tooHigh
-    ? `The deposit can't be higher than the previous one. Enter ${formatMoney(previousAmount, currencyCode)} or less.`
+    ? `The deposit can't be higher than the previous one. Enter ${money(previousAmount, currencyCode)} or less.`
     : refused && empty
       ? "The deposit amount is still empty. Enter the amount deposited, or 0."
       : null;
@@ -228,9 +223,11 @@ export function DepositModal({
         <Field label="Deposit Amount" required error={error}>
           {(a11y) => (
             <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-body-m text-text-secondary">
-                {currencyCode || "$"}
-              </span>
+              {currencyCode ? (
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-body-m text-text-secondary">
+                  {currencyCode}
+                </span>
+              ) : null}
               <input
                 {...a11y}
                 type="text"
@@ -238,8 +235,11 @@ export function DepositModal({
                 autoComplete="off"
                 placeholder="Enter amount deposited to bank"
                 value={value}
-                onChange={(e) => setValue(cleanAmount(e.target.value))}
-                className={`${inputClass(!!error)} pl-14`}
+                onChange={(e) => {
+                  const next = acceptAmountInput(e.target.value);
+                  if (next !== null) setValue(next);
+                }}
+                className={`${inputClass(!!error)}${currencyCode ? " pl-14" : ""}`}
               />
             </div>
           )}
@@ -255,11 +255,12 @@ export function DepositModal({
 }
 
 /**
- * Flask's "Setup Required" (#setupSettingsModal): the company's Xero account settings are not
- * complete, so the dashboard is held until they are. It cannot be dismissed - only the way to
- * the settings is offered.
+ * Flask's "Setup Required" (#setupSettingsModal): the company has no currency, or its Xero account
+ * settings are not complete (lib/dashboard.ts `setupRequired`), so the dashboard is held until they
+ * are. It cannot be dismissed - only the way to the settings is offered: each missing setting links
+ * to its settings card, and Set Up Settings opens the first (the Xero cards when none is named).
  */
-export function SetupRequiredModal({ open, missing, settingsHref }: { open: boolean; missing: string[]; settingsHref: string }) {
+export function SetupRequiredModal({ open, items, fallbackHref }: { open: boolean; items: SetupItem[]; fallbackHref: string }) {
   return (
     <Modal
       open={open}
@@ -268,16 +269,20 @@ export function SetupRequiredModal({ open, missing, settingsHref }: { open: bool
       title="Setup Required"
       description="Please complete your entity settings before proceeding."
       footer={
-        <Link href={settingsHref} className={buttonClass("primary")}>
+        <Link href={items[0]?.href ?? fallbackHref} className={buttonClass("primary")}>
           Set Up Settings
         </Link>
       }
     >
       <InlineAlert tone="warning" title="Missing Settings:">
-        {missing.length ? (
+        {items.length ? (
           <ul className="list-disc pl-5">
-            {missing.map((m) => (
-              <li key={m}>{m}</li>
+            {items.map((item) => (
+              <li key={item.text}>
+                <Link href={item.href} className="inline-flex min-h-11 items-center underline">
+                  {item.text}
+                </Link>
+              </li>
             ))}
           </ul>
         ) : (

@@ -5,8 +5,10 @@
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-import { companyRef } from "./companyRef";
+import { companyRef } from "@minty/shared/e2e";
 import { expectNoHorizontalScroll, mintModuleToken } from "./helpers";
+
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -216,24 +218,24 @@ test("the view: header and pill, the outcome band, the difference as a fact, the
   // the outcome band: the module chip, Cash position the one hero amount, sales and expenses secondary - the server's figures
   const kpis = page.locator("main dl").filter({ has: page.locator("dt", { hasText: "Cash position" }) });
   await expect(kpis.locator("dt")).toHaveText(["Cash position", "Total sales", "Total expenses"]);
-  await expect(value(page, "Cash position", kpis)).toHaveText("HKD760.00");
+  await expect(value(page, "Cash position", kpis)).toHaveText("HKD 760.00");
   await expect(value(page, "Cash position", kpis)).toHaveClass(/text-display-xl/);
   await expect(page.locator("main .text-display-xl")).toHaveCount(1);
-  await expect(value(page, "Total sales", kpis)).toHaveText("HKD1,070.50");
-  await expect(value(page, "Total expenses", kpis)).toHaveText("HKD240.50");
+  await expect(value(page, "Total sales", kpis)).toHaveText("HKD 1,070.50");
+  await expect(value(page, "Total expenses", kpis)).toHaveText("HKD 240.50");
   await expect(kpis.getByText("2 expenses", { exact: true })).toBeVisible();
   await expect(page.locator("main").getByText("Petty Cash", { exact: true })).toBeVisible();
 
   // the difference stays directly under the band
-  const fact = page.getByRole("status").filter({ hasText: "Cash was HKD20.00 short" });
+  const fact = page.getByRole("status").filter({ hasText: "Cash was HKD 20.00 short" });
   await expect(fact).toHaveAttribute("data-tone", "warning");
   await expect(fact).toContainText("Note: Change given twice");
 
   // where the money came from and went: the list's methods (Deliveroo left out) and Cash, largest first; expenses per account
   const flow = moneyFlow(page);
-  await expect(flow.getByRole("img", { name: "Sales by method: Cash HKD820.50, 76%; Octopus HKD200.00, 19%; Foodpanda HKD50.00, 5%" })).toBeVisible();
-  await expect(flow.getByRole("listitem")).toHaveText(["CashHKD820.50· 76%", "OctopusHKD200.00· 19%", "FoodpandaHKD50.00· 5%"]);
-  await expect(flow.getByRole("img", { name: "Expenses by account: General Expenses HKD120.50; No account HKD120.00" })).toBeVisible();
+  await expect(flow.getByRole("img", { name: "Sales by method: Cash HKD 820.50, 76%; Octopus HKD 200.00, 19%; Foodpanda HKD 50.00, 5%" })).toBeVisible();
+  await expect(flow.getByRole("listitem")).toHaveText(["CashHKD 820.50· 76%", "OctopusHKD 200.00· 19%", "FoodpandaHKD 50.00· 5%"]);
+  await expect(flow.getByRole("img", { name: "Expenses by account: General Expenses HKD 120.50; No account HKD 120.00" })).toBeVisible();
   // band, difference, charts, then the breakdowns
   const order = await page.evaluate(() => {
     const all = Array.from(document.querySelectorAll("main *"));
@@ -248,11 +250,11 @@ test("the view: header and pill, the outcome band, the difference as a fact, the
   // the breakdowns start collapsed (the chart's legend above names Octopus on purpose)
   await expect(page.locator("main details").getByText("Octopus")).toBeHidden();
   const sales = await open(page, "Sales by method");
-  await expect(value(page, "Octopus", sales)).toHaveText("HKD200.00");
-  await expect(value(page, "Foodpanda", sales)).toHaveText("HKD50.00");
+  await expect(value(page, "Octopus", sales)).toHaveText("HKD 200.00");
+  await expect(value(page, "Foodpanda", sales)).toHaveText("HKD 50.00");
   await expect(sales.getByText("Deliveroo")).toHaveCount(0);
-  await expect(value(page, "Cash", sales)).toHaveText("HKD820.50");
-  await expect(value(page, "Total sales", sales)).toHaveText("HKD1,070.50");
+  await expect(value(page, "Cash", sales)).toHaveText("HKD 820.50");
+  await expect(value(page, "Total sales", sales)).toHaveText("HKD 1,070.50");
 
   const expenses = await open(page, "Expenses (2)");
   await expect(expenses.getByText("General Expenses", { exact: true })).toBeVisible();
@@ -260,22 +262,22 @@ test("the view: header and pill, the outcome band, the difference as a fact, the
   await expect(expenses.getByText("Bags")).toBeVisible();
   await expect(expenses.getByText("Cleaning", { exact: true })).toBeVisible();
   await expect(expenses.getByText("No supplier")).toBeVisible();
-  await expect(value(page, "Total expenses", expenses)).toHaveText("HKD240.50");
+  await expect(value(page, "Total expenses", expenses)).toHaveText("HKD 240.50");
 
   const receipts = await open(page, "Receipts (1)");
-  await expect(receipts.getByRole("button", { name: "View receipt parknshop.png" })).toContainText("General Expenses · HKD120.50");
+  await expect(receipts.getByRole("button", { name: "View receipt parknshop.png" })).toContainText("General Expenses · HKD 120.50");
 
   const cash = await open(page, "Cash");
-  await expect(value(page, "Starting cash balance", cash)).toHaveText("HKD500.00");
-  await expect(value(page, "Added to the drawer", cash)).toHaveText("HKD100.00");
+  await expect(value(page, "Starting cash balance", cash)).toHaveText("HKD 500.00");
+  await expect(value(page, "Added to the drawer", cash)).toHaveText("HKD 100.00");
   await expect(value(page, "Where the cash came from", cash)).toHaveText("Company bank");
-  await expect(value(page, "Cash taken for bank deposit", cash)).toHaveText("HKD300.00");
-  await expect(value(page, "Expected in drawer", cash)).toHaveText("HKD780.00");
-  await expect(value(page, "Counted in the drawer", cash)).toHaveText("HKD760.00");
-  await expect(value(page, "In the safe box", cash)).toHaveText("HKD0.00");
-  await expect(value(page, "Difference", cash)).toHaveText("HKD20.00 short");
+  await expect(value(page, "Cash taken for bank deposit", cash)).toHaveText("HKD 300.00");
+  await expect(value(page, "Expected in drawer", cash)).toHaveText("HKD 780.00");
+  await expect(value(page, "Counted in the drawer", cash)).toHaveText("HKD 760.00");
+  await expect(value(page, "In the safe box", cash)).toHaveText("HKD 0.00");
+  await expect(value(page, "Difference", cash)).toHaveText("HKD 20.00 short");
 
-  await expect(value(page, "Closing balance")).toHaveText("HKD760.00");
+  await expect(value(page, "Closing balance")).toHaveText("HKD 760.00");
   await expect(page.getByText("Submitted by Olive Tan · Tue 13 Oct 2026, 6:12 pm")).toBeVisible();
   await expect(page.getByText("Not in Xero yet")).toBeVisible();
   // amounts are plain text, never coloured
@@ -358,7 +360,7 @@ test("the launch page's Recent reports open each report in the app", async ({ pa
   await row.click();
   await expect(page).toHaveURL(exact(REPORT_URL));
   await expect(page.getByRole("heading", { level: 1, name: "Daily Report" })).toBeVisible();
-  await expect(value(page, "Closing balance")).toHaveText("HKD760.00");
+  await expect(value(page, "Closing balance")).toHaveText("HKD 760.00");
 });
 
 test("the launch page's Done state opens today's report in the app", async ({ page }) => {
@@ -575,7 +577,7 @@ test("a day with no sales or expenses says so in the charts; a single method fil
 
 test("a single sales method fills the whole bar", async ({ page }) => {
   await openWith(page, reportAnswer({ sales: { methods: [], cash: 820.5, total: 820.5 } }));
-  const bar = moneyFlow(page).getByRole("img", { name: "Sales by method: Cash HKD820.50, 100%" });
+  const bar = moneyFlow(page).getByRole("img", { name: "Sales by method: Cash HKD 820.50, 100%" });
   await expect(bar.locator("[data-chart-tone]")).toHaveCount(1);
   const [track, seg] = await Promise.all([bar.boundingBox(), bar.locator("[data-chart-tone]").boundingBox()]);
   expect(Math.round(seg!.width)).toBe(Math.round(track!.width));
@@ -635,6 +637,6 @@ test("the page reloads with no console error", async ({ page }) => {
   // the browser then hydrates - where a mismatch shows.
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Daily Report" })).toBeVisible();
-  await expect(value(page, "Closing balance")).toHaveText("HKD760.00");
+  await expect(value(page, "Closing balance")).toHaveText("HKD 760.00");
   expect(errors).toEqual([]);
 });

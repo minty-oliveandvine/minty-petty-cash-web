@@ -267,7 +267,7 @@ export function pendingOps(draft: Draft, settings: Settings): MethodOp[] {
 }
 
 /** One call to the API: the path under the company, the method, the JSON body. */
-export type MethodCall = (path: string, init: { method: "POST" | "PUT" | "DELETE"; json?: unknown }) => Promise<SettingsAnswer>;
+export type MethodCall = (path: string, init: { method: "POST" | "PUT" | "DELETE"; body?: unknown }) => Promise<SettingsAnswer>;
 
 export type SaveOutcome = {
   /** The newest answer (the read the page shows now). */
@@ -342,12 +342,12 @@ export async function saveMethods(draft: Draft, settings: Settings, call: Method
       if (failure) break;
       page = { ...page, removed: page.removed.filter((r) => r.id !== op.id) };
     } else if (op.kind === "add") {
-      const json = op.catalogueId ? { type: op.type, sale_info_id: op.catalogueId } : { type: op.type, name: op.name };
-      failure = await run(op, "/sales-methods", { method: "POST", json });
+      const body = op.catalogueId ? { type: op.type, sale_info_id: op.catalogueId } : { type: op.type, name: op.name };
+      failure = await run(op, "/sales-methods", { method: "POST", body });
       if (failure) break;
       page = placeAdded(page, op.type, op.key, current);
     } else if (op.kind === "rename") {
-      failure = await run(op, `/sales-methods/${encodeURIComponent(op.id)}`, { method: "PUT", json: { name: op.name } });
+      failure = await run(op, `/sales-methods/${encodeURIComponent(op.id)}`, { method: "PUT", body: { name: op.name } });
       if (failure) break;
       page = withList(page, op.type, page.lists[op.type].map((r) => (r.key === op.key ? { ...r, savedName: r.name } : r)));
     }
@@ -359,7 +359,7 @@ export async function saveMethods(draft: Draft, settings: Settings, call: Method
       const wanted = page.lists[type].map((r) => r.id);
       if (wanted.some((id) => !id)) continue; // an addition the answer did not show: nothing to place
       if (wanted.join("\n") === current.sales_methods[type].map((m) => m.id).join("\n")) continue;
-      failure = await run({ kind: "order", type }, "/sales-methods/order", { method: "PUT", json: { type, method_ids: wanted } });
+      failure = await run({ kind: "order", type }, "/sales-methods/order", { method: "PUT", body: { type, method_ids: wanted } });
       if (failure) break;
     }
   }

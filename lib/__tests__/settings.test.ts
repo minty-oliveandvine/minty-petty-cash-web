@@ -199,15 +199,15 @@ describe("pendingOps", () => {
 });
 
 /** A fake API over a settings read: applies each call the way Flask does, or refuses where told. */
-function fakeApi(start: Settings, refuse: (path: string, init: { method: string; json?: unknown }) => ApiError | null = () => null) {
+function fakeApi(start: Settings, refuse: (path: string, init: { method: string; body?: unknown }) => ApiError | null = () => null) {
   let state = structuredClone(start);
   const calls: { method: string; path: string; json?: unknown }[] = [];
   let next = 0;
   const call: MethodCall = async (path, init) => {
-    calls.push({ method: init.method, path, json: init.json });
+    calls.push({ method: init.method, path, json: init.body });
     const no = refuse(path, init);
     if (no) throw no;
-    const body = (init.json ?? {}) as { type?: "electronic" | "delivery"; name?: string; sale_info_id?: string; method_ids?: string[] };
+    const body = (init.body ?? {}) as { type?: "electronic" | "delivery"; name?: string; sale_info_id?: string; method_ids?: string[] };
     let message = "";
     if (init.method === "DELETE") {
       const id = path.split("/").pop();

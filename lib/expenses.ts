@@ -11,8 +11,9 @@
  * Wording is Part 11's: the issue, then the action; never "Error", "Invalid" or "required field".
  */
 
-import { parseMoney } from "@/lib/currencyInput";
-import { formatMoney } from "@/lib/money";
+import { parseAmount } from "@minty/shared/money";
+
+import { money } from "@/lib/money";
 import type { OpeningPage } from "@/lib/opening";
 
 export type Supplier = { id: string; name: string };
@@ -76,8 +77,8 @@ export const RECEIPT_LIMITS = "PDF, JPEG or PNG, up to 10 MB.";
  */
 export function amountProblem(text: string, { touched, submitted, code }: { touched: boolean; submitted: boolean; code: string | null }): string | null {
   if (text.trim() === "") return submitted ? "The amount is still empty. Add the amount to continue." : null;
-  const amount = parseMoney(text);
-  if (amount > MAX_AMOUNT) return `The amount is above ${formatMoney(MAX_AMOUNT, code)}. Enter ${formatMoney(MAX_AMOUNT, code)} or less.`;
+  const amount = parseAmount(text) ?? 0;
+  if (amount > MAX_AMOUNT) return `The amount is above ${money(MAX_AMOUNT, code)}. Enter ${money(MAX_AMOUNT, code)} or less.`;
   if (amount <= 0 && (touched || submitted)) return "The amount is 0. Enter an amount above 0.";
   return null;
 }

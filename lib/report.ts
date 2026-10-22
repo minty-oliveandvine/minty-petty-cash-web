@@ -15,12 +15,11 @@
 
 import type { StatusTone } from "@minty/shared/ui";
 
-import { signedMoney } from "@/lib/addition";
 import { differenceText } from "@/lib/cashCount";
 import { differenceOf, salesRows, type ClosePage } from "@/lib/close";
 import { formatWeekdayDay, momentText } from "@/lib/dates";
 import type { ExpenseAccount, ExpenseLine, Receipt, Supplier } from "@/lib/expenses";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 
 export type DailyReport = {
   report_id: string;
@@ -102,12 +101,12 @@ export function reportKpis(report: DailyReport): Kpi[] {
  */
 export function kpiCards(kpis: Partial<DailyReport["kpis"]>, expenseCount: number | null, code: string | null): Kpi[] {
   const cards: Kpi[] = [];
-  if (typeof kpis.total_sales === "number") cards.push({ label: "Total sales", value: formatMoney(kpis.total_sales, code), meta: null });
+  if (typeof kpis.total_sales === "number") cards.push({ label: "Total sales", value: money(kpis.total_sales, code), meta: null });
   if (typeof kpis.total_expenses === "number") {
     const meta = expenseCount === null ? null : `${expenseCount} ${expenseCount === 1 ? "expense" : "expenses"}`;
-    cards.push({ label: "Total expenses", value: formatMoney(kpis.total_expenses, code), meta });
+    cards.push({ label: "Total expenses", value: money(kpis.total_expenses, code), meta });
   }
-  if (typeof kpis.cash_position === "number") cards.push({ label: CASH_POSITION, value: signedMoney(kpis.cash_position, code), meta: "Counted, with the safe box" });
+  if (typeof kpis.cash_position === "number") cards.push({ label: CASH_POSITION, value: money(kpis.cash_position, code), meta: "Counted, with the safe box" });
   return cards;
 }
 
@@ -196,14 +195,14 @@ export function expenseBars(report: { expenses: { lines: Pick<ExpenseLine, "acco
   return rows.map(([name, cents]) => ({ name, amount: cents / 100, width: twoPlaces((cents * 100) / top) }));
 }
 
-/** The proportion bar as text (its `role="img"` label): "Sales by method: Cash HKD300.00, 71%; Visa HKD120.00, 29%". */
+/** The proportion bar as text (its `role="img"` label): "Sales by method: Cash HKD 300.00, 71%; Visa HKD 120.00, 29%". */
 export function salesMixSummary(segments: MixSegment[], code: string | null): string {
-  return `Sales by method: ${segments.map((s) => `${s.label} ${formatMoney(s.amount, code)}, ${s.pct}%`).join("; ")}`;
+  return `Sales by method: ${segments.map((s) => `${s.label} ${money(s.amount, code)}, ${s.pct}%`).join("; ")}`;
 }
 
-/** The bar rows as text (their `role="img"` label): "Expenses by account: Staff meals HKD40.00; Office supplies HKD35.00". */
+/** The bar rows as text (their `role="img"` label): "Expenses by account: Staff meals HKD 40.00; Office supplies HKD 35.00". */
 export function expenseBarsSummary(bars: ExpenseBar[], code: string | null): string {
-  return `Expenses by account: ${bars.map((b) => `${b.name} ${formatMoney(b.amount, code)}`).join("; ")}`;
+  return `Expenses by account: ${bars.map((b) => `${b.name} ${money(b.amount, code)}`).join("; ")}`;
 }
 
 /**
@@ -250,20 +249,20 @@ export function cashRows(report: DailyReport): CashRow[] {
 
 /** `cashRows` from whichever figures arrived: a figure a shared report leaves out has no row. */
 export function cashRowsOf(cash: Partial<DailyReport["cash"]>, code: string | null): CashRow[] {
-  const money = (amount: number) => formatMoney(amount, code);
+  const amountText = (amount: number) => money(amount, code);
   const has = (n: unknown): n is number => typeof n === "number";
   const added = cash.cash_addition;
   const source = has(added) && added > 0 && cash.cash_addition_type ? (ADDITION_SOURCE[cash.cash_addition_type] ?? cash.cash_addition_type) : null;
   const rows: (CashRow | null)[] = [
-    has(cash.opening_balance) ? { label: "Starting cash balance", value: money(cash.opening_balance) } : null,
-    has(added) ? { label: "Added to the drawer", value: money(added) } : null,
+    has(cash.opening_balance) ? { label: "Starting cash balance", value: amountText(cash.opening_balance) } : null,
+    has(added) ? { label: "Added to the drawer", value: amountText(added) } : null,
     source ? { label: "Where the cash came from", value: source, words: true } : null,
-    has(cash.cash_sales) ? { label: "Cash sales", value: money(cash.cash_sales) } : null,
-    has(cash.expenses) ? { label: "Expenses", value: money(cash.expenses) } : null,
-    has(cash.bank_deposit) ? { label: "Cash taken for bank deposit", value: money(cash.bank_deposit) } : null,
-    has(cash.expected) ? { label: "Expected in drawer", value: signedMoney(cash.expected, code) } : null,
-    has(cash.counted) ? { label: "Counted in the drawer", value: money(cash.counted) } : null,
-    has(cash.safe_box) ? { label: "In the safe box", value: money(cash.safe_box) } : null,
+    has(cash.cash_sales) ? { label: "Cash sales", value: amountText(cash.cash_sales) } : null,
+    has(cash.expenses) ? { label: "Expenses", value: amountText(cash.expenses) } : null,
+    has(cash.bank_deposit) ? { label: "Cash taken for bank deposit", value: amountText(cash.bank_deposit) } : null,
+    has(cash.expected) ? { label: "Expected in drawer", value: money(cash.expected, code) } : null,
+    has(cash.counted) ? { label: "Counted in the drawer", value: amountText(cash.counted) } : null,
+    has(cash.safe_box) ? { label: "In the safe box", value: amountText(cash.safe_box) } : null,
     has(cash.difference?.amount)
       ? { label: "Difference", value: differenceText(differenceOf(cash.difference.amount), code), total: true, words: true }
       : null,

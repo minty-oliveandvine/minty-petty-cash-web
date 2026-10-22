@@ -2,22 +2,24 @@
  * The settings pill row, so a company's settings read as one place across the apps: the same
  * sections, order, name ("Settings sections") and look as minty-web's `components/ui/SettingsTabs.tsx`
  * (44px pills, wrapping), drawn in this app's Part 13 tokens. This page is Petty Cash Settings, the
- * current pill; every other one leaves the app through its hand-off (lib/hub.ts), so they are plain
- * links (full page loads). Payment Request Settings shows only when the company has that module, as
- * in Flask, minty-web and the payments app.
+ * current pill; every other one leaves the app through its Flask hand-off (@minty/shared/companyRef),
+ * so they are plain links (full page loads). Payment Request Settings shows only when the company
+ * has that module, as in Flask, minty-web and the payments app.
  */
 
-import { paymentRequestSettingsUrl, settingsSectionUrl } from "@/lib/hub";
+import { paymentRequestSettingsUrl, settingsSectionUrl } from "@minty/shared/companyRef";
+
+import { env } from "@/lib/env";
 
 type Tab = { label: string; href?: string };
 
 function tabs(entityId: string, entityName: string, billing: boolean): Tab[] {
   return [
-    { label: "Users", href: settingsSectionUrl(entityId, entityName, "users") },
-    { label: "Entity & Integration", href: settingsSectionUrl(entityId, entityName, "integration") },
+    { label: "Users", href: settingsSectionUrl(env.ACCOUNTS_API_URL, entityId, entityName, "users") },
+    { label: "Entity & Integration", href: settingsSectionUrl(env.ACCOUNTS_API_URL, entityId, entityName, "integration") },
     { label: "Petty Cash Settings" },
-    ...(billing ? [{ label: "Payment Request Settings", href: paymentRequestSettingsUrl(entityId) }] : []),
-    { label: "Modules", href: settingsSectionUrl(entityId, entityName, "modules") },
+    ...(billing ? [{ label: "Payment Request Settings", href: paymentRequestSettingsUrl(env.ACCOUNTS_API_URL, entityId) }] : []),
+    { label: "Modules", href: settingsSectionUrl(env.ACCOUNTS_API_URL, entityId, entityName, "modules") },
   ];
 }
 

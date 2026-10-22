@@ -4,9 +4,13 @@
  * the Flask dashboard parsed `new Date("YYYY-MM-DD")` (UTC) and formatted it in local time, and
  * mixed the browser's, UTC's and Hong Kong's "today"; this app takes "today" from the server
  * (`server_today`, Hong Kong) only.
+ *
+ * "14 Oct 2026" (Flask's `%d %b %Y`) is `formatDay` in `@minty/shared/dates`, with its MONTHS;
+ * the helpers here are this app's own (weekdays, the device's clock, the saving status).
  */
 
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+import { MONTHS } from "@minty/shared/dates";
+
 const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function parts(iso: string): [number, number, number] {
@@ -29,12 +33,6 @@ export function addDays(iso: string, days: number): string {
   return toIso(date);
 }
 
-/** "14 Oct 2026" - Flask's `%d %b %Y`. */
-export function formatDay(iso: string): string {
-  const [y, m, d] = parts(iso);
-  return `${String(d).padStart(2, "0")} ${MONTHS_SHORT[m - 1]} ${y}`;
-}
-
 /** "Wed 14 Oct 2026" - Part 14's D MMM YYYY (D14-12) with its weekday, as Part 15 writes a day. */
 export function formatWeekdayDay(iso: string): string {
   return `${formatWeekdayShort(iso)} ${parts(iso)[0]}`;
@@ -43,7 +41,7 @@ export function formatWeekdayDay(iso: string): string {
 /** "Sun 4 Oct" - a day near enough to need no year (the gate banner's "Finish Sun 4 Oct first"). */
 export function formatWeekdayShort(iso: string): string {
   const [, m, d] = parts(iso);
-  return `${WEEKDAYS_SHORT[utc(iso).getUTCDay()]} ${d} ${MONTHS_SHORT[m - 1]}`;
+  return `${WEEKDAYS_SHORT[utc(iso).getUTCDay()]} ${d} ${MONTHS[m - 1]}`;
 }
 
 /** "6:02 pm" - a moment's time on the device's clock. */
@@ -54,7 +52,7 @@ export function clockTime(moment: Date): string {
 
 /** "Tue 13 Oct 2026, 6:12 pm" - a moment (an audit fact) on the device's clock, in full. */
 export function momentText(moment: Date): string {
-  const day = `${WEEKDAYS_SHORT[moment.getDay()]} ${moment.getDate()} ${MONTHS_SHORT[moment.getMonth()]} ${moment.getFullYear()}`;
+  const day = `${WEEKDAYS_SHORT[moment.getDay()]} ${moment.getDate()} ${MONTHS[moment.getMonth()]} ${moment.getFullYear()}`;
   return `${day}, ${clockTime(moment)}`;
 }
 
@@ -69,6 +67,6 @@ export function savedText(lastEditSeconds: number, now: Date): string {
   const sameDay =
     saved.getFullYear() === now.getFullYear() && saved.getMonth() === now.getMonth() && saved.getDate() === now.getDate();
   if (sameDay) return `Saved ${time}`;
-  const day = `${WEEKDAYS_SHORT[saved.getDay()]} ${saved.getDate()} ${MONTHS_SHORT[saved.getMonth()]}`;
+  const day = `${WEEKDAYS_SHORT[saved.getDay()]} ${saved.getDate()} ${MONTHS[saved.getMonth()]}`;
   return `Saved ${day}${saved.getFullYear() === now.getFullYear() ? "" : ` ${saved.getFullYear()}`}, ${time}`;
 }

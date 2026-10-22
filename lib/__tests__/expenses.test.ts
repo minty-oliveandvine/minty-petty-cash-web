@@ -22,6 +22,8 @@ import {
   type ExpenseLine,
 } from "@/lib/expenses";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 const SUPPLIERS = [
   { id: "s2", name: "Wellcome" },
   { id: "s1", name: "ParknShop" },
@@ -46,7 +48,7 @@ describe("the amount", () => {
   it("takes any amount above 0 up to the limit, and names the limit above it", () => {
     expect(at("0.01", true)).toBeNull();
     expect(at("99,999,999,999.99", true)).toBeNull();
-    expect(at("100000000000", false)).toBe("The amount is above HKD99,999,999,999.99. Enter HKD99,999,999,999.99 or less.");
+    expect(at("100000000000", false)).toBe("The amount is above HKD\u00a099,999,999,999.99. Enter HKD\u00a099,999,999,999.99 or less.");
   });
 });
 

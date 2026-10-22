@@ -1,7 +1,7 @@
+import { formatDay } from "@minty/shared/dates";
 import { describe, expect, it } from "vitest";
 
-import { addDays, clockTime, formatDay, formatWeekdayDay, formatWeekdayShort, momentText, savedText } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import { addDays, clockTime, formatWeekdayDay, formatWeekdayShort, momentText, savedText } from "@/lib/dates";
 
 describe("report days", () => {
   it("add across months and years", () => {
@@ -48,9 +48,33 @@ describe("moments on the device's clock", () => {
   });
 });
 
-describe("money", () => {
-  it("is the currency code, then the amount", () => {
-    expect(formatMoney(1234.5, "HKD")).toBe("HKD1,234.50");
-    expect(formatMoney(0, null)).toBe("$0.00");
+describe("the month and weekday names", () => {
+  // The MONTHS/WEEKDAYS arrays and the parsing quirks. formatDay and MONTHS are
+  // @minty/shared/dates' since the shared-code refactor (2026-10-21); the weekday helpers stay
+  // here. There is no Hong Kong "today" on this branch: the page takes `server_today` from
+  // GET /home (lib/dashboard.ts).
+
+  it("names every month in three letters", () => {
+    const names = Array.from({ length: 12 }, (_, i) => formatDay(`2026-${String(i + 1).padStart(2, "0")}-01`).slice(3, 6));
+    expect(names).toEqual(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]);
+  });
+
+  it("names every weekday in three letters, from the UTC date", () => {
+    const days = Array.from({ length: 7 }, (_, i) => formatWeekdayShort(addDays("2026-10-18", i)).slice(0, 3));
+    expect(days).toEqual(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
+  });
+
+  it("shows nothing for a day that is not a real calendar date, and a datetime's day", () => {
+    // owner 2026-10-21: one shared module (@minty/shared/dates) - unpadded parts read as
+    // "05 Jan 2026" and month 13 as "01 undefined 2026"; anything not a real date is now ""
+    expect(formatDay("2026-1-5")).toBe("");
+    expect(formatDay("2026-13-01")).toBe("");
+    expect(formatDay("2026-02-30")).toBe("");
+    expect(formatDay("2026-10-04T18:00:00Z")).toBe("04 Oct 2026");
+  });
+
+  it("keeps the weekday helpers' own quirks (they stay in this app)", () => {
+    expect(formatWeekdayDay("2026-02-30")).toBe("Mon 30 Feb 2026"); // the weekday is 2 March's
+    expect(addDays("2026-02-30", 0)).toBe("2026-03-02");
   });
 });

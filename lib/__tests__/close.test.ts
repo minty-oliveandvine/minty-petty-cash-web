@@ -15,6 +15,8 @@ import {
   type ClosePage,
 } from "@/lib/close";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 const line = (over: Partial<CloseExpense> = {}): CloseExpense => ({ id: "e1", item: "General Expenses", supplier: "ParknShop", remarks: "", amount: 120.5, receipts: 1, ...over });
 
 function page(over: Partial<ClosePage> = {}, cash: Partial<ClosePage["cash"]> = {}): ClosePage {
@@ -57,8 +59,8 @@ describe("the difference - any cent counts (the owner, 2026-10-15)", () => {
   });
 
   it("reads in words, never as a coloured number", () => {
-    expect(closeDifference(page())).toBe("HKD20.00 short");
-    expect(closeDifference(page({}, { difference: { amount: 0.01, kind: "over", reason: "" } }))).toBe("HKD0.01 over");
+    expect(closeDifference(page())).toBe("HKD\u00a020.00 short");
+    expect(closeDifference(page({}, { difference: { amount: 0.01, kind: "over", reason: "" } }))).toBe("HKD\u00a00.01 over");
     expect(closeDifference(page({}, { difference: { amount: 0, kind: "none", reason: "" } }))).toBe("None");
   });
 });
@@ -72,13 +74,13 @@ describe("the summary rows", () => {
   });
 
   it("sums the Sales row up as the methods that took money, cash among them (Daily Closing Phase 1)", () => {
-    expect(salesSummary(page())).toBe("3 methods · Cash HKD820.50");
+    expect(salesSummary(page())).toBe("3 methods · Cash HKD\u00a0820.50");
     const quiet = page();
     quiet.sales = { ...quiet.sales, methods: quiet.sales.methods.map((m) => ({ ...m, amount: 0 })), cash: 0 };
-    expect(salesSummary(quiet)).toBe("0 methods · Cash HKD0.00");
+    expect(salesSummary(quiet)).toBe("0 methods · Cash HKD\u00a00.00");
     const one = page();
     one.sales = { ...one.sales, methods: [], cash: 10 };
-    expect(salesSummary(one)).toBe("1 method · Cash HKD10.00");
+    expect(salesSummary(one)).toBe("1 method · Cash HKD\u00a010.00");
   });
 
   it("sums the Expenses row up as entries and every receipt file", () => {
@@ -88,7 +90,7 @@ describe("the summary rows", () => {
   });
 
   it("sums the Cash Count row up as the deposit, or none today", () => {
-    expect(cashSummary(page())).toBe("HKD300.00 to the bank · Counted in the drawer");
+    expect(cashSummary(page())).toBe("HKD\u00a0300.00 to the bank · Counted in the drawer");
     expect(cashSummary(page({}, { bank_deposit: 0 }))).toBe("None today · Counted in the drawer");
   });
 });
@@ -103,8 +105,8 @@ describe("readiness (Daily Closing Phase 1: is this correct and ready to submit?
   });
 
   it("warns about a difference with no reason - any cent counts", () => {
-    expect(closeReadiness(page({}, { difference: { amount: -20, kind: "short", reason: "  " } }))).toEqual({ kind: "no-reason", title: "The count is HKD20.00 short" });
-    expect(closeReadiness(page({}, { difference: { amount: 0.01, kind: "over", reason: "" } }))).toEqual({ kind: "no-reason", title: "The count is HKD0.01 over" });
+    expect(closeReadiness(page({}, { difference: { amount: -20, kind: "short", reason: "  " } }))).toEqual({ kind: "no-reason", title: "The count is HKD\u00a020.00 short" });
+    expect(closeReadiness(page({}, { difference: { amount: 0.01, kind: "over", reason: "" } }))).toEqual({ kind: "no-reason", title: "The count is HKD\u00a00.01 over" });
   });
 
   it("gives way to the business-rule gate", () => {
@@ -130,7 +132,7 @@ describe("the gate and the refusals (15.9e: rule, reason, one action)", () => {
     const gate = closeGate(page({ problem: { error: "Hmm, it looks like your cash balance is negative. Could you fix that first?", to: "cash_count" } }, { expected: -20 }));
     expect(gate).toEqual({
       title: "The drawer is below zero",
-      message: "Expected in drawer comes to -HKD20.00. Lower the deposit or check the earlier stages before you submit.",
+      message: "Expected in drawer comes to -HKD\u00a020.00. Lower the deposit or check the earlier stages before you submit.",
       action: { label: "Go to Cash Count", step: "deposit" },
       reason: "Fix Cash Count first, then submit.",
     });

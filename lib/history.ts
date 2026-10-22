@@ -8,7 +8,8 @@
  * pages on the server; this file never cuts a list itself. Amounts are plain text, never coloured.
  */
 
-import { formatMoney } from "@/lib/money";
+
+import { money } from "@/lib/money";
 import { publishLabel } from "@/lib/report";
 import { reportHref, resumeHref } from "@/lib/wizardPages";
 
@@ -186,11 +187,11 @@ export function csvSavedMessage(filename: string): string {
   return `Reports exported to ${filename}.`;
 }
 
-/** A row's meta line: "Expenses HKD240.50 · Submitted by Olive", or a draft's "Daily Closing in progress". */
+/** A row's meta line: "Expenses HKD 240.50 · Submitted by Olive", or a draft's "Daily Closing in progress". */
 export function rowMeta(row: HistoryRow, code: string | null): string {
   if (row.status === "draft") return "Daily Closing in progress";
   const by = row.submitted_by ? ` · Submitted by ${row.submitted_by}` : "";
-  return `Expenses ${formatMoney(row.total_expenses, code)}${by}`;
+  return `Expenses ${money(row.total_expenses, code)}${by}`;
 }
 
 /**

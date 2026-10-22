@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 
+import { moduleClaims } from "@minty/shared/auth";
 import { useLeaveGuard } from "@minty/shared/leaveGuard";
 import { Button, Field, Icon, InlineAlert, inputClass, Modal, Skeleton } from "@minty/shared/ui";
 
@@ -13,8 +14,7 @@ import { CodesCard, MappingCard, NotConnectedCard } from "@/components/settings/
 import { MoreMenu, type MoreItem } from "@/components/ui/MoreMenu";
 import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
-import { moduleClaims } from "@/lib/auth";
-import { pettyCashHome, XERO_ANCHOR } from "@/lib/companyPages";
+import { COUNTRY_ANCHOR, pettyCashHome, XERO_ANCHOR } from "@/lib/companyPages";
 import { integrationUrl } from "@/lib/hub";
 import {
   addMethod,
@@ -137,7 +137,7 @@ export function PettyCashSettings() {
             {/* The settings pills, as on every other settings page (minty-web's SettingsShell): above the title. */}
             {auth ? (
               <div className="pb-3 pt-1">
-                <SettingsTabs entityId={entityId} entityName={entityName} billing={moduleClaims().billing} />
+                <SettingsTabs entityId={entityId} entityName={entityName} billing={moduleClaims(auth.token).billing} />
               </div>
             ) : null}
             <h1 className="text-display-m text-text-primary">Petty Cash settings</h1>
@@ -192,11 +192,14 @@ function SettingsCards({ initial, xeroLoad, entityId, entityName }: { initial: S
     setXero((x) => (x ? xeroStateOf(x.read) : x));
   });
 
-  // Opened at `#xero` (Setup Required, a deposit correction's missing accounts): the cards are drawn
-  // after the reads, so the browser's own jump to the anchor found nothing - go there once they are.
+  // Opened at `#xero` (Setup Required, a deposit correction's missing accounts) or `#country`
+  // (Setup Required's "Choose your company's currency"): the cards are drawn after the reads, so the
+  // browser's own jump to the anchor found nothing - go there once they are.
   const xeroSettled = xeroLoad.kind !== "loading";
   useEffect(() => {
-    if (xeroSettled && window.location.hash === `#${XERO_ANCHOR}`) document.getElementById(XERO_ANCHOR)?.scrollIntoView({ block: "start" });
+    const hash = window.location.hash;
+    if (hash === `#${COUNTRY_ANCHOR}`) document.getElementById(COUNTRY_ANCHOR)?.scrollIntoView({ block: "start" });
+    else if (xeroSettled && hash === `#${XERO_ANCHOR}`) document.getElementById(XERO_ANCHOR)?.scrollIntoView({ block: "start" });
   }, [xeroSettled]);
 
   const say = (message: string) => setToast({ id: Date.now(), message });
@@ -204,16 +207,19 @@ function SettingsCards({ initial, xeroLoad, entityId, entityName }: { initial: S
 
   return (
     <>
-      <CountryCard
-        settings={settings}
-        choice={choice}
-        onChoice={setChoice}
-        onSaved={({ message, ...read }) => {
-          setSettings(read);
-          setChoice(countryChoiceOf(read));
-          say(message);
-        }}
-      />
+      {/* `#country`: where Setup Required's "Choose your company's currency" opens. */}
+      <div id={COUNTRY_ANCHOR} className="min-w-0 scroll-mt-20">
+        <CountryCard
+          settings={settings}
+          choice={choice}
+          onChoice={setChoice}
+          onSaved={({ message, ...read }) => {
+            setSettings(read);
+            setChoice(countryChoiceOf(read));
+            say(message);
+          }}
+        />
+      </div>
       {/* `#xero`: the place a link to the Xero cards opens at, whatever state they are in. */}
       <div id={XERO_ANCHOR} className="min-w-0 scroll-mt-20">
         {xeroLoad.kind === "loading" ? (
@@ -351,7 +357,7 @@ function CountryCard({
     setSaving(true);
     setProblem(null);
     try {
-      onSaved(await pettyCashFetch<SettingsAnswer>("/settings/country", { method: "PUT", json: body }));
+      onSaved(await pettyCashFetch<SettingsAnswer>("/settings/country", { method: "PUT", body }));
     } catch (err) {
       // A 401 has already gone back through the hand-off.
       if (!(err instanceof ApiError && err.status === 401)) setProblem(err instanceof ApiError ? err.message : NOT_SAVED);

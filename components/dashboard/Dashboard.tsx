@@ -30,6 +30,7 @@ import {
   launchState,
   recentReports,
   reportSpan,
+  setupRequired,
   startProblem,
   type Home,
   type Launch,
@@ -37,8 +38,8 @@ import {
 import { formatWeekdayDay, formatWeekdayShort, savedText } from "@/lib/dates";
 import { takeFlash, type FlashKind } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
+import { money } from "@/lib/money";
 import { subscriptionSettingsUrl } from "@/lib/hub";
-import { formatMoney } from "@/lib/money";
 import { claimSubscriptionNotice, fetchSubscriptionNotice, type SubscriptionNotice } from "@/lib/subscriptionNotice";
 import { historyHref, reportHref, resumeHref, stepHref } from "@/lib/wizardPages";
 
@@ -58,9 +59,10 @@ const FLASH_TONE = { error: "danger", warning: "warning", success: "success", in
  * (today's Daily Closing over its five stages, Part 15.15), the business-rule gate when an earlier
  * day is unfinished, and the recent reports. No calendar, no Quick Actions, no KPIs (15.6).
  * Its rules live in lib/dashboard.ts and lib/dailyClosing.ts; what it reads is `GET /home`. The
- * stages, the Daily Report and the report history it opens are this app's. Its two settings links
- * (Setup Required, a deposit correction's missing accounts) name Xero mappings, so they open this
- * app's settings at its Xero cards (`xeroSettingsHref`) - never a Flask page.
+ * stages, the Daily Report and the report history it opens are this app's. Its settings links open
+ * this app's settings, never a Flask page: Setup Required's "Choose your company's currency" at
+ * Country & currency (`currencySettingsHref`), its Xero mappings and a deposit correction's missing
+ * accounts at the Xero cards (`xeroSettingsHref`).
  */
 export function Dashboard() {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -148,6 +150,8 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
   const readOnly = home.permissions.read_only;
   const launch = launchState(home);
   const gate = gateDay(home);
+  // No currency or incomplete Xero settings: Setup Required holds the page, so no report can start.
+  const setup = setupRequired(home, entityId, entityName);
 
   function open(day: string) {
     leaveTo(stepHref(entityId, entityName, "opening", day));
@@ -176,7 +180,7 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
     try {
       const answer = await pettyCashFetch<{ next_transaction_date: string }>("/deposit-correction", {
         method: "POST",
-        json: { kind, date: confirming.day, amount },
+        body: { kind, date: confirming.day, amount },
       });
       leaveTo(stepHref(entityId, entityName, "opening", answer.next_transaction_date));
     } catch (err) {
@@ -288,7 +292,7 @@ function LaunchBody({ home, now, entityId, entityName }: { home: Home; now: Date
         </>
       ) : null}
 
-      <SetupRequiredModal open={!home.xero_settings.complete} missing={home.xero_settings.missing} settingsHref={xeroSettingsHref(entityId, entityName)} />
+      <SetupRequiredModal open={setup.open} items={setup.items} fallbackHref={xeroSettingsHref(entityId, entityName)} />
     </>
   );
 }
@@ -437,7 +441,7 @@ function RecentReports({ home, entityId, entityName }: { home: Home; entityId: s
                 </span>
                 <span className="flex shrink-0 flex-col items-end gap-1">
                   <span className="text-body-m text-text-primary" translate="no">
-                    {formatMoney(report.closing_balance, home.currency_code)}
+                    {money(report.closing_balance, home.currency_code)}
                   </span>
                   <StatusPill label="Submitted" tone="info" />
                 </span>

@@ -5,8 +5,10 @@
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-import { companyRef } from "./companyRef";
+import { companyRef } from "@minty/shared/e2e";
 import { expectNoHorizontalScroll, mintModuleToken } from "./helpers";
+
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -147,7 +149,7 @@ const lineDrawer = (page: Page) => page.getByRole("dialog", { name: "Edit expens
 
 test("without edit_details nothing can be edited", async ({ page }) => {
   await openWith(page, reportAnswer({ permissions: { edit: true, delete: true, publish: true, share: true, edit_details: false }, options: null }));
-  await expect(page.getByText("Cash was HKD20.00 short")).toBeVisible();
+  await expect(page.getByText("Cash was HKD 20.00 short")).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit reason" })).toHaveCount(0);
   await open(page, "Expenses (1)");
   await expect(editLine(page)).toHaveCount(0);
@@ -178,7 +180,7 @@ test("the reason is saved, the page redraws from the answer and a toast says so"
   });
   await page.getByRole("button", { name: "Edit reason" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit the reason" });
-  await expect(dialog).toContainText("Cash was HKD20.00 short.");
+  await expect(dialog).toContainText("Cash was HKD 20.00 short.");
   const field = dialog.getByRole("textbox", { name: /Reason for the difference/ });
   await expect(field).toBeFocused();
   await expect(field).toHaveAttribute("aria-required", "true");
@@ -260,7 +262,7 @@ test("where the cash came from is saved; a refusal stays in the dialog", async (
   await expect(cash).toContainText("Company bank");
   await page.getByRole("button", { name: "Edit where the cash came from" }).click();
   const dialog = page.getByRole("dialog", { name: "Where the cash came from" });
-  await expect(dialog).toContainText("HKD100.00 was added to the drawer. The amount stays as it is.");
+  await expect(dialog).toContainText("HKD 100.00 was added to the drawer. The amount stays as it is.");
   await expect(dialog.getByRole("radio", { name: "Company bank" })).toBeChecked();
   await dialog.getByText("Personal").click();
   await dialog.getByRole("button", { name: "Save" }).click();
@@ -284,7 +286,7 @@ test("an expense line sends only what changed; a new account renames it", async 
   await open(page, "Expenses (1)");
   await editLine(page).click();
   const drawer = lineDrawer(page);
-  await expect(drawer).toContainText("HKD120.50");
+  await expect(drawer).toContainText("HKD 120.50");
   await expect(drawer.getByText("The amount can't be changed here.")).toBeVisible();
   await expect(drawer.getByRole("textbox", { name: /Amount/ })).toHaveCount(0);
   await expect(drawer.getByRole("combobox", { name: /Supplier/ })).toHaveValue("ParknShop");

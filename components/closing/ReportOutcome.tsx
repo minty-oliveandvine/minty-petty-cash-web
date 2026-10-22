@@ -12,7 +12,7 @@ import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
 import { integrationUrl } from "@/lib/hub";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import { countedFact, differencePill, outcomeLine, outcomeTitle, xeroLine, type Outcome } from "@/lib/outcome";
 import { isWorking, publishedMessage } from "@/lib/publish";
 import { useAuth } from "@/lib/useAuth";
@@ -153,8 +153,8 @@ export function Done({
       {outcome.submitted ? (
         <>
           <dl className="w-full rounded-xl border border-border-subtle bg-surface-card px-4 text-left">
-            <Fact label="Sales">{formatMoney(outcome.total_sales, code)}</Fact>
-            <Fact label="Expenses">{formatMoney(outcome.total_expenses, code)}</Fact>
+            <Fact label="Sales">{money(outcome.total_sales, code)}</Fact>
+            <Fact label="Expenses">{money(outcome.total_expenses, code)}</Fact>
             <Fact label="Cash counted">
               <span>{countedFact(outcome)}</span>
               {pill ? <StatusPill label={pill} tone="warning" /> : null}

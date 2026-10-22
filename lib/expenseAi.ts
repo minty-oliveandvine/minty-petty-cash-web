@@ -21,9 +21,10 @@
  * the server's (`EXPENSE_AI_CONF_*`); this side follows `band` and `applied` as they come.
  */
 
-import { groupMoney, parseMoney } from "@/lib/currencyInput";
+import { formatAmount, parseAmount } from "@minty/shared/money";
+
 import type { ExpenseAccount, Supplier } from "@/lib/expenses";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 
 export type Band = "high" | "medium" | "low";
 
@@ -138,7 +139,14 @@ const hedge = (band: Band) => (band === "low" ? "might read" : "reads");
 
 const emptyText = (text: string) => text.trim() === "";
 const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-const sameAmount = (a: string, b: string) => Math.abs(parseMoney(a) - parseMoney(b)) < 0.005;
+const sameAmount = (a: string, b: string) => Math.abs((parseAmount(a) ?? 0) - (parseAmount(b) ?? 0)) < 0.005;
+
+/**
+ * The receipt's amount as plain digits: the reader may send it with currency letters, a symbol or
+ * spaces ("HKD 448.80", "$ 1,200"), which the shared formatter would refuse - only the digits, the
+ * point and a minus are kept (a minus keeps a negative reading out, as before).
+ */
+const receiptAmount = (raw: string) => raw.replace(/[^\d.-]/g, "");
 
 /** More than a week between the receipt's date and the day being closed: said, never blocking. */
 export function dateNote(date: ReadField | undefined, day: string): string {
@@ -182,14 +190,15 @@ export function withSuggestions(
 
   // The amount.
   const amount = s.amount;
-  if (amount?.value && parseMoney(amount.value) > 0) {
-    const shown = groupMoney(amount.value);
+  const read = amount?.value ? receiptAmount(amount.value) : "";
+  const shown = formatAmount(read);
+  if (amount && shown && (parseAmount(read) ?? 0) > 0) {
     if (amount.applied && emptyText(values.amount)) fill("amount", { amount: shown }, amount.band);
     else if (emptyText(values.amount))
-      notes.amount = { text: `The receipt ${hedge(amount.band)} ${formatMoney(parseMoney(shown), code)}.`, fill: { amount: shown }, band: amount.band };
-    else if (!sameAmount(values.amount, amount.value))
+      notes.amount = { text: `The receipt ${hedge(amount.band)} ${money(shown, code)}.`, fill: { amount: shown }, band: amount.band };
+    else if (!sameAmount(values.amount, read))
       notes.amount = {
-        text: `The receipt ${hedge(amount.band)} ${formatMoney(parseMoney(shown), code)}, not ${formatMoney(parseMoney(values.amount), code)}.`,
+        text: `The receipt ${hedge(amount.band)} ${money(shown, code)}, not ${money(parseAmount(values.amount) ?? 0, code)}.`,
         fill: { amount: shown },
         band: amount.band,
       };

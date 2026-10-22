@@ -25,6 +25,8 @@ import {
   type DailyReport,
 } from "@/lib/report";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 const line = (over: Partial<ExpenseLine> = {}): ExpenseLine => ({
   id: "e1",
   item: "General Expenses",
@@ -107,18 +109,18 @@ describe("the Daily Report's header", () => {
 describe("the figures", () => {
   it("are exactly three KPIs, the server's", () => {
     expect(reportKpis(report())).toEqual([
-      { label: "Total sales", value: "HKD1,070.50", meta: null },
-      { label: "Total expenses", value: "HKD240.50", meta: "2 expenses" },
-      { label: "Cash position", value: "HKD760.00", meta: "Counted, with the safe box" },
+      { label: "Total sales", value: "HKD\u00a01,070.50", meta: null },
+      { label: "Total expenses", value: "HKD\u00a0240.50", meta: "2 expenses" },
+      { label: "Cash position", value: "HKD\u00a0760.00", meta: "Counted, with the safe box" },
     ]);
     expect(reportKpis(report({ expenses: { lines: [line()], total: 120.5 } }))[1].meta).toBe("1 expense");
-    expect(reportKpis(report({ kpis: { total_sales: 0, total_expenses: 0, cash_position: -20 } }))[2].value).toBe("-HKD20.00");
+    expect(reportKpis(report({ kpis: { total_sales: 0, total_expenses: 0, cash_position: -20 } }))[2].value).toBe("-HKD\u00a020.00");
   });
 
   it("state a difference as a fact, any cent counting, with its note", () => {
-    expect(differenceAlert(report())).toEqual({ title: "Cash was HKD20.00 short", body: "Note: Change given twice" });
-    expect(differenceAlert(report({}, { difference: { amount: 0.01, kind: "over", reason: " " } }))).toEqual({ title: "Cash was HKD0.01 over", body: "No reason was given." });
-    expect(differenceAlert(report({}, { difference: { amount: -0.005, kind: "short", reason: "" } }))?.title).toBe("Cash was HKD0.01 short");
+    expect(differenceAlert(report())).toEqual({ title: "Cash was HKD\u00a020.00 short", body: "Note: Change given twice" });
+    expect(differenceAlert(report({}, { difference: { amount: 0.01, kind: "over", reason: " " } }))).toEqual({ title: "Cash was HKD\u00a00.01 over", body: "No reason was given." });
+    expect(differenceAlert(report({}, { difference: { amount: -0.005, kind: "short", reason: "" } }))?.title).toBe("Cash was HKD\u00a00.01 short");
     expect(differenceAlert(report({}, { difference: { amount: 0, kind: "none", reason: "" } }))).toBeNull();
   });
 
@@ -135,23 +137,30 @@ describe("the figures", () => {
 
   it("run the cash in the order of the day, the difference in words last", () => {
     expect(cashRows(report())).toEqual([
-      { label: "Starting cash balance", value: "HKD500.00" },
-      { label: "Added to the drawer", value: "HKD100.00" },
+      { label: "Starting cash balance", value: "HKD\u00a0500.00" },
+      { label: "Added to the drawer", value: "HKD\u00a0100.00" },
       { label: "Where the cash came from", value: "Company bank", words: true },
-      { label: "Cash sales", value: "HKD820.50" },
-      { label: "Expenses", value: "HKD240.50" },
-      { label: "Cash taken for bank deposit", value: "HKD300.00" },
-      { label: "Expected in drawer", value: "HKD780.00" },
-      { label: "Counted in the drawer", value: "HKD760.00" },
-      { label: "In the safe box", value: "HKD0.00" },
-      { label: "Difference", value: "HKD20.00 short", total: true, words: true },
+      { label: "Cash sales", value: "HKD\u00a0820.50" },
+      { label: "Expenses", value: "HKD\u00a0240.50" },
+      { label: "Cash taken for bank deposit", value: "HKD\u00a0300.00" },
+      { label: "Expected in drawer", value: "HKD\u00a0780.00" },
+      { label: "Counted in the drawer", value: "HKD\u00a0760.00" },
+      { label: "In the safe box", value: "HKD\u00a00.00" },
+      { label: "Difference", value: "HKD\u00a020.00 short", total: true, words: true },
     ]);
     // nothing added: no source; a negative expectation keeps its sign
     const rows = cashRows(report({}, { cash_addition: 0, expected: -20, difference: { amount: 0, kind: "none", reason: "" } }));
     expect(rows.map((r) => r.label)).not.toContain("Where the cash came from");
-    expect(rows.find((r) => r.label === "Expected in drawer")?.value).toBe("-HKD20.00");
+    expect(rows.find((r) => r.label === "Expected in drawer")?.value).toBe("-HKD\u00a020.00");
     expect(rows.at(-1)?.value).toBe("None");
     expect(cashRows(report({}, { cash_addition_type: "personal" }))[2].value).toBe("Personal");
+  });
+
+  it("say so on an old report whose company has no currency - never $, never a bare number (owner 2026-10-22)", () => {
+    const old = report({ currency_code: null });
+    expect(reportKpis(old)[0].value).toBe("1,070.50 (No currency selected)");
+    expect(cashRows(old)[0]).toEqual({ label: "Starting cash balance", value: "500.00 (No currency selected)" });
+    expect(cashRows(old).at(-1)?.value).toBe("20.00 (No currency selected) short");
   });
 });
 
@@ -258,7 +267,7 @@ describe("where the money came from: the sales mix", () => {
 
   it("reads as text for its role=img label", () => {
     const mix = salesMix(report({ sales: { methods: [method("visa_sales", "Visa", 120)], cash: 300, total: 420 } }));
-    expect(salesMixSummary(mix, "HKD")).toBe("Sales by method: Cash HKD300.00, 71%; Visa HKD120.00, 29%");
+    expect(salesMixSummary(mix, "HKD")).toBe("Sales by method: Cash HKD\u00a0300.00, 71%; Visa HKD\u00a0120.00, 29%");
   });
 });
 
@@ -308,6 +317,6 @@ describe("where the money went: the expenses by account", () => {
   });
 
   it("reads as text for its role=img label", () => {
-    expect(expenseBarsSummary(expenseBars(report()), "HKD")).toBe("Expenses by account: General Expenses HKD120.50; No account HKD120.00");
+    expect(expenseBarsSummary(expenseBars(report()), "HKD")).toBe("Expenses by account: General Expenses HKD\u00a0120.50; No account HKD\u00a0120.00");
   });
 });

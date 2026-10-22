@@ -18,6 +18,8 @@ import {
   type SharedReport,
 } from "@/lib/share";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 const SECRET = "AbCdEfGhIjKlMnOpQrStUvWxYz012-_9";
 const PATH = `OV/13_Oct_2026/${SECRET}`;
 // On the device's clock, as the Daily Report's audit facts are (lib/__tests__/report.test.ts).
@@ -144,35 +146,35 @@ describe("reading a shared report", () => {
 describe("a shared report on the page", () => {
   it("shows the three KPIs with the expense count", () => {
     expect(sharedKpis(full())).toEqual([
-      { label: "Total sales", value: "HKD1,070.50", meta: null },
-      { label: "Total expenses", value: "HKD240.50", meta: "2 expenses" },
-      { label: "Cash position", value: "HKD760.00", meta: "Counted, with the safe box" },
+      { label: "Total sales", value: "HKD\u00a01,070.50", meta: null },
+      { label: "Total expenses", value: "HKD\u00a0240.50", meta: "2 expenses" },
+      { label: "Cash position", value: "HKD\u00a0760.00", meta: "Counted, with the safe box" },
     ]);
   });
 
   it("shows only the KPIs that arrived, and no count without the lines", () => {
-    expect(sharedKpis(full({ kpis: { total_expenses: 10 }, expenses: undefined }))).toEqual([{ label: "Total expenses", value: "HKD10.00", meta: null }]);
+    expect(sharedKpis(full({ kpis: { total_expenses: 10 }, expenses: undefined }))).toEqual([{ label: "Total expenses", value: "HKD\u00a010.00", meta: null }]);
     expect(sharedKpis(full({ kpis: undefined }))).toEqual([]);
   });
 
   it("lists the sales by method as the Daily Report does, Deliveroo left out", () => {
     expect(sharedSales(full())).toEqual([
-      { key: "octopus_sales", label: "Octopus", value: "HKD200.00" },
-      { key: "cash", label: "Cash", value: "HKD820.50" },
-      { key: "total", label: "Total sales", value: "HKD1,070.50", total: true },
+      { key: "octopus_sales", label: "Octopus", value: "HKD\u00a0200.00" },
+      { key: "cash", label: "Cash", value: "HKD\u00a0820.50" },
+      { key: "total", label: "Total sales", value: "HKD\u00a01,070.50", total: true },
     ]);
-    expect(sharedSales(full({ sales: { total: 5 } }))).toEqual([{ key: "total", label: "Total sales", value: "HKD5.00", total: true }]);
+    expect(sharedSales(full({ sales: { total: 5 } }))).toEqual([{ key: "total", label: "Total sales", value: "HKD\u00a05.00", total: true }]);
     expect(sharedSales(full({ sales: undefined }))).toBeNull();
   });
 
   it("names each expense by its description and supplier, receipts by name only", () => {
     const expenses = sharedExpenses(full());
     expect(expenses?.lines).toEqual([
-      { title: "General Expenses", meta: "ParknShop", remarks: "Bags", value: "HKD120.50" },
-      { title: "Expense", meta: "No supplier", remarks: null, value: "HKD120.00" },
+      { title: "General Expenses", meta: "ParknShop", remarks: "Bags", value: "HKD\u00a0120.50" },
+      { title: "Expense", meta: "No supplier", remarks: null, value: "HKD\u00a0120.00" },
     ]);
-    expect(expenses?.total).toBe("HKD240.50");
-    expect(expenses?.receipts).toEqual([{ name: "parknshop.png", title: "General Expenses", value: "HKD120.50" }]);
+    expect(expenses?.total).toBe("HKD\u00a0240.50");
+    expect(expenses?.receipts).toEqual([{ name: "parknshop.png", title: "General Expenses", value: "HKD\u00a0120.50" }]);
     // a supplier sent as an object reads the same
     expect(sharedExpenses(full({ expenses: { lines: [{ item: "Ice", supplier: { name: "7-Eleven" }, amount: 5 }] } }))?.lines[0].meta).toBe("7-Eleven");
   });
@@ -196,7 +198,7 @@ describe("a shared report on the page", () => {
       "In the safe box",
       "Difference",
     ]);
-    expect(sharedCash(full({ cash: { counted: 7 } }))).toEqual([{ label: "Counted in the drawer", value: "HKD7.00" }]);
+    expect(sharedCash(full({ cash: { counted: 7 } }))).toEqual([{ label: "Counted in the drawer", value: "HKD\u00a07.00" }]);
     expect(sharedCash(full({ cash: undefined }))).toBeNull();
   });
 

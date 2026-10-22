@@ -6,8 +6,10 @@
 
 import { expect, test, type Page, type Request } from "@playwright/test";
 
-import { companyRef } from "./companyRef";
+import { companyRef } from "@minty/shared/e2e";
 import { expectNoHorizontalScroll, mintModuleToken } from "./helpers";
+
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -150,25 +152,25 @@ test("the shared report: read-only, with no actions or navigation, and no Author
   const kpis = page.locator("main dl").filter({ has: page.locator("dt", { hasText: "Cash position" }) });
   await expect(kpis.locator("dt")).toHaveText(["Cash position", "Total sales", "Total expenses"]);
   await expect(value(page, "Cash position", kpis)).toHaveClass(/text-display-xl/);
-  await expect(value(page, "Total sales", kpis)).toHaveText("HKD1,070.50");
+  await expect(value(page, "Total sales", kpis)).toHaveText("HKD 1,070.50");
   // no charts here: the public read's expense lines carry no account
   await expect(page.getByRole("heading", { name: "Where the money came from and went" })).toHaveCount(0);
   await expect(kpis.getByText("2 expenses", { exact: true })).toBeVisible();
-  const fact = page.getByRole("status").filter({ hasText: "Cash was HKD20.00 short" });
+  const fact = page.getByRole("status").filter({ hasText: "Cash was HKD 20.00 short" });
   await expect(fact).toHaveAttribute("data-tone", "warning");
   await expect(fact).toContainText("Note: Change given twice");
 
   await expect(page.getByText("Octopus")).toBeHidden();
   const sales = await open(page, "Sales by method");
-  await expect(value(page, "Octopus", sales)).toHaveText("HKD200.00");
+  await expect(value(page, "Octopus", sales)).toHaveText("HKD 200.00");
   await expect(sales.getByText("Deliveroo")).toHaveCount(0);
-  await expect(value(page, "Total sales", sales)).toHaveText("HKD1,070.50");
+  await expect(value(page, "Total sales", sales)).toHaveText("HKD 1,070.50");
 
   const expenses = await open(page, "Expenses (2)");
   await expect(expenses.getByText("General Expenses", { exact: true })).toBeVisible();
   await expect(expenses.getByText("ParknShop", { exact: true })).toBeVisible();
   await expect(expenses.getByText("No supplier")).toBeVisible();
-  await expect(value(page, "Total expenses", expenses)).toHaveText("HKD240.50");
+  await expect(value(page, "Total expenses", expenses)).toHaveText("HKD 240.50");
 
   // a receipt by name only: no View, nothing to press
   const receipts = await open(page, "Receipts (1)");
@@ -177,8 +179,8 @@ test("the shared report: read-only, with no actions or navigation, and no Author
 
   const cash = await open(page, "Cash");
   await expect(value(page, "Where the cash came from", cash)).toHaveText("Company bank");
-  await expect(value(page, "Difference", cash)).toHaveText("HKD20.00 short");
-  await expect(value(page, "Closing balance")).toHaveText("HKD760.00");
+  await expect(value(page, "Difference", cash)).toHaveText("HKD 20.00 short");
+  await expect(value(page, "Closing balance")).toHaveText("HKD 760.00");
   await expect(page.getByText("Submitted by Olive Tan · Tue 13 Oct 2026, 6:12 pm")).toBeVisible();
   await expect(page.getByText("This link works until Thu 12 Nov 2026, 6:12 pm")).toBeVisible();
 
@@ -195,7 +197,7 @@ test("a trimmed answer shows only what arrived", async ({ page }) => {
   const kpis = page.locator("main dl").first();
   await expect(kpis.locator("dt")).toHaveText(["Total sales"]);
   await expect(page.locator("summary")).toHaveCount(0);
-  await expect(value(page, "Closing balance")).toHaveText("HKD12.00");
+  await expect(value(page, "Closing balance")).toHaveText("HKD 12.00");
   await expect(page.getByText(/^Submitted/)).toHaveCount(0);
 });
 

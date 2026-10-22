@@ -10,7 +10,8 @@
  * shows only while another saved receipt would stay.
  */
 
-import { parseMoney } from "@/lib/currencyInput";
+import { parseAmount } from "@minty/shared/money";
+
 import type { ExpenseAccount, ExpenseLine, Receipt } from "@/lib/expenses";
 import { lineChanges, lineEditForm, type LineChanges, type LineValues } from "@/lib/reportEdits";
 
@@ -20,7 +21,7 @@ export type DraftLineChanges = LineChanges & { amount?: string; remove_receipt_i
 /** The changes from the line as saved - nothing for what is the same. */
 export function draftLineChanges(line: ExpenseLine, values: DraftLineValues): DraftLineChanges {
   const changes: DraftLineChanges = lineChanges(line, values);
-  const amount = parseMoney(values.amount);
+  const amount = parseAmount(values.amount) ?? 0;
   if (Math.round(amount * 100) !== Math.round(line.amount * 100)) changes.amount = String(amount);
   // A new receipt replaces them all, so a removal only travels without one.
   const removing = values.removeReceiptIds.filter((id) => line.receipts.some((r) => r.id === id));

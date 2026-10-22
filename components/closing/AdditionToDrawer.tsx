@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { buttonClass, InlineAlert, PageBanner } from "@minty/shared/ui";
+import { formatAmount, parseAmount } from "@minty/shared/money";
 
 import { AmountInput, openStep, refused, StageActions, StagePage, stageSteps, useLeaveHold, WorkflowHeader, type StageContext } from "@/components/closing/Stage";
-import { negativeGate, openingCash, signedMoney, startingSource, startingSplit } from "@/lib/addition";
+import { negativeGate, openingCash, startingSource, startingSplit } from "@/lib/addition";
 import { pettyCashFetch } from "@/lib/apiClient";
-import { groupMoney, parseMoney } from "@/lib/currencyInput";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import type { OpeningPage, OpeningSaved } from "@/lib/opening";
 import { reportStatus } from "@/lib/reportStatus";
 
@@ -40,7 +40,7 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
   const router = useRouter();
   const savedAddition = page.cash_addition ?? 0;
   const savedWithdrawal: Withdrawal = page.withdrawal === "company" ? "company" : "personal";
-  const [addition, setAddition] = useState(page.cash_addition ? groupMoney(String(page.cash_addition)) : "");
+  const [addition, setAddition] = useState(page.cash_addition ? formatAmount(page.cash_addition) : "");
   const [withdrawal, setWithdrawal] = useState<Withdrawal>(savedWithdrawal);
   const [saving, setSaving] = useState<"next" | "exit" | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -52,7 +52,7 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
   const gate = negativeGate(page, opening);
   const source = startingSource(page);
   const split = startingSplit(page);
-  const dirty = parseMoney(addition) !== savedAddition || withdrawal !== savedWithdrawal;
+  const dirty = (parseAmount(addition) ?? 0) !== savedAddition || withdrawal !== savedWithdrawal;
   const hold = useLeaveHold(dirty, saving !== null);
   const progress = page.draft ?? { current_section: null, completed_sections: [] };
   const push = (href: string) => router.push(href);
@@ -70,7 +70,7 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
     try {
       const answer = await pettyCashFetch<OpeningSaved>("/reports/opening", {
         method: "PUT",
-        json: { transaction_date: day, cash_addition: parseMoney(addition), withdrawal, action },
+        body: { transaction_date: day, cash_addition: parseAmount(addition) ?? 0, withdrawal, action },
       });
       if (answer.next === "sales") openStep(push, entityId, entityName, "sales", answer.transaction_date);
       else push(home);
@@ -112,7 +112,7 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
             </Link>
           }
         >
-          It closed at <span translate="no">{signedMoney(gate.balance, code)}</span>, and a day can&apos;t start from
+          It closed at <span translate="no">{money(gate.balance, code)}</span>, and a day can&apos;t start from
           negative cash. This usually means the bank deposit was more than the cash in the drawer. Correct the deposit
           from Petty Cash, then start this day again.
         </PageBanner>
@@ -136,7 +136,7 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
             <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
               <dt className="min-w-0 text-body-m font-semibold text-text-primary">Starting cash</dt>
               <dd className="shrink-0 text-body-m font-semibold text-text-primary" translate="no">
-                {signedMoney(page.starting_cash_balance, code)}
+                {money(page.starting_cash_balance, code)}
               </dd>
               {source !== "none" ? (
                 <dd className="basis-full text-body-s text-text-secondary">
@@ -149,13 +149,13 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
                 <div className="flex min-w-0 items-baseline justify-between gap-4">
                   <dt className="min-w-0 text-body-m text-text-secondary">In the cash drawer</dt>
                   <dd className="shrink-0 text-body-m text-text-secondary" translate="no">
-                    {signedMoney(split.drawer, code)}
+                    {money(split.drawer, code)}
                   </dd>
                 </div>
                 <div className="flex min-w-0 items-baseline justify-between gap-4">
                   <dt className="min-w-0 text-body-m text-text-secondary">In the safebox</dt>
                   <dd className="shrink-0 text-body-m text-text-secondary" translate="no">
-                    {signedMoney(split.safebox, code)}
+                    {money(split.safebox, code)}
                   </dd>
                 </div>
               </>
@@ -211,13 +211,13 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: Opening
           <dl className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-lg bg-surface-sunk px-4 py-3">
             <dt className="min-w-0 text-title-m text-text-primary">Opening cash</dt>
             <dd className="shrink-0 text-title-m text-text-primary" translate="no" aria-live="polite">
-              {signedMoney(opening, code)}
+              {money(opening, code)}
             </dd>
             <dd className="basis-full text-body-s text-text-secondary">Starting cash plus the cash added.</dd>
           </dl>
           {gate?.kind === "short" ? (
             <InlineAlert tone="warning" title="Opening cash is below zero">
-              Add at least <span translate="no">{formatMoney(gate.addAtLeast, code)}</span> to the drawer to continue.
+              Add at least <span translate="no">{money(gate.addAtLeast, code)}</span> to the drawer to continue.
             </InlineAlert>
           ) : null}
           {problem ? <InlineAlert tone="danger">{problem}</InlineAlert> : null}

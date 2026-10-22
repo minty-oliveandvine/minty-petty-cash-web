@@ -9,6 +9,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: 
 import { Done } from "@/components/closing/ReportOutcome";
 import type { Outcome } from "@/lib/outcome";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 const outcome = (over: Partial<Outcome> = {}): Outcome => ({
   report_id: "r1",
   transaction_date: "2026-10-13",
@@ -38,9 +40,9 @@ describe("the Completion state", () => {
     const title = screen.getByRole("heading", { level: 1, name: "Today is closed" });
     expect(title).toHaveFocus();
     expect(screen.getByText("The Daily Report for Tue 13 Oct 2026 is submitted. Nice work — see you tomorrow.")).toBeInTheDocument();
-    expect(screen.getByText("Sales").nextSibling).toHaveTextContent("HKD7,000.00");
-    expect(screen.getByText("Expenses").nextSibling).toHaveTextContent("HKD530.00");
-    expect(screen.getByText("Cash counted").nextSibling).toHaveTextContent("HKD6,470.00HKD20.00 short");
+    expect(screen.getByText("Sales").nextSibling).toHaveTextContent("HKD 7,000.00");
+    expect(screen.getByText("Expenses").nextSibling).toHaveTextContent("HKD 530.00");
+    expect(screen.getByText("Cash counted").nextSibling).toHaveTextContent("HKD 6,470.00HKD 20.00 short");
     expect(screen.getByRole("link", { name: "View report" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back to home" })).toHaveAttribute("href", "/home");
     expect(screen.queryByRole("button", { name: "Start the next day" })).toBeNull();
@@ -49,7 +51,7 @@ describe("the Completion state", () => {
   it("says another day's report is submitted, and no pill when the count matched", () => {
     renderDone(outcome({ is_today: false, difference: { amount: 0, kind: "none", has_reason: false } }));
     expect(screen.getByRole("heading", { level: 1, name: "The report is submitted" })).toBeInTheDocument();
-    expect(screen.getByText("Cash counted").nextSibling).toHaveTextContent(/^HKD6,470.00$/);
+    expect(screen.getByText("Cash counted").nextSibling).toHaveTextContent(/^HKD 6,470.00$/);
   });
 
   it("has one quiet Xero line: Send to Xero asks first", async () => {

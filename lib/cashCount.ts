@@ -15,8 +15,9 @@
  * cash on hand; Save & Next with a difference needs a reason (Save & Exit doesn't).
  */
 
-import { groupMoney, parseMoney } from "@/lib/currencyInput";
-import { formatMoney } from "@/lib/money";
+import { CODE_SPACE, formatAmount, formatPrice, parseAmount } from "@minty/shared/money";
+
+import { money } from "@/lib/money";
 import type { OpeningPage } from "@/lib/opening";
 
 export type Denomination = {
@@ -25,6 +26,8 @@ export type Denomination = {
   value: number;
   /** "note" or "coin" (the catalogue's `type`). */
   kind: string;
+  /** The catalogue's `cash_name` ("$1,000"); null when it has none, absent from an API without the field. */
+  name?: string | null;
   /** The saved count; 0 when none. */
   count: number;
 };
@@ -80,7 +83,7 @@ export function belowZero(page: CashCountPage): boolean {
 
 /** Expected in the drawer: the cash on hand less the deposit as typed. */
 export function expectedCash(page: CashCountPage, depositText: string): number {
-  return cents(page.cash_on_hand - parseMoney(depositText));
+  return cents(page.cash_on_hand - (parseAmount(depositText) ?? 0));
 }
 
 /**
@@ -88,8 +91,8 @@ export function expectedCash(page: CashCountPage, depositText: string): number {
  * API's own sentence). An optional field otherwise never warns.
  */
 export function depositProblem(page: CashCountPage, depositText: string): string | null {
-  if (belowZero(page) || parseMoney(depositText) <= page.cash_on_hand) return null;
-  return `The deposit can't be more than the cash on hand. Enter ${formatMoney(page.cash_on_hand, page.currency_code)} or less.`;
+  if (belowZero(page) || (parseAmount(depositText) ?? 0) <= page.cash_on_hand) return null;
+  return `The deposit can't be more than the cash on hand. Enter ${money(page.cash_on_hand, page.currency_code)} or less.`;
 }
 
 /** A count as typed: digits only, at most 7 of them (a million is the limit). */
@@ -123,7 +126,7 @@ export function drawerTotal(denominations: Denomination[], counts: Record<string
 
 /** Counted: the drawer and the safebox together. */
 export function countedCash(drawer: number, safeboxText: string): number {
-  return cents(drawer + parseMoney(safeboxText));
+  return cents(drawer + (parseAmount(safeboxText) ?? 0));
 }
 
 export type Difference = { amount: number; kind: "short" | "over" | "none" };
@@ -134,10 +137,10 @@ export function difference(counted: number, expected: number): Difference {
   return { amount, kind: amount < 0 ? "short" : amount > 0 ? "over" : "none" };
 }
 
-/** The difference in words, never in colour alone (15.15): "HKD20.00 short", "HKD0.01 over", "None". */
+/** The difference in words, never in colour alone (15.15): "HKD 20.00 short", "HKD 0.01 over", "None". */
 export function differenceText(diff: Difference, code: string | null): string {
   if (diff.kind === "none") return "None";
-  return `${formatMoney(Math.abs(diff.amount), code)} ${diff.kind}`;
+  return `${money(Math.abs(diff.amount), code)} ${diff.kind}`;
 }
 
 /**
@@ -156,10 +159,16 @@ export function reasonHelper(reason: string): string {
   return `So the reviewer knows what happened. ${reason.trim().length} of ${MAX_REASON} characters.`;
 }
 
-/** A denomination's name: "HKD1,000", "HKD0.50". */
+/**
+ * A denomination's name: the currency code, a non-breaking space and its `cash_name` without the
+ * symbol ("$1,000" -> "HKD 1,000", "S$50" -> "HKD 50"); without a name, its value - a whole note
+ * without its ".00" ("HKD 1,000", "HKD 0.50"). With no currency, the figure alone, never "$".
+ */
 export function denominationLabel(denomination: Denomination, code: string | null): string {
-  if (Number.isInteger(denomination.value)) return `${code || "$"}${count(denomination.value)}`;
-  return formatMoney(denomination.value, code);
+  const figure = denomination.name?.replace(/^\D*\$/, "").trim();
+  if (!figure) return formatPrice(denomination.value, code);
+  const currency = (code ?? "").trim().toUpperCase();
+  return currency ? `${currency}${CODE_SPACE}${figure}` : figure;
 }
 
 /** The denominations by kind, in the company's order: notes, then coins, then anything else. */
@@ -170,7 +179,7 @@ export function denominationGroups(denominations: Denomination[]): { kind: strin
   return kinds.map((kind) => ({ kind, title: title(kind), items: denominations.filter((d) => d.kind === kind) }));
 }
 
-/** "notes", "coins" - for a count's accessible name ("Number of HKD1,000 notes"). */
+/** "notes", "coins" - for a count's accessible name ("Number of HKD 1,000 notes"). */
 export function kindNoun(kind: string): string {
   return kind === "note" ? "notes" : kind === "coin" ? "coins" : "pieces";
 }
@@ -179,19 +188,19 @@ export type CashCountValues = { deposit: string; counts: Record<string, string>;
 
 /** The fields as the page first shows them: saved amounts grouped, a zero as an empty field. */
 export function initialValues(page: CashCountPage): CashCountValues {
-  const money = (n: number) => (n ? groupMoney(String(n)) : "");
+  const field = (n: number) => (n ? formatAmount(n) : "");
   return {
-    deposit: money(page.bank_deposit),
+    deposit: field(page.bank_deposit),
     counts: Object.fromEntries(page.denominations.map((d) => [d.id, d.count ? String(d.count) : ""])),
-    safebox: money(page.safe_box_balance),
+    safebox: field(page.safe_box_balance),
     reason: page.discrepancy.reason ?? "",
   };
 }
 
 /** Whether anything differs from what was saved - by value, so grouping does not count. */
 export function cashCountDirty(page: CashCountPage, values: CashCountValues): boolean {
-  if (parseMoney(values.deposit) !== page.bank_deposit) return true;
-  if (parseMoney(values.safebox) !== page.safe_box_balance) return true;
+  if ((parseAmount(values.deposit) ?? 0) !== page.bank_deposit) return true;
+  if ((parseAmount(values.safebox) ?? 0) !== page.safe_box_balance) return true;
   if (values.reason.trim() !== (page.discrepancy.reason ?? "").trim()) return true;
   return page.denominations.some((d) => parseCount(values.counts[d.id] ?? "") !== d.count);
 }
@@ -205,9 +214,9 @@ export function cashCountDirty(page: CashCountPage, values: CashCountValues): bo
 export function savePayload(day: string, page: CashCountPage, values: CashCountValues, diff: Difference, action: "next" | "exit") {
   return {
     transaction_date: day,
-    bank_deposit: parseMoney(values.deposit),
+    bank_deposit: parseAmount(values.deposit) ?? 0,
     counts: Object.fromEntries(page.denominations.map((d) => [d.id, parseCount(values.counts[d.id] ?? "")])),
-    safe_box_balance: parseMoney(values.safebox),
+    safe_box_balance: parseAmount(values.safebox) ?? 0,
     discrepancy_reason: diff.kind === "none" ? "" : values.reason.trim(),
     action,
   };
@@ -269,15 +278,15 @@ export function cashGuidance(done: TasksDone): string {
   return currentTask(done) ? "Three quick checks. We'll go one at a time." : "All three checks are done.";
 }
 
-/** The deposit task's result line: "HKD300.00 to the bank", or "None today". */
+/** The deposit task's result line: "HKD 300.00 to the bank", or "None today". */
 export function depositResult(depositText: string, code: string | null): string {
-  const taken = parseMoney(depositText);
-  return taken > 0 ? `${formatMoney(taken, code)} to the bank` : "None today";
+  const taken = parseAmount(depositText) ?? 0;
+  return taken > 0 ? `${money(taken, code)} to the bank` : "None today";
 }
 
 /** A sheet row's line total: "—" while the row is empty, else the face value times the count. */
 export function rowTotalText(denomination: Denomination, text: string, code: string | null): string {
-  return text.trim() === "" ? "—" : formatMoney(rowTotal(denomination, text), code);
+  return text.trim() === "" ? "—" : money(rowTotal(denomination, text), code);
 }
 
 /** Save count: the first row with a problem (the sheet stays open on it), or null. */

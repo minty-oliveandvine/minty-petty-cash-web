@@ -1,13 +1,16 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { previewSetSlug } from "@minty/shared/previewSibling";
+import { isTokenExpiringSoon } from "@minty/shared/auth";
+import { addressCompanyRef, companyRefFromPath } from "@minty/shared/companyRef";
+import { toFlask } from "@minty/shared/proxy";
 
-import { AUTH_COOKIE_NAME, ENTITY_ID_COOKIE_NAME, ENTITY_NAME_COOKIE_NAME, decodeJwtPayload } from "@/lib/auth";
-import { companyRefFromPath, pettyCashHome } from "@/lib/companyPages";
+import { AUTH_COOKIE_NAME, ENTITY_ID_COOKIE_NAME, ENTITY_NAME_COOKIE_NAME } from "@/lib/auth";
+import { pettyCashHome } from "@/lib/companyPages";
 import { handoffUrl } from "@/lib/handoff";
 
-// proxy.ts is Next 16's name for middleware (minty-web's file, the same convention).
+// proxy.ts is Next 16's name for middleware (minty-web's file, the same convention). Off to Flask
+// is `toFlask` (@minty/shared/proxy): a 307, or a refreshing page on a branch preview-set host.
 
 /** Pages that need no token: the landing stores one. */
 const OPEN_PATHS = new Set(["/landing"]);
@@ -49,19 +52,19 @@ export function proxy(request: NextRequest) {
   const origin = request.nextUrl.origin;
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   const cookieEntity = request.cookies.get(ENTITY_ID_COOKIE_NAME)?.value ?? "";
-  const addressCompany = companyRefFromPath(pathname);
+  const address = companyRefFromPath(pathname);
+  const addressCompany = addressCompanyRef(pathname) ?? undefined;
 
   if (!token) {
-    return toFlask(request, handoffUrl(pathname + search, addressCompany || undefined, origin));
-  }
-
-  if (addressCompany && !cookieEntity.toLowerCase().startsWith(addressCompany.split("/")[0])) {
     return toFlask(request, handoffUrl(pathname + search, addressCompany, origin));
   }
 
-  const exp = decodeJwtPayload(token)?.exp;
-  if (typeof exp === "number" && exp - Date.now() / 1000 < RENEW_WITHIN_SECONDS) {
-    return toFlask(request, handoffUrl(pathname + search, cookieEntity || addressCompany || undefined, origin));
+  if (address && !cookieEntity.toLowerCase().startsWith(address.shortId)) {
+    return toFlask(request, handoffUrl(pathname + search, addressCompany, origin));
+  }
+
+  if (isTokenExpiringSoon(token, RENEW_WITHIN_SECONDS)) {
+    return toFlask(request, handoffUrl(pathname + search, cookieEntity || addressCompany, origin));
   }
 
   if (pathname === "/" && cookieEntity) {
@@ -76,19 +79,3 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: ["/((?!_next|api|.*\\..*).*)"],
 };
-
-/**
- * Off to Flask. A plain redirect - except on a branch preview-set host, where the trip has to
- * START on a page of this host: a visitor arriving from a link on GitHub or in an email makes the
- * whole redirect chain cross-site, and Flask names a preview set only on a same-site navigation
- * (Minty blueprints/shared/preview_origin.py). A meta refresh is navigated by the page itself.
- * (minty-web's proxy.ts, the same function.)
- */
-export function toFlask(request: NextRequest, url: string): NextResponse {
-  if (previewSetSlug(request.nextUrl.host) === null) return NextResponse.redirect(url);
-  const attr = url.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
-  return new NextResponse(
-    `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${attr}"><title>Minty</title>`,
-    { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } },
-  );
-}

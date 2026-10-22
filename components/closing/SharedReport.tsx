@@ -6,8 +6,8 @@ import { useEffect, useState } from "react";
 import { Icon, InlineAlert, Skeleton, StatusPill } from "@minty/shared/ui";
 
 import { AuditFacts, ClosingBalance, Disclosure, OutcomeBand, Row, Rows } from "@/components/closing/ReportParts";
-import { signedMoney } from "@/lib/addition";
 import { formatWeekdayDay } from "@/lib/dates";
+import { money } from "@/lib/money";
 import {
   readSharedReport,
   sharedAudit,
@@ -224,7 +224,7 @@ function SharedBody({ report, company }: { report: Shared; company: string }) {
         ) : null}
       </div>
 
-      {typeof report.closing_balance === "number" ? <ClosingBalance value={signedMoney(report.closing_balance, report.currency_code ?? null)} /> : null}
+      {typeof report.closing_balance === "number" ? <ClosingBalance value={money(report.closing_balance, report.currency_code ?? null)} /> : null}
 
       <AuditFacts facts={sharedAudit(report)} />
     </>

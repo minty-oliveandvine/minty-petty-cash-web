@@ -14,7 +14,6 @@ import { AuditFacts, ClosingBalance, Disclosure, MoneyFlow, OutcomeBand, Row, Ro
 import { AppBar } from "@/components/layout/AppBar";
 import { MoreMenu, type MoreItem } from "@/components/ui/MoreMenu";
 import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
-import { signedMoney } from "@/lib/addition";
 import { ApiError, pettyCashBlob, pettyCashFetch } from "@/lib/apiClient";
 import { salesRows } from "@/lib/close";
 import { pettyCashHome } from "@/lib/companyPages";
@@ -22,7 +21,7 @@ import { formatWeekdayDay } from "@/lib/dates";
 import { receiptKind, type ExpenseLine } from "@/lib/expenses";
 import { setFlash } from "@/lib/flash";
 import { integrationUrl } from "@/lib/hub";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import { isWorking, publishedMessage } from "@/lib/publish";
 import {
   auditFacts,
@@ -234,7 +233,7 @@ function ReportBody({
   const day = report.transaction_date;
   const draft = isDraft(report);
   const can = report.permissions;
-  const money = (amount: number) => formatMoney(amount, code);
+  const amountText = (amount: number) => money(amount, code);
   const difference = differenceAlert(report);
   const lines = report.expenses.lines;
   const receipts = reportReceipts(report);
@@ -370,10 +369,10 @@ function ReportBody({
         <Disclosure title="Sales by method">
           <Rows>
             {salesRows(report).map((row) => (
-              <Row key={row.key} label={row.label} value={money(row.amount)} />
+              <Row key={row.key} label={row.label} value={amountText(row.amount)} />
             ))}
-            <Row label="Cash" value={money(report.sales.cash)} />
-            <Row label="Total sales" value={money(report.sales.total)} total />
+            <Row label="Cash" value={amountText(report.sales.cash)} />
+            <Row label="Total sales" value={amountText(report.sales.total)} total />
           </Rows>
         </Disclosure>
 
@@ -385,7 +384,7 @@ function ReportBody({
                   <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
                     <p className="min-w-0 flex-1 basis-40 break-words text-body-m font-semibold text-text-primary">{expenseTitle(line)}</p>
                     <p className="min-w-0 break-all text-right text-body-m font-semibold text-text-primary" translate="no">
-                      {money(line.amount)}
+                      {amountText(line.amount)}
                     </p>
                   </div>
                   <p className="min-w-0 break-words text-body-s text-text-secondary">{expenseMeta(line)}</p>
@@ -395,7 +394,7 @@ function ReportBody({
                       kind="link"
                       className="w-fit"
                       icon={<Icon name="edit" size="sm" />}
-                      aria-label={`Edit expense ${expenseTitle(line)}, ${money(line.amount)}`}
+                      aria-label={`Edit expense ${expenseTitle(line)}, ${amountText(line.amount)}`}
                       onClick={() => setEditing({ kind: "line", line })}
                     >
                       Edit
@@ -408,7 +407,7 @@ function ReportBody({
             <p className="text-body-m text-text-secondary">No expenses this day.</p>
           )}
           <Rows>
-            <Row label="Total expenses" value={money(report.expenses.total)} total />
+            <Row label="Total expenses" value={amountText(report.expenses.total)} total />
           </Rows>
         </Disclosure>
 
@@ -434,7 +433,7 @@ function ReportBody({
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-body-m text-text-primary">{receipt.name}</span>
                       <span className="break-words text-body-s text-text-secondary">
-                        {expenseTitle(line)} · <span translate="no">{money(line.amount)}</span>
+                        {expenseTitle(line)} · <span translate="no">{amountText(line.amount)}</span>
                       </span>
                     </span>
                     <span className="shrink-0 text-body-s font-medium text-text-link">View</span>
@@ -462,7 +461,7 @@ function ReportBody({
       </div>
 
       {/* The day's closing balance, plain text, never coloured - the server's figure. */}
-      <ClosingBalance value={signedMoney(report.closing_balance, code)} />
+      <ClosingBalance value={money(report.closing_balance, code)} />
 
       {/* Part 14 Audit meta, at the bottom (15.1: administrative facts never in the header). */}
       <AuditFacts facts={auditFacts(report)} />

@@ -19,7 +19,7 @@ import type { StatusTone } from "@minty/shared/ui";
 import type { ClosePage } from "@/lib/close";
 import { salesRows } from "@/lib/close";
 import { env } from "@/lib/env";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import { cashRowsOf, differenceAlertOf, isoMoment, kpiCards, reportPill, type CashRow, type DailyReport, type Kpi } from "@/lib/report";
 
 type Maybe<T> = T | null | undefined;
@@ -133,10 +133,10 @@ export type ShareRow = { key: string; label: string; value: string; total?: bool
 export function sharedSales(report: SharedReport): ShareRow[] | null {
   const sales = report.sales;
   if (!sales) return null;
-  const money = (n: number) => formatMoney(n, code(report));
-  const rows: ShareRow[] = Array.isArray(sales.methods) ? salesRows({ sales: { methods: sales.methods } }).map((r) => ({ key: r.key, label: r.label, value: money(r.amount) })) : [];
-  if (num(sales.cash)) rows.push({ key: "cash", label: "Cash", value: money(sales.cash) });
-  if (num(sales.total)) rows.push({ key: "total", label: "Total sales", value: money(sales.total), total: true });
+  const amountText = (n: number) => money(n, code(report));
+  const rows: ShareRow[] = Array.isArray(sales.methods) ? salesRows({ sales: { methods: sales.methods } }).map((r) => ({ key: r.key, label: r.label, value: amountText(r.amount) })) : [];
+  if (num(sales.cash)) rows.push({ key: "cash", label: "Cash", value: amountText(sales.cash) });
+  if (num(sales.total)) rows.push({ key: "total", label: "Total sales", value: amountText(sales.total), total: true });
   return rows.length ? rows : null;
 }
 
@@ -156,13 +156,13 @@ function supplierName(supplier: SharedLine["supplier"]): string {
 export function sharedExpenses(report: SharedReport): SharedExpenses | null {
   const expenses = report.expenses;
   if (!expenses || (!Array.isArray(expenses.lines) && !num(expenses.total))) return null;
-  const money = (n: Maybe<number>) => (num(n) ? formatMoney(n, code(report)) : null);
+  const amountText = (n: Maybe<number>) => (num(n) ? money(n, code(report)) : null);
   const raw = Array.isArray(expenses.lines) ? expenses.lines : [];
   const lines = raw.map((line) => ({
     title: (line.item ?? "").trim() || "Expense",
     meta: supplierName(line.supplier) || "No supplier",
     remarks: (line.remarks ?? "").trim() || null,
-    value: money(line.amount),
+    value: amountText(line.amount),
   }));
   const carried = raw.some((line) => Array.isArray(line.receipts));
   const receipts = carried
@@ -170,7 +170,7 @@ export function sharedExpenses(report: SharedReport): SharedExpenses | null {
         (Array.isArray(line.receipts) ? line.receipts : []).map((r) => ({ name: (r.name ?? "").trim() || "Receipt", title: lines[i].title, value: lines[i].value })),
       )
     : null;
-  return { lines, total: money(expenses.total), receipts };
+  return { lines, total: amountText(expenses.total), receipts };
 }
 
 /** The Cash section's rows that arrived - null for none. */

@@ -5,8 +5,10 @@
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-import { companyRef } from "./companyRef";
+import { companyRef } from "@minty/shared/e2e";
 import { expectNoHorizontalScroll, mintModuleToken } from "./helpers";
+
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -138,9 +140,9 @@ test("the methods in Settings order with the catalogue's names, grouped, with th
     await expect(fields.nth(i)).toHaveValue("");
   }
   await expect(page.getByRole("group", { name: "Delivery" }).getByRole("textbox")).toHaveCount(2);
-  await expect(row(page, "Electronic payments total")).toContainText("HKD0.00");
-  await expect(row(page, "Delivery total")).toContainText("HKD0.00");
-  await expect(row(page, "Total sales")).toContainText("HKD0.00");
+  await expect(row(page, "Electronic payments total")).toContainText("HKD 0.00");
+  await expect(row(page, "Delivery total")).toContainText("HKD 0.00");
+  await expect(row(page, "Total sales")).toContainText("HKD 0.00");
   // optional fields never warn
   await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
   await expectNoHorizontalScroll(page);
@@ -157,9 +159,9 @@ test("a draft's amounts come back grouped - a zero as an empty field - with thei
   await expect(amount(page, "Visa")).toHaveValue("1,200.50");
   await expect(amount(page, "Food Panda")).toHaveValue("");
   await expect(amount(page, "Cash sales")).toHaveValue("300.00");
-  await expect(row(page, "Electronic payments total")).toContainText("HKD1,200.50");
-  await expect(row(page, "Delivery total")).toContainText("HKD0.00");
-  await expect(row(page, "Total sales")).toContainText("HKD1,500.50");
+  await expect(row(page, "Electronic payments total")).toContainText("HKD 1,200.50");
+  await expect(row(page, "Delivery total")).toContainText("HKD 0.00");
+  await expect(row(page, "Total sales")).toContainText("HKD 1,500.50");
 });
 
 test("a company with no electronic or delivery methods has only Cash", async ({ page }) => {
@@ -172,17 +174,18 @@ test("a company with no electronic or delivery methods has only Cash", async ({ 
 test("typing moves the subtotals and the total live, and Save & Next sends every method and opens Expenses", async ({ page }) => {
   const saves = await openWith(page, salesAnswer());
   const visa = amount(page, "Visa");
-  await visa.fill("1a200.555");
+  // owner 2026-10-21: one money rule (@minty/shared/money) - a stray key is refused, not stripped
+  await visa.pressSequentially("1a200.555");
   await expect(visa).toHaveValue("1200.55");
-  await expect(row(page, "Electronic payments total")).toContainText("HKD1,200.55");
+  await expect(row(page, "Electronic payments total")).toContainText("HKD 1,200.55");
   await visa.blur();
   await expect(visa).toHaveValue("1,200.55");
   await amount(page, "WeChat Pay").fill("10");
   await amount(page, "Food Panda").fill("33.25");
   await amount(page, "Cash sales").fill("500");
-  await expect(row(page, "Electronic payments total")).toContainText("HKD1,210.55");
-  await expect(row(page, "Delivery total")).toContainText("HKD33.25");
-  await expect(row(page, "Total sales")).toContainText("HKD1,743.80");
+  await expect(row(page, "Electronic payments total")).toContainText("HKD 1,210.55");
+  await expect(row(page, "Delivery total")).toContainText("HKD 33.25");
+  await expect(row(page, "Total sales")).toContainText("HKD 1,743.80");
 
   await page.getByRole("button", { name: "Save & Next" }).click();
 
@@ -218,7 +221,7 @@ test("a long amount with its currency is never clipped, and the page never scrol
     (inputs as HTMLInputElement[]).filter((input) => input.scrollWidth > input.clientWidth).map((input) => input.name),
   );
   expect(clipped).toEqual([]);
-  await expect(row(page, "Total sales")).toContainText("HKD37,037,036.70");
+  await expect(row(page, "Total sales")).toContainText("HKD 37,037,036.70");
   await expectNoHorizontalScroll(page);
 });
 

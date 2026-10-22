@@ -5,6 +5,8 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 
+import { toFlask } from "@minty/shared/proxy";
+
 import { proxy, RENEW_WITHIN_SECONDS } from "@/proxy";
 
 const ENTITY = "360812e1-9f94-46a3-aa31-347e21afde8e";
@@ -119,4 +121,37 @@ describe("the public share page (/share/<initials>/<day>/<secret>)", () => {
       expect(new URL(res.headers.get("location") ?? "").pathname, path).toBe("/handoff/petty-cash-web");
     }
   });
+});
+
+describe("toFlask", () => {
+  // The plain redirect vs the preview set's meta refresh - the proxy's `toFlask` since the
+  // shared-code refactor (2026-10-21).
+
+  const URL_WITH_QUERY = 'http://localhost:8000/handoff/petty-cash-web?next=%2F&entity_id=a&x="<y>"';
+
+  it.each(["localhost:3010", "pettycash.dailyminty.com", "dev-pettycash.dailyminty.com", "minty-petty-cash-web.vercel.app", "pr-development-pettycash.dailyminty.com.evil.example"])(
+    "is a plain 307 redirect on %s",
+    (host) => {
+      const res = toFlask(request("/", {}, host), "http://localhost:8000/handoff/petty-cash-web?next=%2F");
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe("http://localhost:8000/handoff/petty-cash-web?next=%2F");
+    },
+  );
+
+  it.each(["pr-development-pettycash.dailyminty.com", "pr-feature-x-my.dailyminty.com", "pr-a-www.dailyminty.com"])(
+    "is a page of this host that refreshes to Flask on the preview-set host %s",
+    async (host) => {
+      const res = toFlask(request("/", {}, host), URL_WITH_QUERY);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("location")).toBeNull();
+      expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      // &, ", < and > escaped for the attribute.
+      // owner 2026-10-21: one shared module (@minty/shared/proxy) - ">" is escaped now (was left as it is)
+      expect(await res.text()).toBe(
+        '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' +
+          'http://localhost:8000/handoff/petty-cash-web?next=%2F&amp;entity_id=a&amp;x=&quot;&lt;y&gt;&quot;"><title>Minty</title>',
+      );
+    },
+  );
 });

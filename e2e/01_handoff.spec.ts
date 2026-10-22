@@ -5,7 +5,7 @@
 import { expect, test } from "@playwright/test";
 
 import { credentials, enter, expectNoHorizontalScroll } from "./helpers";
-import { companyRef } from "./companyRef";
+import { companyRef } from "@minty/shared/e2e";
 
 test("the hand-off lands on the company's Petty Cash dashboard, read from the API", async ({ page }) => {
   const creds = credentials();

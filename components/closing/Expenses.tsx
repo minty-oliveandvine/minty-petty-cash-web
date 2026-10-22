@@ -11,7 +11,7 @@ import { openStep, refused, StageActions, StagePage, stageSteps, WorkflowHeader,
 import { ApiError, pettyCashBlob, pettyCashFetch } from "@/lib/apiClient";
 import { withLine } from "@/lib/expenseEdit";
 import { canEditLines, expenseCount, receiptKind, withoutLine, type ExpenseLine, type ExpensesPage, type ExpensesSaved, type Supplier } from "@/lib/expenses";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import { reportStatus } from "@/lib/reportStatus";
 
 // The heavy bits load when first opened: the entry form and the full-screen receipt view.
@@ -68,7 +68,7 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
     setProblem(null);
     setSaving(action);
     try {
-      const answer = await pettyCashFetch<ExpensesSaved>("/reports/expenses", { method: "PUT", json: { transaction_date: day, action } });
+      const answer = await pettyCashFetch<ExpensesSaved>("/reports/expenses", { method: "PUT", body: { transaction_date: day, action } });
       // Next is Cash Count, whose first section is the deposit - this app's own stage since Wave 2d.
       if (answer.next === "deposit") openStep(push, entityId, entityName, "deposit", answer.transaction_date);
       else push(home);
@@ -160,7 +160,7 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
           <dl className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-lg bg-surface-sunk px-4 py-3">
             <dt className="min-w-0 text-title-m text-text-primary">Total expenses</dt>
             <dd className="shrink-0 text-title-m text-text-primary" translate="no" aria-live="polite">
-              {formatMoney(total, code)}
+              {money(total, code)}
             </dd>
             <dd className="basis-full text-body-s text-text-secondary">Every expense above, paid from the cash drawer.</dd>
           </dl>
@@ -188,7 +188,7 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
           onSaved={({ line, total: newTotal }) => {
             setLines((all) => (editing ? withLine(all, line) : [...all, line]));
             setTotal(newTotal);
-            setAnnounce(`${editing ? "Expense saved" : "Expense added"}. Total expenses ${formatMoney(newTotal, code)}.`);
+            setAnnounce(`${editing ? "Expense saved" : "Expense added"}. Total expenses ${money(newTotal, code)}.`);
             setAdding(false);
             setEditing(null);
           }}
@@ -204,7 +204,7 @@ function StageBody({ page, entityId, entityName, home, notice }: { page: Expense
             setLines((all) => withoutLine(all, deleting.id));
             setTotal(newTotal);
             setDeleting(null);
-            setAnnounce(`Expense deleted. Total expenses ${formatMoney(newTotal, code)}.`);
+            setAnnounce(`Expense deleted. Total expenses ${money(newTotal, code)}.`);
             // The row (and its Delete) is gone: the focus goes to the list's way on.
             requestAnimationFrame(() => (addButton.current ?? document.getElementById("expenses-list"))?.focus());
           }}
@@ -237,7 +237,7 @@ function ExpenseRow({
   onDelete: () => void;
 }) {
   const title = line.account?.name || line.item || "Expense";
-  const amount = formatMoney(line.amount, code);
+  const amount = money(line.amount, code);
   return (
     <li className="flex min-w-0 flex-col gap-2 border-t border-border-subtle py-4 first:border-t-0 first:pt-0 last:pb-0">
       <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
@@ -322,7 +322,7 @@ function DeleteExpense({
       description={
         <>
           <span className="font-semibold">
-            {name}, <span translate="no">{formatMoney(line.amount, code)}</span>
+            {name}, <span translate="no">{money(line.amount, code)}</span>
             {line.supplier ? ` from ${line.supplier.name}` : ""}, and its receipt will be deleted.
           </span>{" "}
           This can&apos;t be undone.

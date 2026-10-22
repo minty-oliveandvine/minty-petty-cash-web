@@ -10,10 +10,11 @@
  * already offers it, so the outcome no longer has "Start the next day".
  */
 
+
 import { differenceText } from "@/lib/cashCount";
 import { differenceOf } from "@/lib/close";
 import { clockTime, formatWeekdayDay } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 
 export type Outcome = {
   report_id: string;
@@ -50,12 +51,12 @@ export function outcomeLine(outcome: Outcome): string {
   return `The Daily Report for ${formatWeekdayDay(outcome.transaction_date)} is submitted. Nice work — see you tomorrow.`;
 }
 
-/** "HKD1,300.50" - the cash counted (drawer + safebox). */
+/** "HKD 1,300.50" - the cash counted (drawer + safebox). */
 export function countedFact(outcome: Outcome): string {
-  return formatMoney(outcome.cash_counted, outcome.currency_code);
+  return money(outcome.cash_counted, outcome.currency_code);
 }
 
-/** The pill beside Cash counted: "HKD20.00 short", "HKD0.01 over" - any cent counts - or null. */
+/** The pill beside Cash counted: "HKD 20.00 short", "HKD 0.01 over" - any cent counts - or null. */
 export function differencePill(outcome: Outcome): string | null {
   const diff = differenceOf(outcome.difference.amount);
   return diff.kind === "none" ? null : differenceText(diff, outcome.currency_code);

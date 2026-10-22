@@ -20,6 +20,8 @@ import {
   type Suggestions,
 } from "@/lib/expenseAi";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 const SUPPLIERS = [
   { id: "c1", name: "ParknShop" },
   { id: "c3", name: "Wellcome" },
@@ -65,7 +67,7 @@ describe("an answer on an empty form", () => {
     const next = withSuggestions(entryState(), answer("low"), CTX);
     expect(next.values).toEqual(entryState().values);
     expect(next.marks).toEqual({});
-    expect(next.notes.amount).toEqual({ text: "The receipt might read HKD448.80.", fill: { amount: "448.80" }, band: "low" });
+    expect(next.notes.amount).toEqual({ text: "The receipt might read HKD\u00a0448.80.", fill: { amount: "448.80" }, band: "low" });
     expect(next.notes.supplier?.text).toBe('The receipt might read like "Wellcome".');
     expect(next.notes.account?.text).toBe('The receipt might read like "Printing & Stationery".');
     expect(next.notes.description).toBeUndefined();
@@ -75,6 +77,17 @@ describe("an answer on an empty form", () => {
   it("groups a large amount as the Amount input shows it", () => {
     const next = withSuggestions(entryState(), { amount: read("12345.5", "high") }, CTX);
     expect(next.values.amount).toBe("12,345.50");
+  });
+
+  it("reads an amount sent with currency letters, a symbol or spaces as its digits alone", () => {
+    const filled = (value: string) => withSuggestions(entryState(), { amount: read(value, "high") }, CTX).values.amount;
+    expect(filled("448.80 HKD")).toBe("448.80");
+    expect(filled("HKD 448.80")).toBe("448.80");
+    expect(filled("HK$1,234.5")).toBe("1,234.50");
+    expect(filled(" $ 12345 ")).toBe("12,345.00");
+    expect(withSuggestions(entryState(), { amount: read("HKD 448.80", "low") }, CTX).notes.amount?.text).toBe("The receipt might read HKD\u00a0448.80.");
+    // nothing to read, or below zero: no suggestion at all
+    for (const none of ["HKD", "-12.00", "0.00", "1.2.3"]) expect(filled(none)).toBe("");
   });
 
   it("chooses a supplier and an account only by an id the company has", () => {
@@ -117,7 +130,7 @@ describe("never overwriting the person", () => {
     const next = withSuggestions(typed, answer("high"), CTX);
     expect(next.values).toEqual(typed.values);
     expect(next.marks).toEqual({});
-    expect(next.notes.amount?.text).toBe("The receipt reads HKD448.80, not HKD44.80.");
+    expect(next.notes.amount?.text).toBe("The receipt reads HKD\u00a0448.80, not HKD\u00a044.80.");
     expect(next.notes.supplier?.text).toBe('The receipt reads like "Wellcome", not "ParknShop".');
     expect(next.notes.account?.text).toBe('The receipt reads more like "Printing & Stationery" than "General Expenses".');
     expect(next.notes.description).toBeUndefined();
@@ -129,7 +142,7 @@ describe("never overwriting the person", () => {
   });
 
   it("hedges a low-band disagreement", () => {
-    expect(withSuggestions(typed, answer("low"), CTX).notes.amount?.text).toBe("The receipt might read HKD448.80, not HKD44.80.");
+    expect(withSuggestions(typed, answer("low"), CTX).notes.amount?.text).toBe("The receipt might read HKD\u00a0448.80, not HKD\u00a044.80.");
   });
 
   it("uses the receipt's reading only on its button, marked as suggested", () => {
@@ -158,7 +171,7 @@ describe("after the answer", () => {
     const typed = withSuggestions(entryState({ ...entryState().values, amount: "45" }), { amount: read("48.80", "high") }, CTX);
     const blurred = edited(typed, "amount", { amount: "45.00" });
     expect(blurred.values.amount).toBe("45.00");
-    expect(blurred.notes.amount?.text).toBe("The receipt reads HKD48.80, not HKD45.00.");
+    expect(blurred.notes.amount?.text).toBe("The receipt reads HKD\u00a048.80, not HKD\u00a045.00.");
     expect(edited(typed, "amount", { amount: "46" }).notes.amount).toBeUndefined();
   });
 

@@ -35,6 +35,8 @@ import {
   type Denomination,
 } from "@/lib/cashCount";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 const d = (id: string, value: number, kind: string, count = 0): Denomination => ({ id, value, kind, count });
 
 const denominations = [d("n500", 500, "note"), d("n100", 100, "note", 2), d("c5", 5, "coin"), d("c050", 0.5, "coin"), d("c010", 0.1, "coin")];
@@ -93,10 +95,12 @@ describe("the difference", () => {
   });
 
   it("is said in words, never colour alone", () => {
-    expect(differenceText({ amount: -20, kind: "short" }, "HKD")).toBe("HKD20.00 short");
-    expect(differenceText({ amount: 0.01, kind: "over" }, "HKD")).toBe("HKD0.01 over");
+    expect(differenceText({ amount: -20, kind: "short" }, "HKD")).toBe("HKD\u00a020.00 short");
+    expect(differenceText({ amount: 0.01, kind: "over" }, "HKD")).toBe("HKD\u00a00.01 over");
     expect(differenceText({ amount: 0, kind: "none" }, "HKD")).toBe("None");
-    expect(differenceText({ amount: -1234.5, kind: "short" }, null)).toBe("$1,234.50 short");
+    // owner 2026-10-21: one money rule (@minty/shared/money) - was "HKD20.00", and "$1,234.50" with no currency;
+    // owner 2026-10-22: no silent fallback - an amount with no currency says so
+    expect(differenceText({ amount: -1234.5, kind: "short" }, null)).toBe("1,234.50 (No currency selected) short");
   });
 });
 
@@ -104,7 +108,7 @@ describe("the deposit limit", () => {
   it("allows up to the cash on hand, and names the amount allowed above it", () => {
     expect(depositProblem(page(), "")).toBeNull();
     expect(depositProblem(page(), "1,300.50")).toBeNull();
-    expect(depositProblem(page(), "1300.51")).toBe("The deposit can't be more than the cash on hand. Enter HKD1,300.50 or less.");
+    expect(depositProblem(page(), "1300.51")).toBe("The deposit can't be more than the cash on hand. Enter HKD\u00a01,300.50 or less.");
   });
 
   it("leaves a cash on hand below zero to the gate", () => {
@@ -137,11 +141,11 @@ describe("the reason", () => {
 
   it("is asked for only after a refused Save & Next, and only while there is a difference", () => {
     expect(reasonProblem("", short, "HKD", { submitted: false })).toBeNull();
-    expect(reasonProblem("", short, "HKD", { submitted: true })).toBe("The count is HKD20.00 short. Add the reason to continue.");
-    expect(reasonProblem("   ", short, "HKD", { submitted: true })).toBe("The count is HKD20.00 short. Add the reason to continue.");
+    expect(reasonProblem("", short, "HKD", { submitted: true })).toBe("The count is HKD\u00a020.00 short. Add the reason to continue.");
+    expect(reasonProblem("   ", short, "HKD", { submitted: true })).toBe("The count is HKD\u00a020.00 short. Add the reason to continue.");
     expect(reasonProblem("Float swap", short, "HKD", { submitted: true })).toBeNull();
     expect(reasonProblem("", none, "HKD", { submitted: true })).toBeNull();
-    expect(reasonProblem("", { amount: 0.01, kind: "over" }, "HKD", { submitted: true })).toBe("The count is HKD0.01 over. Add the reason to continue.");
+    expect(reasonProblem("", { amount: 0.01, kind: "over" }, "HKD", { submitted: true })).toBe("The count is HKD\u00a00.01 over. Add the reason to continue.");
   });
 
   it("over 300 characters says so at once; the helper counts live", () => {
@@ -152,10 +156,25 @@ describe("the reason", () => {
 });
 
 describe("the denominations", () => {
+  it("are named by the currency code, a non-breaking space and their cash_name without its symbol", () => {
+    expect(denominationLabel({ ...d("a", 1000, "note"), name: "$1,000" }, "HKD")).toBe("HKD\u00a01,000");
+    expect(denominationLabel({ ...d("g", 50, "note"), name: "S$50" }, "HKD")).toBe("HKD\u00a050");
+    expect(denominationLabel({ ...d("g", 10, "note"), name: "S$10" }, "SGD")).toBe("SGD\u00a010");
+    expect(denominationLabel({ ...d("b", 0.5, "coin"), name: "50c" }, "HKD")).toBe("HKD\u00a050c");
+    // no currency: the figure alone - never "$"
+    expect(denominationLabel({ ...d("c", 5, "coin"), name: "$5" }, null)).toBe("5");
+  });
+
+  it("without a name, are named by their value", () => {
+    expect(denominationLabel({ ...d("e", 100, "note"), name: null }, "HKD")).toBe("HKD\u00a0100");
+    expect(denominationLabel({ ...d("f", 100, "note"), name: "" }, "HKD")).toBe("HKD\u00a0100");
+  });
+
   it("are named by their value, a coin under one with its cents", () => {
-    expect(denominationLabel(d("a", 1000, "note"), "HKD")).toBe("HKD1,000");
-    expect(denominationLabel(d("b", 0.5, "coin"), "HKD")).toBe("HKD0.50");
-    expect(denominationLabel(d("c", 2, "coin"), null)).toBe("$2");
+    // owner 2026-10-21: one money rule (@minty/shared/money) - was "HKD1,000", "HKD0.50", and "$2" with no currency
+    expect(denominationLabel(d("a", 1000, "note"), "HKD")).toBe("HKD\u00a01,000");
+    expect(denominationLabel(d("b", 0.5, "coin"), "HKD")).toBe("HKD\u00a00.50");
+    expect(denominationLabel(d("c", 2, "coin"), null)).toBe("2");
   });
 
   it("group notes, then coins, then anything else, in the company's order", () => {
@@ -223,7 +242,7 @@ describe("one task at a time (Daily Closing Phase 1, Flask 4e004d2)", () => {
   });
 
   it("opens every task done once the stage was saved: a counted note, or Cash Count completed", () => {
-    expect(countSaved(page())).toBe(true); // the fixture counts two HKD100 notes
+    expect(countSaved(page())).toBe(true); // the fixture counts two HKD 100 notes
     expect(countSaved(fresh())).toBe(false);
     const completed = fresh({ draft: { ...page().draft!, completed_sections: ["opening", "sales", "expenses", "deposit", "cash_count"] } });
     expect(countSaved(completed)).toBe(true);
@@ -240,15 +259,15 @@ describe("one task at a time (Daily Closing Phase 1, Flask 4e004d2)", () => {
   });
 
   it("says the deposit's result: the amount to the bank, or none today", () => {
-    expect(depositResult("300", "HKD")).toBe("HKD300.00 to the bank");
+    expect(depositResult("300", "HKD")).toBe("HKD\u00a0300.00 to the bank");
     expect(depositResult("", "HKD")).toBe("None today");
     expect(depositResult("0", "HKD")).toBe("None today");
   });
 
   it("shows a sheet row's line total as a dash while it is empty", () => {
     expect(rowTotalText(d("c050", 0.5, "coin"), "", "HKD")).toBe("—");
-    expect(rowTotalText(d("c050", 0.5, "coin"), "3", "HKD")).toBe("HKD1.50");
-    expect(rowTotalText(d("n500", 500, "note"), "0", "HKD")).toBe("HKD0.00");
+    expect(rowTotalText(d("c050", 0.5, "coin"), "3", "HKD")).toBe("HKD\u00a01.50");
+    expect(rowTotalText(d("n500", 500, "note"), "0", "HKD")).toBe("HKD\u00a00.00");
   });
 
   it("keeps the sheet open on the first row with a problem", () => {

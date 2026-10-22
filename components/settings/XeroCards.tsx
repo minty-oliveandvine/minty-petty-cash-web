@@ -134,7 +134,7 @@ export function MappingCard({
     setSaving(true);
     setProblem(null);
     try {
-      const answer = await pettyCashFetch<MappingAnswer>("/settings/xero/mapping", { method: "PUT", json: mappingBody(draft) });
+      const answer = await pettyCashFetch<MappingAnswer>("/settings/xero/mapping", { method: "PUT", body: mappingBody(draft) });
       setAttempted(false);
       onSaved(answer);
     } catch (err) {
@@ -403,7 +403,7 @@ function NewContact({ initial, field, onCancel, onAdded }: { initial: string; fi
     }
     setSaving(true);
     try {
-      onAdded(await pettyCashFetch<XeroOption>("/suppliers", { method: "POST", json: { name: name.trim() } }));
+      onAdded(await pettyCashFetch<XeroOption>("/suppliers", { method: "POST", body: { name: name.trim() } }));
     } catch (err) {
       const sentence = refusal(err, CONTACT_NOT_ADDED);
       if (sentence === null) return;
@@ -489,7 +489,7 @@ export function CodesCard({
     setSaving(true);
     setProblem(null);
     try {
-      onSaved(await pettyCashFetch<CodesAnswer>("/settings/xero/account-codes", { method: "PUT", json: { codes: ticked } }));
+      onSaved(await pettyCashFetch<CodesAnswer>("/settings/xero/account-codes", { method: "PUT", body: { codes: ticked } }));
     } catch (err) {
       setProblem(refusal(err, NOT_SAVED));
     }

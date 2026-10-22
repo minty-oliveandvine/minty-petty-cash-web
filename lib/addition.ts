@@ -5,15 +5,15 @@
  * draws what this says.
  */
 
-import { parseMoney } from "@/lib/currencyInput";
-import { formatMoney } from "@/lib/money";
+import { parseAmount } from "@minty/shared/money";
+
 import type { OpeningPage } from "@/lib/opening";
 
 const cents = (amount: number) => Math.round(amount * 100) / 100;
 
-/** The day's opening cash: the starting cash plus the cash added (the field's shown text). */
+/** The day's opening cash: the starting cash plus the cash added (the field's shown text; empty adds nothing). */
 export function openingCash(page: OpeningPage, additionText: string): number {
-  return cents(page.starting_cash_balance + parseMoney(additionText));
+  return cents(page.starting_cash_balance + (parseAmount(additionText) ?? 0));
 }
 
 /**
@@ -50,9 +50,4 @@ export function negativeGate(page: OpeningPage, opening: number): NegativeGate {
   if (page.yesterday_closing_balance < 0) return { kind: "last-closing", balance: page.yesterday_closing_balance };
   if (opening < 0) return { kind: "short", addAtLeast: cents(-page.starting_cash_balance) };
   return null;
-}
-
-/** An amount that may be below zero, as plain text: "-HKD120.00" (never coloured). */
-export function signedMoney(amount: number, currencyCode: string | null): string {
-  return amount < 0 ? `-${formatMoney(-amount, currencyCode)}` : formatMoney(amount, currencyCode);
 }

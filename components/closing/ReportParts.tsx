@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { Icon } from "@minty/shared/ui";
 
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import { CASH_POSITION, expenseBarsSummary, salesMixSummary, type ExpenseBar, type Kpi, type MixSegment } from "@/lib/report";
 
 // The Daily Report's read-only parts (Part 15.7), drawn the same on the signed-in report
@@ -67,7 +67,7 @@ export function OutcomeBand({ kpis }: { kpis: Kpi[] }) {
  * `expenseBars`; the tones are app/globals.css `[data-chart-tone]`.
  */
 export function MoneyFlow({ sales, expenses, code }: { sales: MixSegment[]; expenses: ExpenseBar[]; code: string | null }) {
-  const money = (amount: number) => formatMoney(amount, code);
+  const amountText = (amount: number) => money(amount, code);
   return (
     <section aria-labelledby="money-flow" className="flex min-w-0 flex-col gap-4 rounded-xl border border-border-subtle bg-surface-card p-4 sm:p-6">
       <h2 id="money-flow" className="min-w-0 break-words text-title-l text-text-primary">
@@ -89,7 +89,7 @@ export function MoneyFlow({ sales, expenses, code }: { sales: MixSegment[]; expe
                   <span data-chart-tone={seg.tone} className="size-3 shrink-0 rounded-sm" aria-hidden />
                   <span className="min-w-0 break-words font-semibold">{seg.label}</span>
                   <span className="min-w-0 break-all" translate="no">
-                    {money(seg.amount)}
+                    {amountText(seg.amount)}
                   </span>
                   <span className="text-text-secondary">· {seg.pct}%</span>
                 </li>
@@ -109,7 +109,7 @@ export function MoneyFlow({ sales, expenses, code }: { sales: MixSegment[]; expe
               <div key={bar.name} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-1.5">
                 <span className="min-w-0 break-words text-body-m text-text-primary">{bar.name}</span>
                 <span className="min-w-0 break-all text-right text-body-m font-semibold text-text-primary" translate="no">
-                  {money(bar.amount)}
+                  {amountText(bar.amount)}
                 </span>
                 <span className="col-span-2 block h-2 overflow-hidden rounded-full bg-surface-sunk">
                   <span className="block h-full min-w-1 rounded-full bg-brand-primary" style={{ width: `${bar.width}%` }} />

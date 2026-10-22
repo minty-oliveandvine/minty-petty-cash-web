@@ -10,21 +10,28 @@
 
 import { usePathname } from "next/navigation";
 
+import { moduleClaims } from "@minty/shared/auth";
+import { billsUrl } from "@minty/shared/companyRef";
+import { hubHandoffUrl, logoutUrl } from "@minty/shared/handoff";
 import { guardLeave } from "@minty/shared/leaveGuard";
+import { loadViewer } from "@minty/shared/portal";
 import { siblingUrl } from "@minty/shared/previewSibling";
-import { setSidebarHost, type SidebarHost, type Viewer } from "@minty/shared/sidebar";
+import { pushAppScrollLock } from "@minty/shared/scrollLock";
+import { setSidebarHost, type SidebarHost } from "@minty/shared/sidebar";
 
-import { mintyFetch } from "@/lib/apiClient";
-import { clearAuth, getAuth, moduleClaims } from "@/lib/auth";
+import { mintyFetch, type ApiRequest } from "@/lib/apiClient";
+import { clearAuth, getAuth } from "@/lib/auth";
 import { pettyCashHome, settingsHref } from "@/lib/companyPages";
 import { env } from "@/lib/env";
 import { leaveTo } from "@/lib/handoff";
 import { isSharePage } from "@/lib/share";
-import { billsUrl, hubUrl, logoutUrl } from "@/lib/hub";
 import { historyHref } from "@/lib/wizardPages";
 
 /** This app's settings page: `/entity/<shortid>/<name>/settings/petty-cash` (Flask's address for it). */
 const SETTINGS_PAGE = /^\/entity\/[^/]+\/[^/]+\/settings\/petty-cash\/?$/;
+
+/** Flask's hub API for a decoration: a 401 only rejects, it never moves the page. */
+const mintyDecoration = <T>(path: string, init: ApiRequest = {}) => mintyFetch<T>(path, { ...init, onUnauthorized: "reject" });
 
 function home(): string {
   const auth = getAuth();
@@ -37,7 +44,7 @@ export const sidebarHost: SidebarHost = {
   entityName: () => getAuth()?.entityName ?? "",
 
   /** The token's claims, both on when unknown - never hide nav on a guess. */
-  moduleAccess: () => moduleClaims(),
+  moduleAccess: () => moduleClaims(getAuth()?.token),
 
   /**
    * Petty Cash's dashboard, Reports (the report history) and Settings are this app's own pages
@@ -46,8 +53,8 @@ export const sidebarHost: SidebarHost = {
    * `/entity/<id>/payment-request` (which hands over with that app's own token).
    */
   links: {
-    entities: () => hubUrl("/entities"),
-    subscriptions: () => hubUrl("/subscription"),
+    entities: () => hubHandoffUrl(env.ACCOUNTS_API_URL, "/entities"),
+    subscriptions: () => hubHandoffUrl(env.ACCOUNTS_API_URL, "/subscription"),
     pettyCashDashboard: () => home(),
     pettyCashReports: (id) => {
       const auth = getAuth();
@@ -55,7 +62,7 @@ export const sidebarHost: SidebarHost = {
     },
     bills: () => {
       const id = getAuth()?.entityId;
-      if (id) return billsUrl(id);
+      if (id) return billsUrl(env.ACCOUNTS_API_URL, id);
       // In a branch preview set, the same set's payments app.
       return `${siblingUrl(env.PAYMENT_REQUEST_WEB_URL, "payment-request", typeof window === "undefined" ? null : window.location.host)}/`;
     },
@@ -65,7 +72,7 @@ export const sidebarHost: SidebarHost = {
     },
     // minty-web's My Profile, scoped to the company it was opened from (Flask's `/profile` page
     // only redirected there).
-    profile: () => hubUrl("/profile", getAuth()?.entityId || undefined),
+    profile: () => hubHandoffUrl(env.ACCOUNTS_API_URL, "/profile", getAuth()?.entityId || undefined),
   },
 
   /**
@@ -78,14 +85,8 @@ export const sidebarHost: SidebarHost = {
   /** Settings is the one menu item that is this app's own page; the rest are minty-web's. */
   currentOf: (pathname) => (SETTINGS_PAGE.test(pathname) ? "settings" : null),
 
-  /** `body`, because this app scrolls the document, as minty-web does. */
-  lockScroll: () => {
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  },
+  /** `body` (this app has no `app-scroll-root`: it scrolls the document, as minty-web does). */
+  lockScroll: () => pushAppScrollLock(),
 
   /**
    * Every app's Logout ends the session everywhere: forget this app's token, then Flask's
@@ -96,7 +97,7 @@ export const sidebarHost: SidebarHost = {
     guardLeave(() => {
       onLeaving?.();
       clearAuth();
-      leaveTo(logoutUrl());
+      leaveTo(logoutUrl(env.ACCOUNTS_API_URL));
     }),
 
   /**
@@ -110,15 +111,7 @@ export const sidebarHost: SidebarHost = {
    * rejects and the badge stays empty - the page's own reads are what a lapsed token is the
    * business of.
    */
-  loadViewer: async (): Promise<Viewer | null> => {
-    const body = await mintyFetch<{ user?: { name?: unknown; initials?: unknown } }>(
-      "/api/me/profile",
-      { onUnauthorized: "reject" },
-    );
-    const user = body?.user;
-    if (typeof user?.name !== "string" || typeof user.initials !== "string") return null;
-    return { name: user.name, initials: user.initials };
-  },
+  loadViewer: () => loadViewer(mintyDecoration),
 };
 
 setSidebarHost(sidebarHost);

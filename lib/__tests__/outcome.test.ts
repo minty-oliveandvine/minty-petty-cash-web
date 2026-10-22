@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { countedFact, differencePill, outcomeLine, outcomeTitle, xeroLine, type Outcome } from "@/lib/outcome";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 function outcome(over: Partial<Outcome> = {}): Outcome {
   return {
     report_id: "r1",
@@ -36,12 +38,12 @@ describe("the Completion state (Daily Closing Phase 1, Flask 4e004d2)", () => {
   });
 
   it("gives the cash counted as the server's figure", () => {
-    expect(countedFact(outcome())).toBe("HKD6,470.00");
+    expect(countedFact(outcome())).toBe("HKD\u00a06,470.00");
   });
 
   it("puts the difference in a pill, in words, any cent - and nothing when the count matched", () => {
-    expect(differencePill(outcome())).toBe("HKD20.00 short");
-    expect(differencePill(outcome({ difference: { amount: 0.01, kind: "over", has_reason: false } }))).toBe("HKD0.01 over");
+    expect(differencePill(outcome())).toBe("HKD\u00a020.00 short");
+    expect(differencePill(outcome({ difference: { amount: 0.01, kind: "over", has_reason: false } }))).toBe("HKD\u00a00.01 over");
     expect(differencePill(outcome({ difference: { amount: 0, kind: "none", has_reason: false } }))).toBeNull();
   });
 

@@ -21,7 +21,7 @@ import {
   type FixLink,
   type Submitted,
 } from "@/lib/close";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import { reportStatus } from "@/lib/reportStatus";
 import { outcomeHref, stepHref } from "@/lib/wizardPages";
 
@@ -65,7 +65,7 @@ export function Verification({ page, entityId, entityName, home, notice }: { pag
 
   const code = page.currency_code;
   const day = page.transaction_date;
-  const money = (amount: number) => formatMoney(amount, code);
+  const amountText = (amount: number) => money(amount, code);
   const gate = closeGate(page);
   const readiness = closeReadiness(page);
   const progress = page.draft ?? { current_section: null, completed_sections: [] };
@@ -80,7 +80,7 @@ export function Verification({ page, entityId, entityName, home, notice }: { pag
     setSubmitting(true);
     setRefusal(null);
     try {
-      const answer = await pettyCashFetch<Submitted>("/reports/submit", { method: "POST", json: { transaction_date: day } });
+      const answer = await pettyCashFetch<Submitted>("/reports/submit", { method: "POST", body: { transaction_date: day } });
       // In place of Close (Back from the outcome must not land on a day that is no longer open);
       // the button stays busy until the outcome page is up.
       router.replace(outcomeHref(entityId, entityName, answer.report_id));
@@ -153,19 +153,19 @@ export function Verification({ page, entityId, entityName, home, notice }: { pag
 
       {/* One summary card, a row per stage; only what needs attention is highlighted. */}
       <div className="rounded-xl border border-border-subtle bg-surface-card px-4 sm:px-6">
-        <SummaryRow title="Addition to Drawer" edit={edit("opening")} amount={money(page.cash_addition)}>
-          Starting cash balance <span translate="no">{money(page.opening_balance)}</span>
+        <SummaryRow title="Addition to Drawer" edit={edit("opening")} amount={amountText(page.cash_addition)}>
+          Starting cash balance <span translate="no">{amountText(page.opening_balance)}</span>
         </SummaryRow>
-        <SummaryRow title="Sales" edit={edit("sales")} amount={money(page.sales.total)}>
+        <SummaryRow title="Sales" edit={edit("sales")} amount={amountText(page.sales.total)}>
           <span translate="no">{salesSummary(page)}</span>
         </SummaryRow>
-        <SummaryRow title={`Expenses (${lines.length})`} editLabel="Expenses" edit={edit("expenses")} amount={money(page.expenses.total)}>
+        <SummaryRow title={`Expenses (${lines.length})`} editLabel="Expenses" edit={edit("expenses")} amount={amountText(page.expenses.total)}>
           {expensesSummary(lines)}
         </SummaryRow>
         <SummaryRow
           title="Cash Count"
           edit={edit("deposit")}
-          amount={money(page.cash.counted)}
+          amount={amountText(page.cash.counted)}
           note={
             diff.kind !== "none" ? (
               // 15.10b: short/over in words as a Warning pill, never a red number; the reason under it.

@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FocusEvent, type ReactNode, type Ref } from "react";
 
 import { Button, buttonClass, Drawer, ErrorSummary, Field, Icon, InlineAlert, inputClass, PageBanner } from "@minty/shared/ui";
+import { parseAmount } from "@minty/shared/money";
 
 import { AmountInput, openStep, refused, StageActions, StagePage, stageSteps, useLeaveHold, WorkflowHeader, type StageContext } from "@/components/closing/Stage";
-import { signedMoney } from "@/lib/addition";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import {
   belowZero,
@@ -46,8 +46,7 @@ import {
   type TasksDone,
   type TaskState,
 } from "@/lib/cashCount";
-import { parseMoney } from "@/lib/currencyInput";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import { reportStatus } from "@/lib/reportStatus";
 import { stepHref } from "@/lib/wizardPages";
 
@@ -221,7 +220,7 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
     try {
       const answer = await pettyCashFetch<CashCountSaved>("/reports/cash-count", {
         method: "PUT",
-        json: savePayload(day, page, values, diff, action),
+        body: savePayload(day, page, values, diff, action),
       });
       if (answer.next === "ending") openStep(push, entityId, entityName, "ending", answer.transaction_date);
       else push(home);
@@ -274,10 +273,10 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
             </Link>
           }
         >
-          Opening cash <span translate="no" className="whitespace-nowrap">{formatMoney(openingCash(page), code)}</span> plus cash sales{" "}
-          <span translate="no" className="whitespace-nowrap">{formatMoney(page.cash_sales, code)}</span>, less expenses{" "}
-          <span translate="no" className="whitespace-nowrap">{formatMoney(page.expenses, code)}</span>, comes to{" "}
-          <span translate="no" className="whitespace-nowrap">{signedMoney(page.cash_on_hand, code)}</span>, and cash can&apos;t be counted against less
+          Opening cash <span translate="no" className="whitespace-nowrap">{money(openingCash(page), code)}</span> plus cash sales{" "}
+          <span translate="no" className="whitespace-nowrap">{money(page.cash_sales, code)}</span>, less expenses{" "}
+          <span translate="no" className="whitespace-nowrap">{money(page.expenses, code)}</span>, comes to{" "}
+          <span translate="no" className="whitespace-nowrap">{money(page.cash_on_hand, code)}</span>, and cash can&apos;t be counted against less
           than zero. Check the expenses and the cash sales, then come back to Cash Count.
         </PageBanner>
       </>
@@ -304,7 +303,7 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
             {{
               body: (
                 <>
-                  <TotalBand label="In the drawer before any deposit" amount={formatMoney(page.cash_on_hand, code)} onCard />
+                  <TotalBand label="In the drawer before any deposit" amount={money(page.cash_on_hand, code)} onCard />
                   <AmountInput
                     id={DEPOSIT}
                     label="Deposit amount"
@@ -326,9 +325,9 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
               result: (
                 <>
                   <p className="min-w-0 text-body-m text-text-secondary">
-                    {parseMoney(values.deposit) > 0 ? (
+                    {(parseAmount(values.deposit) ?? 0) > 0 ? (
                       <>
-                        <span translate="no">{formatMoney(parseMoney(values.deposit), code)}</span> to the bank
+                        <span translate="no">{money(parseAmount(values.deposit) ?? 0, code)}</span> to the bank
                       </>
                     ) : (
                       depositResult(values.deposit, code)
@@ -362,7 +361,7 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
               ),
               result: (
                 <>
-                  <TotalBand label="Counted in the drawer" amount={formatMoney(drawer, code)} />
+                  <TotalBand label="Counted in the drawer" amount={money(drawer, code)} />
                   <Button id={COUNT_OPEN} kind="link" disabled={busy} aria-label="Edit the count" onClick={() => setSheet({ open: true, focus: null })}>
                     Edit
                   </Button>
@@ -395,7 +394,7 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
               result: (
                 <>
                   <p className="min-w-0 text-body-m text-text-secondary" translate="no">
-                    {formatMoney(parseMoney(values.safebox), code)}
+                    {money(parseAmount(values.safebox) ?? 0, code)}
                   </p>
                   <Button kind="link" disabled={busy} aria-label="Edit the safe box" onClick={() => reopen("safe")}>
                     Edit
@@ -420,8 +419,8 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
                 <div className="min-w-0">
                   <p className="font-semibold">The numbers match</p>
                   <p className="mt-0.5 text-body-s">
-                    Counted <span translate="no">{formatMoney(counted, code)}</span> &middot; expected{" "}
-                    <span translate="no">{signedMoney(expected, code)}</span>
+                    Counted <span translate="no">{money(counted, code)}</span> &middot; expected{" "}
+                    <span translate="no">{money(expected, code)}</span>
                   </p>
                 </div>
               </div>
@@ -464,7 +463,7 @@ export function CashCountForm({ page, entityId, entityName, home, notice }: { pa
         onCount={(id, text) => set({ counts: { ...values.counts, [id]: text } }, id)}
         onClose={() => setSheet({ open: false, focus: null })}
         onSave={saveCount}
-        total={formatMoney(drawer, code)}
+        total={money(drawer, code)}
       />
     </>
   );
@@ -642,7 +641,7 @@ function CountSheet({
 }
 
 /**
- * One sheet row (15.15: a label per denomination): "HKD1,000", the count (whole numbers, the
+ * One sheet row (15.15: a label per denomination): "HKD 1,000", the count (whole numbers, the
  * numeric keypad), "=", and the row's amount. Its problem - above a million - shows as typed.
  */
 function CountRow({

@@ -9,6 +9,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: 
 import { Verification } from "@/components/closing/Close";
 import type { ClosePage } from "@/lib/close";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 function page(over: Partial<ClosePage> = {}, cash: Partial<ClosePage["cash"]> = {}): ClosePage {
   return {
     transaction_date: "2026-10-13",
@@ -41,13 +43,13 @@ describe("Close, the verification", () => {
     expect(screen.getByText("All five stages are filled in.")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /^Edit / })).toHaveLength(4);
     const sales = screen.getByRole("region", { name: "Sales" });
-    expect(sales).toHaveTextContent("2 methods · Cash HKD820.50");
-    expect(sales).toHaveTextContent("HKD1,020.50");
+    expect(sales).toHaveTextContent("2 methods · Cash HKD 820.50");
+    expect(sales).toHaveTextContent("HKD 1,020.50");
     // totals, not each method; no KPIs, no closing balance
     expect(screen.queryByText("Octopus")).toBeNull();
     expect(screen.queryByText("Closing balance")).toBeNull();
     expect(screen.getByRole("region", { name: "Expenses (1)" })).toHaveTextContent("1 expense · 2 receipts");
-    expect(screen.getByRole("region", { name: "Cash Count" })).toHaveTextContent("HKD300.00 to the bank · Counted in the drawer");
+    expect(screen.getByRole("region", { name: "Cash Count" })).toHaveTextContent("HKD 300.00 to the bank · Counted in the drawer");
     expect(screen.getByRole("heading", { name: "When you submit" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Submit Daily Report" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "Save & Exit" })).toHaveAttribute("href", "/home");
@@ -56,7 +58,7 @@ describe("Close, the verification", () => {
   it("highlights a difference in the Cash Count row, with its reason, and leaves a note for the reviewer", () => {
     renderClose(page({}, { counted: 980, difference: { amount: -20, kind: "short", reason: "Float swap" } }));
     const row = screen.getByRole("region", { name: "Cash Count" });
-    expect(within(row).getByText("HKD20.00 short")).toBeInTheDocument();
+    expect(within(row).getByText("HKD 20.00 short")).toBeInTheDocument();
     expect(within(row).getByText("Float swap")).toBeInTheDocument();
     expect(screen.getByText("All five stages are filled in. One note for the reviewer below.")).toBeInTheDocument();
   });
@@ -64,7 +66,7 @@ describe("Close, the verification", () => {
   it("warns about a difference with no reason, with the way to Cash Count", () => {
     renderClose(page({}, { counted: 999.99, difference: { amount: -0.01, kind: "short", reason: "" } }));
     expect(screen.queryByText("Ready to submit")).toBeNull();
-    expect(screen.getByText("The count is HKD0.01 short")).toBeInTheDocument();
+    expect(screen.getByText("The count is HKD 0.01 short")).toBeInTheDocument();
     expect(screen.getByText("No reason was given yet.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Go to Cash Count" })).toBeInTheDocument();
   });

@@ -5,8 +5,10 @@
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-import { companyRef } from "./companyRef";
+import { companyRef } from "@minty/shared/e2e";
 import { mintModuleToken } from "./helpers";
+
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -151,6 +153,7 @@ const card = (page: Page) => page.getByRole("region", { name: /Daily Closing/ })
 
 /** This app's settings page, opened at its Xero cards (`#xero`). */
 const SETTINGS_XERO = `/entity/${companyRef(ENTITY, NAME)}/settings/petty-cash#xero`;
+const SETTINGS_COUNTRY = `/entity/${companyRef(ENTITY, NAME)}/settings/petty-cash#country`;
 
 /** Landed on this app's settings page at its Xero cards - not a Flask page. */
 async function expectXeroSettings(page: Page) {
@@ -211,7 +214,7 @@ test("Start passes through Before You Start, and a changed deposit is sent", asy
   await page.getByRole("button", { name: "Start today's Daily Closing" }).click();
   const dialog = page.getByRole("dialog", { name: "Before You Start" });
   await expect(dialog).toContainText("Previous report submitted by Olive");
-  await expect(dialog).toContainText("HKD300.00");
+  await expect(dialog).toContainText("HKD 300.00");
   await expect(dialog).toContainText("HSBC Current (***-123)");
   await expect(dialog).toContainText("13 Oct 2026");
 
@@ -225,8 +228,10 @@ test("Start passes through Before You Start, and a changed deposit is sent", asy
   const amount = page.getByRole("dialog", { name: "Deposit to Bank" });
   const field = amount.getByRole("textbox", { name: /Deposit Amount/ });
   await field.fill("400");
-  await expect(amount).toContainText("Enter HKD300.00 or less.");
-  await field.fill("250.555");
+  await expect(amount).toContainText("Enter HKD 300.00 or less.");
+  // owner 2026-10-21: one money rule (@minty/shared/money) - a stray key is refused, not stripped
+  await field.fill("");
+  await field.pressSequentially("250.555");
   await expect(field).toHaveValue("250.55");
   await amount.getByRole("button", { name: "Proceed" }).click();
 
@@ -398,7 +403,7 @@ test("recent reports: the newest three, Submitted, each opening its report, and 
   const rows = recent.getByRole("listitem");
   await expect(rows).toHaveCount(3);
   await expect(rows.nth(0)).toContainText("Tue 13 Oct 2026");
-  await expect(rows.nth(0)).toContainText("HKD1,250.50");
+  await expect(rows.nth(0)).toContainText("HKD 1,250.50");
   await expect(rows.nth(0)).toContainText("Submitted");
   await expect(rows.nth(2)).toContainText("Sun 11 Oct 2026");
   await expect(recent).not.toContainText("10 Oct");
@@ -423,6 +428,19 @@ test("missing Xero settings hold the page with the way to set them up", async ({
   await expect(link).toHaveAttribute("href", SETTINGS_XERO);
   await link.click();
   await expectXeroSettings(page);
+});
+
+test("no currency holds the page: no report can start until one is chosen in Country & currency (owner 2026-10-22)", async ({ page }) => {
+  await enterWith(page, homeAnswer({ currency_code: null }));
+  const dialog = page.getByRole("alertdialog", { name: "Setup Required" });
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  const choose = dialog.getByRole("link", { name: "Choose your company's currency" });
+  await expect(choose).toHaveAttribute("href", SETTINGS_COUNTRY);
+  await expect(dialog.getByRole("link", { name: "Set Up Settings" })).toHaveAttribute("href", SETTINGS_COUNTRY);
+  await choose.click();
+  await expect(page).toHaveURL(new RegExp(`${SETTINGS_COUNTRY}$`));
+  await expect(page.getByRole("region", { name: "Country & currency" })).toBeInViewport();
 });
 
 test("read-only access cannot start, and says why beside the button", async ({ page }) => {

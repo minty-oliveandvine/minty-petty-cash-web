@@ -12,6 +12,8 @@ import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { resetReaderLatch, type ExtractAnswer, type Suggestions } from "@/lib/expenseAi";
 import type { ExpenseLine } from "@/lib/expenses";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 vi.mock("@/lib/apiClient", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/apiClient")>()),
   pettyCashFetch: vi.fn(),
@@ -92,7 +94,7 @@ describe("Edit expense", () => {
   it("opens the add form prefilled with the line, its saved receipt and Save", () => {
     const { dialog } = setup({ line: LINE });
     expect(screen.getByRole("dialog", { name: "Edit expense" })).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("General Expenses · HKD120.50");
+    expect(dialog).toHaveTextContent("General Expenses · HKD 120.50");
     expect(within(dialog).getByRole("textbox", { name: /Amount/ })).toHaveValue("120.50");
     expect(within(dialog).getByRole("combobox", { name: /Supplier/ })).toHaveValue("ParknShop");
     expect(within(dialog).getByRole("combobox", { name: /Account/ })).toHaveValue("a1");
@@ -240,7 +242,7 @@ describe("the receipt reader", () => {
     await user.type(amount, "44.80");
     await reader.answer({ suggestions: { amount: read("448.80", "high") }, reason: null });
     expect(amount).toHaveValue("44.80");
-    expect(dialog).toHaveTextContent("The receipt reads HKD448.80, not HKD44.80.");
+    expect(dialog).toHaveTextContent("The receipt reads HKD 448.80, not HKD 44.80.");
     await user.click(within(dialog).getByRole("button", { name: "Use the amount from the receipt" }));
     expect(amount).toHaveValue("448.80");
     expect(amount).toHaveAccessibleDescription("Suggested from the receipt.");
@@ -252,7 +254,7 @@ describe("the receipt reader", () => {
     await userEvent.upload(chooseFile(), pdf());
     await reader.answer({ suggestions: { amount: read("12.00", "low") }, reason: null });
     expect(within(dialog).getByRole("textbox", { name: /Amount/ })).toHaveValue("");
-    expect(dialog).toHaveTextContent("The receipt might read HKD12.00.");
+    expect(dialog).toHaveTextContent("The receipt might read HKD 12.00.");
   });
 
   it("offers a supplier name that is not on the list for New supplier - never creating it", async () => {
@@ -312,6 +314,6 @@ describe("the receipt reader", () => {
     await user.upload(chooseFile(), pdf());
     await reader.answer({ suggestions: { amount: read("448.80", "high") }, reason: null });
     expect(within(dialog).getByRole("textbox", { name: /Amount/ })).toHaveValue("120.50");
-    expect(dialog).toHaveTextContent("The receipt reads HKD448.80, not HKD120.50.");
+    expect(dialog).toHaveTextContent("The receipt reads HKD 448.80, not HKD 120.50.");
   });
 });

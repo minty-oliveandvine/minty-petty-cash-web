@@ -11,10 +11,10 @@
  * read's `yesterday_total` and `history` are the Daily Report's, not this stage's.
  */
 
-import { signedMoney } from "@/lib/addition";
+
 import { differenceText, type Difference } from "@/lib/cashCount";
 import { stageOf } from "@/lib/dailyClosing";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import type { WizardStep } from "@/lib/wizardPages";
 import type { OpeningPage } from "@/lib/opening";
 import { shownMethods, type SalesMethod } from "@/lib/sales";
@@ -89,11 +89,11 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 
 /**
  * The Sales row's line (Daily Closing Phase 1: one row per stage, totals not each method):
- * "3 methods · Cash HKD820.50" - the methods that took money, cash among them.
+ * "3 methods · Cash HKD 820.50" - the methods that took money, cash among them.
  */
 export function salesSummary(page: Pick<ClosePage, "sales" | "currency_code">): string {
   const methods = salesRows(page).filter((row) => row.amount > 0).length + (page.sales.cash > 0 ? 1 : 0);
-  return `${plural(methods, "method", "methods")} · Cash ${formatMoney(page.sales.cash, page.currency_code)}`;
+  return `${plural(methods, "method", "methods")} · Cash ${money(page.sales.cash, page.currency_code)}`;
 }
 
 /** The Expenses row's line: "2 expenses · 3 receipts" (every receipt file, as Flask's). */
@@ -102,9 +102,9 @@ export function expensesSummary(lines: CloseExpense[]): string {
   return `${plural(lines.length, "expense", "expenses")} · ${plural(receipts, "receipt", "receipts")}`;
 }
 
-/** The Cash Count row's line: "HKD300.00 to the bank · Counted in the drawer", or "None today · ...". */
+/** The Cash Count row's line: "HKD 300.00 to the bank · Counted in the drawer", or "None today · ...". */
 export function cashSummary(page: Pick<ClosePage, "cash" | "currency_code">): string {
-  const deposit = page.cash.bank_deposit > 0 ? `${formatMoney(page.cash.bank_deposit, page.currency_code)} to the bank` : "None today";
+  const deposit = page.cash.bank_deposit > 0 ? `${money(page.cash.bank_deposit, page.currency_code)} to the bank` : "None today";
   return `${deposit} · Counted in the drawer`;
 }
 
@@ -157,7 +157,7 @@ export function closeGate(page: ClosePage): CloseGate | null {
   if (problem.to === "cash_count" && page.cash.expected < 0) {
     return {
       title: "The drawer is below zero",
-      message: `Expected in drawer comes to ${signedMoney(page.cash.expected, page.currency_code)}. Lower the deposit or check the earlier stages before you submit.`,
+      message: `Expected in drawer comes to ${money(page.cash.expected, page.currency_code)}. Lower the deposit or check the earlier stages before you submit.`,
       action,
       reason,
     };
@@ -170,7 +170,7 @@ export function submitRefusal(message: string, to: unknown): { message: string; 
   return { message, action: typeof to === "string" ? fixLink(to) : null };
 }
 
-/** The difference in the Cash Count row's pill: "HKD20.00 short", "HKD0.01 over", "None". */
+/** The difference in the Cash Count row's pill: "HKD 20.00 short", "HKD 0.01 over", "None". */
 export function closeDifference(page: ClosePage): string {
   return differenceText(differenceOf(page.cash.difference.amount), page.currency_code);
 }

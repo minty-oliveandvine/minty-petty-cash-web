@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import { saveBlob } from "@minty/shared/download";
 import { Button, buttonClass, EmptyState, Field, FilterChip, Icon, InlineAlert, inputClass, Skeleton, StatusPill } from "@minty/shared/ui";
 
 import { PublishDialog, PublishProgress, PublishReasons, usePublish } from "@/components/closing/Publish";
@@ -14,7 +15,6 @@ import { ToastRegion, type ToastMessage } from "@/components/ui/Toast";
 import { ApiError, pettyCashDownload, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
 import { formatWeekdayDay } from "@/lib/dates";
-import { saveBlob } from "@/lib/download";
 import { integrationUrl } from "@/lib/hub";
 import {
   apiQuery,
@@ -40,7 +40,7 @@ import {
   type HistoryPage,
   type HistoryRow,
 } from "@/lib/history";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import { isWorking, publishedMessage } from "@/lib/publish";
 import { deletedMessage, reportPill } from "@/lib/report";
 import { useAuth } from "@/lib/useAuth";
@@ -464,7 +464,7 @@ function ReportRow({
             <p className="flex min-w-0 items-baseline gap-1.5 md:w-40 md:flex-col md:items-end md:gap-0">
               <span className="text-body-s text-text-secondary md:order-2">Sales</span>
               <span className="min-w-0 break-all text-body-m text-text-primary md:text-right" translate="no">
-                {formatMoney(row.total_sales, code)}
+                {money(row.total_sales, code)}
               </span>
             </p>
             <span className="flex md:w-40 md:justify-end">

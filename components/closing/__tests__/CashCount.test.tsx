@@ -6,6 +6,8 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: vi.fn(), back: vi.fn() }), usePathname: () => "/" }));
 
@@ -74,7 +76,7 @@ describe("Cash Count, one task at a time", () => {
     await user.type(screen.getByLabelText(/Deposit amount/), "300");
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(task("Cash taken to the bank")).toHaveAttribute("data-state", "done");
-    expect(within(task("Cash taken to the bank")).getByText("HKD300.00").closest("p")).toHaveTextContent("HKD300.00 to the bank");
+    expect(within(task("Cash taken to the bank")).getByText("HKD 300.00").closest("p")).toHaveTextContent("HKD 300.00 to the bank");
     expect(task("Count the drawer")).toHaveAttribute("data-state", "current");
     expect(screen.getByRole("button", { name: "Count notes and coins" })).toHaveFocus();
     await user.click(screen.getByRole("button", { name: "Change the cash taken to the bank" }));
@@ -109,23 +111,39 @@ describe("the Count the drawer sheet", () => {
     return screen.getByRole("dialog", { name: /Count the drawer/ });
   }
 
+  it("names each row by the catalogue's cash_name without its symbol, or by its value when it has none", async () => {
+    const user = userEvent.setup();
+    renderStage(page({ denominations: [
+      { id: "n500", value: 500, kind: "note", name: "$500", count: 0 },
+      { id: "n1000", value: 1000, kind: "note", name: "HK$1,000", count: 0 },
+      { id: "c050", value: 0.5, kind: "coin", name: "50c", count: 0 },
+      { id: "c010", value: 0.1, kind: "coin", name: null, count: 0 },
+    ] }));
+    const sheet = await openSheet(user);
+    expect(within(sheet).getByLabelText(/Number of HKD 500 notes/)).toBeInTheDocument();
+    expect(within(sheet).getByLabelText(/Number of HKD 1,000 notes/)).toBeInTheDocument();
+    expect(within(sheet).getByLabelText(/Number of HKD 50c coins/)).toBeInTheDocument();
+    expect(within(sheet).getByLabelText(/Number of HKD 0\.10 coins/)).toBeInTheDocument();
+    expect(within(sheet).queryByText(/\$/)).toBeNull();
+  });
+
   it("counts notes then coins with line totals and a live total, and Save count closes it", async () => {
     const user = userEvent.setup();
     renderStage();
     const sheet = await openSheet(user);
     expect(within(sheet).getByText("Notes")).toBeInTheDocument();
     expect(within(sheet).getByText("Coins")).toBeInTheDocument();
-    const five = within(sheet).getByLabelText(/Number of HKD500 notes/);
+    const five = within(sheet).getByLabelText(/Number of HKD 500 notes/);
     expect(five).toHaveFocus();
     expect(five).toHaveAttribute("inputmode", "numeric");
     expect(within(sheet).getAllByText("—")).toHaveLength(3);
     await user.type(five, "1");
-    await user.type(within(sheet).getByLabelText(/Number of HKD100 notes/), "5");
-    expect(within(sheet).getByText("Total in the drawer").nextSibling).toHaveTextContent("HKD1,000.00");
+    await user.type(within(sheet).getByLabelText(/Number of HKD 100 notes/), "5");
+    expect(within(sheet).getByText("Total in the drawer").nextSibling).toHaveTextContent("HKD 1,000.00");
     await user.click(within(sheet).getByRole("button", { name: "Save count" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(task("Count the drawer")).toHaveAttribute("data-state", "done");
-    expect(within(task("Count the drawer")).getByText("HKD1,000.00")).toBeInTheDocument();
+    expect(within(task("Count the drawer")).getByText("HKD 1,000.00")).toBeInTheDocument();
     // the safe box is next and takes the focus; the Check says the numbers match
     expect(screen.getByLabelText(/Cash in the safe box/)).toHaveFocus();
     expect(screen.getByText("The numbers match")).toBeInTheDocument();
@@ -136,7 +154,7 @@ describe("the Count the drawer sheet", () => {
     const user = userEvent.setup();
     renderStage();
     const sheet = await openSheet(user);
-    await user.type(within(sheet).getByLabelText(/Number of HKD500 notes/), "2{Enter}");
+    await user.type(within(sheet).getByLabelText(/Number of HKD 500 notes/), "2{Enter}");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(task("Count the drawer")).toHaveAttribute("data-state", "done");
@@ -146,19 +164,19 @@ describe("the Count the drawer sheet", () => {
     const user = userEvent.setup();
     renderStage();
     const sheet = await openSheet(user);
-    await user.type(within(sheet).getByLabelText(/Number of HKD500 notes/), "2");
+    await user.type(within(sheet).getByLabelText(/Number of HKD 500 notes/), "2");
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(task("Count the drawer")).toHaveAttribute("data-state", "current");
     await user.click(screen.getByRole("button", { name: "Count notes and coins" }));
-    expect(screen.getByLabelText(/Number of HKD500 notes/)).toHaveValue("2");
+    expect(screen.getByLabelText(/Number of HKD 500 notes/)).toHaveValue("2");
   });
 
   it("stays open on a count above the limit", async () => {
     const user = userEvent.setup();
     renderStage();
     const sheet = await openSheet(user);
-    const coins = within(sheet).getByLabelText(/Number of HKD5 coins/);
+    const coins = within(sheet).getByLabelText(/Number of HKD 5 coins/);
     await user.type(coins, "2000000");
     expect(within(sheet).getByRole("alert")).toHaveTextContent("Enter 1,000,000 or fewer.");
     await user.click(within(sheet).getByRole("button", { name: "Save count" }));
@@ -173,7 +191,7 @@ describe("problems on a refused save", () => {
     renderStage();
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.click(screen.getByRole("button", { name: "Count notes and coins" }));
-    await user.type(screen.getByLabelText(/Number of HKD5 coins/), "2000000");
+    await user.type(screen.getByLabelText(/Number of HKD 5 coins/), "2000000");
     await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: "Change the cash taken to the bank" }));
     await user.type(screen.getByLabelText(/Deposit amount/), "2000");
@@ -184,7 +202,7 @@ describe("problems on a refused save", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     // the count's problem opens the sheet on its row
     expect(screen.getByRole("dialog", { name: /Count the drawer/ })).toBeInTheDocument();
-    expect(screen.getByLabelText(/Number of HKD5 coins/)).toHaveFocus();
+    expect(screen.getByLabelText(/Number of HKD 5 coins/)).toHaveFocus();
   });
 });
 
@@ -197,7 +215,7 @@ describe("the Check and the reason", () => {
     for (const name of ["Cash taken to the bank", "Count the drawer", "Safe box"]) expect(task(name)).toHaveAttribute("data-state", "done");
     // 900 counted against 1,000 expected
     expect(screen.queryByText("The numbers match")).toBeNull();
-    expect(screen.getByText("The count is HKD100.00 short.")).toBeInTheDocument();
+    expect(screen.getByText("The count is HKD 100.00 short.")).toBeInTheDocument();
     expect(saveNext()).toBeDisabled();
     expect(screen.getByText("Add a reason for the difference to continue.")).toBeInTheDocument();
     const reason = screen.getByLabelText(/Reason for the difference/);
@@ -206,13 +224,13 @@ describe("the Check and the reason", () => {
     expect(saveNext()).toBeEnabled();
     await user.click(saveNext());
     expect(fetchMock).toHaveBeenCalledWith("/reports/cash-count", expect.objectContaining({ method: "PUT" }));
-    const body = fetchMock.mock.calls[0][1].json;
+    const body = fetchMock.mock.calls[0][1].body;
     expect(body).toMatchObject({ bank_deposit: 0, counts: { n500: 1, n100: 4, c5: 0 }, discrepancy_reason: "Float swap", action: "next" });
   });
 
   it("counts any cent as a difference", () => {
     renderStage(page({ cash_on_hand: 900.01, denominations: [{ id: "n500", value: 500, kind: "note", count: 1 }, { id: "n100", value: 100, kind: "note", count: 4 }] }));
-    expect(screen.getByText("The count is HKD0.01 short.")).toBeInTheDocument();
+    expect(screen.getByText("The count is HKD 0.01 short.")).toBeInTheDocument();
   });
 
   it("lets Save & Exit save before the count is done", async () => {
@@ -221,7 +239,7 @@ describe("the Check and the reason", () => {
     renderStage();
     fireEvent.click(screen.getByRole("button", { name: /Save & Exit/ }));
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/entity/e1/olive/petty-cash"));
-    expect(fetchMock.mock.calls[0][1].json).toMatchObject({ action: "exit" });
+    expect(fetchMock.mock.calls[0][1].body).toMatchObject({ action: "exit" });
     void user;
   });
 });

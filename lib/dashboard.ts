@@ -9,6 +9,7 @@
  * browser's, UTC's and Hong Kong's - and starting a report always runs the date rules.
  */
 
+import { currencySettingsHref, xeroSettingsHref } from "@/lib/companyPages";
 import { addDays } from "@/lib/dates";
 
 export type PublishedDay = {
@@ -131,6 +132,27 @@ export function gateDay(home: Home): string | null {
   if (!span || !previousDayUnfinished(home)) return null;
   const expected = addDays(span.latest, 1);
   return expected < home.server_today ? expected : null;
+}
+
+/** One line of Setup Required: what is missing, and the settings card where it is set. */
+export type SetupItem = { text: string; href: string };
+
+export const CHOOSE_CURRENCY = "Choose your company's currency";
+
+/**
+ * Setup Required (Flask's launch-page modal, held open): the page can't be used - no report can
+ * start - while the company has no currency (owner, 2026-10-22: no silent fallback - the API refuses
+ * a report save without one) or its Xero settings are incomplete. The currency comes first and opens
+ * Petty Cash Settings at Country & currency; each missing Xero setting opens its Xero cards.
+ */
+export function setupRequired(home: Home, entityId: string, entityName: string): { open: boolean; items: SetupItem[] } {
+  const noCurrency = !home.currency_code?.trim();
+  const xero = xeroSettingsHref(entityId, entityName);
+  const items: SetupItem[] = [
+    ...(noCurrency ? [{ text: CHOOSE_CURRENCY, href: currencySettingsHref(entityId, entityName) }] : []),
+    ...(home.xero_settings.complete ? [] : home.xero_settings.missing.map((text) => ({ text, href: xero }))),
+  ];
+  return { open: noCurrency || !home.xero_settings.complete, items };
 }
 
 /** The newest submitted reports, newest first - the launch page's "Recent reports". */

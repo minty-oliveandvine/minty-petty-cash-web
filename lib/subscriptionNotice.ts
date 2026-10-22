@@ -15,8 +15,10 @@
  * same hand-off, on Flask's origin, so it is not used.
  */
 
+import { decodeJwtPayload } from "@minty/shared/auth";
+
 import { ApiError, subscriptionFetch } from "@/lib/apiClient";
-import { decodeJwtPayload, getAuth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 
 export type NoticeSeverity = "critical" | "warning" | "info";
 

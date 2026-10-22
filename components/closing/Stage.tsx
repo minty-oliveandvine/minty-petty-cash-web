@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type MouseEvent, type ReactNode, type Ref } from "react";
 
 import { Button, Field, Icon, InlineAlert, inputClass, PageBanner, Skeleton, StatusPill, type StatusTone } from "@minty/shared/ui";
+import { acceptAmountInput, formatAmount } from "@minty/shared/money";
 
 import { AppBar } from "@/components/layout/AppBar";
 import { StepProgress, type StepProgressStep } from "@/components/ui/StepProgress";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { getAuth } from "@/lib/auth";
 import { pettyCashHome } from "@/lib/companyPages";
-import { sanitizeMoney, groupMoney } from "@/lib/currencyInput";
 import { stageOf, stageSection, stagesOnPage, type StageKey } from "@/lib/dailyClosing";
 import { formatWeekdayDay } from "@/lib/dates";
 import { setFlash, takeFlash, type FlashKind } from "@/lib/flash";
@@ -305,8 +305,10 @@ export function refused(
 
 /**
  * Part 14 Amount input: the label (with the currency in its accessible name), the currency as a
- * prefix, the value right-aligned, `inputMode="decimal"`, cleaned as typed and grouped + padded on
- * blur (lib/currencyInput.ts, Flask's `currency.js` rules).
+ * prefix, the value right-aligned, `inputMode="decimal"`. A keystroke that is not digits and one
+ * point, or goes past 11 whole digits or 2 decimals, is refused; blur groups and pads it
+ * (@minty/shared/money - owner 2026-10-21: one money rule). With no company currency there is no
+ * prefix and the number stands alone - never "$".
  */
 export function AmountInput({
   label,
@@ -347,20 +349,22 @@ export function AmountInput({
       label={
         <>
           {label}
-          <span className="sr-only"> in {code || "$"}</span>
+          {code ? <span className="sr-only"> in {code}</span> : null}
         </>
       }
       helper={helper}
     >
       {(a11y) => (
         <div className="relative">
-          <span
-            className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-body-m text-text-secondary"
-            aria-hidden
-            translate="no"
-          >
-            {code || "$"}
-          </span>
+          {code ? (
+            <span
+              className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-body-m text-text-secondary"
+              aria-hidden
+              translate="no"
+            >
+              {code}
+            </span>
+          ) : null}
           <input
             {...a11y}
             ref={inputRef}
@@ -371,12 +375,15 @@ export function AmountInput({
             placeholder="0.00"
             value={value}
             disabled={disabled}
-            onChange={(e) => onChange(sanitizeMoney(e.target.value))}
+            onChange={(e) => {
+              const next = acceptAmountInput(e.target.value);
+              if (next !== null) onChange(next);
+            }}
             onBlur={() => {
-              onChange(groupMoney(value));
+              onChange(formatAmount(value));
               onBlur?.();
             }}
-            className={`${inputClass(Boolean(error))} pl-14 text-right`}
+            className={`${inputClass(Boolean(error))} ${code ? "pl-14 " : ""}text-right`}
           />
         </div>
       )}

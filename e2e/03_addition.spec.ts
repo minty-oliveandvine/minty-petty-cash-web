@@ -6,8 +6,10 @@
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-import { companyRef } from "./companyRef";
+import { companyRef } from "@minty/shared/e2e";
 import { expectNoHorizontalScroll, mintModuleToken } from "./helpers";
+
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -99,24 +101,24 @@ test("first report: the Workflow header, the five stages and the starting cash a
 
   const facts = page.getByRole("region", { name: "Addition to Drawer" });
   await expect(facts).toContainText("Starting cash");
-  await expect(facts).toContainText("HKD1,200.00");
+  await expect(facts).toContainText("HKD 1,200.00");
   await expect(facts).toContainText("Carried over from your last Daily Closing.");
   await expect(facts).toContainText("In the cash drawer");
-  await expect(facts).toContainText("HKD1,000.00"); // 1,200 less the 200 in the safebox
+  await expect(facts).toContainText("HKD 1,000.00"); // 1,200 less the 200 in the safebox
   await expect(facts).toContainText("In the safebox");
   await expect(facts.getByRole("textbox")).toHaveCount(1); // the starting cash is never an input
   await expect(amount(page)).toHaveValue("");
   await expect(amount(page)).toHaveAttribute("inputmode", "decimal");
   await expect(page.getByText("Optional. Leave it empty when no cash was added.")).toBeVisible();
   await expect(page.getByRole("radio", { name: "Personal" })).toBeChecked();
-  await expect(summary(page)).toContainText("HKD1,200.00");
+  await expect(summary(page)).toContainText("HKD 1,200.00");
   await expectNoHorizontalScroll(page);
 });
 
 test("a first report opens from the balance set up in onboarding", async ({ page }) => {
   await openWith(page, openingAnswer({ starting_cash_balance: 900, yesterday_closing_balance: 0, safebox_balance: 0 }));
   const facts = page.getByRole("region", { name: "Addition to Drawer" });
-  await expect(facts).toContainText("HKD900.00");
+  await expect(facts).toContainText("HKD 900.00");
   await expect(facts).toContainText("Your opening balance from setup.");
   await expect(facts).not.toContainText("In the safebox");
 });
@@ -125,19 +127,20 @@ test("a draft brings its own values, and its done stages open where they were le
   await openWith(page, openingAnswer({ draft: DRAFT, cash_addition: 30, withdrawal: "company" }));
   await expect(amount(page)).toHaveValue("30.00");
   await expect(page.getByRole("radio", { name: "Company bank" })).toBeChecked();
-  await expect(summary(page)).toContainText("HKD1,230.00");
+  await expect(summary(page)).toContainText("HKD 1,230.00");
   // Sales is this app's own stage too (Wave 2b)
   await expect(stages(page).getByRole("link", { name: "Sales, done" })).toHaveAttribute("href", `${BASE}/reports/new/sale?transaction_date=${DAY}`);
   // the stage the draft is on is not done: Save & Next is the way there
   await expect(stages(page).getByRole("link", { name: /Expenses/ })).toHaveCount(0);
 });
 
-test("the amount is cleaned as typed, grouped on leaving, and moves the opening cash; Save & Next opens Sales in this app", async ({ page }) => {
+test("the amount refuses stray keys as typed, is grouped on leaving, and moves the opening cash; Save & Next opens Sales in this app", async ({ page }) => {
   const saves = await openWith(page, openingAnswer());
   const field = amount(page);
-  await field.fill("12a50.555");
+  // owner 2026-10-21: one money rule (@minty/shared/money) - a stray key is refused, not stripped
+  await field.pressSequentially("12a50.555");
   await expect(field).toHaveValue("1250.55");
-  await expect(summary(page)).toContainText("HKD2,450.55");
+  await expect(summary(page)).toContainText("HKD 2,450.55");
   await field.blur();
   await expect(field).toHaveValue("1,250.55");
   await page.getByText("Company bank").click();
@@ -200,7 +203,7 @@ test("a last closing below zero holds the stage behind the gate: the rule, the r
   const saves = await openWith(page, openingAnswer({ starting_cash_balance: -120, yesterday_closing_balance: -120, safebox_balance: 0 }));
   const gate = page.getByRole("status").filter({ hasText: "Your last closing ended below zero" });
   await expect(gate).toBeVisible();
-  await expect(gate).toContainText("It closed at -HKD120.00");
+  await expect(gate).toContainText("It closed at -HKD 120.00");
   await expect(gate).toContainText("Correct the deposit from Petty Cash, then start this day again.");
   await expect(page.getByRole("button", { name: /Save/ })).toHaveCount(0);
   await expect(page.getByRole("textbox")).toHaveCount(0);
@@ -213,14 +216,14 @@ test("a last closing below zero holds the stage behind the gate: the rule, the r
 test("an opening below zero says how much to add, live, and is never sent", async ({ page }) => {
   const saves = await openWith(page, openingAnswer({ starting_cash_balance: -120.5, yesterday_closing_balance: 0, safebox_balance: 0 }));
   const alert = page.getByRole("status").filter({ hasText: "Opening cash is below zero" });
-  await expect(alert).toContainText("Add at least HKD120.50 to the drawer to continue.");
-  await expect(summary(page)).toContainText("-HKD120.50");
+  await expect(alert).toContainText("Add at least HKD 120.50 to the drawer to continue.");
+  await expect(summary(page)).toContainText("-HKD 120.50");
   await page.getByRole("button", { name: "Save & Next" }).click();
   await expect(amount(page)).toBeFocused();
   expect(saves).toEqual([]);
   await amount(page).fill("150");
   await expect(alert).toHaveCount(0);
-  await expect(summary(page)).toContainText("HKD29.50");
+  await expect(summary(page)).toContainText("HKD 29.50");
 });
 
 test("unsaved changes hold the stage links and the way back, with an inline warning and a way to leave anyway", async ({ page }) => {

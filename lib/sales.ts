@@ -5,7 +5,8 @@
  * names are the catalogue's, shown as they stand (Flask's page title-cased them: "Wechat Pay").
  */
 
-import { groupMoney, parseMoney } from "@/lib/currencyInput";
+import { formatAmount, parseAmount } from "@minty/shared/money";
+
 import type { OpeningPage } from "@/lib/opening";
 
 export type SalesMethod = {
@@ -62,14 +63,14 @@ export type SalesTotals = { electronic: number; delivery: number; cash: number; 
 /** The running subtotals and the day's total sales, from what the fields show. */
 export function salesTotals(methods: SalesMethod[], values: Record<string, string>, cash: string): SalesTotals {
   const { electronic, delivery } = sections(methods);
-  const sum = (list: SalesMethod[]) => cents(list.reduce((total, m) => total + parseMoney(values[m.value_name] ?? ""), 0));
-  const totals = { electronic: sum(electronic), delivery: sum(delivery), cash: cents(parseMoney(cash)) };
+  const sum = (list: SalesMethod[]) => cents(list.reduce((total, m) => total + (parseAmount(values[m.value_name] ?? "") ?? 0), 0));
+  const totals = { electronic: sum(electronic), delivery: sum(delivery), cash: cents(parseAmount(cash) ?? 0) };
   return { ...totals, total: cents(totals.electronic + totals.delivery + totals.cash) };
 }
 
 /** How a saved amount first shows: grouped, and a zero or none as an empty field (the placeholder). */
 export function shownAmount(amount: number | null): string {
-  return amount ? groupMoney(String(amount)) : "";
+  return amount ? formatAmount(amount) : "";
 }
 
 /** The fields as the page first shows them. */
@@ -85,11 +86,11 @@ export function initialValues(page: SalesPage): { values: Record<string, string>
  * emptied field is a change (it saves as zero) and putting a value back clears it.
  */
 export function salesDirty(page: SalesPage, values: Record<string, string>, cash: string): boolean {
-  if (parseMoney(cash) !== (page.cash_sales ?? 0)) return true;
-  return shownMethods(page.methods).some((m) => parseMoney(values[m.value_name] ?? "") !== (m.amount ?? 0));
+  if ((parseAmount(cash) ?? 0) !== (page.cash_sales ?? 0)) return true;
+  return shownMethods(page.methods).some((m) => (parseAmount(values[m.value_name] ?? "") ?? 0) !== (m.amount ?? 0));
 }
 
 /** The save's `amounts`: every method the stage shows, an empty field as zero. */
 export function salesAmounts(methods: SalesMethod[], values: Record<string, string>): Record<string, number> {
-  return Object.fromEntries(shownMethods(methods).map((m) => [m.value_name, parseMoney(values[m.value_name] ?? "")]));
+  return Object.fromEntries(shownMethods(methods).map((m) => [m.value_name, parseAmount(values[m.value_name] ?? "") ?? 0]));
 }

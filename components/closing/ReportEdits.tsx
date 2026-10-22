@@ -23,7 +23,7 @@ import { ApiError, pettyCashBlob, pettyCashFetch, type ApiRequest } from "@/lib/
 import { differenceText, reasonHelper } from "@/lib/cashCount";
 import { differenceOf } from "@/lib/close";
 import { accountLabel, receiptKind, receiptProblem, remarksHelper, remarksProblem, type ExpenseLine, type Supplier } from "@/lib/expenses";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import { expenseTitle, type DailyReport } from "@/lib/report";
 import {
   lineChanges,
@@ -119,7 +119,7 @@ export function EditReasonDialog({ report, onCancel, onSaved }: { report: DailyR
     }
     // Nothing changed: nothing to send.
     if (text.trim() === saved.trim()) return onCancel();
-    void save({ method: "PUT", json: { reason: text.trim() } }, savedMessage("reason"));
+    void save({ method: "PUT", body: { reason: text.trim() } }, savedMessage("reason"));
   }
 
   return (
@@ -176,7 +176,7 @@ export function EditWithdrawalDialog({ report, onCancel, onSaved }: { report: Da
   function submit() {
     if (busy) return;
     if (source === saved) return onCancel();
-    void save({ method: "PUT", json: { withdrawal_type: source } }, savedMessage("withdrawal"));
+    void save({ method: "PUT", body: { withdrawal_type: source } }, savedMessage("withdrawal"));
   }
 
   return (
@@ -184,7 +184,7 @@ export function EditWithdrawalDialog({ report, onCancel, onSaved }: { report: Da
       open
       onRequestClose={() => !busy && onCancel()}
       title="Where the cash came from"
-      description={`${formatMoney(report.cash.cash_addition, report.currency_code)} was added to the drawer. The amount stays as it is.`}
+      description={`${money(report.cash.cash_addition, report.currency_code)} was added to the drawer. The amount stays as it is.`}
       footer={<SaveFooter form={formId} busy={busy} onCancel={onCancel} />}
     >
       <form
@@ -306,7 +306,7 @@ export function EditLineDrawer({
       open
       onRequestClose={requestClose}
       title="Edit expense"
-      description={`${expenseTitle(line)} · ${formatMoney(line.amount, code)}`}
+      description={`${expenseTitle(line)} · ${money(line.amount, code)}`}
       footer={
         <>
           <Button kind="ghost" onClick={requestClose} disabled={busy}>
@@ -348,7 +348,7 @@ export function EditLineDrawer({
         <div className="flex min-w-0 flex-col gap-1.5">
           <p className="text-label text-text-secondary">Amount</p>
           <p className="break-all text-body-m font-semibold text-text-primary" translate="no">
-            {formatMoney(line.amount, code)}
+            {money(line.amount, code)}
           </p>
           <p className="text-caption text-text-muted">The amount can&apos;t be changed here.</p>
         </div>

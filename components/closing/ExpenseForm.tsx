@@ -28,12 +28,12 @@
 import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
 
 import { Button, buttonClass, Drawer, ErrorSummary, Field, Icon, InlineAlert, inputClass } from "@minty/shared/ui";
+import { formatAmount, parseAmount } from "@minty/shared/money";
 
 import { ReadingNotice, ReceiptNote, SuggestedHelper, SuggestionExtras, useReceiptReader } from "@/components/closing/ReceiptReader";
 import { AmountInput, refused } from "@/components/closing/Stage";
 import type { ViewerFile } from "@/components/closing/ReceiptViewer";
 import { ApiError, pettyCashBlob, pettyCashFetch } from "@/lib/apiClient";
-import { groupMoney, parseMoney } from "@/lib/currencyInput";
 import { cleared, edited, entryState, usedNote, withoutSuggestions, withSuggestions, type EntryValues, type SuggestedField } from "@/lib/expenseAi";
 import { accountsFor, canRemoveReceipt, draftLineChanges, draftLineForm, keptReceipts } from "@/lib/expenseEdit";
 import {
@@ -59,7 +59,7 @@ import {
   type ExpenseLine,
   type Supplier,
 } from "@/lib/expenses";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 
 const NOT_ADDED = "We couldn't add this expense. Check your connection, then try again.";
 const NOT_SAVED = "We couldn't save this expense. Check your connection, then try again.";
@@ -87,7 +87,7 @@ export type ExpenseFormProps = {
 function valuesOf(line: ExpenseLine | null | undefined): EntryValues {
   if (!line) return entryState().values;
   return {
-    amount: groupMoney(String(line.amount)),
+    amount: formatAmount(line.amount),
     query: line.supplier?.name ?? "",
     supplier: line.supplier,
     accountId: line.account?.id ?? "",
@@ -199,7 +199,7 @@ export default function ExpenseForm({
     } else {
       const body = new FormData();
       body.set("transaction_date", day);
-      body.set("amount", String(parseMoney(amount)));
+      body.set("amount", String(parseAmount(amount) ?? 0));
       body.set("remarks", remarks.trim());
       body.set("supplier_id", supplier?.id ?? "");
       body.set("account_id", accountId);
@@ -246,7 +246,7 @@ export default function ExpenseForm({
       open
       onRequestClose={requestClose}
       title={editing ? "Edit expense" : "Add expense"}
-      description={line ? `${title} · ${formatMoney(line.amount, code)}` : "Fill it in from the receipt."}
+      description={line ? `${title} · ${money(line.amount, code)}` : "Fill it in from the receipt."}
       footer={
         <>
           <Button kind="ghost" onClick={requestClose} disabled={busy}>
@@ -856,7 +856,7 @@ function NewSupplier({
     }
     setSaving(true);
     try {
-      onAdded(await pettyCashFetch<Supplier>("/suppliers", { method: "POST", json: { name: name.trim() } }));
+      onAdded(await pettyCashFetch<Supplier>("/suppliers", { method: "POST", body: { name: name.trim() } }));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
       setSaving(false);

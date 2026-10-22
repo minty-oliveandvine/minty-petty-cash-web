@@ -5,8 +5,10 @@
 
 import { expect, test, type Page, type Request, type Route } from "@playwright/test";
 
-import { companyRef } from "./companyRef";
+import { companyRef } from "@minty/shared/e2e";
 import { expectNoHorizontalScroll, mintModuleToken } from "./helpers";
+
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -166,8 +168,8 @@ test("the list: Record rows newest first, Status pills in their tones, figures a
     await expect(rowOf(page, day).locator("[data-tone]").filter({ hasText: label })).toHaveAttribute("data-tone", tone);
   }
   const latest = rowOf(page, "Tue 13 Oct 2026");
-  await expect(latest).toContainText("Expenses HKD240.50 · Submitted by Olive");
-  await expect(latest.getByText("HKD1,070.50", { exact: true })).toHaveClass(/text-text-primary/);
+  await expect(latest).toContainText("Expenses HKD 240.50 · Submitted by Olive");
+  await expect(latest.getByText("HKD 1,070.50", { exact: true })).toHaveClass(/text-text-primary/);
   await expect(rowOf(page, "Mon 12 Oct 2026")).toContainText("Submitted by Ben");
   await expect(rowOf(page, "Wed 14 Oct 2026")).toContainText("Daily Closing in progress");
 
@@ -410,7 +412,7 @@ test("a filter the API refuses shows its sentence; any other failure says so and
       q.get("status") === "late"
         ? route.fulfill({ status: 422, json: { error: why } })
         : fail
-          ? route.fulfill({ status: 500, json: { error: "Something went wrong on our side. Please try again." } })
+          ? route.fulfill({ status: 500, json: { error: "Something went wrong on my end. Mind trying again?" } })
           : route.fulfill({ json: pageAnswer([LATEST]) }),
   }, `${HISTORY}?status=late`);
   const refusal = page.getByRole("alert").filter({ hasText: why });
@@ -419,7 +421,7 @@ test("a filter the API refuses shows its sentence; any other failure says so and
   await refusal.getByRole("link", { name: "Clear filters" }).click();
   await expect(page).toHaveURL(exact(HISTORY));
 
-  const failure = page.getByRole("alert").filter({ hasText: "Something went wrong on our side. Please try again." });
+  const failure = page.getByRole("alert").filter({ hasText: "Something went wrong on my end. Mind trying again?" });
   await expect(failure).toBeVisible();
   fail = false;
   await failure.getByRole("button", { name: "Try again" }).click();

@@ -24,6 +24,8 @@ import {
 } from "@/lib/history";
 import { historyHref } from "@/lib/wizardPages";
 
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
+
 const ENTITY = "360812e1-9f94-46a3-aa31-347e21afde8e";
 const NONE: Filters = { status: "", start: "", end: "", page: 1, perPage: 10 };
 
@@ -175,8 +177,12 @@ describe("Export CSV", () => {
 
 describe("a row", () => {
   it("reads its figures as plain text, with who submitted it", () => {
-    expect(rowMeta(row(), "HKD")).toBe("Expenses HKD240.50 · Submitted by Olive");
-    expect(rowMeta(row({ submitted_by: null }), "HKD")).toBe("Expenses HKD240.50");
+    expect(rowMeta(row(), "HKD")).toBe("Expenses HKD\u00a0240.50 · Submitted by Olive");
+    expect(rowMeta(row({ submitted_by: null }), "HKD")).toBe("Expenses HKD\u00a0240.50");
+  });
+
+  it("says so when the company has no currency - never $, never a bare number (owner 2026-10-22)", () => {
+    expect(rowMeta(row(), null)).toBe("Expenses 240.50 (No currency selected) · Submitted by Olive");
   });
 
   it("says a draft is still in progress", () => {

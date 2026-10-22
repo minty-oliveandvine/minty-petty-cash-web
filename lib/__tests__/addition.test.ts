@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { negativeGate, openingCash, signedMoney, startingSource, startingSplit } from "@/lib/addition";
+import { negativeGate, openingCash, startingSource, startingSplit } from "@/lib/addition";
 import type { OpeningPage } from "@/lib/opening";
 
 function page(over: Partial<OpeningPage> = {}): OpeningPage {
@@ -61,13 +61,5 @@ describe("the negative-balance gate", () => {
   it("is open otherwise", () => {
     expect(negativeGate(page(), 1200)).toBeNull();
     expect(negativeGate(page({ starting_cash_balance: 0, yesterday_closing_balance: 0 }), 0)).toBeNull();
-  });
-});
-
-describe("an amount below zero", () => {
-  it("is written as plain text with a minus before the currency", () => {
-    expect(signedMoney(-120, "HKD")).toBe("-HKD120.00");
-    expect(signedMoney(1250.5, "HKD")).toBe("HKD1,250.50");
-    expect(signedMoney(0, null)).toBe("$0.00");
   });
 });

@@ -1,45 +1,27 @@
 /**
  * Flask (Minty, `ACCOUNTS_API_URL`) is a backend only: this app never sends a person to a Flask
- * PAGE (docs/features/petty-cash-web.md, "No Flask pages"). The addresses it may build on Flask
- * are the login-gated hand-offs and actions below, the petty-cash-web hand-off (lib/handoff.ts)
- * and the JSON APIs (lib/apiClient.ts) - lib/__tests__/noFlaskPages.test.ts holds every other
- * file to that.
+ * PAGE (docs/features/petty-cash-web.md, "No Flask pages"). Every address it builds on Flask comes
+ * from `@minty/shared` - `hubHandoffUrl`, `logoutUrl` (handoff), `settingsSectionUrl`,
+ * `paymentRequestSettingsUrl`, `billsUrl` (companyRef) - or this app's hand-off (lib/handoff.ts)
+ * and its JSON clients (lib/apiClient.ts); lib/__tests__/noFlaskPages.test.ts holds every file to
+ * that.
  *
- * - `hubUrl` - minty-web's page `next`, through Flask's `/handoff/minty-web` (it mints minty-web's
- *   token and redirects; with `entityId` the token is scoped to that company).
+ * The two below are this app's own names for minty-web settings sections it links to from more
+ * than one screen, through Flask's `/handoff/minty-web`:
+ *
  * - `integrationUrl` - minty-web's Entity & Integration tab, where Xero is connected or
- *   reconnected, through that hand-off.
+ *   reconnected.
  * - `subscriptionSettingsUrl` - minty-web's Module page, where the subscription is managed (the
- *   launch page's subscription notice), through that hand-off.
- * - `settingsSectionUrl` / `paymentRequestSettingsUrl` - the settings pills' other sections:
- *   minty-web's Users, Entity & Integration and Modules through that hand-off, and the payments
- *   app's settings through Flask's `/entity/<id>/settings/payment-request` hand-off.
- * - `billsUrl` - the payments app, through Flask's `/entity/<id>/payment-request`: a hand-off that
- *   mints the payments app's token and redirects (Minty `go_to_bills`), never a page.
- * - `logoutUrl` - Flask's `/logout`: ends the session everywhere, then redirects to minty-web's
- *   sign-in.
+ *   launch page's subscription notice).
  */
 
-import { companyRef } from "@minty/shared/companyRef";
+import { settingsSectionUrl } from "@minty/shared/companyRef";
 
 import { env } from "@/lib/env";
-import { withReturnOrigin } from "@/lib/handoff";
-
-/** A Flask address (accounts), naming this app as where to hand back to in a preview set. */
-function accounts(path: string): string {
-  return withReturnOrigin(`${env.ACCOUNTS_API_URL}${path}`);
-}
-
-/** minty-web's page `next`, through Flask's login-gated re-handoff (scoped to `entityId` when given). */
-export function hubUrl(next: string, entityId?: string): string {
-  const qs = new URLSearchParams({ next });
-  if (entityId) qs.set("entity_id", entityId);
-  return accounts(`/handoff/minty-web?${qs.toString()}`);
-}
 
 /** minty-web's Entity & Integration tab for the company (`/entity/<shortid>/<name>/settings/integration`), where Xero is connected. */
 export function integrationUrl(entityId: string, entityName: string): string {
-  return hubUrl(`/entity/${companyRef(entityId, entityName)}/settings/integration`, entityId);
+  return settingsSectionUrl(env.ACCOUNTS_API_URL, entityId, entityName, "integration");
 }
 
 /**
@@ -47,32 +29,5 @@ export function integrationUrl(entityId: string, entityName: string): string {
  * subscription is managed - the subscription notice's "Go to subscription settings".
  */
 export function subscriptionSettingsUrl(entityId: string, entityName: string): string {
-  return hubUrl(`/entity/${companyRef(entityId, entityName)}/settings/modules`, entityId);
-}
-
-/** minty-web's settings sections - the settings pills' Users, Entity & Integration and Modules. */
-export type HubSettingsSection = "users" | "integration" | "modules";
-
-/** One of minty-web's settings sections for the company (`/entity/<shortid>/<name>/settings/<section>`), through the hand-off. */
-export function settingsSectionUrl(entityId: string, entityName: string, section: HubSettingsSection): string {
-  return hubUrl(`/entity/${companyRef(entityId, entityName)}/settings/${section}`, entityId);
-}
-
-/**
- * The payments app's settings for the company, through Flask's `/entity/<id>/settings/payment-request`
- * (Minty `entity_settings_payments`): login-gated, it mints the payments app's token and redirects -
- * never a page. The settings pills' Payment Request Settings, as minty-web's pills use it.
- */
-export function paymentRequestSettingsUrl(entityId: string): string {
-  return accounts(`/entity/${encodeURIComponent(entityId)}/settings/payment-request`);
-}
-
-/** The payments app for the company, through Flask's token hand-off (`/entity/<id>/payment-request`). */
-export function billsUrl(entityId: string): string {
-  return accounts(`/entity/${encodeURIComponent(entityId)}/payment-request`);
-}
-
-/** Flask's `/logout` (ends the session, then minty-web's sign-in). */
-export function logoutUrl(): string {
-  return `${env.ACCOUNTS_API_URL}/logout`;
+  return settingsSectionUrl(env.ACCOUNTS_API_URL, entityId, entityName, "modules");
 }

@@ -5,8 +5,10 @@
 
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-import { companyRef } from "./companyRef";
+import { companyRef } from "@minty/shared/e2e";
 import { expectNoHorizontalScroll, mintModuleToken } from "./helpers";
+
+// Amounts read "HKD 760.00" - owner 2026-10-21: one money rule (@minty/shared/money); they were "HKD760.00".
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -246,13 +248,13 @@ test("the day's entries, their total and the Workflow header", async ({ page }) 
   await expect(entries(page)).toHaveCount(2);
   const first = entries(page).first();
   await expect(first).toContainText("General Expenses");
-  await expect(first).toContainText("HKD120.50");
+  await expect(first).toContainText("HKD 120.50");
   await expect(first).toContainText("ParknShop · Account 429");
   await expect(first).toContainText("Printer paper and toner for the front desk");
   await expect(first.getByRole("button", { name: "View receipt receipt-l1.png" })).toBeVisible();
-  await expect(first.getByRole("button", { name: "Edit expense: General Expenses, HKD120.50" })).toBeVisible();
-  await expect(first.getByRole("button", { name: "Delete expense: General Expenses, HKD120.50" })).toBeVisible();
-  await expect(row(page, "Total expenses")).toContainText("HKD158.50");
+  await expect(first.getByRole("button", { name: "Edit expense: General Expenses, HKD 120.50" })).toBeVisible();
+  await expect(first.getByRole("button", { name: "Delete expense: General Expenses, HKD 120.50" })).toBeVisible();
+  await expect(row(page, "Total expenses")).toContainText("HKD 158.50");
   // amounts are plain text, never coloured: the same ink as the title
   const colours = await first.locator("p").evaluateAll((ps) => ps.slice(0, 2).map((p) => getComputedStyle(p).color));
   expect(colours[0]).toBe(colours[1]);
@@ -263,7 +265,7 @@ test("no entries yet: the empty state, a zero total, and Add expense", async ({ 
   await openWith(page, expensesAnswer({ lines: [], total: 0 }));
   await expect(page.getByText("No expenses added yet.")).toBeVisible();
   await expect(page.getByText("Add an expense when you're ready.")).toBeVisible();
-  await expect(row(page, "Total expenses")).toContainText("HKD0.00");
+  await expect(row(page, "Total expenses")).toContainText("HKD 0.00");
   await expect(page.getByRole("button", { name: "Add expense" })).toHaveCount(1);
   await expectNoHorizontalScroll(page);
 });
@@ -299,7 +301,9 @@ test("Add expense: a Drawer on a computer, a full-screen sheet on a phone, check
   await expect(amount).not.toHaveAttribute("aria-invalid", "true");
   await description.focus();
   await expect(amount).toHaveAccessibleDescription("The amount is 0. Enter an amount above 0.");
-  await amount.fill("1a2.555");
+  // owner 2026-10-21: one money rule (@minty/shared/money) - a stray key is refused, not stripped
+  await amount.fill("");
+  await amount.pressSequentially("1a2.555");
   await expect(amount).toHaveValue("12.55");
   await expect(amount).not.toHaveAttribute("aria-invalid", "true");
 
@@ -355,8 +359,8 @@ test("Add expense: a Drawer on a computer, a full-screen sheet on a phone, check
   ]);
   await expect(entries(page)).toHaveCount(3);
   await expect(entries(page).last()).toContainText("Printing & Stationery");
-  await expect(entries(page).last()).toContainText("HKD12.55");
-  await expect(row(page, "Total expenses")).toContainText("HKD171.05");
+  await expect(entries(page).last()).toContainText("HKD 12.55");
+  await expect(row(page, "Total expenses")).toContainText("HKD 171.05");
   await expect(page.getByRole("heading", { level: 2, name: "3 expenses" })).toBeVisible();
   await expectNoHorizontalScroll(page);
 });
@@ -456,7 +460,7 @@ test("delete asks with a Danger confirmation, Cancel first, then goes", async ({
   const calls = await openWith(page, expensesAnswer());
   await entries(page).first().getByRole("button", { name: /^Delete expense/ }).click();
   const dialog = page.getByRole("alertdialog", { name: "Delete this expense?" });
-  await expect(dialog).toContainText("General Expenses, HKD120.50 from ParknShop, and its receipt will be deleted.");
+  await expect(dialog).toContainText("General Expenses, HKD 120.50 from ParknShop, and its receipt will be deleted.");
   await expect(dialog).toContainText("This can't be undone.");
   await expect(dialog.getByRole("button", { name: "Cancel" })).toBeFocused();
   await expect(dialog.getByRole("button", { name: "Delete expense" })).toHaveClass(/bg-action-danger/);
@@ -469,7 +473,7 @@ test("delete asks with a Danger confirmation, Cancel first, then goes", async ({
   await expect(dialog).toHaveCount(0);
   expect(calls.deletes).toEqual(["l1"]);
   await expect(entries(page)).toHaveCount(1);
-  await expect(row(page, "Total expenses")).toContainText("HKD38.00");
+  await expect(row(page, "Total expenses")).toContainText("HKD 38.00");
   await expect(page.getByRole("heading", { level: 2, name: "1 expense" })).toBeVisible();
 });
 
@@ -568,7 +572,7 @@ test("the launch page's Continue opens this stage when the report is on Expenses
 
 test("the largest amount is never clipped, at any width", async ({ page }) => {
   await openWith(page, expensesAnswer({ lines: [line("big", 99999999999.99, { remarks: "x".repeat(300) })], total: 99999999999.99 }));
-  await expect(entries(page).first()).toContainText("HKD99,999,999,999.99");
+  await expect(entries(page).first()).toContainText("HKD 99,999,999,999.99");
   const clipped = await page.locator("main p, main dd").evaluateAll((els) => els.filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent));
   expect(clipped).toEqual([]);
   await expectNoHorizontalScroll(page);
@@ -594,7 +598,7 @@ const editor = (page: Page) => page.getByRole("dialog", { name: "Edit expense" }
 
 test("Edit opens the same form prefilled; Save sends only what changed and updates the row and the total in place", async ({ page }) => {
   const calls = await openWith(page, expensesAnswer());
-  const edit = entries(page).first().getByRole("button", { name: "Edit expense: General Expenses, HKD120.50" });
+  const edit = entries(page).first().getByRole("button", { name: "Edit expense: General Expenses, HKD 120.50" });
   await edit.click();
   const d = editor(page);
   await expect(d).toBeVisible();
@@ -602,7 +606,7 @@ test("Edit opens the same form prefilled; Save sends only what changed and updat
   const width = page.viewportSize()!.width;
   if (width < 640) expect(Math.round(box!.width)).toBe(width);
   else expect(Math.round(box!.width)).toBe(480);
-  await expect(d).toContainText("General Expenses · HKD120.50");
+  await expect(d).toContainText("General Expenses · HKD 120.50");
   const amount = d.getByRole("textbox", { name: /Amount/ });
   await expect(amount).toHaveValue("120.50");
   await expect(d.getByRole("combobox", { name: /Supplier/ })).toHaveValue("ParknShop");
@@ -625,9 +629,9 @@ test("Edit opens the same form prefilled; Save sends only what changed and updat
   expect(calls.adds).toEqual([]);
   await expect(entries(page)).toHaveCount(2);
   await expect(entries(page).first()).toContainText("Printing & Stationery");
-  await expect(entries(page).first()).toContainText("HKD130.00");
-  await expect(row(page, "Total expenses")).toContainText("HKD168.00");
-  await expect(entries(page).first().getByRole("button", { name: "Edit expense: Printing & Stationery, HKD130.00" })).toBeFocused();
+  await expect(entries(page).first()).toContainText("HKD 130.00");
+  await expect(row(page, "Total expenses")).toContainText("HKD 168.00");
+  await expect(entries(page).first().getByRole("button", { name: "Edit expense: Printing & Stationery, HKD 130.00" })).toBeFocused();
   await expectNoHorizontalScroll(page);
 });
 
@@ -658,7 +662,7 @@ test("a second saved receipt can be removed, never the last; a refused edit says
   await expect(d.getByRole("alert").filter({ hasText: why })).toHaveAttribute("data-tone", "danger");
   expect(calls.edits).toEqual([{ id: "l1", fields: { remove_receipt_ids: "r2" } }]);
   await expect(d.getByRole("button", { name: "Save" })).toBeEnabled();
-  await expect(row(page, "Total expenses")).toContainText("HKD120.50");
+  await expect(row(page, "Total expenses")).toContainText("HKD 120.50");
 });
 
 const SUGGESTIONS = {
@@ -729,7 +733,7 @@ test("the reader offers an unknown supplier for New supplier, and a different re
   const amount = d.getByRole("textbox", { name: /Amount/ });
   await amount.fill("45");
   await attach(page, "taxi.png", "image/png");
-  await expect(d.getByText("The receipt reads HKD48.80, not HKD45.00.")).toBeVisible();
+  await expect(d.getByText("The receipt reads HKD 48.80, not HKD 45.00.")).toBeVisible();
   // never overwritten: the typed value stays as typed (grouping waits for the field to be left,
   // which pressing the offer below does - and that must not withdraw the offer)
   await expect(amount).toHaveValue("45");
@@ -759,7 +763,7 @@ test("the reader switched off gets quietly out of the way, and is not asked agai
 });
 
 test("a reader that fails says nothing", async ({ page }) => {
-  const calls = await openWith(page, expensesAnswer(), { onExtract: (route) => route.fulfill({ status: 500, json: { error: "Something went wrong on our side. Please try again." } }) });
+  const calls = await openWith(page, expensesAnswer(), { onExtract: (route) => route.fulfill({ status: 500, json: { error: "Something went wrong on my end. Mind trying again?" } }) });
   await openDrawer(page);
   const d = drawer(page);
   // fillValid attaches the receipt (which is read, and fails) and fills the rest by hand

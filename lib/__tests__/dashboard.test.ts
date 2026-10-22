@@ -11,6 +11,7 @@ import {
   launchState,
   PREVIOUS_DAY_FIRST,
   recentReports,
+  setupRequired,
   startProblem,
   type Home,
 } from "@/lib/dashboard";
@@ -148,6 +149,43 @@ describe("the gate", () => {
     const gate = gateDay(h)!;
     expect(startProblem(h, gate)).toBeNull();
     expect(startProblem(h, TODAY)).not.toBeNull();
+  });
+});
+
+describe("Setup Required", () => {
+  // owner 2026-10-22: no currency is no silent fallback - the gate holds the page until one is chosen
+  const ID = "360812e1-9f94-46a3-aa31-347e21afde8e";
+  const NAME = "Olive & Vine";
+  const COUNTRY = "/entity/360812e1/olive-and-vine/settings/petty-cash#country";
+  const XERO = "/entity/360812e1/olive-and-vine/settings/petty-cash#xero";
+
+  it("stays closed with a currency and complete Xero settings", () => {
+    expect(setupRequired(home(), ID, NAME)).toEqual({ open: false, items: [] });
+  });
+
+  it("asks for the company's currency, linking to Country & currency in Petty Cash Settings", () => {
+    for (const code of [null, "", "  "]) {
+      expect(setupRequired(home({ currency_code: code }), ID, NAME)).toEqual({
+        open: true,
+        items: [{ text: "Choose your company's currency", href: COUNTRY }],
+      });
+    }
+  });
+
+  it("names each missing Xero setting, linking to the Xero cards, after the currency", () => {
+    const h = home({ currency_code: null, xero_settings: { complete: false, missing: ["Main Bank Account", "Cash Sale Contact"] } });
+    expect(setupRequired(h, ID, NAME)).toEqual({
+      open: true,
+      items: [
+        { text: "Choose your company's currency", href: COUNTRY },
+        { text: "Main Bank Account", href: XERO },
+        { text: "Cash Sale Contact", href: XERO },
+      ],
+    });
+  });
+
+  it("holds the page when the Xero settings are incomplete even with none named", () => {
+    expect(setupRequired(home({ xero_settings: { complete: false, missing: [] } }), ID, NAME)).toEqual({ open: true, items: [] });
   });
 });
 

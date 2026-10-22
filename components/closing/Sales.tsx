@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { useId, useState, type ReactNode } from "react";
 
 import { buttonClass, InlineAlert, PageBanner } from "@minty/shared/ui";
+import { parseAmount } from "@minty/shared/money";
 
 import { AmountInput, openStep, refused, StageActions, StagePage, stageSteps, useLeaveHold, WorkflowHeader, type StageContext } from "@/components/closing/Stage";
 import { pettyCashFetch } from "@/lib/apiClient";
-import { parseMoney } from "@/lib/currencyInput";
-import { formatMoney } from "@/lib/money";
+import { money } from "@/lib/money";
 import { reportStatus } from "@/lib/reportStatus";
 import { initialValues, salesAmounts, salesDirty, salesTotals, sections, type SalesMethod, type SalesPage, type SalesSaved } from "@/lib/sales";
 import { stepHref } from "@/lib/wizardPages";
@@ -56,7 +56,7 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: SalesPa
     try {
       const answer = await pettyCashFetch<SalesSaved>("/reports/sales", {
         method: "PUT",
-        json: { transaction_date: day, cash_sales: parseMoney(cash), amounts: salesAmounts(page.methods, values), action },
+        body: { transaction_date: day, cash_sales: parseAmount(cash) ?? 0, amounts: salesAmounts(page.methods, values), action },
       });
       if (answer.next === "expenses") openStep(push, entityId, entityName, "expenses", answer.transaction_date);
       else push(home);
@@ -136,7 +136,7 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: SalesPa
             <SalesSection
               title="Electronic payments"
               description="Card and e-wallet sales, as each terminal or app shows them."
-              subtotal={{ label: "Electronic payments total", amount: formatMoney(totals.electronic, code) }}
+              subtotal={{ label: "Electronic payments total", amount: money(totals.electronic, code) }}
             >
               {electronic.map(field)}
             </SalesSection>
@@ -145,7 +145,7 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: SalesPa
             <SalesSection
               title="Delivery"
               description="Sales through each delivery platform."
-              subtotal={{ label: "Delivery total", amount: formatMoney(totals.delivery, code) }}
+              subtotal={{ label: "Delivery total", amount: money(totals.delivery, code) }}
               divided={electronic.length > 0}
             >
               {delivery.map(field)}
@@ -165,7 +165,7 @@ function StageForm({ page, entityId, entityName, home, notice }: { page: SalesPa
           <dl className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-lg bg-surface-sunk px-4 py-3">
             <dt className="min-w-0 text-title-m text-text-primary">Total sales</dt>
             <dd className="shrink-0 text-title-m text-text-primary" translate="no" aria-live="polite">
-              {formatMoney(totals.total, code)}
+              {money(totals.total, code)}
             </dd>
             <dd className="basis-full text-body-s text-text-secondary">Electronic payments, delivery and cash sales together.</dd>
           </dl>

@@ -2,7 +2,7 @@
 // with no token - back to Flask for one.
 
 import { render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 const replace = vi.fn();
 let params = new URLSearchParams();
@@ -18,10 +18,11 @@ import { _resetHandoffForTests } from "@/lib/handoff";
 
 const ENTITY = "360812e1-9f94-46a3-aa31-347e21afde8e";
 
-let go: ReturnType<typeof vi.fn>;
+// Typed: Vitest 5's untyped vi.fn() is "any function or class", which the hand-off does not accept.
+let go: Mock<(url: string) => void>;
 
 beforeEach(() => {
-  go = vi.fn();
+  go = vi.fn<(url: string) => void>();
   _resetHandoffForTests(go);
 });
 

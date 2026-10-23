@@ -230,7 +230,9 @@ test("a deposit the company cannot correct offers only 'as stated'", async ({ pa
   await expect(page).toHaveURL(/new\/opening\?transaction_date=2026-10-14/);
 });
 
-test("a day out of sequence is refused with Flask's sentence", async ({ page }) => {
+test("after a skipped day, the page opens on it and Start New Report starts it", async ({
+  page,
+}) => {
   await enterWith(
     page,
     homeAnswer({
@@ -245,13 +247,22 @@ test("a day out of sequence is refused with Flask's sentence", async ({ page }) 
       },
     }),
   );
-  await page.getByRole("button", { name: "Start New Report" }).click();
+  // the 13th - the day after the last submitted report - is picked, and the summary names it
+  await expect(page.getByRole("button", { name: /^13 Oct 2026/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByText("Report in Progress").locator("..")).toContainText("13 Oct 2026");
+  // today still waits for it
+  await page.getByRole("button", { name: /^14 Oct 2026/ }).click();
   await expect(
-    toast(
-      page,
-      "Transaction date must be 2026-10-13, the day after your last submitted report (2026-10-12).",
-    ),
+    toast(page, "The previous report needs finishing before today's. Shall we do that first?"),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Start New Report" }).click();
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname + url.search === `${HOME_PATH}/reports/new/opening?transaction_date=2026-10-13`,
+  );
 });
 
 test("a new company's first report opens on its onboarding start date, and nothing before it", async ({

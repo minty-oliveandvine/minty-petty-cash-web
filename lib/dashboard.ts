@@ -113,6 +113,18 @@ export function previousDayUnfinished(home: Home): boolean {
   return !!span && span.earliest <= yesterday && !home.published[yesterday];
 }
 
+/**
+ * The day the page opens on after skipped days (development's `gateDay`): yesterday is unfinished,
+ * so the day after the last submitted report - the only day `startProblem` accepts - is picked,
+ * while no draft is open (Continue owns that).
+ */
+export function catchUpDay(home: Home): string | null {
+  const span = reportSpan(home);
+  if (!span || home.draft || !previousDayUnfinished(home)) return null;
+  const expected = addDays(span.latest, 1);
+  return expected < home.server_today ? expected : null;
+}
+
 export const PREVIOUS_DAY_FIRST =
   "The previous report needs finishing before today's. Shall we do that first?";
 

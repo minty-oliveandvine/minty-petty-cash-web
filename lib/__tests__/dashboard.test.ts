@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   balanceFor,
+  catchUpDay,
   CHOOSE_CURRENCY,
   dayState,
   depositToConfirm,
@@ -138,6 +139,31 @@ describe("starting a report", () => {
       last_edit_seconds: 5,
     };
     expect(firstReportDay(home({ start_date: "2026-10-07", draft }))).toBeNull(); // Continue owns it
+  });
+
+  it("after skipped days, opens on the day after the last submitted report", () => {
+    expect(catchUpDay(home({ published: { "2026-10-12": day() } }))).toBe("2026-10-13");
+    expect(catchUpDay(home({ published: { "2026-10-01": day(), "2026-10-10": day() } }))).toBe(
+      "2026-10-11",
+    );
+    const h = home({ published: { "2026-10-11": day() } });
+    expect(startProblem(h, catchUpDay(h)!)).toBeNull(); // exactly the day the start rules accept
+  });
+
+  it("opens on no other day when nothing was skipped, nothing is submitted, or a draft is open", () => {
+    expect(catchUpDay(home({ published: { "2026-10-13": day() } }))).toBeNull();
+    expect(
+      catchUpDay(home({ published: { "2026-10-10": day(), "2026-10-13": day() } })),
+    ).toBeNull(); // a hole further back
+    expect(catchUpDay(home())).toBeNull();
+    expect(catchUpDay(home({ published: { "2026-10-11": day(), [TODAY]: day() } }))).toBeNull();
+    const draft = {
+      id: "d",
+      current_section: "opening",
+      completed_sections: [],
+      last_edit_seconds: 5,
+    };
+    expect(catchUpDay(home({ published: { "2026-10-12": day() }, draft }))).toBeNull(); // Continue owns it
   });
 
   it("not today while yesterday is unfinished", () => {

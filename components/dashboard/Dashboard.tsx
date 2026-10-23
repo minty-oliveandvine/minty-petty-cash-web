@@ -17,6 +17,7 @@ import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { reportHref } from "@/lib/companyPages";
 import {
   balanceFor,
+  catchUpDay,
   depositToConfirm,
   firstReportDay,
   lastEditText,
@@ -118,7 +119,9 @@ function DashboardBody({
 }) {
   const toast = useToast();
   // A first report opens on onboarding's start date; a hand-over's day wins.
-  const [selected, setSelected] = useState<string | null>(nextDay ?? firstReportDay(home));
+  const [selected, setSelected] = useState<string | null>(
+    nextDay ?? firstReportDay(home) ?? catchUpDay(home),
+  );
   const [confirming, setConfirming] = useState<{
     day: string;
     deposit: number;

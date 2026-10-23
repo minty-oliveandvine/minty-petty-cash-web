@@ -48,7 +48,13 @@ function home(over: Partial<Home> = {}): Home {
 }
 
 function day(closing = 100, deposit = 0) {
-  return { id: "r", closing_balance: closing, bank_deposit: deposit, xero_integrated: false, submitter_first_name: "Olive" };
+  return {
+    id: "r",
+    closing_balance: closing,
+    bank_deposit: deposit,
+    xero_integrated: false,
+    submitter_first_name: "Olive",
+  };
 }
 
 describe("the calendar", () => {
@@ -106,10 +112,14 @@ describe("starting a report", () => {
 
   it("before any report, not before the onboarding date", () => {
     const h = home({ draft_date: "2026-10-05" });
-    expect(startProblem(h, "2026-10-04")).toBe("Transaction date must be on or after your onboarding date (2026-10-05).");
+    expect(startProblem(h, "2026-10-04")).toBe(
+      "Transaction date must be on or after your onboarding date (2026-10-05).",
+    );
     expect(startProblem(h, "2026-10-20")).toBeNull(); // the future is allowed then
     const started = home({ start_date: "2026-10-07", draft_date: "2026-10-09" });
-    expect(startProblem(started, "2026-10-06")).toBe("Transaction date must be on or after your onboarding date (2026-10-07).");
+    expect(startProblem(started, "2026-10-06")).toBe(
+      "Transaction date must be on or after your onboarding date (2026-10-07).",
+    );
     expect(startProblem(started, "2026-10-07")).toBeNull();
   });
 
@@ -118,8 +128,15 @@ describe("starting a report", () => {
     expect(firstReportDay(home({ start_date: TODAY }))).toBe(TODAY);
     expect(firstReportDay(home())).toBeNull();
     expect(firstReportDay(home({ start_date: "2026-10-20" }))).toBeNull(); // a future start waits for its day
-    expect(firstReportDay(home({ start_date: "2026-10-07", published: { "2026-10-07": day() } }))).toBeNull();
-    const draft = { id: "d", current_section: "opening", completed_sections: [], last_edit_seconds: 5 };
+    expect(
+      firstReportDay(home({ start_date: "2026-10-07", published: { "2026-10-07": day() } })),
+    ).toBeNull();
+    const draft = {
+      id: "d",
+      current_section: "opening",
+      completed_sections: [],
+      last_edit_seconds: 5,
+    };
     expect(firstReportDay(home({ start_date: "2026-10-07", draft }))).toBeNull(); // Continue owns it
   });
 
@@ -136,8 +153,12 @@ describe("starting a report", () => {
 
   it("never while the company has no currency (owner, 2026-10-21), in the API's words, before any date rule", () => {
     expect(startProblem(home({ currency_code: null }), TODAY)).toBe(NO_CURRENCY);
-    expect(startProblem(home({ currency_code: null, published: { "2026-10-12": day() } }), "2026-10-20")).toBe(NO_CURRENCY);
-    expect(NO_CURRENCY).toBe("No currency is selected for this company. Choose one in Petty Cash Settings to start a report.");
+    expect(
+      startProblem(home({ currency_code: null, published: { "2026-10-12": day() } }), "2026-10-20"),
+    ).toBe(NO_CURRENCY);
+    expect(NO_CURRENCY).toBe(
+      "No currency is selected for this company. Choose one in Petty Cash Settings to start a report.",
+    );
   });
 });
 
@@ -149,16 +170,24 @@ describe("Setup Required", () => {
   it("asks for the company's currency first when it has none", () => {
     expect(setupMissing(home({ currency_code: null }))).toEqual([CHOOSE_CURRENCY]);
     expect(CHOOSE_CURRENCY).toBe("Choose your company's currency");
-    const both = home({ currency_code: null, xero_settings: { complete: false, missing: ["Main Bank Account"] } });
+    const both = home({
+      currency_code: null,
+      xero_settings: { complete: false, missing: ["Main Bank Account"] },
+    });
     expect(setupMissing(both)).toEqual([CHOOSE_CURRENCY, "Main Bank Account"]);
   });
 
   it("lists the missing Xero settings, or Flask's catch-all when the API names none", () => {
-    expect(setupMissing(home({ xero_settings: { complete: false, missing: ["Main Bank Account", "Cash Sale Contact"] } }))).toEqual([
-      "Main Bank Account",
-      "Cash Sale Contact",
+    expect(
+      setupMissing(
+        home({
+          xero_settings: { complete: false, missing: ["Main Bank Account", "Cash Sale Contact"] },
+        }),
+      ),
+    ).toEqual(["Main Bank Account", "Cash Sale Contact"]);
+    expect(setupMissing(home({ xero_settings: { complete: false, missing: [] } }))).toEqual([
+      "One or more required settings are missing",
     ]);
-    expect(setupMissing(home({ xero_settings: { complete: false, missing: [] } }))).toEqual(["One or more required settings are missing"]);
   });
 });
 
@@ -198,10 +227,27 @@ describe("Last edit … ago", () => {
 
 describe("the progress steps", () => {
   it("marks current, completed, next and locked, and opens what Flask opened", () => {
-    const steps = stepStates({ current_section: "expenses", completed_sections: ["opening", "sales"] });
-    expect(steps.map((s) => s.state)).toEqual(["completed", "completed", "current", "locked", "locked", "locked"]);
+    const steps = stepStates({
+      current_section: "expenses",
+      completed_sections: ["opening", "sales"],
+    });
+    expect(steps.map((s) => s.state)).toEqual([
+      "completed",
+      "completed",
+      "current",
+      "locked",
+      "locked",
+      "locked",
+    ]);
     expect(steps.map((s) => s.open)).toEqual([true, true, true, false, false, false]);
-    expect(steps.map((s) => s.label)).toEqual(["Opening", "Sales", "Expenses", "Bank Deposit", "Cash Count", "Ending"]);
+    expect(steps.map((s) => s.label)).toEqual([
+      "Opening",
+      "Sales",
+      "Expenses",
+      "Bank Deposit",
+      "Cash Count",
+      "Ending",
+    ]);
   });
 
   it("opens the first step of a draft that is still on it", () => {
@@ -218,13 +264,26 @@ describe("the progress steps", () => {
 
 describe("the progress steps on a wizard page", () => {
   it("make the page current and still open what the draft has done", () => {
-    const steps = stepStates({ current_section: "expenses", completed_sections: ["opening", "sales"] }, "opening");
-    expect(steps.map((s) => s.state)).toEqual(["current", "completed", "next", "locked", "locked", "locked"]);
+    const steps = stepStates(
+      { current_section: "expenses", completed_sections: ["opening", "sales"] },
+      "opening",
+    );
+    expect(steps.map((s) => s.state)).toEqual([
+      "current",
+      "completed",
+      "next",
+      "locked",
+      "locked",
+      "locked",
+    ]);
     expect(steps.map((s) => s.open)).toEqual([true, true, true, false, false, false]);
   });
 
   it("on a new report, the first step is current and opens", () => {
-    const [first, second] = stepStates({ current_section: null, completed_sections: [] }, "opening");
+    const [first, second] = stepStates(
+      { current_section: null, completed_sections: [] },
+      "opening",
+    );
     expect(first).toMatchObject({ state: "current", open: false });
     expect(second).toMatchObject({ state: "locked", open: false });
   });

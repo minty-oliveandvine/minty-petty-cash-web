@@ -81,7 +81,10 @@ export function ReasonEditor({ report, onSaved }: { report: DailyReport; onSaved
     }
     setSaving(true);
     try {
-      const answer = await pettyCashFetch<DailyReport>(`${reportPath(report)}/difference-reason`, { method: "PUT", json: { reason } });
+      const answer = await pettyCashFetch<DailyReport>(`${reportPath(report)}/difference-reason`, {
+        method: "PUT",
+        json: { reason },
+      });
       setReason(answer.cash.difference.reason);
       onSaved(answer);
       toast(EDIT_SAVED.reason, "success");
@@ -140,7 +143,10 @@ export function WithdrawalCard({ report, onSaved }: { report: DailyReport; onSav
     if (saving) return;
     setSaving(true);
     try {
-      const answer = await pettyCashFetch<DailyReport>(`${reportPath(report)}/withdrawal`, { method: "PUT", json: { withdrawal_type: choice } });
+      const answer = await pettyCashFetch<DailyReport>(`${reportPath(report)}/withdrawal`, {
+        method: "PUT",
+        json: { withdrawal_type: choice },
+      });
       onSaved(answer);
       toast(EDIT_SAVED.withdrawal, "success");
     } catch (err) {
@@ -158,7 +164,9 @@ export function WithdrawalCard({ report, onSaved }: { report: DailyReport; onSav
         {formatMoney(report.cash.cash_addition, report.currency_code)}
       </div>
       <fieldset aria-describedby={refused ? "withdrawal_message" : undefined}>
-        <legend className="mb-2 block text-sm font-medium text-flask-gray-700">Withdrawal from:</legend>
+        <legend className="mb-2 block text-sm font-medium text-flask-gray-700">
+          Withdrawal from:
+        </legend>
         <div className="space-y-2">
           {(
             [
@@ -194,14 +202,25 @@ export function WithdrawalCard({ report, onSaved }: { report: DailyReport; onSav
 }
 
 /** The day's lines as the Expenses step lists them (no bin); a tap opens the line's editor. */
-export function EditLinesCard({ report, onOpen }: { report: DailyReport; onOpen: (line: ReportLine) => void }) {
+export function EditLinesCard({
+  report,
+  onOpen,
+}: {
+  report: DailyReport;
+  onOpen: (line: ReportLine) => void;
+}) {
   return (
     <div className={CARD}>
       <h3 className={`mb-4 ${CARD_TITLE}`}>Expenses</h3>
       {/* block, not flex: the rows overlap by their -12px margins, as on the Expenses step */}
       <div>
         {report.expenses.lines.map((line) => (
-          <ExpenseRow key={line.id} line={line} code={report.currency_code} onOpen={() => onOpen(line)} />
+          <ExpenseRow
+            key={line.id}
+            line={line}
+            code={report.currency_code}
+            onOpen={() => onOpen(line)}
+          />
         ))}
       </div>
     </div>
@@ -231,7 +250,17 @@ function withCurrent<T extends { id: string }>(list: T[], current: T | null): T[
  * checked before it is sent) and "Save changes". Only what changed is sent. Escape or a click
  * outside keeps an editor with changes open (Flask's toast); Close discards them.
  */
-export function LineEditor({ report, line, onSaved, onClose }: { report: DailyReport; line: ReportLine; onSaved: Saved; onClose: () => void }) {
+export function LineEditor({
+  report,
+  line,
+  onSaved,
+  onClose,
+}: {
+  report: DailyReport;
+  line: ReportLine;
+  onSaved: Saved;
+  onClose: () => void;
+}) {
   const toast = useToast();
   const options = report.options ?? { suppliers: [], accounts: [] };
   const suppliers = withCurrent<Supplier>(options.suppliers, line.supplier);
@@ -294,7 +323,10 @@ export function LineEditor({ report, line, onSaved, onClose }: { report: DailyRe
     setSaving(true);
     setRefused(null);
     try {
-      const answer = await pettyCashFetch<DailyReport>(`${reportPath(report)}/expense-lines/${encodeURIComponent(line.id)}`, { method: "PATCH", form });
+      const answer = await pettyCashFetch<DailyReport>(
+        `${reportPath(report)}/expense-lines/${encodeURIComponent(line.id)}`,
+        { method: "PATCH", form },
+      );
       onSaved(answer);
       toast(EDIT_SAVED.line, "success");
       onClose();
@@ -329,7 +361,9 @@ export function LineEditor({ report, line, onSaved, onClose }: { report: DailyRe
           }}
           className={`${EDIT_FIELD} ${remarksMessage ? "border-flask-red-500" : "border-flask-gray-300"}`}
         />
-        {remarksMessage ? <FieldMessage id="editExpDescription_message">{remarksMessage}</FieldMessage> : null}
+        {remarksMessage ? (
+          <FieldMessage id="editExpDescription_message">{remarksMessage}</FieldMessage>
+        ) : null}
       </div>
       <div>
         <label htmlFor="editExpContact" className={EDIT_LABEL}>
@@ -355,7 +389,9 @@ export function LineEditor({ report, line, onSaved, onClose }: { report: DailyRe
             </option>
           ))}
         </select>
-        {supplierMessage ? <FieldMessage id="editExpContact_message">{supplierMessage}</FieldMessage> : null}
+        {supplierMessage ? (
+          <FieldMessage id="editExpContact_message">{supplierMessage}</FieldMessage>
+        ) : null}
       </div>
       <div>
         <label htmlFor="editExpAccount" className={EDIT_LABEL}>
@@ -381,7 +417,9 @@ export function LineEditor({ report, line, onSaved, onClose }: { report: DailyRe
             </option>
           ))}
         </select>
-        {accountMessage ? <FieldMessage id="editExpAccount_message">{accountMessage}</FieldMessage> : null}
+        {accountMessage ? (
+          <FieldMessage id="editExpAccount_message">{accountMessage}</FieldMessage>
+        ) : null}
       </div>
       <div>
         <span id="editExpFiles_label" className={EDIT_LABEL}>
@@ -401,7 +439,10 @@ export function LineEditor({ report, line, onSaved, onClose }: { report: DailyRe
                 : "border-flask-gray-300 bg-flask-gray-50 hover:bg-flask-gray-100"
           }`}
         >
-          <span id="editExpFileText" className="block text-sm text-flask-gray-500 [overflow-wrap:anywhere]">
+          <span
+            id="editExpFileText"
+            className="block text-sm text-flask-gray-500 [overflow-wrap:anywhere]"
+          >
             {receipt ? uploadName(receipt.name) : "Click to change files"}
           </span>
           <span id="editExpFiles_hint" className="mt-1 block text-xs text-flask-gray-400">
@@ -419,7 +460,9 @@ export function LineEditor({ report, line, onSaved, onClose }: { report: DailyRe
             e.target.value = "";
           }}
         />
-        {receiptMessage ? <FieldMessage id="editExpFiles_message">{receiptMessage}</FieldMessage> : null}
+        {receiptMessage ? (
+          <FieldMessage id="editExpFiles_message">{receiptMessage}</FieldMessage>
+        ) : null}
       </div>
       <div className="pt-1">
         <button

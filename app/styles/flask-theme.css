@@ -140,7 +140,8 @@
   --color-flask-dialog-red: #dc5a5a;
   --shadow-flask-dialog: 0 4px 8px 0 rgb(15 23 42 / 0.08), 0 12px 32px 0 rgb(0 0 0 / 0.1);
   --shadow-flask-row-menu: 0 2px 8px 0 rgb(0 0 0 / 0.1);
-  --shadow-flask-suggest: 0 0 0 1px rgb(0 0 0 / 0.05), 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-flask-suggest:
+    0 0 0 1px rgb(0 0 0 / 0.05), 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 
   /* Quick Actions icons */
   --color-flask-purple-bg: #f3e8ff;
@@ -211,7 +212,9 @@
 .flask-radio:focus-visible {
   outline: 2px solid transparent;
   outline-offset: 2px;
-  box-shadow: 0 0 0 2px var(--color-flask-white), 0 0 0 4px var(--color-flask-teal);
+  box-shadow:
+    0 0 0 2px var(--color-flask-white),
+    0 0 0 4px var(--color-flask-teal);
 }
 .flask-radio:checked {
   border-color: transparent;

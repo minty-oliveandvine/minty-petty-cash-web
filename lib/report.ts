@@ -60,7 +60,13 @@ export type DailyReport = {
    * `edit_details`: the three edits that move no balance (the difference reason, the withdrawal
    * source, an expense line) - any submitted report not being published.
    */
-  permissions: { edit: boolean; delete: boolean; publish: boolean; share: boolean; edit_details: boolean };
+  permissions: {
+    edit: boolean;
+    delete: boolean;
+    publish: boolean;
+    share: boolean;
+    edit_details: boolean;
+  };
   /** What a line may be changed to; only with `edit_details`. */
   options: { suppliers: Supplier[]; accounts: Account[] } | null;
 };
@@ -78,7 +84,12 @@ export type ReportOutcome = {
   cash_counted: number;
   difference: { amount: number; kind: DifferenceKind; has_reason: boolean };
   /** `was_published`: it has been to Xero, even if changed since (Flask's `was_previously_published`) - a publish warns. */
-  xero: { publishing_status: string | null; published_at: string | null; xero_integrated: boolean; was_published: boolean };
+  xero: {
+    publishing_status: string | null;
+    published_at: string | null;
+    xero_integrated: boolean;
+    was_published: boolean;
+  };
   can_publish: boolean;
   is_today: boolean;
   /** The day after, for "Continue to next day report". */
@@ -91,7 +102,10 @@ export type ReportOutcome = {
  * `cash`, so the row would count twice.
  */
 export function summarySales(sales: DailyReport["sales"]): SummarySales {
-  const methods = sales.methods.filter((m): m is typeof m & { type: SalesMethod["type"] } => m.type === "electronic" || m.type === "delivery");
+  const methods = sales.methods.filter(
+    (m): m is typeof m & { type: SalesMethod["type"] } =>
+      m.type === "electronic" || m.type === "delivery",
+  );
   return { methods, cash: sales.cash, total: sales.total };
 }
 
@@ -106,7 +120,8 @@ export function publishLabel(xero: ReportOutcome["xero"]): string {
 }
 
 /** Flask's Delete Report warning, word for word. */
-export const DELETE_WARNING = "Are you sure you want to delete this report? This action cannot be undone.";
+export const DELETE_WARNING =
+  "Are you sure you want to delete this report? This action cannot be undone.";
 
 /** The owner's rule (2026-10-15): a report that has been to Xero may be deleted, after this - Flask's wording. */
 export const DELETE_IN_XERO = {
@@ -134,13 +149,16 @@ export const MAX_REMARKS = 300;
 export function editReasonProblem(reason: string, kind: DifferenceKind): string | null {
   const tooLong = reasonProblem(reason);
   if (tooLong) return tooLong;
-  if (kind !== "none" && reason.trim() === "") return `The cash was ${kind}, so the reason is still needed. Add the reason to save it.`;
+  if (kind !== "none" && reason.trim() === "")
+    return `The cash was ${kind}, so the reason is still needed. Add the reason to save it.`;
   return null;
 }
 
 /** A line's description as it is typed, in the API's words; null when it fits. */
 export function remarksProblem(remarks: string): string | null {
-  return remarks.trim().length > MAX_REMARKS ? `Keep the description to ${MAX_REMARKS} characters or fewer.` : null;
+  return remarks.trim().length > MAX_REMARKS
+    ? `Keep the description to ${MAX_REMARKS} characters or fewer.`
+    : null;
 }
 
 /** A replacement receipt, checked before it is sent (the Expenses step's sentences); null when fine. */
@@ -149,10 +167,20 @@ export function editReceiptProblem(file: File): string | null {
 }
 
 /** What the line editor holds: the description, the chosen ids ("" for none) and a new receipt. */
-export type LineEdit = { remarks: string; supplierId: string; accountId: string; receipt: File | null };
+export type LineEdit = {
+  remarks: string;
+  supplierId: string;
+  accountId: string;
+  receipt: File | null;
+};
 
 /** The fields of `PATCH /reports/<id>/expense-lines/<line id>`. */
-export type LineChanges = { remarks?: string; supplier_id?: string; account_id?: string; receipt?: File };
+export type LineChanges = {
+  remarks?: string;
+  supplier_id?: string;
+  account_id?: string;
+  receipt?: File;
+};
 
 /**
  * Only what changed, as the API asks: a description that differs once trimmed, a supplier or an
@@ -162,8 +190,10 @@ export function lineChanges(line: ReportLine, edit: LineEdit): LineChanges {
   const changes: LineChanges = {};
   const remarks = edit.remarks.trim();
   if (remarks !== line.remarks.trim()) changes.remarks = remarks;
-  if (edit.supplierId && edit.supplierId !== (line.supplier?.id ?? "")) changes.supplier_id = edit.supplierId;
-  if (edit.accountId && edit.accountId !== (line.account?.id ?? "")) changes.account_id = edit.accountId;
+  if (edit.supplierId && edit.supplierId !== (line.supplier?.id ?? ""))
+    changes.supplier_id = edit.supplierId;
+  if (edit.accountId && edit.accountId !== (line.account?.id ?? ""))
+    changes.account_id = edit.accountId;
   if (edit.receipt) changes.receipt = edit.receipt;
   return changes;
 }

@@ -14,7 +14,10 @@ export function sanitizeMoney(raw: string): string {
   const dot = value.indexOf(".");
   const whole = (dot === -1 ? value : value.slice(0, dot)).slice(0, MAX_INTEGER_DIGITS);
   if (dot === -1) return whole;
-  return `${whole}.${value.slice(dot + 1).replace(/\./g, "").slice(0, 2)}`;
+  return `${whole}.${value
+    .slice(dot + 1)
+    .replace(/\./g, "")
+    .slice(0, 2)}`;
 }
 
 /** Grouped and padded - the input's `onBlur`, and how a saved amount is first shown. */

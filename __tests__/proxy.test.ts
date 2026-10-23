@@ -124,7 +124,9 @@ describe("old links after the host switch", () => {
     it("sends Flask's share link to the share page with a 308, never cached or passed on", () => {
       const res = proxy(request(OLD_SHARE, cookies));
       expect(res.status).toBe(308);
-      expect(new URL(res.headers.get("location") ?? "").pathname).toBe(`/share/OV/13_Oct_2026/${SECRET}`);
+      expect(new URL(res.headers.get("location") ?? "").pathname).toBe(
+        `/share/OV/13_Oct_2026/${SECRET}`,
+      );
       expect(res.headers.get("referrer-policy")).toBe("no-referrer");
       expect(res.headers.get("cache-control")).toBe("no-store");
     });
@@ -135,10 +137,17 @@ describe("old links after the host switch", () => {
     });
 
     it("moves an older Petty Cash address to this app's, query kept", () => {
-      const res = proxy(request("/entity/360812e1/olive-and-vine/reports/new/opening?transaction_date=2026-10-13", cookies));
+      const res = proxy(
+        request(
+          "/entity/360812e1/olive-and-vine/reports/new/opening?transaction_date=2026-10-13",
+          cookies,
+        ),
+      );
       expect(res.status).toBe(308);
       const to = new URL(res.headers.get("location") ?? "");
-      expect(to.pathname + to.search).toBe(`${HOME}/reports/new/opening?transaction_date=2026-10-13`);
+      expect(to.pathname + to.search).toBe(
+        `${HOME}/reports/new/opening?transaction_date=2026-10-13`,
+      );
       expect(to.origin).toBe("http://localhost:3010");
     });
 

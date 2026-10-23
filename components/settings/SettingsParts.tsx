@@ -35,7 +35,8 @@ const INPUT =
   "block h-11 w-full rounded-flask-lg border border-flask-set-gray-300 bg-flask-white text-base text-flask-black outline-none transition-[border-color,box-shadow] placeholder:text-flask-set-gray-700 placeholder:opacity-100 focus:border-flask-teal focus:ring-2 focus:ring-flask-teal/25 disabled:cursor-not-allowed disabled:bg-flask-gray-200 disabled:text-flask-set-gray-500 sm:text-sm";
 export const TEXT_INPUT = `${INPUT} px-3`;
 /** A field's own problem: the red edge Flask's mapping check drew. */
-export const INPUT_INVALID = "border-flask-set-red-500 ring-2 ring-flask-set-red-500/20 focus:border-flask-set-red-500 focus:ring-flask-set-red-500/20";
+export const INPUT_INVALID =
+  "border-flask-set-red-500 ring-2 ring-flask-set-red-500/20 focus:border-flask-set-red-500 focus:ring-flask-set-red-500/20";
 
 export const LABEL = "block text-sm text-flask-set-gray-600";
 export const FIELD_PROBLEM = "m-0 text-sm text-flask-set-red-600";
@@ -74,11 +75,18 @@ export function SettingsCard({
               onClick={() => setOpen((o) => !o)}
               className="flex w-full cursor-pointer items-start justify-between gap-3 border-0 bg-transparent p-0 text-left"
             >
-              <span className="min-w-0 flex-1 text-base font-semibold text-flask-set-gray-800 sm:text-lg">{title}</span>
-              <Icon name="expand_more" className={`text-[24px] text-flask-set-gray-400 transition-transform duration-200 ease-out ${open ? "" : "rotate-180"}`} />
+              <span className="min-w-0 flex-1 text-base font-semibold text-flask-set-gray-800 sm:text-lg">
+                {title}
+              </span>
+              <Icon
+                name="expand_more"
+                className={`text-[24px] text-flask-set-gray-400 transition-transform duration-200 ease-out ${open ? "" : "rotate-180"}`}
+              />
             </button>
           ) : (
-            <span className="block text-base font-semibold text-flask-set-gray-800 sm:text-lg">{title}</span>
+            <span className="block text-base font-semibold text-flask-set-gray-800 sm:text-lg">
+              {title}
+            </span>
           )}
         </h2>
         <p className="m-0 text-sm text-flask-set-gray-600">{sub}</p>
@@ -92,7 +100,15 @@ export function SettingsCard({
 
 /** One row of a picker's list: pickable, or a line of information (`info`). */
 /** `sub`: a second, smaller line under the label (the Xero pickers' code); `divided`: a rule above it (Flask's "+ Add ... as a new contact"). */
-export type ComboRow = { key: string; label: string; info?: boolean; selected?: boolean; muted?: boolean; sub?: string; divided?: boolean };
+export type ComboRow = {
+  key: string;
+  label: string;
+  info?: boolean;
+  selected?: boolean;
+  muted?: boolean;
+  sub?: string;
+  divided?: boolean;
+};
 
 /**
  * Flask's searchable picker (`picker()` in petty_cash_settings.js, ThemedSelect's look): focus or a
@@ -208,7 +224,10 @@ export function Combo({
         aria-hidden="true"
         className={`pointer-events-none absolute inset-y-px right-px flex w-[2.6875rem] items-center justify-center rounded-r-[7px] border-l border-flask-set-gray-300 ${disabled ? "bg-flask-gray-200" : "bg-flask-set-strip"}`}
       >
-        <Icon name="expand_more" className={`text-[22px] text-flask-menu transition-transform ${rotateChevron && open ? "rotate-180" : ""}`} />
+        <Icon
+          name="expand_more"
+          className={`text-[22px] text-flask-menu transition-transform ${rotateChevron && open ? "rotate-180" : ""}`}
+        />
       </span>
       <div
         id={listId}
@@ -238,13 +257,19 @@ export function Combo({
                 choose(row.key);
               }}
               className={`cursor-pointer px-3 py-2.5 text-sm transition-colors hover:bg-flask-teal/10 ${
-                row.selected ? "bg-flask-teal/15 font-semibold text-flask-teal" : i === active ? "bg-flask-teal/15" : ""
+                row.selected
+                  ? "bg-flask-teal/15 font-semibold text-flask-teal"
+                  : i === active
+                    ? "bg-flask-teal/15"
+                    : ""
               } ${row.selected ? "" : row.muted ? "text-flask-set-gray-600" : "text-flask-black"} ${row.divided ? "border-t border-flask-gray-200" : ""}`}
             >
               {row.sub ? (
                 <>
                   <span className="block font-medium">{row.label}</span>
-                  <span className="block text-xs font-normal text-flask-set-gray-500">{row.sub}</span>
+                  <span className="block text-xs font-normal text-flask-set-gray-500">
+                    {row.sub}
+                  </span>
                 </>
               ) : (
                 row.label
@@ -309,16 +334,38 @@ export function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
-      <button type="button" tabIndex={-1} aria-hidden="true" onClick={onBack} className="absolute inset-0 m-0 h-full w-full cursor-default border-0 bg-flask-white/60 p-0 backdrop-blur-[3px]" />
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative w-full max-w-[435px] rounded-[24px] border border-flask-white/40 bg-flask-white p-12 text-left shadow-flask-dialog">
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        onClick={onBack}
+        className="absolute inset-0 m-0 h-full w-full cursor-default border-0 bg-flask-white/60 p-0 backdrop-blur-[3px]"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative w-full max-w-[435px] rounded-[24px] border border-flask-white/40 bg-flask-white p-12 text-left shadow-flask-dialog"
+      >
         <div className="flex items-start justify-between gap-4">
-          <h2 id={titleId} className="m-0 min-w-0 flex-1 text-[26px] font-bold leading-tight text-flask-black">
+          <h2
+            id={titleId}
+            className="m-0 min-w-0 flex-1 text-[26px] font-bold leading-tight text-flask-black"
+          >
             {title}
           </h2>
           {/* eslint-disable-next-line @next/next/no-img-element -- Flask's fixed-size picture, nothing to optimise */}
-          <img src="/img/minty-surprised.png" alt="" width={113} height={144} className="-mr-3 -mt-2 block h-[144px] w-auto max-w-none shrink-0" />
+          <img
+            src="/img/minty-surprised.png"
+            alt=""
+            width={113}
+            height={144}
+            className="-mr-3 -mt-2 block h-[144px] w-auto max-w-none shrink-0"
+          />
         </div>
-        <div className="mt-6 flex flex-col gap-4 text-[15px] leading-[1.375] text-flask-dialog-body [overflow-wrap:anywhere]">{children}</div>
+        <div className="mt-6 flex flex-col gap-4 text-[15px] leading-[1.375] text-flask-dialog-body [overflow-wrap:anywhere]">
+          {children}
+        </div>
         <div className="-mx-[9px] mt-8 flex gap-5">
           <button
             ref={back}
@@ -345,7 +392,11 @@ export function ConfirmDialog({
 /** Flask's busy overlay (`#xeroLoadingOverlay`): the page blurred, a card with the spinner and what is happening. */
 export function BusyOverlay({ text }: { text: string }) {
   return (
-    <div role="status" aria-live="polite" className="fixed inset-0 z-[300] flex items-center justify-center bg-flask-white/60 p-4 backdrop-blur-[3px]">
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-flask-white/60 p-4 backdrop-blur-[3px]"
+    >
       <div className="flex items-center gap-3 rounded-[14px] bg-flask-white px-6 py-4 text-[15px] font-medium leading-[1.375] text-flask-set-gray-700 shadow-flask-dialog">
         <Icon name="progress_activity" className="animate-spin text-[24px] text-flask-teal" />
         <span>{text}</span>

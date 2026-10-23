@@ -32,7 +32,16 @@ const HOME = {
   server_today: "2026-10-14",
   user_count: 1,
   currency_code: "HKD",
-  latest: { date: null, closing_balance: 0, deposit: 0, deposit_bank_name: "No deposit", deposit_bank_number: "", deposit_correction_missing_settings: [], can_correct_deposit: true, submitter_first_name: null },
+  latest: {
+    date: null,
+    closing_balance: 0,
+    deposit: 0,
+    deposit_bank_name: "No deposit",
+    deposit_bank_number: "",
+    deposit_correction_missing_settings: [],
+    can_correct_deposit: true,
+    submitter_first_name: null,
+  },
   draft: null,
   draft_date: null,
   published: {},
@@ -42,33 +51,66 @@ const HOME = {
   permissions: { read_only: false, correct_deposit: true },
 };
 
-async function openWith(page: Page, answer: Json, onSave?: (body: Json, route: Route) => Promise<void>) {
+async function openWith(
+  page: Page,
+  answer: Json,
+  onSave?: (body: Json, route: Route) => Promise<void>,
+) {
   await page.route("**/api/petty-cash/v1/companies/*/reports/opening**", async (route) => {
     if (route.request().method() === "PUT") {
       if (onSave) await onSave(route.request().postDataJSON() as Json, route);
-      else await route.fulfill({ json: { draft_id: "d", transaction_date: DAY, current_section: "sales", completed_sections: ["opening"], next: "sales" } });
+      else
+        await route.fulfill({
+          json: {
+            draft_id: "d",
+            transaction_date: DAY,
+            current_section: "sales",
+            completed_sections: ["opening"],
+            next: "sales",
+          },
+        });
       return;
     }
     await route.fulfill({ json: answer });
   });
-  await page.route("**/api/petty-cash/v1/companies/*/home", (route) => route.fulfill({ json: HOME }));
+  await page.route("**/api/petty-cash/v1/companies/*/home", (route) =>
+    route.fulfill({ json: HOME }),
+  );
   // This app's own Sales step (e2e/04_sales.spec.ts covers it): a quiet stub, so Save & Next lands
   // on it without reading anything real.
   await page.route("**/api/petty-cash/v1/companies/*/reports/sales**", (route) =>
-    route.fulfill({ json: { transaction_date: DAY, currency_code: "HKD", draft: null, methods: [], cash_sales: null } }),
+    route.fulfill({
+      json: {
+        transaction_date: DAY,
+        currency_code: "HKD",
+        draft: null,
+        methods: [],
+        cash_sales: null,
+      },
+    }),
   );
-  await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
+  await page.route("**/api/me/profile**", (route) =>
+    route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }),
+  );
   // a Flask page address: nothing here opens one (Flask is a backend only), so a regression lands on this stub, never Flask
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\//, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
   );
-  const token = mintModuleToken({ secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME });
+  const token = mintModuleToken({
+    secret: "stub",
+    userId: "u",
+    entityId: ENTITY,
+    entityName: NAME,
+  });
   const next = `${BASE}/reports/new/opening?transaction_date=${DAY}`;
-  await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next })}`);
+  await page.goto(
+    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next })}`,
+  );
   await expect(page.getByRole("heading", { name: "Opening" })).toBeVisible();
 }
 
-const toast = (page: Page, text: string | RegExp) => page.locator("[data-toast-type]").filter({ hasText: text });
+const toast = (page: Page, text: string | RegExp) =>
+  page.locator("[data-toast-type]").filter({ hasText: text });
 
 test("Flask's report header and the balances the day opens from", async ({ page }) => {
   await openWith(page, openingAnswer());
@@ -82,11 +124,21 @@ test("Flask's report header and the balances the day opens from", async ({ page 
   await expect(page.getByRole("radio", { name: "Personal" })).toBeChecked();
 });
 
-test("the addition is cleaned as typed, grouped on leaving, and moves the Opening Cash Balance", async ({ page }) => {
+test("the addition is cleaned as typed, grouped on leaving, and moves the Opening Cash Balance", async ({
+  page,
+}) => {
   let sent: Json | null = null;
   await openWith(page, openingAnswer(), async (body, route) => {
     sent = body;
-    await route.fulfill({ json: { draft_id: "d", transaction_date: DAY, current_section: "sales", completed_sections: ["opening"], next: "sales" } });
+    await route.fulfill({
+      json: {
+        draft_id: "d",
+        transaction_date: DAY,
+        current_section: "sales",
+        completed_sections: ["opening"],
+        next: "sales",
+      },
+    });
   });
   const field = page.getByRole("textbox", { name: "Addition to Cash Drawer" });
   await field.fill("12a50.555");
@@ -99,14 +151,26 @@ test("the addition is cleaned as typed, grouped on leaving, and moves the Openin
   await page.getByRole("button", { name: "Save & Next" }).click();
 
   await expect(page).toHaveURL(/\/petty-cash\/reports\/new\/sale\?transaction_date=2026-10-13/);
-  expect(sent).toEqual({ transaction_date: DAY, cash_addition: 1250.55, withdrawal: "company", action: "next" });
+  expect(sent).toEqual({
+    transaction_date: DAY,
+    cash_addition: 1250.55,
+    withdrawal: "company",
+    action: "next",
+  });
 });
 
 test("a draft brings its own values", async ({ page }) => {
   await openWith(
     page,
     openingAnswer({
-      draft: { id: "d", status: "draft", current_section: "sales", completed_sections: ["opening"], xero_integrated: false, publishing_status: "unpublished" },
+      draft: {
+        id: "d",
+        status: "draft",
+        current_section: "sales",
+        completed_sections: ["opening"],
+        xero_integrated: false,
+        publishing_status: "unpublished",
+      },
       cash_addition: 30,
       withdrawal: "company",
     }),
@@ -120,12 +184,21 @@ test("unsaved changes hold the stepper back", async ({ page }) => {
   await openWith(
     page,
     openingAnswer({
-      draft: { id: "d", status: "draft", current_section: "sales", completed_sections: ["opening"], xero_integrated: false, publishing_status: "unpublished" },
+      draft: {
+        id: "d",
+        status: "draft",
+        current_section: "sales",
+        completed_sections: ["opening"],
+        xero_integrated: false,
+        publishing_status: "unpublished",
+      },
     }),
   );
   await page.getByRole("textbox", { name: "Addition to Cash Drawer" }).fill("5");
   await page.getByRole("link", { name: "Sales, next" }).click();
-  await expect(toast(page, "You have unsaved changes. Please save your changes first.")).toBeVisible();
+  await expect(
+    toast(page, "You have unsaved changes. Please save your changes first."),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Opening" })).toBeVisible();
 });
 
@@ -133,7 +206,15 @@ test("Save & Exit goes home", async ({ page }) => {
   let sent: Json | null = null;
   await openWith(page, openingAnswer(), async (body, route) => {
     sent = body;
-    await route.fulfill({ json: { draft_id: "d", transaction_date: DAY, current_section: "opening", completed_sections: ["opening"], next: "dashboard" } });
+    await route.fulfill({
+      json: {
+        draft_id: "d",
+        transaction_date: DAY,
+        current_section: "opening",
+        completed_sections: ["opening"],
+        next: "dashboard",
+      },
+    });
   });
   await page.getByRole("button", { name: "Save & Exit" }).click();
   await expect(page).toHaveURL(new RegExp(`${BASE}$`));
@@ -141,7 +222,8 @@ test("Save & Exit goes home", async ({ page }) => {
 });
 
 test("a day the rules refuse goes to the dashboard and says why there", async ({ page }) => {
-  const why = "Reports go one day at a time - this one needs to be 2026-10-12, the day after your last submitted report (2026-10-11).";
+  const why =
+    "Reports go one day at a time - this one needs to be 2026-10-12, the day after your last submitted report (2026-10-11).";
   await openWith(page, openingAnswer(), async (_body, route) => {
     await route.fulfill({ status: 409, json: { error: why, to: "dashboard" } });
   });
@@ -151,7 +233,14 @@ test("a day the rules refuse goes to the dashboard and says why there", async ({
 });
 
 test("a negative yesterday holds the page on Fix Negative Balance", async ({ page }) => {
-  await openWith(page, openingAnswer({ starting_cash_balance: -120, yesterday_closing_balance: -120, safebox_balance: 0 }));
+  await openWith(
+    page,
+    openingAnswer({
+      starting_cash_balance: -120,
+      yesterday_closing_balance: -120,
+      safebox_balance: 0,
+    }),
+  );
   const dialog = page.getByRole("alertdialog", { name: "Fix Negative Balance" });
   await expect(dialog).toContainText("(HKD 120.00)");
   await expect(dialog).toContainText("(Balance: HKD -120.00)");

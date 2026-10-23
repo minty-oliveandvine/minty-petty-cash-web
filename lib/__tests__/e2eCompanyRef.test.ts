@@ -27,6 +27,8 @@ describe("the e2e copy of companyRef", () => {
   });
 
   it("builds the same Petty Cash home as the app", () => {
-    expect(`/entity/${e2eCopy(ID, "Kwok & Sons")}/petty-cash`).toBe(pettyCashHome(ID, "Kwok & Sons"));
+    expect(`/entity/${e2eCopy(ID, "Kwok & Sons")}/petty-cash`).toBe(
+      pettyCashHome(ID, "Kwok & Sons"),
+    );
   });
 });

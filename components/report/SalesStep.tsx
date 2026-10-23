@@ -13,7 +13,14 @@ import { pettyCashHome } from "@/lib/companyPages";
 import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
 import { formatMoney } from "@/lib/money";
 import { datePill } from "@/lib/opening";
-import { changed, flaskLabel, salesTotals, sections, type SalesMethod, type SalesPage } from "@/lib/sales";
+import {
+  changed,
+  flaskLabel,
+  salesTotals,
+  sections,
+  type SalesMethod,
+  type SalesPage,
+} from "@/lib/sales";
 import { useAuth } from "@/lib/useAuth";
 import { stepHref } from "@/lib/wizardPages";
 
@@ -64,7 +71,14 @@ export function SalesStep({ day }: { day: string | null }) {
       </PhoneCard>
     );
   }
-  return <SalesForm page={page} entityId={auth.entityId} entityName={auth.entityName} acronym={acronym} />;
+  return (
+    <SalesForm
+      page={page}
+      entityId={auth.entityId}
+      entityName={auth.entityName}
+      acronym={acronym}
+    />
+  );
 }
 
 /** How a saved amount first shows: grouped, and a zero or none as an empty field (the placeholder). */
@@ -72,12 +86,25 @@ function shown(amount: number | null): string {
   return amount ? groupMoney(String(amount)) : "";
 }
 
-function SalesForm({ page, entityId, entityName, acronym }: { page: SalesPage; entityId: string; entityName: string; acronym: string }) {
+function SalesForm({
+  page,
+  entityId,
+  entityName,
+  acronym,
+}: {
+  page: SalesPage;
+  entityId: string;
+  entityName: string;
+  acronym: string;
+}) {
   const toast = useToast();
   const router = useRouter();
   const home = pettyCashHome(entityId, entityName);
   const [initial] = useState(() => ({
-    values: Object.fromEntries(page.methods.map((m) => [m.value_name, shown(m.amount)])) as Record<string, string>,
+    values: Object.fromEntries(page.methods.map((m) => [m.value_name, shown(m.amount)])) as Record<
+      string,
+      string
+    >,
     cash: shown(page.cash_sales),
   }));
   const [values, setValues] = useState(initial.values);
@@ -91,7 +118,12 @@ function SalesForm({ page, entityId, entityName, acronym }: { page: SalesPage; e
   const totals = salesTotals(page.methods, values, cash);
 
   function dirty(): boolean {
-    return changed(cash, initial.cash) || page.methods.some((m) => changed(values[m.value_name] ?? "", initial.values[m.value_name] ?? ""));
+    return (
+      changed(cash, initial.cash) ||
+      page.methods.some((m) =>
+        changed(values[m.value_name] ?? "", initial.values[m.value_name] ?? ""),
+      )
+    );
   }
 
   function onStepClick(event: MouseEvent<HTMLAnchorElement>) {
@@ -105,7 +137,9 @@ function SalesForm({ page, entityId, entityName, acronym }: { page: SalesPage; e
     setSaving(true);
     try {
       const amounts = Object.fromEntries(
-        page.methods.filter((m) => (values[m.value_name] ?? "") !== "").map((m) => [m.value_name, parseMoney(values[m.value_name])]),
+        page.methods
+          .filter((m) => (values[m.value_name] ?? "") !== "")
+          .map((m) => [m.value_name, parseMoney(values[m.value_name])]),
       );
       const answer = await pettyCashFetch<SaveAnswer>("/reports/sales", {
         method: "PUT",
@@ -119,7 +153,8 @@ function SalesForm({ page, entityId, entityName, acronym }: { page: SalesPage; e
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
       const body = err instanceof ApiError ? (err.body as { to?: string } | null) : null;
-      const message = err instanceof ApiError ? err.message : "I couldn't save that. Mind trying again?";
+      const message =
+        err instanceof ApiError ? err.message : "I couldn't save that. Mind trying again?";
       toast(message, "error");
       if (body?.to === "opening") {
         // Flask sends a save with no draft back to Opening, and says why there.
@@ -172,8 +207,13 @@ function SalesForm({ page, entityId, entityName, acronym }: { page: SalesPage; e
       >
         <div className="mb-6 rounded-flask-lg bg-flask-white p-6 shadow-flask-sm">
           <Section icon={<CardIcon />} title="Electronic Payments" smallTitle>
-            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">{electronic.map(field)}</div>
-            <Total label="Total Electronic Payment Sales" amount={formatMoney(totals.electronic, code)} />
+            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {electronic.map(field)}
+            </div>
+            <Total
+              label="Total Electronic Payment Sales"
+              amount={formatMoney(totals.electronic, code)}
+            />
           </Section>
 
           <Section icon={<TruckIcon />} title="Delivery Sales">
@@ -183,7 +223,13 @@ function SalesForm({ page, entityId, entityName, acronym }: { page: SalesPage; e
 
           <Section icon={<CashIcon />} title="Cash Sales">
             <div className="mb-3">
-              <MoneyInput id="sales_cash_sales" ariaLabel="Cash Sales" code={code} value={cash} onChange={setCash} />
+              <MoneyInput
+                id="sales_cash_sales"
+                ariaLabel="Cash Sales"
+                code={code}
+                value={cash}
+                onChange={setCash}
+              />
             </div>
             <Total label="Total Cash Sales" amount={formatMoney(totals.cash, code)} />
           </Section>
@@ -196,7 +242,14 @@ function SalesForm({ page, entityId, entityName, acronym }: { page: SalesPage; e
             className="group flex w-full items-center justify-center gap-4 rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white shadow-flask-md transition-colors hover:bg-flask-teal/80 disabled:opacity-70"
           >
             <span>Save &amp; Next</span>
-            <svg className="transition-transform group-hover:translate-x-1" width="14" height="13" viewBox="0 0 14 13" fill="none" aria-hidden="true">
+            <svg
+              className="transition-transform group-hover:translate-x-1"
+              width="14"
+              height="13"
+              viewBox="0 0 14 13"
+              fill="none"
+              aria-hidden="true"
+            >
               <path
                 d="M10.534 5.66477L6.16282 1.18659L7.31648 -9.53674e-07L13.6377 6.50026L7.31648 13L6.16282 11.8139L10.534 7.33576H0.637695V5.66477H10.534Z"
                 className="fill-flask-white"
@@ -220,12 +273,26 @@ function SalesForm({ page, entityId, entityName, acronym }: { page: SalesPage; e
 }
 
 /** A section of the card: its icon and heading (Electronic Payments' heading has no `sm:text-xl` in Flask). */
-function Section({ icon, title, smallTitle, children }: { icon: ReactNode; title: string; smallTitle?: boolean; children: ReactNode }) {
+function Section({
+  icon,
+  title,
+  smallTitle,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  smallTitle?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className="mb-6">
       <div className="mb-4 flex items-center gap-3 pl-2">
         {icon}
-        <h3 className={`text-lg font-semibold text-flask-gray-700 ${smallTitle ? "" : "sm:text-xl"}`}>{title}</h3>
+        <h3
+          className={`text-lg font-semibold text-flask-gray-700 ${smallTitle ? "" : "sm:text-xl"}`}
+        >
+          {title}
+        </h3>
       </div>
       {children}
     </div>
@@ -243,7 +310,19 @@ function Total({ label, amount }: { label: string; amount: string }) {
   );
 }
 
-function MoneyField({ id, label, code, value, onChange }: { id: string; label: string; code: string | null; value: string; onChange: (v: string) => void }) {
+function MoneyField({
+  id,
+  label,
+  code,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  code: string | null;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div>
       <label htmlFor={id} className="mb-2 block text-sm font-medium text-flask-gray-500">
@@ -255,7 +334,19 @@ function MoneyField({ id, label, code, value, onChange }: { id: string; label: s
 }
 
 /** Flask's sales input: the currency code inside on the left, cleaned as typed, grouped on leaving. */
-function MoneyInput({ id, ariaLabel, code, value, onChange }: { id: string; ariaLabel?: string; code: string | null; value: string; onChange: (v: string) => void }) {
+function MoneyInput({
+  id,
+  ariaLabel,
+  code,
+  value,
+  onChange,
+}: {
+  id: string;
+  ariaLabel?: string;
+  code: string | null;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div className="relative">
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -273,7 +364,10 @@ function MoneyInput({ id, ariaLabel, code, value, onChange }: { id: string; aria
         onBlur={() => onChange(groupMoney(value))}
         onFocus={(e) => {
           const input = e.currentTarget;
-          window.setTimeout(() => input.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+          window.setTimeout(
+            () => input.scrollIntoView({ block: "center", behavior: "smooth" }),
+            300,
+          );
         }}
         className="w-full cursor-pointer rounded-flask-2xl border border-flask-gray-300 bg-flask-white py-3 pl-12 pr-3 text-flask-black focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal"
       />
@@ -283,7 +377,13 @@ function MoneyInput({ id, ariaLabel, code, value, onChange }: { id: string; aria
 
 function CardIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-5 text-flask-gray-500" aria-hidden="true">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="size-5 text-flask-gray-500"
+      aria-hidden="true"
+    >
       <path d="M4.5 3.75a3 3 0 0 0-3 3v.75h21v-.75a3 3 0 0 0-3-3h-15Z" />
       <path
         fillRule="evenodd"
@@ -296,7 +396,13 @@ function CardIcon() {
 
 function TruckIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-5 text-flask-gray-500" aria-hidden="true">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="size-5 text-flask-gray-500"
+      aria-hidden="true"
+    >
       <path d="M3.375 4.5C2.339 4.5 1.5 5.34 1.5 6.375V13.5h12V6.375c0-1.036-.84-1.875-1.875-1.875h-8.25ZM13.5 15h-12v2.625c0 1.035.84 1.875 1.875 1.875h.375a3 3 0 1 1 6 0h3a.75.75 0 0 0 .75-.75V15Z" />
       <path d="M8.25 19.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0ZM15.75 6.75a.75.75 0 0 0-.75.75v11.25c0 .087.015.17.042.248a3 3 0 0 1 5.958.464c.853-.175 1.522-.935 1.464-1.883a18.659 18.659 0 0 0-3.732-10.104 1.837 1.837 0 0 0-1.47-.725H15.75Z" />
       <path d="M19.5 19.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0Z" />
@@ -306,7 +412,15 @@ function TruckIcon() {
 
 function CashIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="size-5 text-flask-gray-500" aria-hidden="true">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth="2"
+      stroke="currentColor"
+      className="size-5 text-flask-gray-500"
+      aria-hidden="true"
+    >
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

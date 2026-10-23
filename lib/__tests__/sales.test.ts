@@ -34,7 +34,10 @@ describe("the sections and their totals", () => {
   ];
 
   it("leave Deliveroo out even when it is set up as an electronic method", () => {
-    const { electronic } = sections([method("deliveroo_sales", "electronic"), method("visa_sales", "electronic")]);
+    const { electronic } = sections([
+      method("deliveroo_sales", "electronic"),
+      method("visa_sales", "electronic"),
+    ]);
     expect(electronic.map((m) => m.value_name)).toEqual(["visa_sales"]);
   });
 
@@ -46,7 +49,16 @@ describe("the sections and their totals", () => {
 
   it("add up what the fields show, commas and empties included", () => {
     expect(
-      salesTotals(methods, { visa_sales: "1,200.50", alipay_sales: "", foodpanda_sales: "33.25", deliveroo_sales: "9" }, "1,000.00"),
+      salesTotals(
+        methods,
+        {
+          visa_sales: "1,200.50",
+          alipay_sales: "",
+          foodpanda_sales: "33.25",
+          deliveroo_sales: "9",
+        },
+        "1,000.00",
+      ),
     ).toEqual({ electronic: 1200.5, delivery: 33.25, cash: 1000 });
   });
 });

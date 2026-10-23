@@ -7,8 +7,23 @@ import { useViewer } from "@minty/shared/viewer";
 
 import { useToast } from "@/components/flask/Toasts";
 import { SalesMethodsCard, type MethodActions } from "@/components/settings/SalesMethodsCard";
-import { BTN_OUTLINE, BusyOverlay, Combo, ConfirmDialog, Icon, LABEL, SAVE_BTN, SettingsCard, type ComboRow } from "@/components/settings/SettingsParts";
-import { AccountCodesCard, XeroMappingCard, type Call, type XeroLoad } from "@/components/settings/XeroCards";
+import {
+  BTN_OUTLINE,
+  BusyOverlay,
+  Combo,
+  ConfirmDialog,
+  Icon,
+  LABEL,
+  SAVE_BTN,
+  SettingsCard,
+  type ComboRow,
+} from "@/components/settings/SettingsParts";
+import {
+  AccountCodesCard,
+  XeroMappingCard,
+  type Call,
+  type XeroLoad,
+} from "@/components/settings/XeroCards";
 import { useMounted, useSidebar } from "@/components/ui/Sidebar";
 import { sidebarHost } from "@/components/ui/sidebarHost";
 import { ApiError, pettyCashFetch, type ApiRequest } from "@/lib/apiClient";
@@ -37,7 +52,11 @@ const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then r
 const SAVING = "Saving changes…";
 const NO_RIGHT_TITLE = "That task is reserved for our Accountants and Admins.";
 
-type Load = { kind: "loading" } | { kind: "ready"; read: SettingsRead } | { kind: "refused"; message: string } | { kind: "failed"; message: string };
+type Load =
+  | { kind: "loading" }
+  | { kind: "ready"; read: SettingsRead }
+  | { kind: "refused"; message: string }
+  | { kind: "failed"; message: string };
 
 /** The sentence for a failed call, or null for a 401 (already on its way back through Flask). */
 function refusal(err: unknown): string | null {
@@ -79,7 +98,11 @@ export function PettyCashSettings() {
       (err: unknown) => {
         const message = refusal(err);
         if (!live || message === null) return;
-        setLoad(err instanceof ApiError && err.status === 403 ? { kind: "refused", message } : { kind: "failed", message });
+        setLoad(
+          err instanceof ApiError && err.status === 403
+            ? { kind: "refused", message }
+            : { kind: "failed", message },
+        );
       },
     );
     return () => {
@@ -119,7 +142,13 @@ export function PettyCashSettings() {
                 </button>
               </div>
             ) : null}
-            {load.kind === "ready" && auth ? <SettingsBody initial={load.read} entityId={auth.entityId} entityName={auth.entityName} /> : null}
+            {load.kind === "ready" && auth ? (
+              <SettingsBody
+                initial={load.read}
+                entityId={auth.entityId}
+                entityName={auth.entityName}
+              />
+            ) : null}
           </div>
         </div>
       </main>
@@ -152,11 +181,15 @@ function SettingsHeader({ entityId, entityName }: { entityId: string; entityName
             <Icon name="chevron_left" className="text-[22px] sm:text-[24px]" />
             Back
           </a>
-          <h1 className="m-0 min-w-0 cursor-default truncate text-base font-semibold text-flask-black sm:text-lg">Settings</h1>
+          <h1 className="m-0 min-w-0 cursor-default truncate text-base font-semibold text-flask-black sm:text-lg">
+            Settings
+          </h1>
         </div>
         <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5 sm:gap-3">
           <Icon name="corporate_fare" className="text-[22px] text-flask-menu sm:text-[26px]" />
-          <span className="min-w-0 max-w-[6.5rem] truncate text-sm font-medium text-flask-menu sm:max-w-[9rem] sm:text-base md:max-w-[14rem] lg:max-w-[28rem]">{entityName}</span>
+          <span className="min-w-0 max-w-[6.5rem] truncate text-sm font-medium text-flask-menu sm:max-w-[9rem] sm:text-base md:max-w-[14rem] lg:max-w-[28rem]">
+            {entityName}
+          </span>
           <div className="flex shrink-0 items-center gap-1.5 pl-0.5 sm:gap-2 sm:pl-2">
             {/* My Profile is the sidebar's sheet, over the page (the owner, 2026-10-20); minty-web's
                 page only where no sidebar can hold it. 44px for a finger without moving Flask's
@@ -194,7 +227,13 @@ function SettingsHeader({ entityId, entityName }: { entityId: string; entityName
               className="m-0 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-flask-md border-0 bg-transparent p-0 transition-colors hover:bg-flask-menu/10"
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- Flask's own glyph, a small svg */}
-              <img src="/menu/menu.svg" alt="" width={29} height={32} className="block h-auto w-[29px]" />
+              <img
+                src="/menu/menu.svg"
+                alt=""
+                width={29}
+                height={32}
+                className="block h-auto w-[29px]"
+              />
             </button>
           </div>
         </div>
@@ -210,9 +249,13 @@ function SettingsHeader({ entityId, entityName }: { entityId: string; entityName
 function SettingsTabs({ entityId, entityName }: { entityId: string; entityName: string }) {
   const mounted = useMounted();
   const billing = mounted ? moduleClaims().billing : false;
-  const PILL = "flex shrink-0 items-center justify-center rounded-full px-4 py-2 text-center text-sm font-medium no-underline transition-colors";
+  const PILL =
+    "flex shrink-0 items-center justify-center rounded-full px-4 py-2 text-center text-sm font-medium no-underline transition-colors";
   const link = (tab: SettingsTab, label: string) => (
-    <a href={entityId ? settingsTabUrl(entityId, entityName, tab) : undefined} className={`${PILL} cursor-pointer bg-flask-gray-200 text-flask-set-gray-700 hover:bg-flask-set-gray-300`}>
+    <a
+      href={entityId ? settingsTabUrl(entityId, entityName, tab) : undefined}
+      className={`${PILL} cursor-pointer bg-flask-gray-200 text-flask-set-gray-700 hover:bg-flask-set-gray-300`}
+    >
       {label}
     </a>
   );
@@ -221,7 +264,10 @@ function SettingsTabs({ entityId, entityName }: { entityId: string; entityName: 
       <nav className="flex flex-wrap gap-2 pb-1" aria-label="Settings sections">
         {link("users", "Users")}
         {link("integration", "Entity & Integration")}
-        <span className={`${PILL} cursor-default bg-flask-teal font-semibold text-flask-white`} aria-current="page">
+        <span
+          className={`${PILL} cursor-default bg-flask-teal font-semibold text-flask-white`}
+          aria-current="page"
+        >
           Petty Cash Settings
         </span>
         {billing ? link("payment-request", "Payment Request Settings") : null}
@@ -231,13 +277,24 @@ function SettingsTabs({ entityId, entityName }: { entityId: string; entityName: 
   );
 }
 
-function SettingsBody({ initial, entityId, entityName }: { initial: SettingsRead; entityId: string; entityName: string }) {
+function SettingsBody({
+  initial,
+  entityId,
+  entityName,
+}: {
+  initial: SettingsRead;
+  entityId: string;
+  entityName: string;
+}) {
   const toast = useToast();
   const router = useRouter();
   const [read, setRead] = useState(initial);
   const [busy, setBusy] = useState<string | null>(null);
   const [menu, setMenu] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<{ type: MethodType; method: SalesMethod } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    type: MethodType;
+    method: SalesMethod;
+  } | null>(null);
   // a ref, not state: a second click in the same frame must see the first one
   const acting = useRef(false);
   const perms = read.permissions;
@@ -260,7 +317,12 @@ function SettingsBody({ initial, entityId, entityName }: { initial: SettingsRead
 
   /** One call: the busy overlay, and a refusal's sentence as Flask's error toast; null when it did not go through. */
   const call: Call = useCallback(
-    async <T,>(path: string, init: ApiRequest, busyText = SAVING, onRefused?: (message: string) => void): Promise<T | null> => {
+    async <T,>(
+      path: string,
+      init: ApiRequest,
+      busyText = SAVING,
+      onRefused?: (message: string) => void,
+    ): Promise<T | null> => {
       if (acting.current) return null;
       acting.current = true;
       setBusy(busyText);
@@ -301,7 +363,11 @@ function SettingsBody({ initial, entityId, entityName }: { initial: SettingsRead
   const xeroAsk = useRef<{ attempt: number; answer: Promise<XeroRead> } | null>(null);
   useEffect(() => {
     let live = true;
-    if (xeroAsk.current?.attempt !== xeroAttempt) xeroAsk.current = { attempt: xeroAttempt, answer: pettyCashFetch<XeroRead>("/settings/xero") };
+    if (xeroAsk.current?.attempt !== xeroAttempt)
+      xeroAsk.current = {
+        attempt: xeroAttempt,
+        answer: pettyCashFetch<XeroRead>("/settings/xero"),
+      };
     xeroAsk.current.answer.then(
       (next) => {
         if (live) setXero({ kind: "ready", read: next });
@@ -309,7 +375,11 @@ function SettingsBody({ initial, entityId, entityName }: { initial: SettingsRead
       (err: unknown) => {
         const message = refusal(err);
         if (!live || message === null) return;
-        setXero({ kind: "failed", message, retry: !(err instanceof ApiError && err.status === 403) });
+        setXero({
+          kind: "failed",
+          message,
+          retry: !(err instanceof ApiError && err.status === 403),
+        });
       },
     );
     return () => {
@@ -328,14 +398,16 @@ function SettingsBody({ initial, entityId, entityName }: { initial: SettingsRead
 
   const actions: MethodActions = {
     add: (type, body) => write("/sales-methods", { method: "POST", json: { type, ...body } }),
-    rename: (method, name) => write(`/sales-methods/${encodeURIComponent(method.id)}`, { method: "PUT", json: { name } }),
+    rename: (method, name) =>
+      write(`/sales-methods/${encodeURIComponent(method.id)}`, { method: "PUT", json: { name } }),
     move: (type, index, step) => {
       const ids = movedIds(
         read.sales_methods[type].map((m) => m.id),
         index,
         step,
       );
-      if (ids) void write("/sales-methods/order", { method: "PUT", json: { type, method_ids: ids } });
+      if (ids)
+        void write("/sales-methods/order", { method: "PUT", json: { type, method_ids: ids } });
     },
     remove: (type, method) => setConfirmDelete({ type, method }),
     say: (message) => toast(message, "error"),
@@ -344,14 +416,25 @@ function SettingsBody({ initial, entityId, entityName }: { initial: SettingsRead
   return (
     <>
       {viewOnly(perms) ? (
-        <div role="status" aria-live="polite" className="mb-6 flex items-center gap-2 rounded-flask-lg border border-flask-gray-200 bg-flask-gray-50 px-4 py-2.5 text-sm text-flask-gray-600">
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-6 flex items-center gap-2 rounded-flask-lg border border-flask-gray-200 bg-flask-gray-50 px-4 py-2.5 text-sm text-flask-gray-600"
+        >
           <Icon name="visibility" className="text-[18px] leading-none text-flask-gray-400" />
-          <span>You have view-only access to these settings. Ask an Accountant or Admin to make changes.</span>
+          <span>
+            You have view-only access to these settings. Ask an Accountant or Admin to make changes.
+          </span>
         </div>
       ) : null}
 
       <div className="flex flex-col gap-3">
-        <CountryCard key={`${read.country.country_code}|${read.country.currency_id}`} read={read} busy={busy !== null} onSave={(body) => write("/settings/country", { method: "PUT", json: body })} />
+        <CountryCard
+          key={`${read.country.country_code}|${read.country.currency_id}`}
+          read={read}
+          busy={busy !== null}
+          onSave={(body) => write("/settings/country", { method: "PUT", json: body })}
+        />
 
         <XeroMappingCard
           load={xero}
@@ -385,7 +468,14 @@ function SettingsBody({ initial, entityId, entityName }: { initial: SettingsRead
           />
         ))}
 
-        <AccountCodesCard load={xero} busy={busy !== null} call={call} connectHref={connectHref} onRetry={retryXero} onSaved={xeroSaved} />
+        <AccountCodesCard
+          load={xero}
+          busy={busy !== null}
+          call={call}
+          connectHref={connectHref}
+          onRetry={retryXero}
+          onSaved={xeroSaved}
+        />
       </div>
 
       {busy ? <BusyOverlay text={busy} /> : null}
@@ -401,7 +491,9 @@ function SettingsBody({ initial, entityId, entityName }: { initial: SettingsRead
           }}
         >
           <p className="m-0">
-            Are you sure you want to delete &quot;<strong className="font-semibold text-flask-black">{confirmDelete.method.name}</strong>&quot;? This action cannot be undone.
+            Are you sure you want to delete &quot;
+            <strong className="font-semibold text-flask-black">{confirmDelete.method.name}</strong>
+            &quot;? This action cannot be undone.
           </p>
         </ConfirmDialog>
       ) : null}
@@ -410,12 +502,24 @@ function SettingsBody({ initial, entityId, entityName }: { initial: SettingsRead
 }
 
 /** Flask's first card: the country and currency pickers, and Save Changes for them. */
-function CountryCard({ read, busy, onSave }: { read: SettingsRead; busy: boolean; onSave: (body: { country_code?: string; currency_id?: string }) => Promise<boolean> }) {
+function CountryCard({
+  read,
+  busy,
+  onSave,
+}: {
+  read: SettingsRead;
+  busy: boolean;
+  onSave: (body: { country_code?: string; currency_id?: string }) => Promise<boolean>;
+}) {
   const editable = read.permissions.edit_country;
   const countries: Option[] = read.country.countries.map((c) => ({ value: c.code, label: c.name }));
   const currencies: Option[] = read.country.currencies.map((c) => ({ value: c.id, label: c.name }));
-  const [picked, setPicked] = useState({ country_code: read.country.country_code ?? "", currency_id: read.country.currency_id ?? "" });
-  const labelOf = (all: Option[], value: string, fallback: string | null) => all.find((o) => o.value === value)?.label ?? fallback ?? "";
+  const [picked, setPicked] = useState({
+    country_code: read.country.country_code ?? "",
+    currency_id: read.country.currency_id ?? "",
+  });
+  const labelOf = (all: Option[], value: string, fallback: string | null) =>
+    all.find((o) => o.value === value)?.label ?? fallback ?? "";
   const countryLabel = labelOf(countries, picked.country_code, read.country.selected_country);
   const currencyLabel = labelOf(currencies, picked.currency_id, read.country.selected_currency);
   const [countryText, setCountryText] = useState(countryLabel);
@@ -423,15 +527,27 @@ function CountryCard({ read, busy, onSave }: { read: SettingsRead; busy: boolean
   const change = countryChange(read, picked);
   const [saving, setSaving] = useState(false);
 
-  const rows = (all: Option[], selected: string, current: string) => (query: string): ComboRow[] => {
-    const out: ComboRow[] = registryOptions(all, query, current).map((o) => ({ key: o.value, label: o.label, selected: o.value === selected }));
-    const q = query.toLowerCase();
-    if (q && !all.some((o) => o.label.toLowerCase().includes(q))) out.push({ key: "none", label: "No matches", info: true });
-    return out;
-  };
+  const rows =
+    (all: Option[], selected: string, current: string) =>
+    (query: string): ComboRow[] => {
+      const out: ComboRow[] = registryOptions(all, query, current).map((o) => ({
+        key: o.value,
+        label: o.label,
+        selected: o.value === selected,
+      }));
+      const q = query.toLowerCase();
+      if (q && !all.some((o) => o.label.toLowerCase().includes(q)))
+        out.push({ key: "none", label: "No matches", info: true });
+      return out;
+    };
 
   return (
-    <SettingsCard title="Country & currency" sub="Where this entity reports from, and the currency its petty cash is counted in." readOnly={!editable} testId="country">
+    <SettingsCard
+      title="Country & currency"
+      sub="Where this entity reports from, and the currency its petty cash is counted in."
+      readOnly={!editable}
+      testId="country"
+    >
       <form
         noValidate
         className="flex flex-col gap-3"

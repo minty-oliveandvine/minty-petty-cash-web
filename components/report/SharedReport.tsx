@@ -7,7 +7,16 @@ import { ReportBadge } from "@/components/report/ReportChrome";
 import { ReportSummary } from "@/components/report/ReportSummary";
 import { ApiError, HOUSE_FALLBACK, pettyCashPublicFetch } from "@/lib/apiClient";
 import { datePill } from "@/lib/opening";
-import { SHARE_REFUSED, decodeSegments, parseSharedReport, sharePathParts, sharedBadge, shareRefusal, sharedReportApiPath, type SharedReport } from "@/lib/share";
+import {
+  SHARE_REFUSED,
+  decodeSegments,
+  parseSharedReport,
+  sharePathParts,
+  sharedBadge,
+  shareRefusal,
+  sharedReportApiPath,
+  type SharedReport,
+} from "@/lib/share";
 
 type Read = { report: SharedReport } | { refused: string } | null;
 
@@ -67,8 +76,20 @@ export function SharedReportView({ segments }: { segments: string[] }) {
   }
 
   return (
-    <PhoneCard publicView acronym={report.companyName} datePill={datePill(report.day)} badge={<ReportBadge draft={sharedBadge(report.statusTone, report.statusLabel)} />}>
-      <ReportSummary code={report.code} sales={report.sales} yesterday={report.yesterday} history={report.history} lines={report.lines} cash={report.cash} />
+    <PhoneCard
+      publicView
+      acronym={report.companyName}
+      datePill={datePill(report.day)}
+      badge={<ReportBadge draft={sharedBadge(report.statusTone, report.statusLabel)} />}
+    >
+      <ReportSummary
+        code={report.code}
+        sales={report.sales}
+        yesterday={report.yesterday}
+        history={report.history}
+        lines={report.lines}
+        cash={report.cash}
+      />
     </PhoneCard>
   );
 }

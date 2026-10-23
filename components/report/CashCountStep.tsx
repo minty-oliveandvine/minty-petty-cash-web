@@ -73,7 +73,9 @@ export function CashCountStep({ day }: { day: string | null }) {
 
   useEffect(() => {
     let live = true;
-    pettyCashFetch<CashCountPage>("/reports/cash-count", { query: { transaction_date: day ?? undefined } })
+    pettyCashFetch<CashCountPage>("/reports/cash-count", {
+      query: { transaction_date: day ?? undefined },
+    })
       .then((answer) => live && setPage(answer))
       .catch((err: unknown) => {
         if (!live || (err instanceof ApiError && err.status === 401)) return;
@@ -99,14 +101,31 @@ export function CashCountStep({ day }: { day: string | null }) {
       </PhoneCard>
     );
   }
-  return <CashCountForm page={page} entityId={auth.entityId} entityName={auth.entityName} acronym={acronym} />;
+  return (
+    <CashCountForm
+      page={page}
+      entityId={auth.entityId}
+      entityName={auth.entityName}
+      acronym={acronym}
+    />
+  );
 }
 
 function savedCounts(denominations: Denomination[]): Counts {
   return Object.fromEntries(denominations.map((d) => [d.id, d.count || 0]));
 }
 
-function CashCountForm({ page, entityId, entityName, acronym }: { page: CashCountPage; entityId: string; entityName: string; acronym: string }) {
+function CashCountForm({
+  page,
+  entityId,
+  entityName,
+  acronym,
+}: {
+  page: CashCountPage;
+  entityId: string;
+  entityName: string;
+  acronym: string;
+}) {
   const toast = useToast();
   const router = useRouter();
   const backToOpening = useBackToOpening();
@@ -123,7 +142,9 @@ function CashCountForm({ page, entityId, entityName, acronym }: { page: CashCoun
   }));
   const [counts, setCounts] = useState<Counts>(initial.counts);
   // Flask fills "Actual Cash Balance" when the saved count is above zero, and after every Save
-  const [tillShown, setTillShown] = useState(() => tillTotal(page.denominations, initial.counts) > 0);
+  const [tillShown, setTillShown] = useState(
+    () => tillTotal(page.denominations, initial.counts) > 0,
+  );
   const [safe, setSafe] = useState(initial.safe);
   const [reason, setReason] = useState(initial.reason);
   // a Save & Next refused for want of a reason: the box turns red until one is written
@@ -146,13 +167,17 @@ function CashCountForm({ page, entityId, entityName, acronym }: { page: CashCoun
   const reasonMessage =
     refused?.field === "discrepancy_reason"
       ? refused.message
-      : reasonProblem(reason) ?? (reasonAsked && out && reason.trim() === "" ? reasonNeeded(amount, code) : null);
+      : (reasonProblem(reason) ??
+        (reasonAsked && out && reason.trim() === "" ? reasonNeeded(amount, code) : null));
   const safeMessage = refused?.field === "safe_box_balance" ? refused.message : null;
-  const countMessage = refused && page.denominations.some((d) => d.id === refused.field) ? refused.message : null;
+  const countMessage =
+    refused && page.denominations.some((d) => d.id === refused.field) ? refused.message : null;
 
   /** After a change to the count or the safebox: a reason for a difference now gone is dropped (Flask's rule). */
   function settle(nextCounts: Counts, nextSafe: string) {
-    const nextKind = differenceKind(difference(tillTotal(page.denominations, nextCounts), parseMoney(nextSafe), expected));
+    const nextKind = differenceKind(
+      difference(tillTotal(page.denominations, nextCounts), parseMoney(nextSafe), expected),
+    );
     if (out && nextKind === "none") {
       setReason("");
       setReasonAsked(false);
@@ -253,11 +278,36 @@ function CashCountForm({ page, entityId, entityName, acronym }: { page: CashCoun
       ) : null}
       {busy ? <LoadingOverlay text={busy} /> : null}
       {negative ? (
-        <FixNegativeBalanceModal balance={expected} currencyCode={code} message="Cash balance cannot be negative, let's go back to" window>
-          <FixStepButton label="Opening" note={fixNote("Cash in", page.cash_addition, code)} noteClass="text-flask-green" onClick={() => fix("opening")} />
-          <FixStepButton label="Sales" note={fixNote("Cash in", page.cash_sales, code)} noteClass="text-flask-green" onClick={() => fix("sales")} />
-          <FixStepButton label="Expenses" note={fixNote("Cash out", page.expenses, code)} noteClass="text-flask-red" onClick={() => fix("expenses")} />
-          <FixStepButton label="Deposit" note={fixNote("Cash out", page.bank_deposit, code)} noteClass="text-flask-red" onClick={() => fix("deposit")} />
+        <FixNegativeBalanceModal
+          balance={expected}
+          currencyCode={code}
+          message="Cash balance cannot be negative, let's go back to"
+          window
+        >
+          <FixStepButton
+            label="Opening"
+            note={fixNote("Cash in", page.cash_addition, code)}
+            noteClass="text-flask-green"
+            onClick={() => fix("opening")}
+          />
+          <FixStepButton
+            label="Sales"
+            note={fixNote("Cash in", page.cash_sales, code)}
+            noteClass="text-flask-green"
+            onClick={() => fix("sales")}
+          />
+          <FixStepButton
+            label="Expenses"
+            note={fixNote("Cash out", page.expenses, code)}
+            noteClass="text-flask-red"
+            onClick={() => fix("expenses")}
+          />
+          <FixStepButton
+            label="Deposit"
+            note={fixNote("Cash out", page.bank_deposit, code)}
+            noteClass="text-flask-red"
+            onClick={() => fix("deposit")}
+          />
         </FixNegativeBalanceModal>
       ) : null}
     </>
@@ -271,14 +321,25 @@ function CashCountForm({ page, entityId, entityName, acronym }: { page: CashCoun
       datePill={datePill(day)}
       badge={<ReportBadge draft={page.draft} />}
       backHref={home}
-      stepper={<Stepper draft={progress} page="cash_count" stepHref={(step) => stepHref(entityId, entityName, step, day)} onStepClick={onStepClick} />}
+      stepper={
+        <Stepper
+          draft={progress}
+          page="cash_count"
+          stepHref={(step) => stepHref(entityId, entityName, step, day)}
+          onStepClick={onStepClick}
+        />
+      }
       overlays={overlays}
     >
       <div className="mb-2 text-left">
         <h2 className="text-lg font-bold text-flask-gray-700 sm:text-xl">Cash Count</h2>
         <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-x-4 rounded-flask-2xl bg-flask-gray-200 px-4 py-2">
-          <span className="text-sm font-medium text-flask-gray-500">Expected Cash Count Balance</span>
-          <span className="w-fit whitespace-nowrap text-sm font-medium text-flask-gray-500">{formatMoney(expected, code)}</span>
+          <span className="text-sm font-medium text-flask-gray-500">
+            Expected Cash Count Balance
+          </span>
+          <span className="w-fit whitespace-nowrap text-sm font-medium text-flask-gray-500">
+            {formatMoney(expected, code)}
+          </span>
         </div>
       </div>
 
@@ -291,7 +352,15 @@ function CashCountForm({ page, entityId, entityName, acronym }: { page: CashCoun
       >
         <div className="mb-6 rounded-flask-lg bg-flask-white p-6 shadow-flask-sm">
           <div>
-            <StepImage src="/img/cash_reg.webp" alt="Cash Count" width={180} height={151} boxClass="mb-6 w-[180px]" minHeight={150} skeleton={160} />
+            <StepImage
+              src="/img/cash_reg.webp"
+              alt="Cash Count"
+              width={180}
+              height={151}
+              boxClass="mb-6 w-[180px]"
+              minHeight={150}
+              skeleton={160}
+            />
             <div className="mb-4">
               <h3 id="cash_box_label" className="mb-2 text-sm font-semibold text-flask-gray-700">
                 Cash Box Balance
@@ -321,9 +390,19 @@ function CashCountForm({ page, entityId, entityName, acronym }: { page: CashCoun
                   <img src="/img/btn_calculator.webp" alt="" className="h-8 w-8" />
                 </button>
               </div>
-              {countMessage ? <FieldMessage id="cash_box_message">{countMessage}</FieldMessage> : null}
+              {countMessage ? (
+                <FieldMessage id="cash_box_message">{countMessage}</FieldMessage>
+              ) : null}
             </div>
-            <StepImage src="/img/safebox.webp" alt="Safe Box" width={180} height={162} boxClass="mb-6 w-[180px]" minHeight={162} skeleton={160} />
+            <StepImage
+              src="/img/safebox.webp"
+              alt="Safe Box"
+              width={180}
+              height={162}
+              boxClass="mb-6 w-[180px]"
+              minHeight={162}
+              skeleton={160}
+            />
             <div className="mb-4">
               <h3 id="safe_box_label" className="mb-2 text-sm font-semibold text-flask-gray-700">
                 Safebox Cash Balance
@@ -350,18 +429,26 @@ function CashCountForm({ page, entityId, entityName, acronym }: { page: CashCoun
                   onBlur={() => setSafe((v) => groupMoney(v))}
                   onFocus={(e) => {
                     const input = e.currentTarget;
-                    window.setTimeout(() => input.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+                    window.setTimeout(
+                      () => input.scrollIntoView({ block: "center", behavior: "smooth" }),
+                      300,
+                    );
                   }}
                   className={`min-w-0 flex-1 cursor-pointer rounded-flask-xl border bg-flask-white px-3 py-3 text-flask-black focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal ${
                     safeMessage ? "border-flask-red-500" : "border-flask-gray-300"
                   }`}
                 />
               </div>
-              {safeMessage ? <FieldMessage id="safe_box_message">{safeMessage}</FieldMessage> : null}
+              {safeMessage ? (
+                <FieldMessage id="safe_box_message">{safeMessage}</FieldMessage>
+              ) : null}
             </div>
             <div className="mt-2 flex items-center justify-between gap-3 rounded-flask-2xl bg-flask-teal-soft/50 p-3">
               <span className="text-sm font-medium text-flask-teal-count">Total Cash Count</span>
-              <span className="min-w-0 break-all text-right text-sm font-medium text-flask-teal-count" aria-live="polite">
+              <span
+                className="min-w-0 break-all text-right text-sm font-medium text-flask-teal-count"
+                aria-live="polite"
+              >
                 {formatMoney(cents(till + safeAmount), code)}
               </span>
             </div>
@@ -405,13 +492,18 @@ function CashCountForm({ page, entityId, entityName, acronym }: { page: CashCoun
               onFocus={(e) => {
                 if (!out) return;
                 const input = e.currentTarget;
-                window.setTimeout(() => input.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+                window.setTimeout(
+                  () => input.scrollIntoView({ block: "center", behavior: "smooth" }),
+                  300,
+                );
               }}
               className={`block w-full resize-none rounded-flask-2xl border px-3 py-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal ${
                 reasonInvalid ? "border-flask-red-500" : "border-flask-gray-300"
               } ${out ? "cursor-pointer bg-flask-white text-flask-gray-700" : "cursor-not-allowed bg-flask-gray-200 text-flask-gray-500"}`}
             />
-            {reasonMessage ? <FieldMessage id="discrepancy_message">{reasonMessage}</FieldMessage> : null}
+            {reasonMessage ? (
+              <FieldMessage id="discrepancy_message">{reasonMessage}</FieldMessage>
+            ) : null}
           </div>
         </div>
 
@@ -422,10 +514,21 @@ function CashCountForm({ page, entityId, entityName, acronym }: { page: CashCoun
 }
 
 /** Flask's #discrepancyAlert: red "Cash Shortage" or green "Cash Surplus", and what to do. */
-function DiscrepancyAlert({ kind, amount, code }: { kind: "short" | "over" | "none"; amount: number; code: string | null }) {
+function DiscrepancyAlert({
+  kind,
+  amount,
+  code,
+}: {
+  kind: "short" | "over" | "none";
+  amount: number;
+  code: string | null;
+}) {
   const short = kind === "short";
   return (
-    <div className={`mb-4 rounded-flask-lg p-4 ${short ? "bg-flask-danger-bg" : "bg-flask-success-bg"}`} role="status">
+    <div
+      className={`mb-4 rounded-flask-lg p-4 ${short ? "bg-flask-danger-bg" : "bg-flask-success-bg"}`}
+      role="status"
+    >
       <div className="flex items-start">
         <div className="flex-shrink-0">
           <svg
@@ -437,15 +540,23 @@ function DiscrepancyAlert({ kind, amount, code }: { kind: "short" | "over" | "no
             className={`size-6 ${short ? "text-flask-danger" : "text-flask-green-500"}`}
             aria-hidden="true"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+            />
           </svg>
         </div>
         <div className="ml-3 min-w-0 flex-1">
-          <h3 className={`text-sm font-medium ${short ? "text-flask-red-800" : "text-flask-success-ink"}`}>
+          <h3
+            className={`text-sm font-medium ${short ? "text-flask-red-800" : "text-flask-success-ink"}`}
+          >
             {short ? "Cash Shortage: " : "Cash Surplus: "}
             <span className="break-all">{formatMoney(Math.abs(amount), code)}</span>
           </h3>
-          <p className="mt-1 text-sm text-flask-gray-600">Please review your entries or provide a reason for the discrepancy below.</p>
+          <p className="mt-1 text-sm text-flask-gray-600">
+            Please review your entries or provide a reason for the discrepancy below.
+          </p>
         </div>
       </div>
     </div>
@@ -486,7 +597,9 @@ function CalculatorModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const parsed: Counts = Object.fromEntries(denominations.map((d) => [d.id, parseCount(typed[d.id] ?? "")]));
+  const parsed: Counts = Object.fromEntries(
+    denominations.map((d) => [d.id, parseCount(typed[d.id] ?? "")]),
+  );
   const total = tillTotal(denominations, parsed);
 
   function apply() {
@@ -531,8 +644,20 @@ function CalculatorModal({
               aria-label="Close"
               className="-m-2.5 inline-flex h-11 w-11 items-center justify-center text-flask-gray-500 hover:text-flask-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-flask-teal"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -545,11 +670,17 @@ function CalculatorModal({
             return (
               <div key={d.id} className="mb-4">
                 <div className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 sm:flex sm:gap-3">
-                  <label htmlFor={id} className="w-24 shrink-0 whitespace-nowrap text-base font-medium text-flask-gray-500">
+                  <label
+                    htmlFor={id}
+                    className="w-24 shrink-0 whitespace-nowrap text-base font-medium text-flask-gray-500"
+                  >
                     {label}
                   </label>
                   <div className="relative min-w-0 sm:flex-1">
-                    <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-normal text-flask-gray-400" aria-hidden="true">
+                    <div
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-normal text-flask-gray-400"
+                      aria-hidden="true"
+                    >
                       X
                     </div>
                     <input
@@ -564,18 +695,24 @@ function CalculatorModal({
                       value={value}
                       aria-invalid={problem ? true : undefined}
                       aria-describedby={problem ? `${id}_message` : undefined}
-                      onChange={(e) => setTyped((all) => ({ ...all, [d.id]: sanitizeCount(e.target.value) }))}
+                      onChange={(e) =>
+                        setTyped((all) => ({ ...all, [d.id]: sanitizeCount(e.target.value) }))
+                      }
                       className={`w-full cursor-pointer rounded-flask-2xl border bg-flask-white py-3 pl-10 pr-3 text-right text-flask-black focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal ${
                         problem ? "border-flask-red-500" : "border-flask-gray-300"
                       }`}
                     />
                   </div>
-                  <div
-                    className="col-start-2 flex min-w-0 items-center justify-between gap-2 rounded-flask-2xl border border-flask-gray-500 bg-flask-gray-300/20 px-3 py-3 sm:w-40 sm:shrink-0"
-                  >
+                  <div className="col-start-2 flex min-w-0 items-center justify-between gap-2 rounded-flask-2xl border border-flask-gray-500 bg-flask-gray-300/20 px-3 py-3 sm:w-40 sm:shrink-0">
                     <span className="font-medium text-flask-gray-500/60">{code}</span>
-                    <output htmlFor={id} className="min-w-0 break-all text-right text-flask-gray-700">
-                      {rowTotal(d.value, parseCount(value)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <output
+                      htmlFor={id}
+                      className="min-w-0 break-all text-right text-flask-gray-700"
+                    >
+                      {rowTotal(d.value, parseCount(value)).toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </output>
                   </div>
                 </div>
@@ -586,7 +723,10 @@ function CalculatorModal({
 
           <div className="mb-4 flex items-center justify-between gap-3 rounded-flask-2xl">
             <span className="text-sm font-medium text-flask-gray-700">Total Cash Till Balance</span>
-            <span className="min-w-0 break-all text-right text-sm font-medium text-flask-gray-700" aria-live="polite">
+            <span
+              className="min-w-0 break-all text-right text-sm font-medium text-flask-gray-700"
+              aria-live="polite"
+            >
               {formatMoney(total, code)}
             </span>
           </div>

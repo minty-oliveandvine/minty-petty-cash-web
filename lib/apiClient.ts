@@ -79,7 +79,12 @@ function errorSentence(body: unknown): string | null {
 }
 
 /** The call itself: the bearer, a 401 back through Flask, any other failure an `ApiError`. */
-async function send(base: string, path: string, init: ApiRequest, accept: string): Promise<Response> {
+async function send(
+  base: string,
+  path: string,
+  init: ApiRequest,
+  accept: string,
+): Promise<Response> {
   const { json, form, query, headers: extraHeaders, onUnauthorized = "handoff", ...rest } = init;
   const auth = getAuth();
 
@@ -163,9 +168,15 @@ export function filenameFromDisposition(header: string | null): string | null {
  * `Content-Disposition` gives (null when there is none or the browser hides it). Fails as
  * `pettyCashFetch` does, so a refusal's sentence is the `ApiError`'s message.
  */
-export async function pettyCashDownload(path: string, init: ApiRequest = {}): Promise<{ blob: Blob; filename: string | null }> {
+export async function pettyCashDownload(
+  path: string,
+  init: ApiRequest = {},
+): Promise<{ blob: Blob; filename: string | null }> {
   const res = await send(companyBase(), path, init, "*/*");
-  return { blob: await res.blob(), filename: filenameFromDisposition(res.headers.get("Content-Disposition")) };
+  return {
+    blob: await res.blob(),
+    filename: filenameFromDisposition(res.headers.get("Content-Disposition")),
+  };
 }
 
 /** The only paths `pettyCashPublicFetch` may call. */
@@ -180,7 +191,8 @@ const PUBLIC_SURFACE = "/api/petty-cash/v1/public/";
  * answer's text, so nothing from the request can reach the screen through it.
  */
 export async function pettyCashPublicFetch<T = unknown>(path: string): Promise<T> {
-  if (!path.startsWith(PUBLIC_SURFACE)) throw new Error("pettyCashPublicFetch calls only the public surface");
+  if (!path.startsWith(PUBLIC_SURFACE))
+    throw new Error("pettyCashPublicFetch calls only the public surface");
   const res = await fetch(`${env.PETTY_CASH_API_URL}${path}`, {
     headers: new Headers({ Accept: "application/json" }),
     credentials: "omit",

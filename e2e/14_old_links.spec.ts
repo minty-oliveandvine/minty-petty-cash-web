@@ -46,19 +46,33 @@ const SHARED = {
 /** Stub the public read, and catch every Flask hand-off so nothing leaves the app. */
 async function stub(page: Page) {
   const handoffs: string[] = [];
-  await page.route("**/api/petty-cash/v1/public/share/**", (route) => route.fulfill({ json: SHARED }));
+  await page.route("**/api/petty-cash/v1/public/share/**", (route) =>
+    route.fulfill({ json: SHARED }),
+  );
   await page.route(/\/handoff\//, (route) => {
     handoffs.push(route.request().url());
-    return route.fulfill({ contentType: "text/html", body: "<title>Hand-off</title><p>Hand-off</p>" });
+    return route.fulfill({
+      contentType: "text/html",
+      body: "<title>Hand-off</title><p>Hand-off</p>",
+    });
   });
   return handoffs;
 }
 
 /** Signs in through the landing, as Flask's hand-off would, then leaves the page. */
 async function signIn(page: Page) {
-  await page.route("**/api/petty-cash/v1/companies/**", (route) => route.fulfill({ status: 500, json: { error: "not in this test" } }));
-  const token = mintModuleToken({ secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME });
-  await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: `/share/${PATH}` })}`);
+  await page.route("**/api/petty-cash/v1/companies/**", (route) =>
+    route.fulfill({ status: 500, json: { error: "not in this test" } }),
+  );
+  const token = mintModuleToken({
+    secret: "stub",
+    userId: "u",
+    entityId: ENTITY,
+    entityName: NAME,
+  });
+  await page.goto(
+    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: `/share/${PATH}` })}`,
+  );
   await expect(page).toHaveURL(new RegExp(`/share/${PATH}$`));
 }
 
@@ -76,7 +90,9 @@ for (const signedIn of [false, true]) {
       await expectNoHorizontalScroll(page);
     });
 
-    test("another Flask page goes to minty-web through the login-gated hand-off", async ({ page }) => {
+    test("another Flask page goes to minty-web through the login-gated hand-off", async ({
+      page,
+    }) => {
       await stub(page);
       if (signedIn) await signIn(page);
       const users = await handoffReached(page, `${CO}/settings/users`);
@@ -101,7 +117,9 @@ for (const signedIn of [false, true]) {
       const older = await get(`${CO}/reports/new/opening?transaction_date=2026-10-13`);
       expect(older.status()).toBe(308);
       const to = where(older);
-      expect(to.pathname + to.search).toBe(`${CO}/petty-cash/reports/new/opening?transaction_date=2026-10-13`);
+      expect(to.pathname + to.search).toBe(
+        `${CO}/petty-cash/reports/new/opening?transaction_date=2026-10-13`,
+      );
 
       const callback = await get("/callback?code=c&state=s");
       expect(callback.status()).toBe(308);
@@ -122,14 +140,20 @@ test("/share still needs no token, while this app's pages do", async ({ page }) 
   await stub(page);
   expect(await page.context().cookies()).toEqual([]);
   expect((await page.request.get(`/share/${PATH}`, { maxRedirects: 0 })).status()).toBe(200);
-  for (const path of [`${CO}/petty-cash`, `${CO}/petty-cash/reports`, `${CO}/settings/petty-cash`]) {
+  for (const path of [
+    `${CO}/petty-cash`,
+    `${CO}/petty-cash/reports`,
+    `${CO}/settings/petty-cash`,
+  ]) {
     const res = await page.request.get(path, { maxRedirects: 0 });
     expect(res.status(), path).toBe(307);
     expect(where(res).pathname, path).toBe("/handoff/petty-cash-web");
   }
 });
 
-test("a full company id: the hand-off for it without a token, the readable address with its token", async ({ page }) => {
+test("a full company id: the hand-off for it without a token, the readable address with its token", async ({
+  page,
+}) => {
   await stub(page);
   const uuidPath = `/entity/${ENTITY}/petty-cash/reports?page=2`;
   const without = await page.request.get(uuidPath, { maxRedirects: 0 });

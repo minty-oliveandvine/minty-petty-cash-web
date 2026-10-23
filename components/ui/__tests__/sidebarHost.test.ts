@@ -16,7 +16,9 @@ describe("the menu's links", () => {
     setAuth("tok", ENTITY, "Olive & Vine");
     expect(sidebarHost.links.pettyCashDashboard()).toBe(HOME);
     expect(sidebarHost.links.pettyCashReports(ENTITY)).toBe(`${HOME}/reports`);
-    expect(sidebarHost.links.settings()).toBe("/entity/360812e1/olive-and-vine/settings/petty-cash");
+    expect(sidebarHost.links.settings()).toBe(
+      "/entity/360812e1/olive-and-vine/settings/petty-cash",
+    );
   });
 
   it("reaches minty-web's pages and the payments app through Flask", () => {
@@ -24,7 +26,9 @@ describe("the menu's links", () => {
     const entities = new URL(sidebarHost.links.entities());
     expect(entities.origin + entities.pathname).toBe("http://localhost:8000/handoff/minty-web");
     expect(entities.searchParams.get("next")).toBe("/entities");
-    expect(new URL(sidebarHost.links.subscriptions()).searchParams.get("next")).toBe("/subscription");
+    expect(new URL(sidebarHost.links.subscriptions()).searchParams.get("next")).toBe(
+      "/subscription",
+    );
     expect(new URL(sidebarHost.links.bills()).pathname).toBe(`/entity/${ENTITY}/payment-request`);
     // straight to minty-web's My Profile through the hand-off, scoped to the company it was opened from
     const profile = new URL(sidebarHost.links.profile());
@@ -34,7 +38,9 @@ describe("the menu's links", () => {
   });
 
   it("marks only its own settings page as current", () => {
-    expect(sidebarHost.currentOf("/entity/360812e1/olive-and-vine/settings/petty-cash")).toBe("settings");
+    expect(sidebarHost.currentOf("/entity/360812e1/olive-and-vine/settings/petty-cash")).toBe(
+      "settings",
+    );
     expect(sidebarHost.currentOf(`${HOME}/settings`)).toBeNull();
     expect(sidebarHost.currentOf(HOME)).toBeNull();
   });

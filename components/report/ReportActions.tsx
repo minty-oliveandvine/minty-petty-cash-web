@@ -22,8 +22,20 @@ const CLOSE_ICON = (
 );
 
 const NOTE_ICON = (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="h-5 w-5 text-flask-danger" aria-hidden="true">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth="2"
+    stroke="currentColor"
+    className="h-5 w-5 text-flask-danger"
+    aria-hidden="true"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+    />
   </svg>
 );
 
@@ -37,7 +49,15 @@ export function ShareButton({ onClick }: { onClick: () => void }) {
         aria-label="Share"
         className="flex h-12 w-12 items-center justify-center rounded-full bg-flask-slate-100 transition duration-300 hover:-translate-y-0.5 hover:shadow-flask-lift focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flask-teal sm:h-16 sm:w-16"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-5 w-5 text-flask-olive sm:h-6 sm:w-6" aria-hidden="true">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="1.5"
+          stroke="currentColor"
+          className="h-5 w-5 text-flask-olive sm:h-6 sm:w-6"
+          aria-hidden="true"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -67,7 +87,10 @@ export function useEditReport(entityId: string, entityName: string, actingRef: R
     actingRef.current = true;
     toast("Converting report to draft...", "info");
     try {
-      const answer = await pettyCashFetch<Reopened>(`/reports/${encodeURIComponent(reportId)}/reopen`, { method: "POST" });
+      const answer = await pettyCashFetch<Reopened>(
+        `/reports/${encodeURIComponent(reportId)}/reopen`,
+        { method: "POST" },
+      );
       toast("Back to draft — opening it for you now.", "success");
       router.push(stepHref(entityId, entityName, "opening", answer.transaction_date));
     } catch (err) {
@@ -97,7 +120,10 @@ export function useShareLink(reportId: string) {
     const mine = ++ticket.current;
     setLink({ url: null });
     try {
-      const answer = await pettyCashFetch<{ path?: unknown }>(`/reports/${encodeURIComponent(reportId)}/share-link`, { method: "POST" });
+      const answer = await pettyCashFetch<{ path?: unknown }>(
+        `/reports/${encodeURIComponent(reportId)}/share-link`,
+        { method: "POST" },
+      );
       if (ticket.current !== mine) return;
       const url = shareUrl(window.location.origin, answer?.path);
       if (url) {
@@ -158,18 +184,30 @@ export function ShareModal({ url, onClose }: { url: string | null; onClose: () =
   }
 
   return (
-    <Modal titleId="shareReportTitle" onClose={onClose} wide className="rounded-flask-lg bg-flask-white p-6">
+    <Modal
+      titleId="shareReportTitle"
+      onClose={onClose}
+      wide
+      className="rounded-flask-lg bg-flask-white p-6"
+    >
       <div className="mb-6 flex items-center justify-between">
         <h2 id="shareReportTitle" className="text-xl font-bold text-flask-gray-900">
           Share Report
         </h2>
-        <button type="button" onClick={onClose} aria-label="Close" className="text-flask-gray-400 hover:text-flask-gray-600">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="text-flask-gray-400 hover:text-flask-gray-600"
+        >
           {CLOSE_ICON}
         </button>
       </div>
 
       <div className="mb-6">
-        <p className="mb-4 text-sm text-flask-gray-600">Share this link to allow others to view this report. The link will expire in 30 days.</p>
+        <p className="mb-4 text-sm text-flask-gray-600">
+          Share this link to allow others to view this report. The link will expire in 30 days.
+        </p>
         <div className="flex items-center gap-2">
           <input
             ref={field}
@@ -214,22 +252,52 @@ export function ShareModal({ url, onClose }: { url: string | null; onClose: () =
  * Flask's "Delete Report" (#deleteReportModal): the red warning, then Cancel / Delete. A report that
  * has been to Xero is warned about first (the owner's rule, 2026-10-15, in Flask's own words).
  */
-export function DeleteReportModal({ wasPublished, onCancel, onDelete }: { wasPublished: boolean; onCancel: () => void; onDelete: () => void }) {
+export function DeleteReportModal({
+  wasPublished,
+  onCancel,
+  onDelete,
+}: {
+  wasPublished: boolean;
+  onCancel: () => void;
+  onDelete: () => void;
+}) {
   return (
-    <Modal titleId="deleteReportTitle" onClose={onCancel} className="rounded-flask-lg bg-flask-white p-6">
+    <Modal
+      titleId="deleteReportTitle"
+      onClose={onCancel}
+      className="rounded-flask-lg bg-flask-white p-6"
+    >
       <div className="mb-6 flex items-center justify-between">
         <h2 id="deleteReportTitle" className="text-xl font-bold text-flask-gray-900">
           Delete Report
         </h2>
-        <button type="button" onClick={onCancel} aria-label="Close" className="text-flask-gray-400 hover:text-flask-gray-600">
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Close"
+          className="text-flask-gray-400 hover:text-flask-gray-600"
+        >
           {CLOSE_ICON}
         </button>
       </div>
 
       {wasPublished ? (
         <div className="mb-4 flex items-start rounded-[8px] border-l-4 border-l-flask-amber-edge bg-flask-amber-bg px-4 py-3">
-          <svg className="mr-3 mt-0.5 flex-shrink-0" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <circle cx="10" cy="10" r="9" className="fill-flask-amber-bg stroke-flask-amber" strokeWidth="2" />
+          <svg
+            className="mr-3 mt-0.5 flex-shrink-0"
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              cx="10"
+              cy="10"
+              r="9"
+              className="fill-flask-amber-bg stroke-flask-amber"
+              strokeWidth="2"
+            />
             <rect x="9" y="8" width="2" height="5" rx="1" className="fill-flask-amber" />
             <rect x="9" y="5" width="2" height="2" rx="1" className="fill-flask-amber" />
           </svg>

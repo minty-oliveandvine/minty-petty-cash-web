@@ -20,7 +20,13 @@ const MESSAGE = "px-4 py-6 text-center text-sm text-flask-gray-500";
  * `<object>` of the bytes (Flask draws its pages with pdf.js, which this app does not carry).
  * Escape closes the receipt only, not a modal under it.
  */
-export function ReceiptViewer({ receipt, onClose }: { receipt: ShownReceipt; onClose: () => void }) {
+export function ReceiptViewer({
+  receipt,
+  onClose,
+}: {
+  receipt: ShownReceipt;
+  onClose: () => void;
+}) {
   const [broken, setBroken] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -49,7 +55,12 @@ export function ReceiptViewer({ receipt, onClose }: { receipt: ShownReceipt; onC
     );
   } else if (receipt.kind === "pdf") {
     body = (
-      <object data={receipt.url} type="application/pdf" aria-label={receipt.name || "Receipt"} className="block h-full min-h-[60vh] w-full">
+      <object
+        data={receipt.url}
+        type="application/pdf"
+        aria-label={receipt.name || "Receipt"}
+        className="block h-full min-h-[60vh] w-full"
+      >
         <p className={MESSAGE}>This PDF can&apos;t be previewed here.</p>
       </object>
     );
@@ -80,7 +91,9 @@ export function ReceiptViewer({ receipt, onClose }: { receipt: ShownReceipt; onC
           </h2>
         </div>
         <p className="-mt-3 mb-3 truncate text-sm text-flask-gray-500">{receipt.name}</p>
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-flask-lg border border-flask-gray-200 bg-flask-gray-50 p-2">{body}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-flask-lg border border-flask-gray-200 bg-flask-gray-50 p-2">
+          {body}
+        </div>
         <div className="mt-4 flex justify-center">
           <button
             type="button"
@@ -110,7 +123,9 @@ export function useReceiptUrls(line: ExpenseLine | null): ReceiptUrls {
     let live = true;
     const made: string[] = [];
     for (const receipt of line.receipts) {
-      pettyCashBlob(`/expense-lines/${encodeURIComponent(line.id)}/receipts/${encodeURIComponent(receipt.id)}`)
+      pettyCashBlob(
+        `/expense-lines/${encodeURIComponent(line.id)}/receipts/${encodeURIComponent(receipt.id)}`,
+      )
         .then((blob) => {
           const url = URL.createObjectURL(blob);
           made.push(url);

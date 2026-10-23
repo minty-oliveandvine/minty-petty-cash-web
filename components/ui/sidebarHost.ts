@@ -48,7 +48,8 @@ export const sidebarHost: SidebarHost = {
     entities: () => hubUrl("/entities"),
     subscriptions: () => hubUrl("/subscription"),
     pettyCashDashboard: () => home(),
-    pettyCashReports: (id) => historyHref(id || getAuth()?.entityId || "", getAuth()?.entityName ?? ""),
+    pettyCashReports: (id) =>
+      historyHref(id || getAuth()?.entityId || "", getAuth()?.entityName ?? ""),
     bills: () => {
       const id = getAuth()?.entityId;
       if (id) return paymentsUrl(id, "home");

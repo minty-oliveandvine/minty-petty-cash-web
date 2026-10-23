@@ -12,9 +12,12 @@ describe("companyRefFromPath", () => {
     expect(companyRefFromPath(path)).toBe(ref);
   });
 
-  it.each(["/", "/landing", "/entity/not-hex1/x", "/entity/360812e1"])("finds no company in %s", (path) => {
-    expect(companyRefFromPath(path)).toBe("");
-  });
+  it.each(["/", "/landing", "/entity/not-hex1/x", "/entity/360812e1"])(
+    "finds no company in %s",
+    (path) => {
+      expect(companyRefFromPath(path)).toBe("");
+    },
+  );
 });
 
 describe("pettyCashHome", () => {
@@ -31,6 +34,8 @@ describe("reportHref", () => {
     expect(reportHref(id, "Olive & Vine", "8a1d3c55-0f8e-4f4e-9d55-2c4b7d1e0a77", "summary")).toBe(
       "/entity/360812e1/olive-and-vine/petty-cash/reports/8a1d3c55-0f8e-4f4e-9d55-2c4b7d1e0a77/summary",
     );
-    expect(reportHref(id, "Olive & Vine", "r/1", "submitted")).toBe("/entity/360812e1/olive-and-vine/petty-cash/reports/r%2F1/submitted");
+    expect(reportHref(id, "Olive & Vine", "r/1", "submitted")).toBe(
+      "/entity/360812e1/olive-and-vine/petty-cash/reports/r%2F1/submitted",
+    );
   });
 });

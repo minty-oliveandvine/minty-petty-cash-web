@@ -33,6 +33,11 @@ export function pettyCashHome(entityId: string, entityName: string): string {
  * A report's own pages, at Flask's addresses for them: its Daily Report (`summary`) and the page
  * after the submit (`submitted`) - `/entity/<shortid>/<name>/petty-cash/reports/<report id>/<page>`.
  */
-export function reportHref(entityId: string, entityName: string, reportId: string, page: "summary" | "submitted"): string {
+export function reportHref(
+  entityId: string,
+  entityName: string,
+  reportId: string,
+  page: "summary" | "submitted",
+): string {
   return `${pettyCashHome(entityId, entityName)}/reports/${encodeURIComponent(reportId)}/${page}`;
 }

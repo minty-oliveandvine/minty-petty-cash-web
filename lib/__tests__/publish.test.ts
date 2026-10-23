@@ -33,7 +33,9 @@ describe("how a status read ends a publish", () => {
 
   it("is published when completed, or once it is in Xero", () => {
     expect(statusEnd(status({ publishing_status: "completed" }))).toEqual({ kind: "published" });
-    expect(statusEnd(status({ publishing_status: "unpublished", xero_integrated: true }))).toEqual({ kind: "published" });
+    expect(statusEnd(status({ publishing_status: "unpublished", xero_integrated: true }))).toEqual({
+      kind: "published",
+    });
   });
 
   it("is partial when it failed with open reasons - the resolved ones are left out", () => {
@@ -41,12 +43,17 @@ describe("how a status read ends a publish", () => {
       { text: "Account 400 is archived in Xero.", resolved: false },
       { text: "Acme isn't a Xero contact.", resolved: true },
     ];
-    expect(statusEnd(status({ publishing_status: "failed", reasons }))).toEqual({ kind: "partial", reasons: ["Account 400 is archived in Xero."] });
+    expect(statusEnd(status({ publishing_status: "failed", reasons }))).toEqual({
+      kind: "partial",
+      reasons: ["Account 400 is archived in Xero."],
+    });
   });
 
   it("is failed with no open reason, or when it was put back to unpublished", () => {
     expect(statusEnd(status({ publishing_status: "failed" }))).toEqual({ kind: "failed" });
-    expect(statusEnd(status({ publishing_status: "failed", reasons: [{ text: "x", resolved: true }] }))).toEqual({ kind: "failed" });
+    expect(
+      statusEnd(status({ publishing_status: "failed", reasons: [{ text: "x", resolved: true }] })),
+    ).toEqual({ kind: "failed" });
     expect(statusEnd(status({ publishing_status: "unpublished" }))).toEqual({ kind: "failed" });
   });
 });
@@ -59,9 +66,10 @@ describe("Flask's words and rules", () => {
 
   it("joins a partial publish's reasons", () => {
     expect(partialMessage(["A", "B"])).toBe("Xero publish is done partially due to A; B");
-    expect(partialMessage([])).toBe("Xero publish is done partially due to some entries could not be published");
+    expect(partialMessage([])).toBe(
+      "Xero publish is done partially due to some entries could not be published",
+    );
   });
-
 
   it("creeps the bar towards 85%, never past it", () => {
     expect(nextProgress(15)).toBe(21);
@@ -90,17 +98,31 @@ describe("runPublish", () => {
     return { fetcher, calls };
   }
   const ok = (s: PublishingStatus) => () => Promise.resolve(s);
-  const accepted = () => Promise.resolve({ publishing_status: "publishing", message: "Publishing to Xero. This can take a few minutes." });
+  const accepted = () =>
+    Promise.resolve({
+      publishing_status: "publishing",
+      message: "Publishing to Xero. This can take a few minutes.",
+    });
 
   function run(fetcher: never, opts: { republish?: boolean; start?: boolean } = {}) {
     const ends: PublishEnd[] = [];
     const progress: [number, string][] = [];
-    const cancel = runPublish("r-1", { republish: opts.republish ?? false, start: opts.start, fetcher, onProgress: (p, l) => progress.push([p, l]), onEnd: (e) => ends.push(e) });
+    const cancel = runPublish("r-1", {
+      republish: opts.republish ?? false,
+      start: opts.start,
+      fetcher,
+      onProgress: (p, l) => progress.push([p, l]),
+      onEnd: (e) => ends.push(e),
+    });
     return { ends, progress, cancel };
   }
 
   it("starts, then asks every two seconds until it is published, then holds the full bar before saying so", async () => {
-    const { fetcher, calls } = api(accepted, [ok(status()), ok(status()), ok(status({ publishing_status: "completed", xero_integrated: true }))]);
+    const { fetcher, calls } = api(accepted, [
+      ok(status()),
+      ok(status()),
+      ok(status({ publishing_status: "completed", xero_integrated: true })),
+    ]);
     const { ends, progress } = run(fetcher);
     await vi.advanceTimersByTimeAsync(0);
     expect(calls).toEqual(["POST /reports/r-1/publish"]);
@@ -134,7 +156,14 @@ describe("runPublish", () => {
   });
 
   it("ends partial with the open reasons, and failed without any", async () => {
-    const partial = api(accepted, [ok(status({ publishing_status: "failed", reasons: [{ text: "Account 400 is archived in Xero.", resolved: false }] }))]);
+    const partial = api(accepted, [
+      ok(
+        status({
+          publishing_status: "failed",
+          reasons: [{ text: "Account 400 is archived in Xero.", resolved: false }],
+        }),
+      ),
+    ]);
     const a = run(partial.fetcher);
     await vi.advanceTimersByTimeAsync(POLL_MS + SETTLE_MS);
     expect(a.progress.at(-1)).toEqual([100, "Partially published"]);
@@ -157,12 +186,17 @@ describe("runPublish", () => {
   });
 
   it("keeps asking through a dropped connection, and stops on a refused read", async () => {
-    const flaky = api(accepted, [() => Promise.reject(new TypeError("Failed to fetch")), ok(status({ publishing_status: "completed" }))]);
+    const flaky = api(accepted, [
+      () => Promise.reject(new TypeError("Failed to fetch")),
+      ok(status({ publishing_status: "completed" })),
+    ]);
     const a = run(flaky.fetcher);
     await vi.advanceTimersByTimeAsync(POLL_MS * 2 + SETTLE_MS);
     expect(a.ends).toEqual([{ kind: "published" }]);
 
-    const gone = api(accepted, [() => Promise.reject(new ApiError(404, "I couldn't find that report."))]);
+    const gone = api(accepted, [
+      () => Promise.reject(new ApiError(404, "I couldn't find that report.")),
+    ]);
     const b = run(gone.fetcher);
     await vi.advanceTimersByTimeAsync(POLL_MS * 3);
     expect(b.ends).toEqual([{ kind: "lost", message: "I couldn't find that report." }]);
@@ -182,7 +216,10 @@ describe("runPublish", () => {
 
   it("says nothing when cancelled while the start is still on its way", async () => {
     let answer: (v: unknown) => void = () => {};
-    const { fetcher, calls } = api(() => new Promise((resolve) => (answer = resolve)), [ok(status())]);
+    const { fetcher, calls } = api(
+      () => new Promise((resolve) => (answer = resolve)),
+      [ok(status())],
+    );
     const { ends, cancel } = run(fetcher);
     cancel();
     answer({ publishing_status: "publishing" });
@@ -200,21 +237,60 @@ describe("runPublish", () => {
   });
 
   it("passes a refused start's sentence on, with reconnect when Xero must be connected again", async () => {
-    const reconnect = api(() => Promise.reject(new ApiError(400, "I've lost access to your Xero account. Mind reconnecting it in Settings?", { error: "x", reconnect: true })), []);
+    const reconnect = api(
+      () =>
+        Promise.reject(
+          new ApiError(
+            400,
+            "I've lost access to your Xero account. Mind reconnecting it in Settings?",
+            { error: "x", reconnect: true },
+          ),
+        ),
+      [],
+    );
     const a = run(reconnect.fetcher);
     await vi.advanceTimersByTimeAsync(0);
-    expect(a.ends).toEqual([{ kind: "refused", status: 400, reconnect: true, message: "I've lost access to your Xero account. Mind reconnecting it in Settings?" }]);
+    expect(a.ends).toEqual([
+      {
+        kind: "refused",
+        status: 400,
+        reconnect: true,
+        message: "I've lost access to your Xero account. Mind reconnecting it in Settings?",
+      },
+    ]);
 
-    const busy = api(() => Promise.reject(new ApiError(409, "Publishing already in progress. Please wait...", { error: "Publishing already in progress. Please wait..." })), []);
+    const busy = api(
+      () =>
+        Promise.reject(
+          new ApiError(409, "Publishing already in progress. Please wait...", {
+            error: "Publishing already in progress. Please wait...",
+          }),
+        ),
+      [],
+    );
     const b = run(busy.fetcher);
     await vi.advanceTimersByTimeAsync(POLL_MS * 3);
-    expect(b.ends).toEqual([{ kind: "refused", status: 409, reconnect: false, message: "Publishing already in progress. Please wait..." }]);
+    expect(b.ends).toEqual([
+      {
+        kind: "refused",
+        status: 409,
+        reconnect: false,
+        message: "Publishing already in progress. Please wait...",
+      },
+    ]);
     expect(busy.calls).toHaveLength(1);
 
     const offline = api(() => Promise.reject(new TypeError("Failed to fetch")), []);
     const c = run(offline.fetcher);
     await vi.advanceTimersByTimeAsync(0);
-    expect(c.ends).toEqual([{ kind: "refused", status: 0, reconnect: false, message: "I couldn't publish that report to Xero. Mind trying again?" }]);
+    expect(c.ends).toEqual([
+      {
+        kind: "refused",
+        status: 0,
+        reconnect: false,
+        message: "I couldn't publish that report to Xero. Mind trying again?",
+      },
+    ]);
 
     const lapsed = api(() => Promise.reject(new ApiError(401, "Your session has ended.")), []);
     const d = run(lapsed.fetcher);

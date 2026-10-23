@@ -62,7 +62,10 @@ export function SubmittedPage({ reportId }: { reportId: string }) {
           if (!live()) return;
           const company = getAuth();
           // reopened since: nothing is submitted, so its own place is the wizard's Ending step
-          if (!answer.submitted && company) router.replace(stepHref(company.entityId, company.entityName, "ending", answer.transaction_date));
+          if (!answer.submitted && company)
+            router.replace(
+              stepHref(company.entityId, company.entityName, "ending", answer.transaction_date),
+            );
           else setOutcome(answer);
         })
         .catch((err: unknown) => {
@@ -95,10 +98,27 @@ export function SubmittedPage({ reportId }: { reportId: string }) {
       </Frame>
     );
   }
-  return <Submitted outcome={outcome} entityId={auth.entityId} entityName={auth.entityName} onPublished={reread} />;
+  return (
+    <Submitted
+      outcome={outcome}
+      entityId={auth.entityId}
+      entityName={auth.entityName}
+      onPublished={reread}
+    />
+  );
 }
 
-function Submitted({ outcome, entityId, entityName, onPublished }: { outcome: ReportOutcome; entityId: string; entityName: string; onPublished: () => void }) {
+function Submitted({
+  outcome,
+  entityId,
+  entityName,
+  onPublished,
+}: {
+  outcome: ReportOutcome;
+  entityId: string;
+  entityName: string;
+  onPublished: () => void;
+}) {
   const router = useRouter();
   const share = useShareLink(outcome.report_id);
   const publish = usePublish({ place: "submitted", entityId, entityName, onChanged: onPublished });
@@ -128,7 +148,15 @@ function Submitted({ outcome, entityId, entityName, onPublished }: { outcome: Re
   return (
     <Frame overlays={overlays}>
       <div className="flex size-20 items-center justify-center rounded-full bg-flask-teal text-flask-white shadow-flask-lg">
-        <svg xmlns="http://www.w3.org/2000/svg" className="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="size-8"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
           <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
@@ -138,7 +166,9 @@ function Submitted({ outcome, entityId, entityName, onPublished }: { outcome: Re
         <br />
         {second}
       </h1>
-      <p className="mt-6 text-xs text-flask-slate-500">Your daily petty cash report has been processed</p>
+      <p className="mt-6 text-xs text-flask-slate-500">
+        Your daily petty cash report has been processed
+      </p>
 
       <p className="mb-4 mt-20 text-sm tracking-wide text-flask-slate-700">Export Options</p>
       <div className="mt-4 flex items-start justify-center gap-8 sm:gap-12">
@@ -150,11 +180,23 @@ function Submitted({ outcome, entityId, entityName, onPublished }: { outcome: Re
           <button
             type="button"
             // a report that has been to Xero goes through Flask's confirm: publishing again duplicates it
-            onClick={() => publish.ask({ reportId: outcome.report_id, confirm: outcome.xero.was_published ? { duplicate: true } : null })}
+            onClick={() =>
+              publish.ask({
+                reportId: outcome.report_id,
+                confirm: outcome.xero.was_published ? { duplicate: true } : null,
+              })
+            }
             disabled={busy !== null || publish.busy}
             className="flex w-full items-center justify-center gap-3 rounded-flask-xl bg-flask-white px-4 py-3 text-flask-slate-700 shadow-flask-md ring-1 ring-flask-slate-200 transition hover:shadow-flask-lg"
           >
-            <Image src="/img/xero-logo.webp" alt="Xero Logo" width={24} height={24} unoptimized className="h-5 w-5 sm:h-6 sm:w-6" />
+            <Image
+              src="/img/xero-logo.webp"
+              alt="Xero Logo"
+              width={24}
+              height={24}
+              unoptimized
+              className="h-5 w-5 sm:h-6 sm:w-6"
+            />
             <span className="text-sm font-medium">{publishLabel(outcome.xero)}</span>
           </button>
         ) : null}
@@ -166,8 +208,19 @@ function Submitted({ outcome, entityId, entityName, onPublished }: { outcome: Re
           className="group flex w-full items-center justify-center gap-4 rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white shadow-flask-md transition-colors hover:bg-flask-teal/80"
         >
           <span>Back to Dashboard</span>
-          <svg className="transition-transform duration-300 group-hover:translate-x-1" width="14" height="13" viewBox="0 0 14 13" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M10.534 5.66477L6.16282 1.18659L7.31648 -9.53674e-07L13.6377 6.50026L7.31648 13L6.16282 11.8139L10.534 7.33576H0.637695V5.66477H10.534Z" className="fill-flask-white" />
+          <svg
+            className="transition-transform duration-300 group-hover:translate-x-1"
+            width="14"
+            height="13"
+            viewBox="0 0 14 13"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path
+              d="M10.534 5.66477L6.16282 1.18659L7.31648 -9.53674e-07L13.6377 6.50026L7.31648 13L6.16282 11.8139L10.534 7.33576H0.637695V5.66477H10.534Z"
+              className="fill-flask-white"
+            />
           </svg>
         </button>
         <button
@@ -177,7 +230,15 @@ function Submitted({ outcome, entityId, entityName, onPublished }: { outcome: Re
           className="group flex w-full items-center justify-center gap-4 rounded-flask-xl border-2 border-flask-teal bg-flask-white px-4 py-3 font-medium shadow-flask-md transition-colors hover:bg-flask-teal/10"
         >
           <span className="text-flask-teal">Continue to next day report</span>
-          <svg className="size-6 text-flask-teal transition-transform duration-300 group-hover:scale-[1.2]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
+          <svg
+            className="size-6 text-flask-teal transition-transform duration-300 group-hover:scale-[1.2]"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

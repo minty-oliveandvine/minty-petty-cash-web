@@ -60,7 +60,13 @@ function HeaderButtons() {
         aria-controls={sidebar?.panelId}
         className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-flask-md text-flask-menu transition-colors hover:bg-flask-menu/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flask-menu"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" className="size-6" aria-hidden="true">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 -960 960 960"
+          fill="currentColor"
+          className="size-6"
+          aria-hidden="true"
+        >
           <path d="M120-240v-80h720v80H120Zm0-200v-80h720v80H120Zm0-200v-80h720v80H120Z" />
         </svg>
       </button>
@@ -126,14 +132,32 @@ export function PhoneCard({
           {publicView ? (
             <div className="h-6 w-6 shrink-0" />
           ) : (
-            <div className={report ? "flex shrink-0 justify-start sm:min-w-0 sm:flex-1" : "flex min-w-0 flex-1 justify-start"}>
+            <div
+              className={
+                report
+                  ? "flex shrink-0 justify-start sm:min-w-0 sm:flex-1"
+                  : "flex min-w-0 flex-1 justify-start"
+              }
+            >
               <a
                 href={backHref ?? (mounted ? sidebarHost.links.entities() : undefined)}
                 className="text-flask-header transition-colors"
                 aria-label={backHref ? "Back" : "Back to your companies"}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 19l-7-7 7-7" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.5"
+                    d="M15 19l-7-7 7-7"
+                  />
                 </svg>
               </a>
             </div>
@@ -142,9 +166,14 @@ export function PhoneCard({
             // Nothing either side, so the day and the company's name share the whole width, centred.
             <div className="mx-2 flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap sm:gap-3">
               {datePill ? (
-                <span className="shrink-0 whitespace-nowrap rounded-full bg-flask-teal-soft/50 px-2 py-1 text-xs font-medium text-flask-teal-pill sm:px-3">{datePill}</span>
+                <span className="shrink-0 whitespace-nowrap rounded-full bg-flask-teal-soft/50 px-2 py-1 text-xs font-medium text-flask-teal-pill sm:px-3">
+                  {datePill}
+                </span>
               ) : null}
-              <h1 className="min-w-0 truncate text-lg font-medium text-flask-header" title={acronym}>
+              <h1
+                className="min-w-0 truncate text-lg font-medium text-flask-header"
+                title={acronym}
+              >
                 {acronym}
               </h1>
               {badge}
@@ -154,25 +183,39 @@ export function PhoneCard({
             // (the page's centre leaves the longest badge under the initials); above, Flask's centre.
             <div className="mx-2 flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap sm:absolute sm:left-1/2 sm:mx-0 sm:flex-none sm:-translate-x-1/2 sm:gap-3">
               {datePill ? (
-                <span className="shrink-0 whitespace-nowrap rounded-full bg-flask-teal-soft/50 px-2 py-1 text-xs font-medium text-flask-teal-pill sm:px-3">{datePill}</span>
+                <span className="shrink-0 whitespace-nowrap rounded-full bg-flask-teal-soft/50 px-2 py-1 text-xs font-medium text-flask-teal-pill sm:px-3">
+                  {datePill}
+                </span>
               ) : null}
               <h1 className="min-w-0 truncate text-lg font-medium text-flask-header">{acronym}</h1>
               {badge}
             </div>
           ) : (
-            <h1 className="absolute left-1/2 -translate-x-1/2 text-lg font-semibold text-flask-header">{acronym}</h1>
+            <h1 className="absolute left-1/2 -translate-x-1/2 text-lg font-semibold text-flask-header">
+              {acronym}
+            </h1>
           )}
           {publicView ? (
             <div className="h-8 w-8 shrink-0" />
           ) : (
-            <div className={report ? "flex shrink-0 justify-end sm:flex-1" : "flex flex-1 justify-end"}>
+            <div
+              className={report ? "flex shrink-0 justify-end sm:flex-1" : "flex flex-1 justify-end"}
+            >
               <HeaderButtons />
             </div>
           )}
         </div>
-        {stepper ? <div className="relative flex-shrink-0 bg-flask-gray-50 px-4 py-2 sm:px-6 sm:py-2">{stepper}</div> : null}
+        {stepper ? (
+          <div className="relative flex-shrink-0 bg-flask-gray-50 px-4 py-2 sm:px-6 sm:py-2">
+            {stepper}
+          </div>
+        ) : null}
         {toolbar}
-        <div className={`relative flex-1 overflow-y-auto overflow-x-hidden bg-flask-gray-50 ${flush ? "" : "p-6"} pb-40`}>{children}</div>
+        <div
+          className={`relative flex-1 overflow-y-auto overflow-x-hidden bg-flask-gray-50 ${flush ? "" : "p-6"} pb-40`}
+        >
+          {children}
+        </div>
         {overlays}
       </div>
     </div>

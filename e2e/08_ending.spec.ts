@@ -26,8 +26,20 @@ const DRAFT = {
   publishing_status: "unpublished",
 };
 
-const method = (name: string, value_name: string, type: "electronic" | "delivery", amount: number) => ({ sale_id: value_name, name, value_name, type, amount });
-const line = (id: string, item: string, amount: number) => ({ id, item, supplier: "Acme", remarks: "", amount, receipts: [] });
+const method = (
+  name: string,
+  value_name: string,
+  type: "electronic" | "delivery",
+  amount: number,
+) => ({ sale_id: value_name, name, value_name, type, amount });
+const line = (id: string, item: string, amount: number) => ({
+  id,
+  item,
+  supplier: "Acme",
+  remarks: "",
+  amount,
+  receipts: [],
+});
 
 /** 30 days of history, the day itself (13 OCT, a Tuesday) last at 1,234.50. */
 const HISTORY = Array.from({ length: 30 }, (_, i) => {
@@ -58,7 +70,11 @@ function closeAnswer(over: Json = {}): Json {
       history: HISTORY,
     },
     expenses: {
-      lines: [line("e1", "Food & Drink", 40), line("e2", "Cleaning", 50), line("e3", "Food & Drink", 38.5)],
+      lines: [
+        line("e1", "Food & Drink", 40),
+        line("e2", "Cleaning", 50),
+        line("e3", "Food & Drink", 38.5),
+      ],
       total: 128.5,
     },
     cash: {
@@ -94,7 +110,16 @@ const HOME = {
   server_today: "2026-10-14",
   user_count: 1,
   currency_code: "HKD",
-  latest: { date: null, closing_balance: 0, deposit: 0, deposit_bank_name: "No deposit", deposit_bank_number: "", deposit_correction_missing_settings: [], can_correct_deposit: true, submitter_first_name: null },
+  latest: {
+    date: null,
+    closing_balance: 0,
+    deposit: 0,
+    deposit_bank_name: "No deposit",
+    deposit_bank_number: "",
+    deposit_correction_missing_settings: [],
+    can_correct_deposit: true,
+    submitter_first_name: null,
+  },
   draft: null,
   draft_date: null,
   published: {},
@@ -115,16 +140,42 @@ const OUTCOME = {
   submitted_by: "Tess",
   cash_counted: 1160.5,
   difference: { amount: -11, kind: "short", has_reason: true },
-  xero: { publishing_status: "unpublished", published_at: null, xero_integrated: false, was_published: false },
+  xero: {
+    publishing_status: "unpublished",
+    published_at: null,
+    xero_integrated: false,
+    was_published: false,
+  },
   can_publish: true,
   is_today: false,
   next_day: "2026-10-14",
 };
 
-const OPENING = { transaction_date: DAY, currency_code: "HKD", draft: DRAFT, starting_cash_balance: 0, yesterday_closing_balance: 0, safebox_balance: 0, cash_addition: null, withdrawal: "personal" };
-const EXPENSES = { transaction_date: DAY, currency_code: "HKD", draft: DRAFT, lines: [], total: 0, suppliers: [], accounts: [], permissions: { create_supplier: false } };
+const OPENING = {
+  transaction_date: DAY,
+  currency_code: "HKD",
+  draft: DRAFT,
+  starting_cash_balance: 0,
+  yesterday_closing_balance: 0,
+  safebox_balance: 0,
+  cash_addition: null,
+  withdrawal: "personal",
+};
+const EXPENSES = {
+  transaction_date: DAY,
+  currency_code: "HKD",
+  draft: DRAFT,
+  lines: [],
+  total: 0,
+  suppliers: [],
+  accounts: [],
+  permissions: { create_supplier: false },
+};
 
-type Handlers = { onSubmit?: (body: Json, route: Route) => Promise<void>; onRead?: (route: Route) => Promise<void> };
+type Handlers = {
+  onSubmit?: (body: Json, route: Route) => Promise<void>;
+  onRead?: (route: Route) => Promise<void>;
+};
 
 async function stub(page: Page, answer: Json, h: Handlers = {}) {
   await page.route(`${API}/reports/close**`, async (route) => {
@@ -134,14 +185,26 @@ async function stub(page: Page, answer: Json, h: Handlers = {}) {
   await page.route(`${API}/reports/submit`, async (route) => {
     const body = route.request().postDataJSON() as Json;
     if (h.onSubmit) await h.onSubmit(body, route);
-    else await route.fulfill({ json: { report_id: REPORT, transaction_date: DAY, status: "submitted", submitted_at: "2026-10-13T12:00:00+00:00", closing_balance: 1160.5, next: "submitted" } });
+    else
+      await route.fulfill({
+        json: {
+          report_id: REPORT,
+          transaction_date: DAY,
+          status: "submitted",
+          submitted_at: "2026-10-13T12:00:00+00:00",
+          closing_balance: 1160.5,
+          next: "submitted",
+        },
+      });
   });
   await page.route(`${API}/reports/cash-count**`, (route) => route.fulfill({ json: COUNT }));
   await page.route(`${API}/reports/expenses**`, (route) => route.fulfill({ json: EXPENSES }));
   await page.route(`${API}/reports/opening**`, (route) => route.fulfill({ json: OPENING }));
   await page.route(`${API}/home`, (route) => route.fulfill({ json: HOME }));
   await page.route(`${API}/reports/${REPORT}/outcome`, (route) => route.fulfill({ json: OUTCOME }));
-  await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
+  await page.route("**/api/me/profile**", (route) =>
+    route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }),
+  );
   // a Flask page address: nothing here opens one (Flask is a backend only), so a regression lands on this stub, never Flask
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\//, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
@@ -149,8 +212,15 @@ async function stub(page: Page, answer: Json, h: Handlers = {}) {
 }
 
 async function enter(page: Page, next = `${BASE}/reports/new/ending?transaction_date=${DAY}`) {
-  const token = mintModuleToken({ secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME });
-  await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next })}`);
+  const token = mintModuleToken({
+    secret: "stub",
+    userId: "u",
+    entityId: ENTITY,
+    entityName: NAME,
+  });
+  await page.goto(
+    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next })}`,
+  );
 }
 
 async function openWith(page: Page, answer: Json, h: Handlers = {}) {
@@ -159,15 +229,23 @@ async function openWith(page: Page, answer: Json, h: Handlers = {}) {
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
 }
 
-const toast = (page: Page, text: string | RegExp) => page.locator("[data-toast-type]").filter({ hasText: text });
+const toast = (page: Page, text: string | RegExp) =>
+  page.locator("[data-toast-type]").filter({ hasText: text });
 const finish = (page: Page) => page.getByRole("button", { name: /Finish Daily Report|Finishing/ });
-const card = (page: Page, title: string) => page.locator("div.shadow-flask-sm").filter({ has: page.getByRole("heading", { name: title, exact: true }) });
+const card = (page: Page, title: string) =>
+  page
+    .locator("div.shadow-flask-sm")
+    .filter({ has: page.getByRole("heading", { name: title, exact: true }) });
 
-test("Flask's page: the draft callout, the four cards, the figures and the shortage", async ({ page }) => {
+test("Flask's page: the draft callout, the four cards, the figures and the shortage", async ({
+  page,
+}) => {
   await openWith(page, closeAnswer());
   await expect(page.getByText("Draft report", { exact: true })).toBeVisible();
   await expect(
-    page.getByText("This report is still a draft and has not been submitted. Review the summary below, then complete submission when you are ready to finalise."),
+    page.getByText(
+      "This report is still a draft and has not been submitted. Review the summary below, then complete submission when you are ready to finalise.",
+    ),
   ).toBeVisible();
   await expect(page.getByText("HKD", { exact: true })).toBeVisible();
 
@@ -207,12 +285,17 @@ test("Flask's page: the draft callout, the four cards, the figures and the short
   await expectNoHorizontalScroll(page);
 });
 
-test("Show more opens each breakdown: the methods, every account, the till and the safebox", async ({ page }) => {
+test("Show more opens each breakdown: the methods, every account, the till and the safebox", async ({
+  page,
+}) => {
   await openWith(page, closeAnswer());
   const sales = card(page, "Total Sales");
   await expect(sales.getByText("Wechat Pay")).toBeHidden();
   await sales.getByRole("button", { name: "Show more" }).click();
-  await expect(sales.getByRole("button", { name: "Show more" })).toHaveAttribute("aria-expanded", "true");
+  await expect(sales.getByRole("button", { name: "Show more" })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
   const methods = sales.locator("#sales_breakdown");
   await expect(methods.getByText("Visa")).toBeVisible();
   await expect(methods.getByText("Wechat Pay")).toBeVisible();
@@ -240,21 +323,29 @@ test("Show more opens each breakdown: the methods, every account, the till and t
   await expectNoHorizontalScroll(page);
 });
 
-test("no yesterday, no expenses, a balanced count: the arrow alone, No expenses recorded, no box", async ({ page }) => {
+test("no yesterday, no expenses, a balanced count: the arrow alone, No expenses recorded, no box", async ({
+  page,
+}) => {
   const base = closeAnswer();
   await openWith(
     page,
     closeAnswer({
       sales: { ...(base.sales as Json), yesterday_total: null },
       expenses: { lines: [], total: 0 },
-      cash: { ...(base.cash as Json), counted: 1011.5, difference: { amount: 0, kind: "none", reason: "" } },
+      cash: {
+        ...(base.cash as Json),
+        counted: 1011.5,
+        difference: { amount: 0, kind: "none", reason: "" },
+      },
     }),
   );
   const sales = card(page, "Total Sales");
   await expect(sales.getByText("Compared to Yesterday")).toBeVisible();
   await expect(sales.getByText("%")).toHaveCount(0);
   await expect(page.getByText("No expenses recorded")).toBeVisible();
-  await expect(card(page, "Total Expenses").getByRole("button", { name: "Show more" })).toHaveCount(0);
+  await expect(card(page, "Total Expenses").getByRole("button", { name: "Show more" })).toHaveCount(
+    0,
+  );
   await expect(page.getByText(/Cash (Shortage|Surplus)/)).toHaveCount(0);
 });
 
@@ -264,7 +355,11 @@ test("a fall against yesterday is red and points down; a surplus is green", asyn
     page,
     closeAnswer({
       sales: { ...(base.sales as Json), yesterday_total: 2469 },
-      cash: { ...(base.cash as Json), counted: 1020, difference: { amount: 8.5, kind: "over", reason: "" } },
+      cash: {
+        ...(base.cash as Json),
+        counted: 1020,
+        difference: { amount: 8.5, kind: "over", reason: "" },
+      },
     }),
   );
   await expect(card(page, "Total Sales").getByText("50.0%")).toHaveClass(/text-flask-red-500/);
@@ -279,7 +374,16 @@ test("Finish posts the day once, shows Finishing..., then the Submitted page", a
     onSubmit: async (body, route) => {
       posts.push(body);
       await held;
-      await route.fulfill({ json: { report_id: REPORT, transaction_date: DAY, status: "submitted", submitted_at: null, closing_balance: 1160.5, next: "submitted" } });
+      await route.fulfill({
+        json: {
+          report_id: REPORT,
+          transaction_date: DAY,
+          status: "submitted",
+          submitted_at: null,
+          closing_balance: 1160.5,
+          next: "submitted",
+        },
+      });
     },
   });
   await finish(page).dblclick();
@@ -294,7 +398,9 @@ test("Finish posts the day once, shows Finishing..., then the Submitted page", a
   expect(posts).toEqual([{ transaction_date: DAY }]);
 });
 
-test("a refusal sends the person to the step that fixes it, with the sentence", async ({ page }) => {
+test("a refusal sends the person to the step that fixes it, with the sentence", async ({
+  page,
+}) => {
   const why = "An expense has no account or no amount. Fix it in Expenses, then submit.";
   let posts = 0;
   await openWith(page, closeAnswer(), {
@@ -304,7 +410,9 @@ test("a refusal sends the person to the step that fixes it, with the sentence", 
     },
   });
   await finish(page).click();
-  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/expense\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${BASE}/reports/new/expense\\?transaction_date=${DAY}$`),
+  );
   await expect(page.getByRole("heading", { name: "Expenses", exact: true })).toBeVisible();
   await expect(toast(page, why)).toBeVisible();
   expect(posts).toBe(1);
@@ -312,7 +420,11 @@ test("a refusal sends the person to the step that fixes it, with the sentence", 
 
 test("a refusal because the day is in already goes to its Submitted page", async ({ page }) => {
   await openWith(page, closeAnswer(), {
-    onSubmit: (_body, route) => route.fulfill({ status: 409, json: { error: "This day is already submitted.", to: "submitted", report_id: REPORT } }),
+    onSubmit: (_body, route) =>
+      route.fulfill({
+        status: 409,
+        json: { error: "This day is already submitted.", to: "submitted", report_id: REPORT },
+      }),
   });
   await finish(page).click();
   await page.waitForURL(SUBMITTED);
@@ -323,8 +435,22 @@ test("a failure keeps the day: the sentence, and Finish works again", async ({ p
   await openWith(page, closeAnswer(), {
     onSubmit: async (_body, route) => {
       posts += 1;
-      if (posts === 1) await route.fulfill({ status: 500, json: { error: "Something went wrong on our side. Please try again." } });
-      else await route.fulfill({ json: { report_id: REPORT, transaction_date: DAY, status: "submitted", submitted_at: null, closing_balance: 1160.5, next: "submitted" } });
+      if (posts === 1)
+        await route.fulfill({
+          status: 500,
+          json: { error: "Something went wrong on our side. Please try again." },
+        });
+      else
+        await route.fulfill({
+          json: {
+            report_id: REPORT,
+            transaction_date: DAY,
+            status: "submitted",
+            submitted_at: null,
+            closing_balance: 1160.5,
+            next: "submitted",
+          },
+        });
     },
   });
   await finish(page).click();
@@ -336,7 +462,9 @@ test("a failure keeps the day: the sentence, and Finish works again", async ({ p
   expect(posts).toBe(2);
 });
 
-test("a problem on arrival is said at once and beside Finish, and Finish goes to fix it without posting", async ({ page }) => {
+test("a problem on arrival is said at once and beside Finish, and Finish goes to fix it without posting", async ({
+  page,
+}) => {
   const why = "The figures changed after the cash count. Check the cash count again, then submit.";
   let posts = 0;
   await openWith(page, closeAnswer({ problem: { error: why, to: "cash_count" } }), {
@@ -348,19 +476,26 @@ test("a problem on arrival is said at once and beside Finish, and Finish goes to
   await expect(toast(page, why)).toHaveCount(1);
   await expect(finish(page)).toHaveAccessibleDescription(why);
   await finish(page).click();
-  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/cash-count\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${BASE}/reports/new/cash-count\\?transaction_date=${DAY}$`),
+  );
   await expect(page.getByRole("heading", { name: "Cash Count", exact: true })).toBeVisible();
   expect(posts).toBe(0);
 });
 
-test("a drawer below zero holds the page on Fix Negative Balance, and Finish never posts", async ({ page }) => {
+test("a drawer below zero holds the page on Fix Negative Balance, and Finish never posts", async ({
+  page,
+}) => {
   let posts = 0;
   const base = closeAnswer();
   await openWith(
     page,
     closeAnswer({
       cash: { ...(base.cash as Json), bank_deposit: 1600, expected: -128.5 },
-      problem: { error: "Hmm, it looks like your cash balance is negative. Could you fix that first?", to: "cash_count" },
+      problem: {
+        error: "Hmm, it looks like your cash balance is negative. Could you fix that first?",
+        to: "cash_count",
+      },
     }),
     {
       onSubmit: async (_body, route) => {
@@ -372,39 +507,64 @@ test("a drawer below zero holds the page on Fix Negative Balance, and Finish nev
   const dialog = page.getByRole("alertdialog", { name: "Fix Negative Balance" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText("(HKD 128.50)")).toBeVisible();
-  for (const name of ["Opening (Cash in: HKD 0.00)", "Sales (Cash in: HKD 600.00)", "Expenses (Cash out: HKD 128.50)", "Deposit (Cash out: HKD 1,600.00)", "Cash Count"]) {
+  for (const name of [
+    "Opening (Cash in: HKD 0.00)",
+    "Sales (Cash in: HKD 600.00)",
+    "Expenses (Cash out: HKD 128.50)",
+    "Deposit (Cash out: HKD 1,600.00)",
+    "Cash Count",
+  ]) {
     await expect(dialog.getByRole("button", { name, exact: true })).toBeVisible();
   }
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
   expect(posts).toBe(0);
   await dialog.getByRole("button", { name: "Cash Count", exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/cash-count\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${BASE}/reports/new/cash-count\\?transaction_date=${DAY}$`),
+  );
 });
 
 test("a day with no draft goes back to Opening and says why", async ({ page }) => {
   const why = "I don't see a draft yet - let's start with the opening entry.";
-  await stub(page, closeAnswer(), { onRead: (route) => route.fulfill({ status: 409, json: { error: why, to: "opening" } }) });
+  await stub(page, closeAnswer(), {
+    onRead: (route) => route.fulfill({ status: 409, json: { error: why, to: "opening" } }),
+  });
   await enter(page);
-  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/opening\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${BASE}/reports/new/opening\\?transaction_date=${DAY}$`),
+  );
   await expect(page.getByRole("heading", { name: "Opening" })).toBeVisible();
   await expect(toast(page, why)).toBeVisible();
 });
 
 test("a day already submitted opens its Submitted page", async ({ page }) => {
   await stub(page, closeAnswer(), {
-    onRead: (route) => route.fulfill({ status: 409, json: { error: "This day is already submitted.", to: "submitted", report_id: REPORT } }),
+    onRead: (route) =>
+      route.fulfill({
+        status: 409,
+        json: { error: "This day is already submitted.", to: "submitted", report_id: REPORT },
+      }),
   });
   await enter(page);
   await page.waitForURL(SUBMITTED);
 });
 
-test("Back goes to Cash Count, and Cash Count's Save & Next comes back here, all in this app", async ({ page }) => {
+test("Back goes to Cash Count, and Cash Count's Save & Next comes back here, all in this app", async ({
+  page,
+}) => {
   await stub(page, closeAnswer());
   await page.route(`${API}/reports/cash-count**`, async (route) => {
     if (route.request().method() === "PUT") {
       await route.fulfill({
-        json: { draft_id: "d", transaction_date: DAY, current_section: "ending", completed_sections: DRAFT.completed_sections, next: "ending", discrepancy: { amount: -11, kind: "short" } },
+        json: {
+          draft_id: "d",
+          transaction_date: DAY,
+          current_section: "ending",
+          completed_sections: DRAFT.completed_sections,
+          next: "ending",
+          discrepancy: { amount: -11, kind: "short" },
+        },
       });
       return;
     }
@@ -412,7 +572,12 @@ test("Back goes to Cash Count, and Cash Count's Save & Next comes back here, all
   });
   let left = false;
   page.on("framenavigated", (frame) => {
-    if (frame === page.mainFrame() && !frame.url().startsWith("http://localhost:3010") && !frame.url().startsWith("about:")) left = true;
+    if (
+      frame === page.mainFrame() &&
+      !frame.url().startsWith("http://localhost:3010") &&
+      !frame.url().startsWith("about:")
+    )
+      left = true;
   });
   await enter(page);
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();

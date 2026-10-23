@@ -66,10 +66,13 @@ const HUB_PAGES: [RegExp, string][] = [
 function pettyCashTail(rest: string[]): string | null {
   const [a, b, c, d, ...more] = rest;
   if (rest.length === 0) return "/petty-cash";
-  if (a === "settings") return b === "petty-cash" && rest.length === 2 ? "/settings/petty-cash" : null;
+  if (a === "settings")
+    return b === "petty-cash" && rest.length === 2 ? "/settings/petty-cash" : null;
   if (a === "reports") return pettyCashTail(["petty-cash", ...rest]);
-  if (a === "ending" && rest.length <= 2) return b ? `/petty-cash/reports/${b}/summary` : "/petty-cash";
-  if (a === "report" && b === "opening" && rest.length === 2) return "/petty-cash/reports/new/opening";
+  if (a === "ending" && rest.length <= 2)
+    return b ? `/petty-cash/reports/${b}/summary` : "/petty-cash";
+  if (a === "report" && b === "opening" && rest.length === 2)
+    return "/petty-cash/reports/new/opening";
   if (a !== "petty-cash" || more.length > 0) return null;
   if (b === undefined) return "/petty-cash";
   if (b !== "reports") return null;
@@ -93,13 +96,18 @@ function pettyCashTail(rest: string[]): string | null {
 function hubTail(rest: string[]): string | null {
   const path = rest.join("/");
   if (path === "modules") return "";
-  if (path === "settings/users" || path === "settings/integration" || path === "settings/modules") return `/${path}`;
+  if (path === "settings/users" || path === "settings/integration" || path === "settings/modules")
+    return `/${path}`;
   if (path === "settings/xero" || path === "xero-not-connected") return "/settings/integration";
   return null;
 }
 
 /** One company's old address: the company as `<shortid>/<name>` or a full uuid, then the rest. */
-function companyLink(ref: { short: string; name: string } | { uuid: string }, rest: string[], pathname: string): OldLink | null {
+function companyLink(
+  ref: { short: string; name: string } | { uuid: string },
+  rest: string[],
+  pathname: string,
+): OldLink | null {
   const tail = pettyCashTail(rest);
   if (tail !== null) {
     if ("uuid" in ref) return { kind: "company-uuid", uuid: ref.uuid.toLowerCase(), tail };
@@ -134,17 +142,27 @@ export function oldLink(pathname: string): OldLink | null {
   if (segments[0] === "entity" && segments.length >= 2) {
     const [, first, second, ...after] = segments;
     if (UUID.test(first)) return companyLink({ uuid: first }, segments.slice(2), pathname);
-    if (SHORT_ID.test(first) && second) return companyLink({ short: first, name: second }, after, pathname);
+    if (SHORT_ID.test(first) && second)
+      return companyLink({ short: first, name: second }, after, pathname);
     // Flask's oldest company addresses put the uuid last.
     if (first === "settings" && segments.length === 4 && UUID.test(segments[3])) {
       const uuid = segments[3];
       if (second === "entity") return companyLink({ uuid }, ["settings", "petty-cash"], pathname);
       if (second === "users" || second === "module") {
-        return companyLink({ uuid }, ["settings", second === "users" ? "users" : "modules"], pathname);
+        return companyLink(
+          { uuid },
+          ["settings", second === "users" ? "users" : "modules"],
+          pathname,
+        );
       }
     }
   }
-  if (segments[0] === "invitation" && segments[1] === "xero-not-connected" && segments.length === 3 && UUID.test(segments[2])) {
+  if (
+    segments[0] === "invitation" &&
+    segments[1] === "xero-not-connected" &&
+    segments.length === 3 &&
+    UUID.test(segments[2])
+  ) {
     return companyLink({ uuid: segments[2] }, ["xero-not-connected"], pathname);
   }
 

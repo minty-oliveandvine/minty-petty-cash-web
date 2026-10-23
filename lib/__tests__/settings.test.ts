@@ -50,20 +50,27 @@ const read = (over: Partial<SettingsRead["country"]> = {}): SettingsRead => ({
 
 describe("the page's address", () => {
   it("is Flask's own: /entity/<shortid>/<name>/settings/petty-cash", () => {
-    expect(settingsHref(ENTITY, "Olive & Vine")).toBe("/entity/360812e1/olive-and-vine/settings/petty-cash");
+    expect(settingsHref(ENTITY, "Olive & Vine")).toBe(
+      "/entity/360812e1/olive-and-vine/settings/petty-cash",
+    );
   });
 });
 
 describe("the other settings tabs - never a Flask page", () => {
-  it.each(["users", "integration", "modules"] as const)("%s is minty-web's page, through Flask's /handoff/minty-web", (tab) => {
-    const url = new URL(settingsTabUrl(ENTITY, "Olive & Vine", tab));
-    expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
-    expect(url.searchParams.get("next")).toBe(`/entity/360812e1/olive-and-vine/settings/${tab}`);
-    expect(url.searchParams.get("entity_id")).toBe(ENTITY);
-  });
+  it.each(["users", "integration", "modules"] as const)(
+    "%s is minty-web's page, through Flask's /handoff/minty-web",
+    (tab) => {
+      const url = new URL(settingsTabUrl(ENTITY, "Olive & Vine", tab));
+      expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
+      expect(url.searchParams.get("next")).toBe(`/entity/360812e1/olive-and-vine/settings/${tab}`);
+      expect(url.searchParams.get("entity_id")).toBe(ENTITY);
+    },
+  );
 
   it("Payment Request Settings is the payments app's page, through Flask's hand-off that mints its token", () => {
-    expect(new URL(settingsTabUrl(ENTITY, "Olive & Vine", "payment-request")).pathname).toBe(`/entity/${ENTITY}/settings/payment-request`);
+    expect(new URL(settingsTabUrl(ENTITY, "Olive & Vine", "payment-request")).pathname).toBe(
+      `/entity/${ENTITY}/settings/payment-request`,
+    );
   });
 });
 
@@ -95,16 +102,28 @@ describe("what the country Save sends", () => {
   });
 
   it("a country alone, so it brings its own currency", () => {
-    expect(countryChange(read(), { country_code: "SG", currency_id: "c-hkd" })).toEqual({ country_code: "SG" });
+    expect(countryChange(read(), { country_code: "SG", currency_id: "c-hkd" })).toEqual({
+      country_code: "SG",
+    });
   });
 
   it("a currency picked by hand, with the country when that changed too", () => {
-    expect(countryChange(read(), { country_code: "HK", currency_id: "c-sgd" })).toEqual({ currency_id: "c-sgd" });
-    expect(countryChange(read(), { country_code: "SG", currency_id: "c-sgd" })).toEqual({ country_code: "SG", currency_id: "c-sgd" });
+    expect(countryChange(read(), { country_code: "HK", currency_id: "c-sgd" })).toEqual({
+      currency_id: "c-sgd",
+    });
+    expect(countryChange(read(), { country_code: "SG", currency_id: "c-sgd" })).toEqual({
+      country_code: "SG",
+      currency_id: "c-sgd",
+    });
   });
 
   it("a first choice for a company that has none", () => {
-    expect(countryChange(read({ country_code: null, currency_id: null }), { country_code: "SG", currency_id: "" })).toEqual({ country_code: "SG" });
+    expect(
+      countryChange(read({ country_code: null, currency_id: null }), {
+        country_code: "SG",
+        currency_id: "",
+      }),
+    ).toEqual({ country_code: "SG" });
   });
 });
 
@@ -136,7 +155,9 @@ describe("a method's name, checked as it is typed", () => {
 
   it("names the limit past 100 characters", () => {
     expect(methodNameProblem("x".repeat(100), listed)).toBeNull();
-    expect(methodNameProblem("x".repeat(101), listed)).toBe("That name is too long. Keep it to 100 characters or fewer.");
+    expect(methodNameProblem("x".repeat(101), listed)).toBe(
+      "That name is too long. Keep it to 100 characters or fewer.",
+    );
   });
 
   it("refuses a name already on the list, in any case, as the API does", () => {
@@ -151,7 +172,9 @@ describe("a method's name, checked as it is typed", () => {
 
 describe("a shared method's rename", () => {
   it("says at once why it can't be renamed, and what to do instead", () => {
-    expect(sharedRenameMessage("Visa")).toBe("Other companies use Visa too, so it can't be renamed here. Delete it and add a new method instead.");
+    expect(sharedRenameMessage("Visa")).toBe(
+      "Other companies use Visa too, so it can't be renamed here. Delete it and add a new method instead.",
+    );
   });
 });
 

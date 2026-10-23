@@ -54,7 +54,10 @@ export type SummarySales = Pick<ClosePage["sales"], "methods" | "cash" | "total"
 
 /** Flask's `"{:,.2f}"`: two decimals, thousands grouped, no currency. */
 export function plain(amount: number): string {
-  return (Number.isFinite(amount) ? amount : 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (Number.isFinite(amount) ? amount : 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 /** A breakdown row's figure: Flask writes "-" for nothing. */
@@ -67,14 +70,21 @@ export function plainOrDash(amount: number | null | undefined): string {
  * alone); else the change in percent, one decimal, up only when it grew - Flask's
  * `is_sales_increase = difference > 0`, so an unchanged day is a red 0.0%.
  */
-export function versusYesterday(today: number, yesterday: number | null): { up: boolean; percent: string | null } {
+export function versusYesterday(
+  today: number,
+  yesterday: number | null,
+): { up: boolean; percent: string | null } {
   if (!yesterday || yesterday <= 0) return { up: true, percent: null };
   const change = today - yesterday;
   return { up: change > 0, percent: `${Math.abs((change / yesterday) * 100).toFixed(1)}%` };
 }
 
 /** The Total Sales card's three figures: electronic and delivery from the method rows, cash its own. */
-export function salesSplit(page: Pick<SummarySales, "methods" | "cash">): { electronic: number; delivery: number; cash: number } {
+export function salesSplit(page: Pick<SummarySales, "methods" | "cash">): {
+  electronic: number;
+  delivery: number;
+  cash: number;
+} {
   let electronic = 0;
   let delivery = 0;
   for (const m of page.methods) {
@@ -117,7 +127,9 @@ export type Slice = { name: string; amount: number; other: boolean };
  * when the rest come to more than zero, as Flask's chart does.
  */
 export function pieSlices(groups: ExpenseGroup[]): Slice[] {
-  const top: Slice[] = groups.slice(0, TOP_EXPENSES).map((g) => ({ name: expenseName(g.item), amount: g.amount, other: false }));
+  const top: Slice[] = groups
+    .slice(0, TOP_EXPENSES)
+    .map((g) => ({ name: expenseName(g.item), amount: g.amount, other: false }));
   const rest = groups.slice(TOP_EXPENSES).reduce((sum, g) => sum + (g.amount || 0), 0);
   if (rest > 0) top.push({ name: OTHER_EXPENSES, amount: rest, other: true });
   return top;
@@ -160,7 +172,13 @@ export function pieArcs(slices: Slice[]): Arc[] {
 }
 
 /** One donut segment's path (Flask's: outer arc, inner arc back; a sliver as a thin wedge). */
-export function arcPath(arc: Pick<Arc, "start" | "end">, cx: number, cy: number, inner: number, outer: number): string {
+export function arcPath(
+  arc: Pick<Arc, "start" | "end">,
+  cx: number,
+  cy: number,
+  inner: number,
+  outer: number,
+): string {
   const { start, end } = arc;
   const angle = end - start;
   const pt = (r: number, a: number) => `${cx + r * Math.cos(a)} ${cy + r * Math.sin(a)}`;
@@ -194,7 +212,15 @@ export function barValue(value: number): string {
   return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value.toString();
 }
 
-export type Bar = { x: number; y: number; width: number; height: number; value: number; date: string; highlight: boolean };
+export type Bar = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  value: number;
+  date: string;
+  highlight: boolean;
+};
 
 /**
  * Flask's Sales History (`initializeBarChart`, scrollable, seven bars to a view): every bar scaled
@@ -207,7 +233,14 @@ export function barLayout(
   width: number,
   height: number,
   phone: boolean,
-): { bars: Bar[]; svgWidth: number; chartHeight: number; top: number; radius: number; font: number } {
+): {
+  bars: Bar[];
+  svgWidth: number;
+  chartHeight: number;
+  top: number;
+  radius: number;
+  font: number;
+} {
   const top = phone ? 25 : 30;
   const bottom = phone ? 30 : 35;
   const chartHeight = Math.max(height - top - bottom, 0);
@@ -221,7 +254,15 @@ export function barLayout(
   const scale = chartHeight / max;
   const bars = values.map((value, i) => {
     const h = value * scale;
-    return { x: i * spacing, y: chartHeight - h, width: barWidth, height: h, value, date: history[i].date, highlight: i === values.length - 1 };
+    return {
+      x: i * spacing,
+      y: chartHeight - h,
+      width: barWidth,
+      height: h,
+      value,
+      date: history[i].date,
+      highlight: i === values.length - 1,
+    };
   });
   return { bars, ...base };
 }

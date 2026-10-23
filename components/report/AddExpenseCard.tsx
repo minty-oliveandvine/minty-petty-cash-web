@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, type DragEvent, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
 import { useToast } from "@/components/flask/Toasts";
 import { ReceiptViewer, type ShownReceipt } from "@/components/report/ReceiptViewer";
@@ -68,7 +76,18 @@ export type AddExpenseProps = {
  * as one multipart `POST /reports/expenses/lines`; the server checks it all again.
  */
 export function AddExpenseCard(props: AddExpenseProps) {
-  const { day, code, suppliers, accounts, canCreateSupplier, onSupplierCreated, onAdded, onCancel, setBusy, onNoDraft } = props;
+  const {
+    day,
+    code,
+    suppliers,
+    accounts,
+    canCreateSupplier,
+    onSupplierCreated,
+    onAdded,
+    onCancel,
+    setBusy,
+    onNoDraft,
+  } = props;
   const toast = useToast();
   const card = useRef<HTMLFormElement>(null);
   const [amount, setAmount] = useState("");
@@ -88,7 +107,10 @@ export function AddExpenseCard(props: AddExpenseProps) {
 
   // Flask scrolls the card into view as it opens.
   useEffect(() => {
-    const timer = window.setTimeout(() => card.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+    const timer = window.setTimeout(
+      () => card.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      100,
+    );
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -153,7 +175,10 @@ export function AddExpenseCard(props: AddExpenseProps) {
     setSending(true);
     setBusy("Saving...");
     try {
-      const answer = await pettyCashFetch<{ line: ExpenseLine; total: number }>("/reports/expenses/lines", { method: "POST", form });
+      const answer = await pettyCashFetch<{ line: ExpenseLine; total: number }>(
+        "/reports/expenses/lines",
+        { method: "POST", form },
+      );
       setBusy(null);
       onAdded(answer.line, answer.total);
       toast("Expense added successfully!", "success");
@@ -170,10 +195,17 @@ export function AddExpenseCard(props: AddExpenseProps) {
     }
   }
 
-  const border = (field: RequiredField) => (errors.has(field) ? "border-flask-red-500" : "border-flask-gray-300");
+  const border = (field: RequiredField) =>
+    errors.has(field) ? "border-flask-red-500" : "border-flask-gray-300";
 
   return (
-    <form ref={card} noValidate onSubmit={add} className="mb-6 rounded-flask-lg bg-flask-white p-6 shadow-flask-sm" aria-labelledby="addExpenseTitle">
+    <form
+      ref={card}
+      noValidate
+      onSubmit={add}
+      className="mb-6 rounded-flask-lg bg-flask-white p-6 shadow-flask-sm"
+      aria-labelledby="addExpenseTitle"
+    >
       <h2 id="addExpenseTitle" className="mb-6 text-xl font-bold text-flask-gray-900">
         Add New Expense
       </h2>
@@ -251,11 +283,19 @@ export function AddExpenseCard(props: AddExpenseProps) {
             }}
             listFor={(text, how) => {
               if (how === "click" || !text.trim()) {
-                return suppliers.length > 0 ? supplierOptions(searchSuppliers(suppliers, "").matches, null, pickSupplier, setNewContact) : null;
+                return suppliers.length > 0
+                  ? supplierOptions(
+                      searchSuppliers(suppliers, "").matches,
+                      null,
+                      pickSupplier,
+                      setNewContact,
+                    )
+                  : null;
               }
               const { matches, offerNew } = searchSuppliers(suppliers, text);
               const offer = canCreateSupplier ? offerNew : null;
-              if (matches.length > 0) return supplierOptions(matches, offer, pickSupplier, setNewContact);
+              if (matches.length > 0)
+                return supplierOptions(matches, offer, pickSupplier, setNewContact);
               return noSupplierOptions(offer, setNewContact);
             }}
           />
@@ -345,7 +385,12 @@ type Option = { key: string; content: ReactNode; className: string; pick?: () =>
 
 const ITEM = "cursor-pointer px-4 py-2 hover:bg-flask-gray-100";
 
-function supplierOptions(matches: Supplier[], offerNew: string | null, pick: (s: Supplier) => void, offer: (name: string) => void): Option[] {
+function supplierOptions(
+  matches: Supplier[],
+  offerNew: string | null,
+  pick: (s: Supplier) => void,
+  offer: (name: string) => void,
+): Option[] {
   const options: Option[] = matches.map((s, i) => ({
     key: s.id,
     // every row ruled off but the last contact (Flask: border-b, none before the "+ Add" row)
@@ -357,7 +402,11 @@ function supplierOptions(matches: Supplier[], offerNew: string | null, pick: (s:
     options.push({
       key: "add-new",
       className: `${ITEM} border-t border-flask-gray-200`,
-      content: <div className="text-flask-gray-600 hover:text-flask-gray-800">+ Add &apos;{offerNew}&apos; as a new contact</div>,
+      content: (
+        <div className="text-flask-gray-600 hover:text-flask-gray-800">
+          + Add &apos;{offerNew}&apos; as a new contact
+        </div>
+      ),
       pick: () => offer(offerNew),
     });
   }
@@ -376,7 +425,11 @@ function noSupplierOptions(offerNew: string | null, offer: (name: string) => voi
     options.push({
       key: "add-new",
       className: ITEM,
-      content: <div className="text-flask-gray-600 hover:text-flask-gray-800">+ Add &apos;{offerNew}&apos; as a new contact</div>,
+      content: (
+        <div className="text-flask-gray-600 hover:text-flask-gray-800">
+          + Add &apos;{offerNew}&apos; as a new contact
+        </div>
+      ),
       pick: () => offer(offerNew),
     });
   }
@@ -499,7 +552,11 @@ function SearchField({
           </svg>
         </div>
         {open ? (
-          <div id={listId} role="listbox" className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-flask-lg border border-flask-gray-300 bg-flask-white shadow-flask-lg">
+          <div
+            id={listId}
+            role="listbox"
+            className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-flask-lg border border-flask-gray-300 bg-flask-white shadow-flask-lg"
+          >
             {options.map((o) => {
               const highlighted = o === activeOption;
               return (
@@ -509,7 +566,8 @@ function SearchField({
                   role={o.pick ? "option" : "presentation"}
                   aria-selected={o.pick ? highlighted : undefined}
                   ref={(el) => {
-                    if (el && highlighted) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                    if (el && highlighted)
+                      el.scrollIntoView({ block: "nearest", behavior: "smooth" });
                   }}
                   className={`${o.className} ${highlighted ? "bg-flask-gray-100" : ""}`}
                   onMouseDown={(e) => {
@@ -539,7 +597,8 @@ function revoke(picked: Picked | null) {
   if (picked) URL.revokeObjectURL(picked.url);
 }
 
-const UPLOAD_ICON = "M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12";
+const UPLOAD_ICON =
+  "M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12";
 const DONE_ICON = "M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z";
 
 /**
@@ -547,7 +606,15 @@ const DONE_ICON = "M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0
  * With a picture it shows the picture (borderless, 256 x 192); with a PDF it turns green and names
  * it. The expand button in its corner opens the picked file full screen.
  */
-function ReceiptDrop({ picked, invalid, onFile }: { picked: Picked | null; invalid: boolean; onFile: (file: File | null) => void }) {
+function ReceiptDrop({
+  picked,
+  invalid,
+  onFile,
+}: {
+  picked: Picked | null;
+  invalid: boolean;
+  onFile: (file: File | null) => void;
+}) {
   const toast = useToast();
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -574,7 +641,8 @@ function ReceiptDrop({ picked, invalid, onFile }: { picked: Picked | null; inval
   if (dragging) look = "border-2 border-dashed border-flask-blue-500 bg-flask-blue-50 p-6";
   else if (file && kind === "image") look = "border-0 bg-transparent p-0";
   else if (file) look = "border-2 border-dashed border-flask-upload-ok bg-flask-upload-ok-bg p-6";
-  else look = `border-2 border-dashed ${invalid ? "border-flask-red-500" : "border-flask-gray-300"} bg-flask-gray-50 p-6 hover:bg-flask-gray-100`;
+  else
+    look = `border-2 border-dashed ${invalid ? "border-flask-red-500" : "border-flask-gray-300"} bg-flask-gray-50 p-6 hover:bg-flask-gray-100`;
 
   return (
     <div className="mb-6">
@@ -624,10 +692,20 @@ function ReceiptDrop({ picked, invalid, onFile }: { picked: Picked | null; inval
             if (file && url && kind) setViewing({ url, kind, name: file.name });
           }}
           className={`absolute bottom-2 right-2 z-10 rounded-full bg-flask-white p-2 shadow-flask-sm ${
-            file && url ? "cursor-pointer text-flask-gray-500 hover:text-flask-gray-500/80" : "cursor-not-allowed text-flask-gray-400 opacity-50"
+            file && url
+              ? "cursor-pointer text-flask-gray-500 hover:text-flask-gray-500/80"
+              : "cursor-not-allowed text-flask-gray-400 opacity-50"
           }`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6 transition-colors" aria-hidden="true">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+            className="size-6 transition-colors"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -639,7 +717,11 @@ function ReceiptDrop({ picked, invalid, onFile }: { picked: Picked | null; inval
         {file && kind === "image" && url && !dragging ? (
           <div className="m-0 p-0 leading-[0]">
             {/* eslint-disable-next-line @next/next/no-img-element -- an object URL of the picked file */}
-            <img src={url} alt="Uploaded receipt" className="mx-auto h-48 w-64 max-w-full object-contain" />
+            <img
+              src={url}
+              alt="Uploaded receipt"
+              className="mx-auto h-48 w-64 max-w-full object-contain"
+            />
             <span id="receipt_hint" className="sr-only">
               Click to change files
             </span>
@@ -656,19 +738,28 @@ function ReceiptDrop({ picked, invalid, onFile }: { picked: Picked | null; inval
               {file && !dragging ? (
                 <path strokeLinecap="round" strokeLinejoin="round" d={DONE_ICON} />
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={UPLOAD_ICON} />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d={UPLOAD_ICON}
+                />
               )}
             </svg>
             {file && !dragging ? (
               <>
-                <p className="text-sm font-medium text-flask-upload-ok [overflow-wrap:anywhere]">&quot;{uploadName(file.name)}&quot; Uploaded</p>
+                <p className="text-sm font-medium text-flask-upload-ok [overflow-wrap:anywhere]">
+                  &quot;{uploadName(file.name)}&quot; Uploaded
+                </p>
                 <p id="receipt_hint" className="mt-1 text-xs text-flask-gray-500">
                   Click to change files
                 </p>
               </>
             ) : (
               <>
-                <p className="text-sm font-medium text-flask-gray-700">Click to upload or drag and drop</p>
+                <p className="text-sm font-medium text-flask-gray-700">
+                  Click to upload or drag and drop
+                </p>
                 <p id="receipt_hint" className="mt-1 text-xs text-flask-gray-500">
                   PDF, JPEG, PNG (Max 10MB)
                 </p>

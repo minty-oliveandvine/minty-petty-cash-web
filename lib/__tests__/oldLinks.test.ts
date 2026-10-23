@@ -75,7 +75,10 @@ describe("Flask's other Petty Cash addresses, mapped to this app's page for them
   });
 
   it("keeps the name as it was written (escaped)", () => {
-    expect(oldLink("/entity/360812e1/caf%C3%A9/reports")).toEqual({ kind: "local", to: "/entity/360812e1/caf%C3%A9/petty-cash/reports" });
+    expect(oldLink("/entity/360812e1/caf%C3%A9/reports")).toEqual({
+      kind: "local",
+      to: "/entity/360812e1/caf%C3%A9/petty-cash/reports",
+    });
   });
 
   it.each([
@@ -168,12 +171,18 @@ describe("Flask's backend paths -> the same path on accounts-api", () => {
     expect(oldLink(path)).toEqual({ kind: "backend", path });
   });
 
-  it.each(["/handoffx", "/apix", "/callbacks", "/logout/x", "/entity", `${CO}/petty-cash`, "/profile", "/xero_authx"])(
-    "%s is not one",
-    (path) => {
-      expect(isFlaskBackendPath(path)).toBe(false);
-    },
-  );
+  it.each([
+    "/handoffx",
+    "/apix",
+    "/callbacks",
+    "/logout/x",
+    "/entity",
+    `${CO}/petty-cash`,
+    "/profile",
+    "/xero_authx",
+  ])("%s is not one", (path) => {
+    expect(isFlaskBackendPath(path)).toBe(false);
+  });
 });
 
 describe("anything else keeps Next's 404", () => {

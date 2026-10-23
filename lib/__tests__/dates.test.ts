@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { addDays, formatDay, formatDayWithWeekday, formatMonth, monthGrid, shiftMonth } from "@/lib/dates";
+import {
+  addDays,
+  formatDay,
+  formatDayWithWeekday,
+  formatMonth,
+  monthGrid,
+  shiftMonth,
+} from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 
 describe("report days", () => {
@@ -37,7 +44,7 @@ describe("money", () => {
     expect(formatMoney(-12.5, "HKD")).toBe("HKD\u00a0-12.50");
   });
 
-  it("is never a \"$\": with no currency the amount says so (owner, 2026-10-21)", () => {
+  it('is never a "$": with no currency the amount says so (owner, 2026-10-21)', () => {
     expect(formatMoney(12, null)).toBe("12.00 (No currency selected)");
     expect(formatMoney(0, null)).toBe("0.00 (No currency selected)");
     expect(formatMoney(1234.5, "")).toBe("1,234.50 (No currency selected)");

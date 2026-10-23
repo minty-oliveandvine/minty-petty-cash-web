@@ -45,7 +45,14 @@ export function sharePathParts(path: unknown): SharePath | null {
   if (typeof path === "string") parts = path.replace(/^\/+|\/+$/g, "").split("/");
   else if (Array.isArray(path)) parts = path;
   else return null;
-  if (parts.length !== 3 || !parts.every((p): p is string => typeof p === "string" && p !== "" && p !== "." && p !== ".." && !p.includes("/"))) return null;
+  if (
+    parts.length !== 3 ||
+    !parts.every(
+      (p): p is string =>
+        typeof p === "string" && p !== "" && p !== "." && p !== ".." && !p.includes("/"),
+    )
+  )
+    return null;
   if (!SECRET.test(parts[2] as string)) return null;
   return parts as SharePath;
 }
@@ -103,7 +110,11 @@ export type SharedReport = {
   history: ClosePage["sales"]["history"] | null;
   /** Total Expenses' lines: an account's name and its amount, nothing else. */
   lines: { item: string; amount: number }[];
-  cash: { counted: number; safe_box: number; difference: { amount: number; kind: DifferenceKind; reason: string } };
+  cash: {
+    counted: number;
+    safe_box: number;
+    difference: { amount: number; kind: DifferenceKind; reason: string };
+  };
 };
 
 type Obj = Record<string, unknown>;
@@ -124,19 +135,38 @@ export function parseSharedReport(body: unknown): SharedReport | null {
   const counted = num(body.cash.counted);
   if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day) || total === null || counted === null) return null;
 
-  const methods: SummarySales["methods"] = (Array.isArray(body.sales.methods) ? body.sales.methods : []).flatMap((m) => {
+  const methods: SummarySales["methods"] = (
+    Array.isArray(body.sales.methods) ? body.sales.methods : []
+  ).flatMap((m) => {
     if (!isObj(m) || (m.type !== "electronic" && m.type !== "delivery")) return [];
     const name = str(m.name) ?? "";
     const valueName = str(m.value_name) ?? name;
-    return [{ sale_id: str(m.sale_id) ?? valueName, name, value_name: valueName, type: m.type, amount: num(m.amount) ?? 0 }];
+    return [
+      {
+        sale_id: str(m.sale_id) ?? valueName,
+        name,
+        value_name: valueName,
+        type: m.type,
+        amount: num(m.amount) ?? 0,
+      },
+    ];
   });
 
   const history = Array.isArray(body.sales.history)
-    ? body.sales.history.flatMap((h) => (isObj(h) && str(h.date) && num(h.total) !== null ? [{ date: h.date as string, total: h.total as number }] : []))
+    ? body.sales.history.flatMap((h) =>
+        isObj(h) && str(h.date) && num(h.total) !== null
+          ? [{ date: h.date as string, total: h.total as number }]
+          : [],
+      )
     : null;
 
-  const rawLines = isObj(body.expenses) && Array.isArray(body.expenses.lines) ? body.expenses.lines : [];
-  const lines = rawLines.flatMap((l) => (isObj(l) && num(l.amount) !== null ? [{ item: str(l.item) ?? "", amount: l.amount as number }] : []));
+  const rawLines =
+    isObj(body.expenses) && Array.isArray(body.expenses.lines) ? body.expenses.lines : [];
+  const lines = rawLines.flatMap((l) =>
+    isObj(l) && num(l.amount) !== null
+      ? [{ item: str(l.item) ?? "", amount: l.amount as number }]
+      : [],
+  );
 
   const diff = isObj(body.cash.difference) ? body.cash.difference : {};
   const kind = KINDS.find((k) => k === diff.kind) ?? "none";

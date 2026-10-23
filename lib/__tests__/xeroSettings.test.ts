@@ -59,7 +59,13 @@ const mapping = (selected: Partial<Record<string, string>> = {}): MappingField[]
 
 describe("the mapping card's layout", () => {
   it("draws Flask's groups in order, every chosen key once, without the Discrepancy Bank Account", () => {
-    expect(MAPPING_GROUPS.map((g) => g.title)).toEqual(["Petty Cash Account", "Deposit Bank Account", "Cash Sales", "Director Personal Account", "Discrepancy - Other Expense"]);
+    expect(MAPPING_GROUPS.map((g) => g.title)).toEqual([
+      "Petty Cash Account",
+      "Deposit Bank Account",
+      "Cash Sales",
+      "Director Personal Account",
+      "Discrepancy - Other Expense",
+    ]);
     expect(MAPPING_GROUPS.flatMap((g) => g.fields.map((f) => f.key))).toEqual([...MAPPING_KEYS]);
   });
 });
@@ -84,19 +90,30 @@ describe("a picker's rows", () => {
     const fields = mapping();
     const picked = { ...selectionOf(fields), deposit_bank: "b2" };
     expect(accountOptions(fields[0], "", "", picked).map((o) => o.id)).toEqual(["b1"]);
-    expect(accountOptions(fields[1], "", "", { ...picked, main_bank: "b1" }).map((o) => o.id)).toEqual(["b2"]);
+    expect(
+      accountOptions(fields[1], "", "", { ...picked, main_bank: "b1" }).map((o) => o.id),
+    ).toEqual(["b2"]);
   });
 
   it("offers a typed contact as new unless one has exactly that name", () => {
     const field = mapping()[3];
     expect(contactOptions(field, "", "")).toEqual({ matches: CONTACTS, offerNew: null });
     expect(contactOptions(field, "tess", "")).toEqual({ matches: [CONTACTS[1]], offerNew: "tess" });
-    expect(contactOptions(field, "TESS TESTER", "")).toEqual({ matches: [CONTACTS[1]], offerNew: null });
+    expect(contactOptions(field, "TESS TESTER", "")).toEqual({
+      matches: [CONTACTS[1]],
+      offerNew: null,
+    });
     expect(contactOptions(field, "Zed", "")).toEqual({ matches: [], offerNew: "Zed" });
     // the box still shows the choice: everything, nothing new
-    expect(contactOptions(field, "Tess Tester", "Tess Tester")).toEqual({ matches: CONTACTS, offerNew: null });
+    expect(contactOptions(field, "Tess Tester", "Tess Tester")).toEqual({
+      matches: CONTACTS,
+      offerNew: null,
+    });
     // no contacts at all: Flask's bare "+ Add as a new contact"
-    expect(contactOptions({ ...field, options: [] }, "", "")).toEqual({ matches: [], offerNew: "" });
+    expect(contactOptions({ ...field, options: [] }, "", "")).toEqual({
+      matches: [],
+      offerNew: "",
+    });
   });
 });
 
@@ -113,7 +130,10 @@ describe("the mapping's rules", () => {
   it("says an empty field only after a refused save, and the two banks being one at once", () => {
     const fields = mapping();
     const picked = { ...selectionOf(fields), main_bank: "b1", deposit_bank: "b1" };
-    expect(mappingProblems(fields, picked, false)).toEqual({ main_bank: SAME_BANK, deposit_bank: SAME_BANK });
+    expect(mappingProblems(fields, picked, false)).toEqual({
+      main_bank: SAME_BANK,
+      deposit_bank: SAME_BANK,
+    });
     const refused = mappingProblems(fields, { ...picked, deposit_bank: "b2" }, true);
     expect(refused.main_bank).toBeUndefined();
     expect(refused.cashsale_account).toBe("Choose the Cash Sales account code.");
@@ -124,21 +144,34 @@ describe("the mapping's rules", () => {
   it("finds the fields an API sentence names", () => {
     const fields = mapping();
     expect(fieldsNamed(SAME_BANK, fields)).toEqual(["main_bank", "deposit_bank"]);
-    expect(fieldsNamed("Choose the Cash Sales contact from the list. Choose the Discrepancy account code from the list.", fields)).toEqual(["cashsale_contact", "discrepancy_account"]);
-    expect(fieldsNamed("Choose the Director Personal Account code.", fields)).toEqual(["owners_account"]);
+    expect(
+      fieldsNamed(
+        "Choose the Cash Sales contact from the list. Choose the Discrepancy account code from the list.",
+        fields,
+      ),
+    ).toEqual(["cashsale_contact", "discrepancy_account"]);
+    expect(fieldsNamed("Choose the Director Personal Account code.", fields)).toEqual([
+      "owners_account",
+    ]);
     expect(fieldsNamed("Something went wrong.", fields)).toEqual([]);
   });
 
   it("sends the eight keys, nothing else", () => {
     const picked = { ...selectionOf(mapping()), main_bank: "b1" };
-    expect(Object.keys(mappingBody({ ...picked, extra: "x" } as typeof picked))).toEqual([...MAPPING_KEYS]);
+    expect(Object.keys(mappingBody({ ...picked, extra: "x" } as typeof picked))).toEqual([
+      ...MAPPING_KEYS,
+    ]);
     expect(mappingBody(picked).main_bank).toBe("b1");
   });
 
   it("puts a new contact in every contact list, once", () => {
     const next = withContact(mapping(), { id: "c9", name: "New Person" });
-    expect(next.filter((f) => f.kind === "contact").every((f) => f.options.at(-1)?.id === "c9")).toBe(true);
-    expect(next.filter((f) => f.kind === "account").every((f) => !f.options.some((o) => o.id === "c9"))).toBe(true);
+    expect(
+      next.filter((f) => f.kind === "contact").every((f) => f.options.at(-1)?.id === "c9"),
+    ).toBe(true);
+    expect(
+      next.filter((f) => f.kind === "account").every((f) => !f.options.some((o) => o.id === "c9")),
+    ).toBe(true);
     expect(withContact(next, { id: "c9", name: "New Person" })[3].options).toHaveLength(3);
   });
 });

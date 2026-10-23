@@ -44,7 +44,10 @@ export function flaskLabel(name: string): string {
 }
 
 /** The methods each section lists, in order (Deliveroo left out of both, as Flask's Ending does). */
-export function sections(methods: SalesMethod[]): { electronic: SalesMethod[]; delivery: SalesMethod[] } {
+export function sections(methods: SalesMethod[]): {
+  electronic: SalesMethod[];
+  delivery: SalesMethod[];
+} {
   return {
     electronic: methods.filter((m) => m.type === "electronic" && m.value_name !== SKIPPED),
     delivery: methods.filter((m) => m.type === "delivery" && m.value_name !== SKIPPED),
@@ -58,7 +61,8 @@ export function salesTotals(
   cash: string,
 ): { electronic: number; delivery: number; cash: number } {
   const { electronic, delivery } = sections(methods);
-  const sum = (list: SalesMethod[]) => list.reduce((total, m) => total + parseMoney(values[m.value_name] ?? ""), 0);
+  const sum = (list: SalesMethod[]) =>
+    list.reduce((total, m) => total + parseMoney(values[m.value_name] ?? ""), 0);
   return { electronic: sum(electronic), delivery: sum(delivery), cash: parseMoney(cash) };
 }
 

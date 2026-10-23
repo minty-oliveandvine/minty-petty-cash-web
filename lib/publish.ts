@@ -72,11 +72,14 @@ export function partialMessage(reasons: string[]): string {
 
 /** How a status read ends the publish; null while it is still `publishing`. */
 export function statusEnd(status: PublishingStatus): PublishEnd | null {
-  if (status.publishing_status === "completed" || status.xero_integrated) return { kind: "published" };
+  if (status.publishing_status === "completed" || status.xero_integrated)
+    return { kind: "published" };
   if (status.publishing_status === "publishing") return null;
   // "failed", or "unpublished" (put back): either way it is not in Xero
   const open = status.reasons.filter((r) => !r.resolved).map((r) => r.text);
-  return status.publishing_status === "failed" && open.length ? { kind: "partial", reasons: open } : { kind: "failed" };
+  return status.publishing_status === "failed" && open.length
+    ? { kind: "partial", reasons: open }
+    : { kind: "failed" };
 }
 
 /** Flask's bar while it polls: a step towards 85% each time, never past it. */
@@ -139,7 +142,8 @@ export function runPublish(reportId: string, run: PublishRun): () => void {
       (err: unknown) => {
         if (cancelled) return;
         if (err instanceof ApiError && err.status === 401) return end({ kind: "signed-out" });
-        if (err instanceof ApiError && (err.status === 403 || err.status === 404)) return end({ kind: "lost", message: err.message });
+        if (err instanceof ApiError && (err.status === 403 || err.status === 404))
+          return end({ kind: "lost", message: err.message });
         // a dropped connection or a server error: keep asking, up to the cap (Flask's rule)
         if (polls >= MAX_POLLS) end({ kind: "slow" });
         else later(poll, POLL_MS);
@@ -153,7 +157,9 @@ export function runPublish(reportId: string, run: PublishRun): () => void {
   } else {
     run.onProgress(5, PUBLISH_WORDS.initiating);
     run.onProgress(10, PUBLISH_WORDS.sending);
-    fetcher<{ publishing_status: string; message?: string }>(`${path}/publish`, { method: "POST" }).then(
+    fetcher<{ publishing_status: string; message?: string }>(`${path}/publish`, {
+      method: "POST",
+    }).then(
       () => {
         if (cancelled) return;
         run.onProgress(progress, label);
@@ -164,7 +170,12 @@ export function runPublish(reportId: string, run: PublishRun): () => void {
         if (err instanceof ApiError && err.status === 401) return end({ kind: "signed-out" });
         if (err instanceof ApiError) {
           const body = err.body as { reconnect?: unknown } | null;
-          return end({ kind: "refused", message: err.message, status: err.status, reconnect: body?.reconnect === true });
+          return end({
+            kind: "refused",
+            message: err.message,
+            status: err.status,
+            reconnect: body?.reconnect === true,
+          });
         }
         end({ kind: "refused", message: PUBLISH_WORDS.unreachable, status: 0, reconnect: false });
       },

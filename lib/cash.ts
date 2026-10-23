@@ -32,7 +32,13 @@ export type CashFigures = {
 
 export type DepositPage = CashFigures;
 
-export type Denomination = { id: string; value: number; kind: "note" | "coin" | string; name: string | null; count: number };
+export type Denomination = {
+  id: string;
+  value: number;
+  kind: "note" | "coin" | string;
+  name: string | null;
+  count: number;
+};
 
 export type DifferenceKind = "short" | "over" | "none";
 
@@ -58,7 +64,11 @@ export function cents(value: number): number {
  * The deposit's limit, as the person types: null while it is within the cash on hand, else the
  * API's own sentence naming the amount allowed.
  */
-export function depositProblem(amount: number, cashOnHand: number, currencyCode: string | null): string | null {
+export function depositProblem(
+  amount: number,
+  cashOnHand: number,
+  currencyCode: string | null,
+): string | null {
   if (cents(amount) <= cents(cashOnHand)) return null;
   return `The deposit can't be more than the cash on hand. Enter ${formatMoney(Math.max(cents(cashOnHand), 0), currencyCode)} or less.`;
 }
@@ -68,8 +78,14 @@ export function depositProblem(amount: number, cashOnHand: number, currencyCode:
  * (`$1,000` -> `HKD 1,000`). Without a name, its value: `HKD 1000`, and a coin under 1 as `HKD 0.50`, never `HKD 0`.
  * With no currency, just the figure - never a "$" (the dashboard keeps a report from starting without a currency).
  */
-export function denominationLabel(value: number, currencyCode: string | null, name?: string | null): string {
-  const figure = name?.replace(/^\D*\$/, "").trim() || (Number.isInteger(value) ? String(value) : value.toFixed(2));
+export function denominationLabel(
+  value: number,
+  currencyCode: string | null,
+  name?: string | null,
+): string {
+  const figure =
+    name?.replace(/^\D*\$/, "").trim() ||
+    (Number.isInteger(value) ? String(value) : value.toFixed(2));
   return currencyCode ? `${currencyCode}\u00a0${figure}` : figure;
 }
 
@@ -86,7 +102,9 @@ export function parseCount(value: string): number {
 
 /** A count above the API's limit, in Part 11's words; null when it is fine. */
 export function countProblem(value: string): string | null {
-  return parseCount(value) > MAX_COUNT ? `A count can't be more than ${MAX_COUNT.toLocaleString("en-US")}. Enter ${MAX_COUNT.toLocaleString("en-US")} or less.` : null;
+  return parseCount(value) > MAX_COUNT
+    ? `A count can't be more than ${MAX_COUNT.toLocaleString("en-US")}. Enter ${MAX_COUNT.toLocaleString("en-US")} or less.`
+    : null;
 }
 
 /** One row of the calculator: the count times the denomination, to the cent. */
@@ -95,7 +113,10 @@ export function rowTotal(value: number, count: number): number {
 }
 
 /** The cash counted in the till: every denomination's count times its value. */
-export function tillTotal(denominations: Pick<Denomination, "id" | "value">[], counts: Record<string, number>): number {
+export function tillTotal(
+  denominations: Pick<Denomination, "id" | "value">[],
+  counts: Record<string, number>,
+): number {
   return cents(denominations.reduce((total, d) => total + d.value * (counts[d.id] ?? 0), 0));
 }
 
@@ -120,5 +141,7 @@ export function reasonNeeded(amount: number, currencyCode: string | null): strin
 
 /** A reason past the API's length, as typed; null when it fits. */
 export function reasonProblem(reason: string): string | null {
-  return reason.trim().length > MAX_REASON ? `Keep the reason to ${MAX_REASON} characters or fewer.` : null;
+  return reason.trim().length > MAX_REASON
+    ? `Keep the reason to ${MAX_REASON} characters or fewer.`
+    : null;
 }

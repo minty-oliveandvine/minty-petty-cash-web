@@ -23,7 +23,10 @@ export function credentials(): Credentials {
   return { secret, userId, entityId, entityName };
 }
 
-export function mintModuleToken(creds: Credentials, overrides: Record<string, unknown> = {}): string {
+export function mintModuleToken(
+  creds: Credentials,
+  overrides: Record<string, unknown> = {},
+): string {
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const payload = b64url(
@@ -42,7 +45,9 @@ export function mintModuleToken(creds: Credentials, overrides: Record<string, un
       ...overrides,
     }),
   );
-  const signature = b64url(createHmac("sha256", creds.secret).update(`${header}.${payload}`).digest());
+  const signature = b64url(
+    createHmac("sha256", creds.secret).update(`${header}.${payload}`).digest(),
+  );
   return `${header}.${payload}.${signature}`;
 }
 
@@ -59,7 +64,9 @@ export async function enter(page: Page, creds: Credentials, next: string) {
 
 /** No page may scroll sideways at any width (CLAUDE.md, Responsive UI rules). */
 export async function expectNoHorizontalScroll(page: Page) {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
   if (overflow > 0) throw new Error(`the page scrolls sideways by ${overflow}px`);
 }
 
@@ -79,5 +86,7 @@ export async function expectHubHandoff(link: Locator, next: string, entityId: st
 
 /** Flask's hand-offs, caught: the spec reads where the app sent the browser, and nothing leaves. */
 export async function catchHandoffs(page: Page) {
-  await page.route(/\/handoff\/minty-web\?/, (route) => route.fulfill({ contentType: "text/html", body: "<title>Hand-off</title><p>Hand-off</p>" }));
+  await page.route(/\/handoff\/minty-web\?/, (route) =>
+    route.fulfill({ contentType: "text/html", body: "<title>Hand-off</title><p>Hand-off</p>" }),
+  );
 }

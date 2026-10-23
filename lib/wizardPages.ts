@@ -27,6 +27,11 @@ export function sectionStep(section: string | null | undefined): WizardStep {
 }
 
 /** A step of a new report for `day`, in the company's address (`/entity/<ref>/petty-cash/reports/new/<step>`). */
-export function stepHref(entityId: string, entityName: string, step: WizardStep, day: string): string {
+export function stepHref(
+  entityId: string,
+  entityName: string,
+  step: WizardStep,
+  day: string,
+): string {
   return `/entity/${companyRef(entityId, entityName)}/petty-cash/reports/new/${WIZARD_STEP_PATH[step]}?${new URLSearchParams({ transaction_date: day })}`;
 }

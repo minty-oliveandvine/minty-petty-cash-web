@@ -3,27 +3,51 @@
 import { useState } from "react";
 
 import { dayState, isClickable, type DayState, type Home } from "@/lib/dashboard";
-import { formatDay, formatMonth, monthGrid, monthOf, shiftMonth, WEEKDAY_HEADINGS } from "@/lib/dates";
+import {
+  formatDay,
+  formatMonth,
+  monthGrid,
+  monthOf,
+  shiftMonth,
+  WEEKDAY_HEADINGS,
+} from "@/lib/dates";
 
-const CELL = "calendar-day flex h-10 items-center justify-center rounded-flask-lg py-2 text-center text-sm";
+const CELL =
+  "calendar-day flex h-10 items-center justify-center rounded-flask-lg py-2 text-center text-sm";
 
 /** Flask's `createCalendarDay` classes, by state. */
 const LOOK: Record<DayState, string> = {
   today: "cursor-pointer bg-flask-green font-medium text-flask-white hover:bg-flask-green/80",
-  submitted: "cursor-pointer bg-flask-submitted font-medium text-flask-gray-500 hover:bg-flask-submitted/80",
+  submitted:
+    "cursor-pointer bg-flask-submitted font-medium text-flask-gray-500 hover:bg-flask-submitted/80",
   missing: "cursor-pointer bg-flask-red font-medium text-flask-white hover:bg-flask-red/80",
   open: "cursor-pointer text-flask-gray-500 hover:bg-flask-gray-50",
   idle: "text-flask-gray-400",
 };
-const PICKED = "cursor-pointer border-2 border-flask-teal bg-flask-teal/20 font-medium text-flask-teal hover:bg-flask-teal/30";
-const SAY: Record<DayState, string> = { today: "today", submitted: "submitted", missing: "not submitted", open: "", idle: "" };
+const PICKED =
+  "cursor-pointer border-2 border-flask-teal bg-flask-teal/20 font-medium text-flask-teal hover:bg-flask-teal/30";
+const SAY: Record<DayState, string> = {
+  today: "today",
+  submitted: "submitted",
+  missing: "not submitted",
+  open: "",
+  idle: "",
+};
 
 /**
  * Flask's "Report Calendar", exactly: the heading, the month bar (grey, ‹ month year ›), a white
  * grid of 42 days with the weekday row, and the legend in a grey bar. Today green, submitted pale
  * grey, not-submitted red, a picked day teal-outlined.
  */
-export function ReportCalendar({ home, selected, onPick }: { home: Home; selected: string | null; onPick: (day: string) => void }) {
+export function ReportCalendar({
+  home,
+  selected,
+  onPick,
+}: {
+  home: Home;
+  selected: string | null;
+  onPick: (day: string) => void;
+}) {
   const [shown, setShown] = useState(() => monthOf(selected ?? home.server_today));
   const grid = monthGrid(shown.year, shown.month);
 
@@ -43,8 +67,21 @@ export function ReportCalendar({ home, selected, onPick }: { home: Home; selecte
             onClick={() => setShown(shiftMonth(shown.year, shown.month, -1))}
             className="rounded-flask-lg p-2 transition-colors hover:bg-flask-gray-200"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M10 12L6 8L10 4" className="stroke-flask-gray-500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M10 12L6 8L10 4"
+                className="stroke-flask-gray-500"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
           <div
@@ -60,8 +97,21 @@ export function ReportCalendar({ home, selected, onPick }: { home: Home; selecte
             onClick={() => setShown(shiftMonth(shown.year, shown.month, 1))}
             className="rounded-flask-lg p-2 transition-colors hover:bg-flask-gray-200"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M6 4L10 8L6 12" className="stroke-flask-gray-500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M6 4L10 8L6 12"
+                className="stroke-flask-gray-500"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
         </div>

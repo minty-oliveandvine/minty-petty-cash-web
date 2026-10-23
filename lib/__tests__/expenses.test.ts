@@ -26,11 +26,17 @@ describe("searchSuppliers", () => {
   });
 
   it("matches any part of the name in any case, and offers the text when nothing is exactly it", () => {
-    expect(searchSuppliers(SUPPLIERS, " PARK")).toEqual({ matches: [S("Park Lane Florist"), S("ParknShop")], offerNew: "PARK" });
+    expect(searchSuppliers(SUPPLIERS, " PARK")).toEqual({
+      matches: [S("Park Lane Florist"), S("ParknShop")],
+      offerNew: "PARK",
+    });
   });
 
   it("offers nothing new on an exact name, whatever its case", () => {
-    expect(searchSuppliers(SUPPLIERS, "parknshop")).toEqual({ matches: [S("ParknShop")], offerNew: null });
+    expect(searchSuppliers(SUPPLIERS, "parknshop")).toEqual({
+      matches: [S("ParknShop")],
+      offerNew: null,
+    });
   });
 
   it("offers the text when nothing matches (Flask's 'No Xero contact found')", () => {
@@ -64,11 +70,21 @@ describe("receiptProblem", () => {
     expect(receiptProblem([file("a.jpg", "image/jpeg", 10 * 1024 * 1024)], "dropped")).toBeNull();
   });
   it("refuses in Flask's words, naming a dropped file", () => {
-    expect(receiptProblem([file("a.gif", "image/gif")], "picked")).toBe("I can take PDF, JPEG, or PNG files.");
-    expect(receiptProblem([file("a.gif", "image/gif")], "dropped")).toBe("I can take PDF, JPEG, or PNG files: a.gif");
-    expect(receiptProblem([file("big.png", "image/png", 10 * 1024 * 1024 + 1)], "picked")).toBe("Files need to be under 10MB.");
-    expect(receiptProblem([file("big.png", "image/png", 10 * 1024 * 1024 + 1)], "dropped")).toBe("Files need to be under 10MB: big.png");
-    expect(receiptProblem([file("a.png", "image/png"), file("b.png", "image/png")], "dropped")).toBe("Only one file is allowed per expense.");
+    expect(receiptProblem([file("a.gif", "image/gif")], "picked")).toBe(
+      "I can take PDF, JPEG, or PNG files.",
+    );
+    expect(receiptProblem([file("a.gif", "image/gif")], "dropped")).toBe(
+      "I can take PDF, JPEG, or PNG files: a.gif",
+    );
+    expect(receiptProblem([file("big.png", "image/png", 10 * 1024 * 1024 + 1)], "picked")).toBe(
+      "Files need to be under 10MB.",
+    );
+    expect(receiptProblem([file("big.png", "image/png", 10 * 1024 * 1024 + 1)], "dropped")).toBe(
+      "Files need to be under 10MB: big.png",
+    );
+    expect(
+      receiptProblem([file("a.png", "image/png"), file("b.png", "image/png")], "dropped"),
+    ).toBe("Only one file is allowed per expense.");
   });
 });
 
@@ -102,19 +118,28 @@ describe("missingFields", () => {
     expect(missingFields(full)).toEqual([]);
   });
   it("refuses a zero amount, a supplier or account not chosen from the list, and no receipt", () => {
-    expect(missingFields({ amount: "0.00", supplierText: "", supplier: null, accountText: "", account: null, file: null })).toEqual([
-      "amount",
-      "supplier",
-      "account",
-      "file",
-    ]);
+    expect(
+      missingFields({
+        amount: "0.00",
+        supplierText: "",
+        supplier: null,
+        accountText: "",
+        account: null,
+        file: null,
+      }),
+    ).toEqual(["amount", "supplier", "account", "file"]);
   });
   it("refuses a choice whose text was changed after it was made", () => {
-    expect(missingFields({ ...full, supplierText: "Wellcom", accountText: "General" })).toEqual(["supplier", "account"]);
+    expect(missingFields({ ...full, supplierText: "Wellcom", accountText: "General" })).toEqual([
+      "supplier",
+      "account",
+    ]);
     expect(missingFields({ ...full, supplierText: "  Wellcome " })).toEqual([]);
   });
   it("refuses an empty file", () => {
-    expect(missingFields({ ...full, file: new File([], "r.png", { type: "image/png" }) })).toEqual(["file"]);
+    expect(missingFields({ ...full, file: new File([], "r.png", { type: "image/png" }) })).toEqual([
+      "file",
+    ]);
   });
 });
 
@@ -129,11 +154,20 @@ describe("detailRows", () => {
     receipts: [],
   };
   it("writes N/A and - for what a line lacks", () => {
-    expect(detailRows(line)).toEqual({ contact: "N/A", description: "-", account: "N/A General Expenses" });
+    expect(detailRows(line)).toEqual({
+      contact: "N/A",
+      description: "-",
+      account: "N/A General Expenses",
+    });
   });
   it("writes the account as its code then the line's item", () => {
     expect(
-      detailRows({ ...line, remarks: "Milk", supplier: S("Wellcome"), account: { id: "1", code: "429", name: "General Expenses" } }),
+      detailRows({
+        ...line,
+        remarks: "Milk",
+        supplier: S("Wellcome"),
+        account: { id: "1", code: "429", name: "General Expenses" },
+      }),
     ).toEqual({ contact: "Wellcome", description: "Milk", account: "429 General Expenses" });
   });
 });

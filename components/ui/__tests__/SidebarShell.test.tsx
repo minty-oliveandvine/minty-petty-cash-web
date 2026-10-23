@@ -50,7 +50,10 @@ beforeEach(() => {
   fetchMock.mockImplementation((input) => {
     const body = String(input).includes("/api/me/subscriptions") ? SUBSCRIPTIONS : PROFILE;
     return Promise.resolve(
-      new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }),
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
     );
   });
   _resetHandoffForTests(vi.fn());
@@ -76,21 +79,29 @@ describe("My Profile in Petty Cash", () => {
     await userEvent.click(badge);
 
     const sheet = within(await screen.findByRole("region", { name: "My Profile" }));
-    expect(await sheet.findByRole("heading", { level: 2, name: "John Birmingha" })).toBeInTheDocument();
+    expect(
+      await sheet.findByRole("heading", { level: 2, name: "John Birmingha" }),
+    ).toBeInTheDocument();
     expect(sheet.getByText("Olive & Vine")).toBeInTheDocument();
     expect(sheet.getByText("john@example.com")).toBeInTheDocument();
     expect(sheet.queryByText(/password/i)).toBeNull();
     // main draws the original design (the owner, 2026-10-20)
-    expect(screen.getByRole("region", { name: "My Profile" }).firstElementChild).toHaveClass(...PROFILE_LOOK.classic.panel.split(" "));
+    expect(screen.getByRole("region", { name: "My Profile" }).firstElementChild).toHaveClass(
+      ...PROFILE_LOOK.classic.panel.split(" "),
+    );
     // the Subscriptions Overview, from subscription-api, with Manage Subscription into minty-web's portal
     const overview = within(await sheet.findByRole("region", { name: "Subscriptions Overview" }));
     expect(await overview.findByText("Active subscriptions")).toBeInTheDocument();
-    const manage = new URL(overview.getByRole("link", { name: "Manage Subscription" }).getAttribute("href")!);
+    const manage = new URL(
+      overview.getByRole("link", { name: "Manage Subscription" }).getAttribute("href")!,
+    );
     expect(manage.pathname).toBe("/handoff/minty-web");
     expect(manage.searchParams.get("next")).toBe("/subscription");
 
     const urls = fetchMock.mock.calls.map(([u]) => new URL(String(u)));
-    const read = urls.find((u) => u.pathname === "/api/me/profile" && u.searchParams.get("entity") === ENTITY);
+    const read = urls.find(
+      (u) => u.pathname === "/api/me/profile" && u.searchParams.get("entity") === ENTITY,
+    );
     expect(read?.origin).toBe("http://localhost:8000");
     // over the page: nothing navigated, and no hand-off to minty-web's /profile
     expect(window.location.pathname).toBe("/entity/360812e1/olive-and-vine/petty-cash");
@@ -113,7 +124,9 @@ describe("My Profile in Petty Cash", () => {
     await userEvent.click(initials);
 
     const sheet = within(await screen.findByRole("region", { name: "My Profile" }));
-    expect(await sheet.findByRole("heading", { level: 2, name: "John Birmingha" })).toBeInTheDocument();
+    expect(
+      await sheet.findByRole("heading", { level: 2, name: "John Birmingha" }),
+    ).toBeInTheDocument();
     expect(initials).toHaveAttribute("aria-expanded", "true");
     expect(window.location.pathname).toBe("/entity/360812e1/olive-and-vine/petty-cash");
   });

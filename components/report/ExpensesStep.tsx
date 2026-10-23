@@ -7,13 +7,23 @@ import { PhoneCard } from "@/components/flask/PhoneCard";
 import { Stepper } from "@/components/flask/Stepper";
 import { useToast } from "@/components/flask/Toasts";
 import { AddExpenseCard } from "@/components/report/AddExpenseCard";
-import { ReceiptViewer, useReceiptUrls, type ShownReceipt } from "@/components/report/ReceiptViewer";
+import {
+  ReceiptViewer,
+  useReceiptUrls,
+  type ShownReceipt,
+} from "@/components/report/ReceiptViewer";
 import { LoadingOverlay, Modal, ReportBadge } from "@/components/report/ReportChrome";
 import { sentenceOf, toOpening, useBackToOpening } from "@/components/report/stepErrors";
 import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
-import { detailRows, receiptKind, type ExpenseLine, type ExpensesPage, type Supplier } from "@/lib/expenses";
+import {
+  detailRows,
+  receiptKind,
+  type ExpenseLine,
+  type ExpensesPage,
+  type Supplier,
+} from "@/lib/expenses";
 import { formatMoney } from "@/lib/money";
 import { datePill } from "@/lib/opening";
 import { useAuth } from "@/lib/useAuth";
@@ -47,7 +57,9 @@ export function ExpensesStep({ day }: { day: string | null }) {
 
   useEffect(() => {
     let live = true;
-    pettyCashFetch<ExpensesPage>("/reports/expenses", { query: { transaction_date: day ?? undefined } })
+    pettyCashFetch<ExpensesPage>("/reports/expenses", {
+      query: { transaction_date: day ?? undefined },
+    })
       .then((answer) => live && setPage(answer))
       .catch((err: unknown) => {
         if (!live || (err instanceof ApiError && err.status === 401)) return;
@@ -74,10 +86,27 @@ export function ExpensesStep({ day }: { day: string | null }) {
       </PhoneCard>
     );
   }
-  return <ExpensesForm page={page} entityId={auth.entityId} entityName={auth.entityName} acronym={acronym} />;
+  return (
+    <ExpensesForm
+      page={page}
+      entityId={auth.entityId}
+      entityName={auth.entityName}
+      acronym={acronym}
+    />
+  );
 }
 
-function ExpensesForm({ page, entityId, entityName, acronym }: { page: ExpensesPage; entityId: string; entityName: string; acronym: string }) {
+function ExpensesForm({
+  page,
+  entityId,
+  entityName,
+  acronym,
+}: {
+  page: ExpensesPage;
+  entityId: string;
+  entityName: string;
+  acronym: string;
+}) {
   const toast = useToast();
   const router = useRouter();
   const backToOpening = useBackToOpening();
@@ -104,7 +133,10 @@ function ExpensesForm({ page, entityId, entityName, acronym }: { page: ExpensesP
   async function save(action: "next" | "exit") {
     setBusy("Saving...");
     try {
-      const answer = await pettyCashFetch<SaveAnswer>("/reports/expenses", { method: "PUT", json: { transaction_date: day, action } });
+      const answer = await pettyCashFetch<SaveAnswer>("/reports/expenses", {
+        method: "PUT",
+        json: { transaction_date: day, action },
+      });
       if (answer.next === "dashboard") {
         router.push(home);
         return;
@@ -124,7 +156,10 @@ function ExpensesForm({ page, entityId, entityName, acronym }: { page: ExpensesP
     setDeleting(null);
     setBusy("Deleting Expense...");
     try {
-      const answer = await pettyCashFetch<{ total: number }>(`/expense-lines/${encodeURIComponent(line.id)}`, { method: "DELETE" });
+      const answer = await pettyCashFetch<{ total: number }>(
+        `/expense-lines/${encodeURIComponent(line.id)}`,
+        { method: "DELETE" },
+      );
       setLines((all) => all.filter((l) => l.id !== line.id));
       setTotal(answer.total);
       toast("Expense deleted successfully!", "success");
@@ -138,8 +173,15 @@ function ExpensesForm({ page, entityId, entityName, acronym }: { page: ExpensesP
 
   const overlays = (
     <>
-      {viewing ? <ExpenseDetailsModal line={viewing} code={code} onClose={() => setViewing(null)} /> : null}
-      {deleting ? <DeleteExpenseModal onCancel={() => setDeleting(null)} onDelete={() => void confirmDelete()} /> : null}
+      {viewing ? (
+        <ExpenseDetailsModal line={viewing} code={code} onClose={() => setViewing(null)} />
+      ) : null}
+      {deleting ? (
+        <DeleteExpenseModal
+          onCancel={() => setDeleting(null)}
+          onDelete={() => void confirmDelete()}
+        />
+      ) : null}
       {busy ? <LoadingOverlay text={busy} /> : null}
     </>
   );
@@ -151,7 +193,12 @@ function ExpensesForm({ page, entityId, entityName, acronym }: { page: ExpensesP
       badge={<ReportBadge draft={page.draft} />}
       backHref={home}
       stepper={
-        <Stepper draft={progress} page="expenses" stepHref={(step) => stepHref(entityId, entityName, step, day)} onStepClick={onStepClick} />
+        <Stepper
+          draft={progress}
+          page="expenses"
+          stepHref={(step) => stepHref(entityId, entityName, step, day)}
+          onStepClick={onStepClick}
+        />
       }
       overlays={overlays}
     >
@@ -165,10 +212,18 @@ function ExpensesForm({ page, entityId, entityName, acronym }: { page: ExpensesP
             {/* block, not flex: Flask's rows overlap by their -12px margins, which only collapse in block flow */}
             <div>
               {lines.map((line) => (
-                <ExpenseRow key={line.id} line={line} code={code} onOpen={() => setViewing(line)} onDelete={() => setDeleting(line)} />
+                <ExpenseRow
+                  key={line.id}
+                  line={line}
+                  code={code}
+                  onOpen={() => setViewing(line)}
+                  onDelete={() => setDeleting(line)}
+                />
               ))}
             </div>
-            {lines.length === 0 ? <p className="py-8 text-center text-flask-gray-500">No expenses added yet</p> : null}
+            {lines.length === 0 ? (
+              <p className="py-8 text-center text-flask-gray-500">No expenses added yet</p>
+            ) : null}
             <div className="mt-4 flex items-center justify-between rounded-flask-2xl bg-flask-teal-soft/50 p-3 py-2">
               <span className="text-sm font-medium text-flask-teal-pill">Total Expense</span>
               <span className="text-sm font-medium text-flask-teal-pill" aria-live="polite">
@@ -190,7 +245,10 @@ function ExpensesForm({ page, entityId, entityName, acronym }: { page: ExpensesP
                     fill="none"
                     aria-hidden="true"
                   >
-                    <path d="M5.57143 5.69643V0.125H7.42857V5.69643H13V7.55357H7.42857V13.125H5.57143V7.55357H0V5.69643H5.57143Z" fill="currentColor" />
+                    <path
+                      d="M5.57143 5.69643V0.125H7.42857V5.69643H13V7.55357H7.42857V13.125H5.57143V7.55357H0V5.69643H5.57143Z"
+                      fill="currentColor"
+                    />
                   </svg>
                   <span>Add New Expense</span>
                 </button>
@@ -206,7 +264,9 @@ function ExpensesForm({ page, entityId, entityName, acronym }: { page: ExpensesP
             suppliers={suppliers}
             accounts={page.accounts}
             canCreateSupplier={page.permissions.create_supplier}
-            onSupplierCreated={(s) => setSuppliers((all) => (all.some((x) => x.id === s.id) ? all : [...all, s]))}
+            onSupplierCreated={(s) =>
+              setSuppliers((all) => (all.some((x) => x.id === s.id) ? all : [...all, s]))
+            }
             onAdded={(line, newTotal) => {
               setLines((all) => [...all, line]);
               setTotal(newTotal);
@@ -226,7 +286,14 @@ function ExpensesForm({ page, entityId, entityName, acronym }: { page: ExpensesP
         className="group flex w-full items-center justify-center gap-4 rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white shadow-flask-md transition-colors hover:bg-flask-teal/80 disabled:opacity-70"
       >
         <span>Save &amp; Next</span>
-        <svg className="transition-transform group-hover:translate-x-1" width="14" height="13" viewBox="0 0 14 13" fill="none" aria-hidden="true">
+        <svg
+          className="transition-transform group-hover:translate-x-1"
+          width="14"
+          height="13"
+          viewBox="0 0 14 13"
+          fill="none"
+          aria-hidden="true"
+        >
           <path
             d="M10.534 5.66477L6.16282 1.18659L7.31648 -9.53674e-07L13.6377 6.50026L7.31648 13L6.16282 11.8139L10.534 7.33576H0.637695V5.66477H10.534Z"
             className="fill-flask-white"
@@ -261,7 +328,17 @@ const TRASH = (
  * supplier, the description, then the amount in red and the bin. The row opens Expense Details.
  * Without `onDelete` there is no bin (a submitted report's Edit Details).
  */
-export function ExpenseRow({ line, code, onOpen, onDelete }: { line: ExpenseLine; code: string | null; onOpen: () => void; onDelete?: () => void }) {
+export function ExpenseRow({
+  line,
+  code,
+  onOpen,
+  onDelete,
+}: {
+  line: ExpenseLine;
+  code: string | null;
+  onOpen: () => void;
+  onDelete?: () => void;
+}) {
   return (
     <div
       role="button"
@@ -279,9 +356,15 @@ export function ExpenseRow({ line, code, onOpen, onDelete }: { line: ExpenseLine
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="break-words text-base font-semibold text-flask-gray-900">{line.item || "N/A"}</p>
-          {line.supplier?.name ? <p className="mt-1 break-words text-sm text-flask-gray-700">{line.supplier.name}</p> : null}
-          {line.remarks ? <p className="mt-1 break-words text-sm text-flask-gray-500">{line.remarks}</p> : null}
+          <p className="break-words text-base font-semibold text-flask-gray-900">
+            {line.item || "N/A"}
+          </p>
+          {line.supplier?.name ? (
+            <p className="mt-1 break-words text-sm text-flask-gray-700">{line.supplier.name}</p>
+          ) : null}
+          {line.remarks ? (
+            <p className="mt-1 break-words text-sm text-flask-gray-500">{line.remarks}</p>
+          ) : null}
         </div>
         <div className="text-right">
           <div className="flex items-center justify-end gap-3">
@@ -307,7 +390,15 @@ export function ExpenseRow({ line, code, onOpen, onDelete }: { line: ExpenseLine
 }
 
 const EXPAND = (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-8 w-8 text-flask-white opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth="1.5"
+    stroke="currentColor"
+    className="h-8 w-8 text-flask-white opacity-0 transition-opacity group-hover:opacity-100"
+    aria-hidden="true"
+  >
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -348,7 +439,11 @@ export function ExpenseDetailsModal({
   }, [shown, onDismiss]);
 
   return (
-    <Modal titleId="viewExpenseTitle" onClose={close} className="max-h-[90vh] overflow-y-auto rounded-flask-lg bg-flask-white p-6 shadow-flask-xl">
+    <Modal
+      titleId="viewExpenseTitle"
+      onClose={close}
+      className="max-h-[90vh] overflow-y-auto rounded-flask-lg bg-flask-white p-6 shadow-flask-xl"
+    >
       <div className="mb-6 flex items-center justify-between">
         <h2 id="viewExpenseTitle" className="text-xl font-bold text-flask-gray-900">
           Expense Details
@@ -358,7 +453,9 @@ export function ExpenseDetailsModal({
       <div className="mb-2">
         {line.receipts.length > 0 ? (
           <div className="mb-4">
-            <div className={`grid gap-2 ${line.receipts.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+            <div
+              className={`grid gap-2 ${line.receipts.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
+            >
               {line.receipts.map((receipt) => {
                 const kind = receiptKind(receipt.mime_type, receipt.name);
                 const got = urls[receipt.id];
@@ -399,19 +496,34 @@ export function ExpenseDetailsModal({
                       className="group relative flex h-64 w-full cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-flask-lg border border-flask-gray-200 bg-flask-gray-50 px-4 text-center transition-colors hover:border-flask-teal"
                     >
                       <PdfIcon />
-                      <span className="w-full truncate text-sm text-flask-gray-700">{receipt.name}</span>
-                      <span className="text-sm font-medium text-flask-teal">{got?.failed ? "This PDF can't be previewed here." : "Open"}</span>
+                      <span className="w-full truncate text-sm text-flask-gray-700">
+                        {receipt.name}
+                      </span>
+                      <span className="text-sm font-medium text-flask-teal">
+                        {got?.failed ? "This PDF can't be previewed here." : "Open"}
+                      </span>
                     </button>
                   );
                 }
                 return (
-                  <div key={receipt.id} className="rounded-flask-lg border border-flask-gray-200 p-2">
+                  <div
+                    key={receipt.id}
+                    className="rounded-flask-lg border border-flask-gray-200 p-2"
+                  >
                     <button
                       type="button"
-                      onClick={() => got?.url && setShown({ url: got.url, kind: "other", name: receipt.name })}
+                      onClick={() =>
+                        got?.url && setShown({ url: got.url, kind: "other", name: receipt.name })
+                      }
                       className="flex min-h-[44px] w-full items-center text-left text-sm text-flask-blue-600 hover:text-flask-blue-800"
                     >
-                      <svg className="mr-2 h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <svg
+                        className="mr-2 h-4 w-4 shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -430,7 +542,9 @@ export function ExpenseDetailsModal({
 
         <div className="text-center">
           <p className="mb-1 text-sm text-flask-gray-400">Amount Paid</p>
-          <p className="text-3xl font-bold text-flask-detail-ink [overflow-wrap:anywhere]">{formatMoney(line.amount, code)}</p>
+          <p className="text-3xl font-bold text-flask-detail-ink [overflow-wrap:anywhere]">
+            {formatMoney(line.amount, code)}
+          </p>
         </div>
         {editor ?? (
           <div className="mt-4 rounded-flask-xl bg-flask-gray-50 px-4 py-2">
@@ -459,14 +573,24 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 py-2">
       <span className="shrink-0 text-sm text-flask-gray-400">{label}</span>
-      <span className="min-w-0 break-words text-right text-sm font-semibold text-flask-detail-ink">{value}</span>
+      <span className="min-w-0 break-words text-right text-sm font-semibold text-flask-detail-ink">
+        {value}
+      </span>
     </div>
   );
 }
 
 function PdfIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-12 w-12 text-flask-gray-400" aria-hidden="true">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth="1.5"
+      stroke="currentColor"
+      className="h-12 w-12 text-flask-gray-400"
+      aria-hidden="true"
+    >
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -477,16 +601,42 @@ function PdfIcon() {
 }
 
 /** Flask's "Delete Expense" (#deleteExpenseModal): the red warning, then Cancel / Delete. */
-function DeleteExpenseModal({ onCancel, onDelete }: { onCancel: () => void; onDelete: () => void }) {
+function DeleteExpenseModal({
+  onCancel,
+  onDelete,
+}: {
+  onCancel: () => void;
+  onDelete: () => void;
+}) {
   return (
-    <Modal titleId="deleteExpenseTitle" onClose={onCancel} className="rounded-flask-lg bg-flask-white p-6">
+    <Modal
+      titleId="deleteExpenseTitle"
+      onClose={onCancel}
+      className="rounded-flask-lg bg-flask-white p-6"
+    >
       <div className="mb-6 flex items-center justify-between">
         <h2 id="deleteExpenseTitle" className="text-xl font-bold text-flask-gray-900">
           Delete Expense
         </h2>
-        <button type="button" onClick={onCancel} aria-label="Close" className="text-flask-gray-400 hover:text-flask-gray-600">
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Close"
+          className="text-flask-gray-400 hover:text-flask-gray-600"
+        >
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>
@@ -494,15 +644,29 @@ function DeleteExpenseModal({ onCancel, onDelete }: { onCancel: () => void; onDe
       <div className="mb-6 rounded-flask-lg border border-flask-danger-edge bg-flask-danger-bg p-4">
         <div className="flex items-start">
           <div className="flex-shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="h-5 w-5 text-flask-danger" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="2"
+              stroke="currentColor"
+              className="h-5 w-5 text-flask-danger"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+              />
             </svg>
           </div>
           <div className="ml-3">
             <p className="text-sm text-flask-danger-ink">
               <span className="font-bold">Warning:</span>
             </p>
-            <p className="mt-1 text-sm text-flask-danger-ink">Are you sure you want to delete this expense? This action cannot be undone.</p>
+            <p className="mt-1 text-sm text-flask-danger-ink">
+              Are you sure you want to delete this expense? This action cannot be undone.
+            </p>
           </div>
         </div>
       </div>

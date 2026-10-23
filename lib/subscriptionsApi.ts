@@ -18,7 +18,10 @@ const PER_PAGE = 100;
 type Page = SubscriptionsList & { pages: number };
 
 const page = (n: number, signal: AbortSignal) =>
-  subscriptionFetch<Page>("/api/me/subscriptions", { query: { page: n, per_page: PER_PAGE }, signal });
+  subscriptionFetch<Page>("/api/me/subscriptions", {
+    query: { page: n, per_page: PER_PAGE },
+    signal,
+  });
 
 export async function loadSubscriptions(signal: AbortSignal): Promise<SubscriptionsList> {
   const first = await page(1, signal);

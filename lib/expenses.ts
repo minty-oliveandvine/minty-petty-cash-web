@@ -42,7 +42,10 @@ export type ExpensesPage = {
  * the text to offer as a new contact: there are matches but none is exactly the text, or there
  * are none at all (Flask's "No Xero contact found" state).
  */
-export function searchSuppliers(suppliers: Supplier[], typed: string): { matches: Supplier[]; offerNew: string | null } {
+export function searchSuppliers(
+  suppliers: Supplier[],
+  typed: string,
+): { matches: Supplier[]; offerNew: string | null } {
   const query = typed.trim();
   const sorted = (list: Supplier[]) => [...list].sort((a, b) => a.name.localeCompare(b.name));
   if (!query) return { matches: sorted(suppliers), offerNew: null };
@@ -70,7 +73,8 @@ type PickedFile = { name: string; size: number; type: string };
  */
 export function receiptProblem(files: PickedFile[], how: "picked" | "dropped"): string | null {
   if (how === "dropped" && files.length > 1) return "Only one file is allowed per expense.";
-  const say = (sentence: string, file: PickedFile) => (how === "dropped" ? `${sentence}: ${file.name}` : `${sentence}.`);
+  const say = (sentence: string, file: PickedFile) =>
+    how === "dropped" ? `${sentence}: ${file.name}` : `${sentence}.`;
   for (const file of files) {
     if (file.size > MAX_RECEIPT_BYTES) return say("Files need to be under 10MB", file);
     if (!RECEIPT_TYPES.includes(file.type)) return say("I can take PDF, JPEG, or PNG files", file);
@@ -84,9 +88,14 @@ export function uploadName(name: string): string {
 }
 
 /** How a receipt can be drawn (Flask's `ReceiptPreview.kind`), from its type, else its name. */
-export function receiptKind(typeOrName: string | null | undefined, name?: string): "image" | "pdf" | "other" {
+export function receiptKind(
+  typeOrName: string | null | undefined,
+  name?: string,
+): "image" | "pdf" | "other" {
   const of = (raw: string | null | undefined) => {
-    const v = String(raw ?? "").toLowerCase().split("?")[0];
+    const v = String(raw ?? "")
+      .toLowerCase()
+      .split("?")[0];
     if (v.startsWith("application/pdf") || /\.pdf$/.test(v)) return "pdf";
     if (v.startsWith("image/") || /\.(jpe?g|png|gif|webp)$/.test(v)) return "image";
     return "other";
@@ -120,7 +129,11 @@ export function missingFields(form: AddForm): RequiredField[] {
 }
 
 /** Expense Details' rows, as Flask writes them: "N/A" and "-" for what a line lacks. */
-export function detailRows(line: ExpenseLine): { contact: string; description: string; account: string } {
+export function detailRows(line: ExpenseLine): {
+  contact: string;
+  description: string;
+  account: string;
+} {
   return {
     contact: line.supplier?.name || "N/A",
     description: line.remarks || "-",

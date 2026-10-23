@@ -44,7 +44,13 @@ function shared(over: Json = {}): Json {
     },
     expenses: {
       lines: [
-        { item: "Food & Drink", supplier: "Acme", remarks: "", amount: 78.5, receipts: [{ name: "receipt.pdf" }] },
+        {
+          item: "Food & Drink",
+          supplier: "Acme",
+          remarks: "",
+          amount: 78.5,
+          receipts: [{ name: "receipt.pdf" }],
+        },
         { item: "Cleaning", supplier: "Acme", remarks: "", amount: 50 },
       ],
       total: 128.5,
@@ -79,24 +85,36 @@ async function stub(page: Page, answer: { status?: number; json: Json } = { json
     return route.fulfill({ status: answer.status ?? 200, json: answer.json });
   });
   // a stray hand-off or profile read would show here, never leave the app
-  await page.route(/\/handoff\//, (route) => route.fulfill({ contentType: "text/html", body: "<title>Hand-off</title><p>Hand-off</p>" }));
-  await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
+  await page.route(/\/handoff\//, (route) =>
+    route.fulfill({ contentType: "text/html", body: "<title>Hand-off</title><p>Hand-off</p>" }),
+  );
+  await page.route("**/api/me/profile**", (route) =>
+    route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }),
+  );
   return { requests, reads };
 }
 
 /** The page's sentence (Next's route announcer is an alert too). */
 const refusal = (page: Page) => page.locator("p[role=alert]");
-const card = (page: Page, title: string) => page.locator("div.shadow-flask-sm").filter({ has: page.getByRole("heading", { name: title, exact: true }) });
+const card = (page: Page, title: string) =>
+  page
+    .locator("div.shadow-flask-sm")
+    .filter({ has: page.getByRole("heading", { name: title, exact: true }) });
 
 /** No request from the page carried a bearer, reached Flask's hand-off or read the person. */
 async function expectNothingPrivate(requests: Request[]) {
   for (const r of requests) {
-    expect(await r.headerValue("authorization"), `${r.method()} ${new URL(r.url()).pathname}`).toBeNull();
+    expect(
+      await r.headerValue("authorization"),
+      `${r.method()} ${new URL(r.url()).pathname}`,
+    ).toBeNull();
     expect(r.url()).not.toMatch(/\/handoff\/|\/api\/me\/profile/);
   }
 }
 
-test("the shared report: Flask's shared view - the day, the company, the summary, and nothing to do", async ({ page }) => {
+test("the shared report: Flask's shared view - the day, the company, the summary, and nothing to do", async ({
+  page,
+}) => {
   const { requests, reads } = await stub(page);
   await page.goto(PAGE);
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
@@ -140,26 +158,42 @@ test("the shared report: Flask's shared view - the day, the company, the summary
 
   // (twice under the dev server's Strict Mode; the first answer is dropped)
   expect(reads.length).toBeGreaterThan(0);
-  for (const url of reads) expect(new URL(url).pathname).toBe(`/api/petty-cash/v1/public/share/${PATH}`);
+  for (const url of reads)
+    expect(new URL(url).pathname).toBe(`/api/petty-cash/v1/public/share/${PATH}`);
   await expectNothingPrivate(requests);
   await expectNoHorizontalScroll(page);
 });
 
 test("a signed-in person opening a share link still sends no bearer", async ({ page }) => {
   const { requests } = await stub(page);
-  await page.route("**/api/petty-cash/v1/companies/**", (route) => route.fulfill({ status: 500, json: { error: "not in this test" } }));
-  const token = mintModuleToken({ secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME });
+  await page.route("**/api/petty-cash/v1/companies/**", (route) =>
+    route.fulfill({ status: 500, json: { error: "not in this test" } }),
+  );
+  const token = mintModuleToken({
+    secret: "stub",
+    userId: "u",
+    entityId: ENTITY,
+    entityName: NAME,
+  });
   // the landing stores the token cookie; `next` is the share page itself
-  await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: PAGE })}`);
+  await page.goto(
+    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: PAGE })}`,
+  );
   await page.goto(PAGE);
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
   const cookies = await page.context().cookies();
   expect(cookies.some((c) => c.name === "petty_cash_token")).toBe(true);
-  await expectNothingPrivate(requests.filter((r) => new URL(r.url()).pathname.startsWith("/api/petty-cash/v1/public/")));
-  expect(requests.filter((r) => new URL(r.url()).pathname.startsWith("/api/petty-cash/v1/public/"))).not.toHaveLength(0);
+  await expectNothingPrivate(
+    requests.filter((r) => new URL(r.url()).pathname.startsWith("/api/petty-cash/v1/public/")),
+  );
+  expect(
+    requests.filter((r) => new URL(r.url()).pathname.startsWith("/api/petty-cash/v1/public/")),
+  ).not.toHaveLength(0);
 });
 
-test("only what arrives is drawn: no history, no yesterday, no expenses, no difference", async ({ page }) => {
+test("only what arrives is drawn: no history, no yesterday, no expenses, no difference", async ({
+  page,
+}) => {
   await stub(page, {
     json: shared({
       sales: { methods: [], cash: 50, total: 50 },
@@ -174,14 +208,23 @@ test("only what arrives is drawn: no history, no yesterday, no expenses, no diff
   await expect(card(page, "Sales History")).toHaveCount(0);
   await expect(card(page, "Total Expenses")).toContainText("No expenses recorded");
   await expect(page.getByText(/Cash (Shortage|Surplus):/)).toHaveCount(0);
-  await expect(page.getByRole("heading", { level: 1, name: NAME }).locator("..").getByText("Published", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", { level: 1, name: NAME })
+      .locator("..")
+      .getByText("Published", { exact: true }),
+  ).toBeVisible();
   await expectNoHorizontalScroll(page);
 });
 
-test("a link that doesn't work: Flask's sentence, and nothing of the API's answer or the address", async ({ page }) => {
+test("a link that doesn't work: Flask's sentence, and nothing of the API's answer or the address", async ({
+  page,
+}) => {
   await stub(page, { status: 404, json: { error: `no link ${SECRET}` } });
   await page.goto(PAGE);
-  await expect(refusal(page)).toHaveText("This link doesn't work anymore. Could you ask for a fresh one?");
+  await expect(refusal(page)).toHaveText(
+    "This link doesn't work anymore. Could you ask for a fresh one?",
+  );
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toHaveCount(0);
   expect(await page.locator("body").innerText()).not.toContain(SECRET);
   await expect(page.locator("a")).toHaveCount(0);
@@ -199,9 +242,13 @@ test("an expired link: Flask's sentence", async ({ page }) => {
 test("an address that is not a share link is refused without asking the API", async ({ page }) => {
   const { reads } = await stub(page);
   await page.goto("/share/EPCS/13_Oct_2026");
-  await expect(refusal(page)).toHaveText("This link doesn't work anymore. Could you ask for a fresh one?");
+  await expect(refusal(page)).toHaveText(
+    "This link doesn't work anymore. Could you ask for a fresh one?",
+  );
   await page.goto("/share/EPCS/13_Oct_2026/short");
-  await expect(refusal(page)).toHaveText("This link doesn't work anymore. Could you ask for a fresh one?");
+  await expect(refusal(page)).toHaveText(
+    "This link doesn't work anymore. Could you ask for a fresh one?",
+  );
   expect(reads).toEqual([]);
 });
 
@@ -209,10 +256,14 @@ test("initials outside ASCII reach the API escaped once", async ({ page }) => {
   const { reads } = await stub(page);
   await page.goto(`/share/%C3%89V/13_Oct_2026/${SECRET}`);
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
-  expect(new URL(reads[0]).pathname).toBe(`/api/petty-cash/v1/public/share/%C3%89V/13_Oct_2026/${SECRET}`);
+  expect(new URL(reads[0]).pathname).toBe(
+    `/api/petty-cash/v1/public/share/%C3%89V/13_Oct_2026/${SECRET}`,
+  );
 });
 
-test("/share opens with no token, while every other page still goes to Flask's hand-off", async ({ page }) => {
+test("/share opens with no token, while every other page still goes to Flask's hand-off", async ({
+  page,
+}) => {
   await stub(page);
   await page.goto(PAGE);
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
@@ -222,7 +273,15 @@ test("/share opens with no token, while every other page still goes to Flask's h
   expect(await page.context().cookies()).toEqual([]);
   const open = await page.request.get(PAGE, { maxRedirects: 0 });
   expect(open.status()).toBe(200);
-  for (const path of [BASE, `${BASE}/reports`, `${BASE}/reports/r1/summary`, `/entity/${companyRef(ENTITY, NAME)}/settings/petty-cash`, "/share", `${BASE}/share/${PATH}`, "/"]) {
+  for (const path of [
+    BASE,
+    `${BASE}/reports`,
+    `${BASE}/reports/r1/summary`,
+    `/entity/${companyRef(ENTITY, NAME)}/settings/petty-cash`,
+    "/share",
+    `${BASE}/share/${PATH}`,
+    "/",
+  ]) {
     const res = await page.request.get(path, { maxRedirects: 0 });
     expect(res.status(), path).toBe(307);
     expect(new URL(res.headers()["location"] ?? "").pathname, path).toBe("/handoff/petty-cash-web");

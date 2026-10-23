@@ -113,10 +113,12 @@ export function previousDayUnfinished(home: Home): boolean {
   return !!span && span.earliest <= yesterday && !home.published[yesterday];
 }
 
-export const PREVIOUS_DAY_FIRST = "The previous report needs finishing before today's. Shall we do that first?";
+export const PREVIOUS_DAY_FIRST =
+  "The previous report needs finishing before today's. Shall we do that first?";
 
 /** The petty-cash API's own refusal (409, `to: "dashboard"`) of a report for a company with no currency. */
-export const NO_CURRENCY = "No currency is selected for this company. Choose one in Petty Cash Settings to start a report.";
+export const NO_CURRENCY =
+  "No currency is selected for this company. Choose one in Petty Cash Settings to start a report.";
 
 /** Setup Required's line for a company with no currency; it links to Petty Cash Settings' Country & currency. */
 export const CHOOSE_CURRENCY = "Choose your company's currency";
@@ -128,7 +130,9 @@ export const CHOOSE_CURRENCY = "Choose your company's currency";
 export function setupMissing(home: Home): string[] {
   const currency = home.currency_code ? [] : [CHOOSE_CURRENCY];
   if (home.xero_settings.complete) return currency;
-  const xero = home.xero_settings.missing.length ? home.xero_settings.missing : ["One or more required settings are missing"];
+  const xero = home.xero_settings.missing.length
+    ? home.xero_settings.missing
+    : ["One or more required settings are missing"];
   return [...currency, ...xero];
 }
 
@@ -149,14 +153,18 @@ export function startProblem(home: Home, day: string): string | null {
     }
   } else {
     const floor = onboardingFloor(home);
-    if (floor && day < floor) return `Transaction date must be on or after your onboarding date (${floor}).`;
+    if (floor && day < floor)
+      return `Transaction date must be on or after your onboarding date (${floor}).`;
   }
   if (day === home.server_today && previousDayUnfinished(home)) return PREVIOUS_DAY_FIRST;
   return null;
 }
 
 /** The submitted day before `day`, when it put cash in the bank: "Before You Start" asks about it. */
-export function depositToConfirm(home: Home, day: string): { day: string; report: PublishedDay } | null {
+export function depositToConfirm(
+  home: Home,
+  day: string,
+): { day: string; report: PublishedDay } | null {
   const before = addDays(day, -1);
   const report = home.published[before];
   return report && report.bank_deposit > 0 ? { day: before, report } : null;
@@ -200,14 +208,24 @@ export type Progress = { current_section: string | null; completed_sections: str
  * step is the draft's own; on a wizard page it is that page (`page`), while what opens still
  * follows the draft (the first step opens once done, or while the draft is on it).
  */
-export function stepStates(progress: Progress, page?: WizardStep): { key: WizardStep; label: string; state: StepState; open: boolean }[] {
+export function stepStates(
+  progress: Progress,
+  page?: WizardStep,
+): { key: WizardStep; label: string; state: StepState; open: boolean }[] {
   const done = new Set(progress.completed_sections);
   const current = page ?? progress.current_section;
   return STEPS.map((step, i) => {
     const previousDone = i > 0 && done.has(STEPS[i - 1].key);
     const state: StepState =
-      step.key === current ? "current" : done.has(step.key) ? "completed" : previousDone ? "next" : "locked";
-    const open = i === 0 ? done.has("opening") || progress.current_section === "opening" : previousDone;
+      step.key === current
+        ? "current"
+        : done.has(step.key)
+          ? "completed"
+          : previousDone
+            ? "next"
+            : "locked";
+    const open =
+      i === 0 ? done.has("opening") || progress.current_section === "opening" : previousDone;
     return { ...step, state, open };
   });
 }

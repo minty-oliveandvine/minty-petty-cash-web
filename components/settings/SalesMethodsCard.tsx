@@ -66,7 +66,11 @@ export function SalesMethodsCard({
   actions: MethodActions;
 }) {
   const kind = KIND[type];
-  const editable = permissions.add_sales_method || permissions.rename_sales_method || permissions.remove_sales_method || permissions.reorder_sales_methods;
+  const editable =
+    permissions.add_sales_method ||
+    permissions.rename_sales_method ||
+    permissions.remove_sales_method ||
+    permissions.reorder_sales_methods;
   const hasMenu = permissions.reorder_sales_methods || permissions.remove_sales_method;
   const [renaming, setRenaming] = useState<string | null>(null);
   // a shared method's name was clicked: why it can't be renamed, under its row
@@ -75,7 +79,8 @@ export function SalesMethodsCard({
   const [adding, setAdding] = useState(false);
 
   let note: string | null = null;
-  if (!permissions.view_sales_methods) note = "You can't see the sales methods. Ask an Accountant or an Admin.";
+  if (!permissions.view_sales_methods)
+    note = "You can't see the sales methods. Ask an Accountant or an Admin.";
   else if (!methods.length) note = `No ${kind.title.toLowerCase()} methods yet.`;
 
   return (
@@ -115,7 +120,9 @@ export function SalesMethodsCard({
                   {method.name}
                 </button>
               ) : (
-                <span className="min-w-0 truncate text-base text-flask-set-gray-700">{method.name}</span>
+                <span className="min-w-0 truncate text-base text-flask-set-gray-700">
+                  {method.name}
+                </span>
               )}
               {hasMenu && renaming !== method.id ? (
                 <RowMenu
@@ -125,11 +132,27 @@ export function SalesMethodsCard({
                   items={[
                     ...(permissions.reorder_sales_methods
                       ? [
-                          { label: "Move up", disabled: busy || index === 0, run: () => actions.move(type, index, -1) },
-                          { label: "Move down", disabled: busy || index === methods.length - 1, run: () => actions.move(type, index, 1) },
+                          {
+                            label: "Move up",
+                            disabled: busy || index === 0,
+                            run: () => actions.move(type, index, -1),
+                          },
+                          {
+                            label: "Move down",
+                            disabled: busy || index === methods.length - 1,
+                            run: () => actions.move(type, index, 1),
+                          },
                         ]
                       : []),
-                    ...(permissions.remove_sales_method ? [{ label: "Delete", disabled: busy, run: () => actions.remove(type, method) }] : []),
+                    ...(permissions.remove_sales_method
+                      ? [
+                          {
+                            label: "Delete",
+                            disabled: busy,
+                            run: () => actions.remove(type, method),
+                          },
+                        ]
+                      : []),
                   ]}
                   close={() => onMenu(null)}
                 />
@@ -146,9 +169,21 @@ export function SalesMethodsCard({
 
       {permissions.add_sales_method ? (
         adding ? (
-          <AddForm type={type} methods={methods} available={available} busy={busy} actions={actions} onClose={() => setAdding(false)} />
+          <AddForm
+            type={type}
+            methods={methods}
+            available={available}
+            busy={busy}
+            actions={actions}
+            onClose={() => setAdding(false)}
+          />
         ) : (
-          <button type="button" disabled={busy} onClick={() => setAdding(true)} className={`${BTN_OUTLINE} w-full`}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setAdding(true)}
+            className={`${BTN_OUTLINE} w-full`}
+          >
             <Icon name="add" className="text-[20px]" />
             Add New Method
           </button>
@@ -323,7 +358,8 @@ function AddForm({
   const [refusedEmpty, setRefusedEmpty] = useState(false);
   const catalog = useRef<HTMLInputElement | null>(null);
   const nameBox = useRef<HTMLInputElement>(null);
-  const nameProblem = methodNameProblem(name, methods) ?? (refusedEmpty && !name.trim() ? NAME_EMPTY : null);
+  const nameProblem =
+    methodNameProblem(name, methods) ?? (refusedEmpty && !name.trim() ? NAME_EMPTY : null);
 
   useEffect(() => {
     catalog.current = document.getElementById(catalogId) as HTMLInputElement | null;
@@ -337,7 +373,8 @@ function AddForm({
   function rows(query: string): ComboRow[] {
     const offered = catalogueOptions(available, query);
     const out: ComboRow[] = offered.map((m) => ({ key: m.id, label: m.name }));
-    if (!offered.length) out.push({ key: "none", label: `No matching ${kind.noun} found`, info: true });
+    if (!offered.length)
+      out.push({ key: "none", label: `No matching ${kind.noun} found`, info: true });
     // "Other" always stays reachable: it opens the Name box for a brand new method
     out.push({ key: OTHER, label: "+ Other (type a new name)", muted: true });
     return out;

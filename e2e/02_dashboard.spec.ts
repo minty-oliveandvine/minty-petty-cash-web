@@ -34,8 +34,20 @@ function homeAnswer(over: Json = {}): Json {
     draft_date: null,
     start_date: null,
     published: {
-      "2026-10-10": { id: "a", closing_balance: 900, bank_deposit: 0, xero_integrated: true, submitter_first_name: "Olive" },
-      "2026-10-13": { id: "b", closing_balance: 1250.5, bank_deposit: 300, xero_integrated: true, submitter_first_name: "Olive" },
+      "2026-10-10": {
+        id: "a",
+        closing_balance: 900,
+        bank_deposit: 0,
+        xero_integrated: true,
+        submitter_first_name: "Olive",
+      },
+      "2026-10-13": {
+        id: "b",
+        closing_balance: 1250.5,
+        bank_deposit: 300,
+        xero_integrated: true,
+        submitter_first_name: "Olive",
+      },
     },
     today_has_report: false,
     today_is_latest_report: false,
@@ -45,9 +57,17 @@ function homeAnswer(over: Json = {}): Json {
   };
 }
 
-async function enterWith(page: Page, home: Json, onCorrection?: (body: Json, route: Route) => Promise<void>) {
-  await page.route("**/api/petty-cash/v1/companies/*/home", (route) => route.fulfill({ json: home }));
-  await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
+async function enterWith(
+  page: Page,
+  home: Json,
+  onCorrection?: (body: Json, route: Route) => Promise<void>,
+) {
+  await page.route("**/api/petty-cash/v1/companies/*/home", (route) =>
+    route.fulfill({ json: home }),
+  );
+  await page.route("**/api/me/profile**", (route) =>
+    route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }),
+  );
   if (onCorrection) {
     await page.route("**/api/petty-cash/v1/companies/*/deposit-correction", async (route) => {
       await onCorrection(route.request().postDataJSON() as Json, route);
@@ -55,14 +75,25 @@ async function enterWith(page: Page, home: Json, onCorrection?: (body: Json, rou
   }
   // the wizard's and a report's pages: caught, so the spec can read where the app went.
   await page.route(/\/entity\/[^/]+\/petty-cash\/reports\//, (route) =>
-    route.fulfill({ contentType: "text/html", body: "<title>Report page</title><p>Report page</p>" }),
+    route.fulfill({
+      contentType: "text/html",
+      body: "<title>Report page</title><p>Report page</p>",
+    }),
   );
-  const token = mintModuleToken({ secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME });
-  await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: HOME_PATH })}`);
+  const token = mintModuleToken({
+    secret: "stub",
+    userId: "u",
+    entityId: ENTITY,
+    entityName: NAME,
+  });
+  await page.goto(
+    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: HOME_PATH })}`,
+  );
   await expect(page.getByRole("heading", { name: "Report Calendar" })).toBeVisible();
 }
 
-const toast = (page: Page, text: string | RegExp) => page.locator("[data-toast-type]").filter({ hasText: text });
+const toast = (page: Page, text: string | RegExp) =>
+  page.locator("[data-toast-type]").filter({ hasText: text });
 
 test("the page loads with no console error - a hydration mismatch included", async ({ page }) => {
   const errors: string[] = [];
@@ -76,13 +107,18 @@ test("the page loads with no console error - a hydration mismatch included", asy
   await page.reload();
   await expect(page.getByRole("heading", { name: "Report Calendar" })).toBeVisible();
   // the header's links read the cookie and the origin, so they are filled in after hydration
-  await expect(page.getByRole("link", { name: "Back to your companies" })).toHaveAttribute("href", /\/handoff\/minty-web/);
+  await expect(page.getByRole("link", { name: "Back to your companies" })).toHaveAttribute(
+    "href",
+    /\/handoff\/minty-web/,
+  );
   // My Profile is the sidebar's sheet, over the page - never a page of its own (the owner, 2026-10-20)
   await expect(page.getByRole("link", { name: "My Profile" })).toHaveCount(0);
   const before = page.url();
   await page.getByRole("button", { name: "My Profile" }).click();
   await expect(page.getByRole("region", { name: "My Profile" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "My Profile" }).getByRole("heading", { name: "Tess Tester" })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "My Profile" }).getByRole("heading", { name: "Tess Tester" }),
+  ).toBeVisible();
   expect(page.url()).toBe(before);
   expect(errors).toEqual([]);
 });
@@ -100,11 +136,15 @@ test("Quick Actions count the company's people", async ({ page }) => {
   await expect(page.getByText("3 users", { exact: true })).toBeVisible();
 });
 
-test("a deposit yesterday is confirmed before today's report, and a change is sent", async ({ page }) => {
+test("a deposit yesterday is confirmed before today's report, and a change is sent", async ({
+  page,
+}) => {
   let sent: Json | null = null;
   await enterWith(page, homeAnswer(), async (body, route) => {
     sent = body;
-    await route.fulfill({ json: { status: "success", message: "ok", next_transaction_date: TODAY } });
+    await route.fulfill({
+      json: { status: "success", message: "ok", next_transaction_date: TODAY },
+    });
   });
 
   await expect(page.getByText("HKD 1,250.50")).toBeVisible();
@@ -154,7 +194,10 @@ test("a deposit higher than the previous one is refused as Flask did", async ({ 
 
 test("a refused correction is said in a toast", async ({ page }) => {
   await enterWith(page, homeAnswer(), async (_body, route) => {
-    await route.fulfill({ status: 409, json: { error: "Configure the Deposit Bank Account first." } });
+    await route.fulfill({
+      status: 409,
+      json: { error: "Configure the Deposit Bank Account first." },
+    });
   });
   await page.getByRole("button", { name: "Start New Report" }).click();
   const dialog = page.getByRole("dialog", { name: "Before You Start" });
@@ -167,13 +210,20 @@ test("a deposit the company cannot correct offers only 'as stated'", async ({ pa
   await enterWith(
     page,
     homeAnswer({
-      latest: { ...(homeAnswer().latest as Json), deposit_correction_missing_settings: ["Deposit Bank Account"], can_correct_deposit: false },
+      latest: {
+        ...(homeAnswer().latest as Json),
+        deposit_correction_missing_settings: ["Deposit Bank Account"],
+        can_correct_deposit: false,
+      },
     }),
   );
   await page.getByRole("button", { name: "Start New Report" }).click();
   const dialog = page.getByRole("dialog", { name: "Before You Start" });
   await expect(dialog).toContainText("Deposit cannot be corrected");
-  await expect(dialog.getByRole("link", { name: "Settings → Petty Cash" })).toHaveAttribute("href", /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/);
+  await expect(dialog.getByRole("link", { name: "Settings → Petty Cash" })).toHaveAttribute(
+    "href",
+    /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/,
+  );
   await expect(dialog.getByRole("radio", { name: "No, there was no deposit" })).toBeDisabled();
   await dialog.getByText("Yes, amount deposited as stated").click();
   await dialog.getByRole("button", { name: "Proceed" }).click();
@@ -183,36 +233,69 @@ test("a deposit the company cannot correct offers only 'as stated'", async ({ pa
 test("a day out of sequence is refused with Flask's sentence", async ({ page }) => {
   await enterWith(
     page,
-    homeAnswer({ published: { "2026-10-12": { id: "x", closing_balance: 5, bank_deposit: 0, xero_integrated: false, submitter_first_name: null } } }),
+    homeAnswer({
+      published: {
+        "2026-10-12": {
+          id: "x",
+          closing_balance: 5,
+          bank_deposit: 0,
+          xero_integrated: false,
+          submitter_first_name: null,
+        },
+      },
+    }),
   );
   await page.getByRole("button", { name: "Start New Report" }).click();
   await expect(
-    toast(page, "Transaction date must be 2026-10-13, the day after your last submitted report (2026-10-12)."),
+    toast(
+      page,
+      "Transaction date must be 2026-10-13, the day after your last submitted report (2026-10-12).",
+    ),
   ).toBeVisible();
 });
 
-test("a new company's first report opens on its onboarding start date, and nothing before it", async ({ page }) => {
+test("a new company's first report opens on its onboarding start date, and nothing before it", async ({
+  page,
+}) => {
   await enterWith(
     page,
     homeAnswer({
-      latest: { ...(homeAnswer().latest as Json), date: null, closing_balance: 0, deposit: 0, deposit_bank_name: "No deposit", deposit_bank_number: "" },
+      latest: {
+        ...(homeAnswer().latest as Json),
+        date: null,
+        closing_balance: 0,
+        deposit: 0,
+        deposit_bank_name: "No deposit",
+        deposit_bank_number: "",
+      },
       published: {},
       start_date: "2026-09-28",
     }),
   );
   // the calendar opens on the start date's month, with that day picked and the days before it shut
-  await expect(page.getByRole("button", { name: "28 Sep 2026" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "28 Sep 2026" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(page.getByRole("button", { name: "27 Sep 2026" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "29 Sep 2026" })).toBeEnabled();
   await page.getByRole("button", { name: "Start New Report" }).click();
-  await expect(page).toHaveURL((url) => url.pathname + url.search === `${HOME_PATH}/reports/new/opening?transaction_date=2026-09-28`);
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname + url.search === `${HOME_PATH}/reports/new/opening?transaction_date=2026-09-28`,
+  );
 });
 
 test("a draft shows its progress and continues where it was left", async ({ page }) => {
   await enterWith(
     page,
     homeAnswer({
-      draft: { id: "d", current_section: "expenses", completed_sections: ["opening", "sales"], last_edit_seconds: 300 },
+      draft: {
+        id: "d",
+        current_section: "expenses",
+        completed_sections: ["opening", "sales"],
+        last_edit_seconds: 300,
+      },
       draft_date: TODAY,
     }),
   );
@@ -223,7 +306,10 @@ test("a draft shows its progress and continues where it was left", async ({ page
   await expect(page.getByRole("button", { name: "Start New Report" })).toHaveCount(0);
   // the draft's own step, in this app - never Flask's resume page
   await page.getByRole("button", { name: "Continue Report" }).click();
-  await expect(page).toHaveURL((url) => url.pathname + url.search === `${HOME_PATH}/reports/new/expense?transaction_date=2026-10-14`);
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname + url.search === `${HOME_PATH}/reports/new/expense?transaction_date=2026-10-14`,
+  );
 });
 
 test("a draft with no step yet continues at Opening, in this app", async ({ page }) => {
@@ -235,7 +321,10 @@ test("a draft with no step yet continues at Opening, in this app", async ({ page
     }),
   );
   await page.getByRole("button", { name: "Continue Report" }).click();
-  await expect(page).toHaveURL((url) => url.pathname + url.search === `${HOME_PATH}/reports/new/opening?transaction_date=2026-10-13`);
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname + url.search === `${HOME_PATH}/reports/new/opening?transaction_date=2026-10-13`,
+  );
 });
 
 test("a submitted day shows its balance and opens its report, in this app", async ({ page }) => {
@@ -267,25 +356,34 @@ test("a submitted day shows its balance and opens its report, in this app", asyn
 });
 
 test("missing Xero settings hold the page with the way to set them up", async ({ page }) => {
-  await enterWith(page, homeAnswer({ xero_settings: { complete: false, missing: ["Main Bank Account", "Cash Sale Contact"] } }));
+  await enterWith(
+    page,
+    homeAnswer({
+      xero_settings: { complete: false, missing: ["Main Bank Account", "Cash Sale Contact"] },
+    }),
+  );
   const dialog = page.getByRole("dialog", { name: "Setup Required" });
   await expect(dialog).toContainText("Main Bank Account");
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
   // this app's settings page, whose Xero card leads on to Flask's
-  await expect(dialog.getByRole("link", { name: "Set Up Settings" })).toHaveAttribute("href", /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/);
+  await expect(dialog.getByRole("link", { name: "Set Up Settings" })).toHaveAttribute(
+    "href",
+    /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/,
+  );
 });
 
-test("a company with no currency is asked to choose one before any report, and no amount reads \"$\"", async ({ page }) => {
+test('a company with no currency is asked to choose one before any report, and no amount reads "$"', async ({
+  page,
+}) => {
   await enterWith(page, homeAnswer({ currency_code: null }));
   const dialog = page.getByRole("dialog", { name: "Setup Required" });
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
   // Petty Cash Settings, whose first card is Country & currency
-  await expect(dialog.getByRole("link", { name: "Choose your company's currency" })).toHaveAttribute(
-    "href",
-    /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/,
-  );
+  await expect(
+    dialog.getByRole("link", { name: "Choose your company's currency" }),
+  ).toHaveAttribute("href", /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/);
   await expect(page.getByText("(No currency selected)").first()).toBeVisible();
   await expect(page.getByText(/\$\d/)).toHaveCount(0);
 });

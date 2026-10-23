@@ -63,7 +63,10 @@ export const CSV_EXPORTED = "Your CSV export is on its way!";
  * The export's query for two days - Flask's rule: both dates, the start on or before the end;
  * null otherwise (the button stays disabled).
  */
-export function csvQuery(start: string, end: string): { start_date: string; end_date: string } | null {
+export function csvQuery(
+  start: string,
+  end: string,
+): { start_date: string; end_date: string } | null {
   if (!start || !end || start > end) return null;
   return { start_date: start, end_date: end };
 }
@@ -74,7 +77,11 @@ export function csvFileName(start: string, end: string): string {
 }
 
 export function filtersFromAddress(params: { get(name: string): string | null }): HistoryFilters {
-  return { start: params.get("start_date") ?? "", end: params.get("end_date") ?? "", page: params.get("page") ?? "" };
+  return {
+    start: params.get("start_date") ?? "",
+    end: params.get("end_date") ?? "",
+    page: params.get("page") ?? "",
+  };
 }
 
 /** `GET /reports`'s query: only what the original page offers (no status, no page size). */
@@ -87,7 +94,11 @@ export function historyQuery(f: HistoryFilters): Record<string, string> {
 }
 
 /** The page's address, `/entity/<shortid>/<name>/petty-cash/reports?start_date=&end_date=&page=`. */
-export function historyHref(entityId: string, entityName: string, f: { start?: string; end?: string; page?: number } = {}): string {
+export function historyHref(
+  entityId: string,
+  entityName: string,
+  f: { start?: string; end?: string; page?: number } = {},
+): string {
   const qs = new URLSearchParams();
   if (f.start) qs.set("start_date", f.start);
   if (f.end) qs.set("end_date", f.end);
@@ -103,7 +114,8 @@ export function historyHref(entityId: string, entityName: string, f: { start?: s
 export function pagerItems(page: number, totalPages: number): (number | "gap")[] {
   const items: (number | "gap")[] = [];
   for (let p = 1; p <= totalPages; p++) {
-    if (p === page || p <= 2 || p > totalPages - 2 || (p >= page - 1 && p <= page + 1)) items.push(p);
+    if (p === page || p <= 2 || p > totalPages - 2 || (p >= page - 1 && p <= page + 1))
+      items.push(p);
     else if (p === page - 2 || p === page + 2) items.push("gap");
   }
   return items;
@@ -118,7 +130,9 @@ export function shownRange(page: number, totalCount: number): { from: number; to
  * Flask's badge on the original page: Published (in Xero), Publish failed, Draft, else
  * Submitted - a publish under way included, as the original drew it.
  */
-export function historyBadge(row: HistoryRow): "Published" | "Publish failed" | "Draft" | "Submitted" {
+export function historyBadge(
+  row: HistoryRow,
+): "Published" | "Publish failed" | "Draft" | "Submitted" {
   if (row.status === "draft") return "Draft";
   if (row.status_label === "Published to Xero") return "Published";
   if (row.status_label === "Publish failed") return "Publish failed";
@@ -142,7 +156,11 @@ const HK_STAMP = new Intl.DateTimeFormat("en-US", {
  */
 export function historyStamp(row: HistoryRow): string {
   const when =
-    historyBadge(row) === "Published" ? (row.published_at ?? row.created_at) : row.status === "submitted" ? (row.submitted_at ?? row.created_at) : row.created_at;
+    historyBadge(row) === "Published"
+      ? (row.published_at ?? row.created_at)
+      : row.status === "submitted"
+        ? (row.submitted_at ?? row.created_at)
+        : row.created_at;
   if (!when) return "";
   const moment = new Date(when);
   if (Number.isNaN(moment.getTime())) return "";
@@ -156,7 +174,10 @@ export function historyStamp(row: HistoryRow): string {
  * size (`tier` 0, 1, 2: up to 11, 14, then more characters - Flask's 10 and 13, plus the space
  * after the code). With no currency, the figure alone sets the size; the note wraps under it.
  */
-export function historyAmount(value: number, currencyCode: string | null): { text: string; tier: 0 | 1 | 2 } {
+export function historyAmount(
+  value: number,
+  currencyCode: string | null,
+): { text: string; tier: 0 | 1 | 2 } {
   const text = value ? formatMoney(value, currencyCode) : "-";
   const figure = text.replace(` ${NO_CURRENCY_NOTE}`, "");
   return { text, tier: figure.length <= 11 ? 0 : figure.length <= 14 ? 1 : 2 };
@@ -170,7 +191,11 @@ export function draftStep(row: HistoryRow): WizardStep {
 /** The day's column: "13 OCT 2026", "TUE" in its circle, yellow on a weekend. */
 export function dayParts(iso: string): { date: string; weekday: string; weekend: boolean } {
   const day = new Date(`${iso}T00:00:00Z`).getUTCDay();
-  return { date: formatDay(iso).toUpperCase(), weekday: ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][day], weekend: day === 0 || day === 6 };
+  return {
+    date: formatDay(iso).toUpperCase(),
+    weekday: ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][day],
+    weekend: day === 0 || day === 6,
+  };
 }
 
 /** The Start / End Date fields: "22/Jun/2026". */

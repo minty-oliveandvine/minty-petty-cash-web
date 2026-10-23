@@ -3,7 +3,15 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
-import { HOUSE_FALLBACK, filenameFromDisposition, mintyFetch, pettyCashBlob, pettyCashDownload, pettyCashFetch, pettyCashPublicFetch } from "@/lib/apiClient";
+import {
+  HOUSE_FALLBACK,
+  filenameFromDisposition,
+  mintyFetch,
+  pettyCashBlob,
+  pettyCashDownload,
+  pettyCashFetch,
+  pettyCashPublicFetch,
+} from "@/lib/apiClient";
 import { setAuth } from "@/lib/auth";
 import { _resetHandoffForTests } from "@/lib/handoff";
 
@@ -34,10 +42,14 @@ describe("pettyCashFetch", () => {
     setAuth("tok", ENTITY, "Olive & Vine");
     fetchMock.mockResolvedValue(answer(200, { ok: 1 }));
 
-    await expect(pettyCashFetch("/home", { query: { day: "2026-10-14" } })).resolves.toEqual({ ok: 1 });
+    await expect(pettyCashFetch("/home", { query: { day: "2026-10-14" } })).resolves.toEqual({
+      ok: 1,
+    });
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(`http://localhost:8010/api/petty-cash/v1/companies/${ENTITY}/home?day=2026-10-14`);
+    expect(url).toBe(
+      `http://localhost:8010/api/petty-cash/v1/companies/${ENTITY}/home?day=2026-10-14`,
+    );
     const headers = init.headers as Headers;
     expect(headers.get("Authorization")).toBe("Bearer tok");
     // Flask's CORS allows only Authorization and Content-Type
@@ -75,9 +87,16 @@ describe("pettyCashFetch", () => {
   it("rejects with the API's own sentence, or the house one", async () => {
     setAuth("tok", ENTITY, "n");
     fetchMock.mockResolvedValueOnce(answer(409, { error: "This company is still setting up." }));
-    await expect(pettyCashFetch("")).rejects.toMatchObject({ name: "ApiError", status: 409, message: "This company is still setting up." });
+    await expect(pettyCashFetch("")).rejects.toMatchObject({
+      name: "ApiError",
+      status: 409,
+      message: "This company is still setting up.",
+    });
     fetchMock.mockResolvedValueOnce(new Response("<html>", { status: 502 }));
-    await expect(pettyCashFetch("")).rejects.toMatchObject({ status: 502, message: HOUSE_FALLBACK });
+    await expect(pettyCashFetch("")).rejects.toMatchObject({
+      status: 502,
+      message: HOUSE_FALLBACK,
+    });
   });
 
   it("never calls with no company - it goes for a token instead", async () => {
@@ -104,7 +123,10 @@ describe("pettyCashPublicFetch - a shared report, read by anyone", () => {
 
   it("rejects with the status and never goes through Flask, even on a 401", async () => {
     fetchMock.mockResolvedValueOnce(answer(410, { error: "expired" }));
-    await expect(pettyCashPublicFetch(PATH)).rejects.toMatchObject({ name: "ApiError", status: 410 });
+    await expect(pettyCashPublicFetch(PATH)).rejects.toMatchObject({
+      name: "ApiError",
+      status: 410,
+    });
     fetchMock.mockResolvedValueOnce(answer(401, null));
     await expect(pettyCashPublicFetch(PATH)).rejects.toMatchObject({ status: 401 });
     expect(go).not.toHaveBeenCalled();
@@ -119,19 +141,29 @@ describe("pettyCashPublicFetch - a shared report, read by anyone", () => {
 describe("pettyCashBlob", () => {
   it("reads a file's bytes with the bearer, typed by the answer", async () => {
     setAuth("tok", ENTITY, "n");
-    fetchMock.mockResolvedValue(new Response(new Uint8Array([137, 80, 78, 71]), { status: 200, headers: { "Content-Type": "image/png" } }));
+    fetchMock.mockResolvedValue(
+      new Response(new Uint8Array([137, 80, 78, 71]), {
+        status: 200,
+        headers: { "Content-Type": "image/png" },
+      }),
+    );
     const blob = await pettyCashBlob("/expense-lines/l/receipts/r");
     expect(blob.type).toBe("image/png");
     expect(blob.size).toBe(4);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(`http://localhost:8010/api/petty-cash/v1/companies/${ENTITY}/expense-lines/l/receipts/r`);
+    expect(url).toBe(
+      `http://localhost:8010/api/petty-cash/v1/companies/${ENTITY}/expense-lines/l/receipts/r`,
+    );
     expect((init.headers as Headers).get("Authorization")).toBe("Bearer tok");
   });
 
   it("fails with the API's sentence, and a 401 goes back through Flask", async () => {
     setAuth("tok", ENTITY, "n");
     fetchMock.mockResolvedValueOnce(answer(404, { error: "I couldn't find that file." }));
-    await expect(pettyCashBlob("/x")).rejects.toMatchObject({ status: 404, message: "I couldn't find that file." });
+    await expect(pettyCashBlob("/x")).rejects.toMatchObject({
+      status: 404,
+      message: "I couldn't find that file.",
+    });
     fetchMock.mockResolvedValueOnce(answer(401, null));
     await expect(pettyCashBlob("/x")).rejects.toMatchObject({ status: 401 });
     expect(go).toHaveBeenCalledTimes(1);
@@ -144,14 +176,21 @@ describe("pettyCashDownload", () => {
     fetchMock.mockResolvedValue(
       new Response("Date,Amount", {
         status: 200,
-        headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": "attachment; filename=reports_2026-10-01_to_2026-10-13.csv" },
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": "attachment; filename=reports_2026-10-01_to_2026-10-13.csv",
+        },
       }),
     );
-    const file = await pettyCashDownload("/reports/export.csv", { query: { start_date: "2026-10-01", end_date: "2026-10-13" } });
+    const file = await pettyCashDownload("/reports/export.csv", {
+      query: { start_date: "2026-10-01", end_date: "2026-10-13" },
+    });
     expect(file.filename).toBe("reports_2026-10-01_to_2026-10-13.csv");
     expect(await file.blob.text()).toBe("Date,Amount");
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(`http://localhost:8010/api/petty-cash/v1/companies/${ENTITY}/reports/export.csv?start_date=2026-10-01&end_date=2026-10-13`);
+    expect(url).toBe(
+      `http://localhost:8010/api/petty-cash/v1/companies/${ENTITY}/reports/export.csv?start_date=2026-10-01&end_date=2026-10-13`,
+    );
     expect((init.headers as Headers).get("Authorization")).toBe("Bearer tok");
   });
 
@@ -159,8 +198,13 @@ describe("pettyCashDownload", () => {
     setAuth("tok", ENTITY, "n");
     fetchMock.mockResolvedValueOnce(new Response("x", { status: 200 }));
     expect((await pettyCashDownload("/x")).filename).toBeNull();
-    fetchMock.mockResolvedValueOnce(answer(422, { error: "Choose a start date on or before the end date." }));
-    await expect(pettyCashDownload("/x")).rejects.toMatchObject({ status: 422, message: "Choose a start date on or before the end date." });
+    fetchMock.mockResolvedValueOnce(
+      answer(422, { error: "Choose a start date on or before the end date." }),
+    );
+    await expect(pettyCashDownload("/x")).rejects.toMatchObject({
+      status: 422,
+      message: "Choose a start date on or before the end date.",
+    });
   });
 });
 
@@ -180,7 +224,9 @@ describe("mintyFetch", () => {
   it("reads Flask, and a decoration's 401 only rejects", async () => {
     setAuth("tok", ENTITY, "n");
     fetchMock.mockResolvedValue(answer(401, null));
-    await expect(mintyFetch("/api/me/profile", { onUnauthorized: "reject" })).rejects.toMatchObject({ status: 401 });
+    await expect(mintyFetch("/api/me/profile", { onUnauthorized: "reject" })).rejects.toMatchObject(
+      { status: 401 },
+    );
     expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8000/api/me/profile");
     expect(go).not.toHaveBeenCalled();
   });

@@ -43,7 +43,10 @@ export function handoffUrl(next: string, company?: string, origin?: string): str
   const qs = new URLSearchParams({ next: safe });
   const entity = company || companyRefFromPath(safe);
   if (entity) qs.set("entity_id", entity);
-  return withReturnOrigin(`${env.ACCOUNTS_API_URL}/handoff/petty-cash-web?${qs.toString()}`, origin);
+  return withReturnOrigin(
+    `${env.ACCOUNTS_API_URL}/handoff/petty-cash-web?${qs.toString()}`,
+    origin,
+  );
 }
 
 /**
@@ -65,7 +68,9 @@ export function hubUrl(next: string, entityId?: string, origin?: string): string
 export function paymentsUrl(entityId: string, page: "home" | "settings"): string {
   const id = encodeURIComponent(entityId);
   return withReturnOrigin(
-    page === "home" ? `${env.ACCOUNTS_API_URL}/entity/${id}/payment-request` : `${env.ACCOUNTS_API_URL}/entity/${id}/settings/payment-request`,
+    page === "home"
+      ? `${env.ACCOUNTS_API_URL}/entity/${id}/payment-request`
+      : `${env.ACCOUNTS_API_URL}/entity/${id}/settings/payment-request`,
   );
 }
 

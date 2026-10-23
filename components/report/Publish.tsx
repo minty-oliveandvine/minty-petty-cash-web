@@ -4,7 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useToast } from "@/components/flask/Toasts";
 import { Modal } from "@/components/report/ReportChrome";
-import { PUBLISH_WORDS, partialMessage, publishingLabel, runPublish, type PublishEnd } from "@/lib/publish";
+import {
+  PUBLISH_WORDS,
+  partialMessage,
+  publishingLabel,
+  runPublish,
+  type PublishEnd,
+} from "@/lib/publish";
 import { settingsTabUrl } from "@/lib/settings";
 
 /** Where the publish was started: Flask's two pages word their modal and their toasts differently. */
@@ -20,28 +26,62 @@ const CLOSE_ICON = (
 );
 
 const NOTE_ICON = (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="h-5 w-5 text-flask-danger" aria-hidden="true">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth="2"
+    stroke="currentColor"
+    className="h-5 w-5 text-flask-danger"
+    aria-hidden="true"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+    />
   </svg>
 );
 
-const SPINNER_PATH = "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z";
-const CANCEL = "flex-1 rounded-flask-xl border-2 border-flask-teal px-4 py-3 font-medium text-flask-teal transition-colors hover:bg-flask-teal/10";
-const CONFIRM = "flex flex-1 items-center justify-center gap-2 rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white transition-colors hover:bg-flask-teal/80";
+const SPINNER_PATH =
+  "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z";
+const CANCEL =
+  "flex-1 rounded-flask-xl border-2 border-flask-teal px-4 py-3 font-medium text-flask-teal transition-colors hover:bg-flask-teal/10";
+const CONFIRM =
+  "flex flex-1 items-center justify-center gap-2 rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white transition-colors hover:bg-flask-teal/80";
 
 /**
  * Flask's "Republish Report" (#republishReportModal), each page's own words: the Submitted page
  * always warns of duplicates; report history only for a report fully in Xero (a partly published
  * one is re-sent selectively), then "Still want to go ahead?". Cancel / Confirm.
  */
-export function RepublishModal({ place, duplicate, onCancel, onConfirm }: { place: PublishPlace; duplicate: boolean; onCancel: () => void; onConfirm: () => void }) {
+export function RepublishModal({
+  place,
+  duplicate,
+  onCancel,
+  onConfirm,
+}: {
+  place: PublishPlace;
+  duplicate: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
   return (
-    <Modal titleId="republishReportTitle" onClose={onCancel} className="rounded-flask-lg bg-flask-white p-6">
+    <Modal
+      titleId="republishReportTitle"
+      onClose={onCancel}
+      className="rounded-flask-lg bg-flask-white p-6"
+    >
       <div className="relative mb-6 flex items-center justify-center">
         <h2 id="republishReportTitle" className="text-xl font-bold text-flask-gray-900">
           Republish Report
         </h2>
-        <button type="button" onClick={onCancel} aria-label="Close" className="absolute right-0 text-flask-gray-400 hover:text-flask-gray-600">
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Close"
+          className="absolute right-0 text-flask-gray-400 hover:text-flask-gray-600"
+        >
           {CLOSE_ICON}
         </button>
       </div>
@@ -52,12 +92,20 @@ export function RepublishModal({ place, duplicate, onCancel, onConfirm }: { plac
           <div className="ml-3">
             {place === "submitted" ? (
               <>
-                <p className="text-sm text-flask-danger-ink">This report was previously published. This action may create duplicate entries in Xero.</p>
+                <p className="text-sm text-flask-danger-ink">
+                  This report was previously published. This action may create duplicate entries in
+                  Xero.
+                </p>
                 <p className="mt-2 text-sm text-flask-danger-ink">Do you wish to continue?</p>
               </>
             ) : (
               <>
-                {duplicate ? <p className="text-sm text-flask-danger-ink">I&apos;ve already published this report — republishing may create duplicates in Xero.</p> : null}
+                {duplicate ? (
+                  <p className="text-sm text-flask-danger-ink">
+                    I&apos;ve already published this report — republishing may create duplicates in
+                    Xero.
+                  </p>
+                ) : null}
                 <p className="mt-2 text-sm text-flask-danger-ink">Still want to go ahead?</p>
               </>
             )}
@@ -82,7 +130,19 @@ export function RepublishModal({ place, duplicate, onCancel, onConfirm }: { plac
  * its percentage, "Please do not close or navigate away.". After the cap it says the publish is
  * still going and offers to check again.
  */
-function PublishingOverlay({ label, percent, slow, onCheck, onClose }: { label: string; percent: number; slow: boolean; onCheck: () => void; onClose: () => void }) {
+function PublishingOverlay({
+  label,
+  percent,
+  slow,
+  onCheck,
+  onClose,
+}: {
+  label: string;
+  percent: number;
+  slow: boolean;
+  onCheck: () => void;
+  onClose: () => void;
+}) {
   const check = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (slow) check.current?.focus();
@@ -98,7 +158,10 @@ function PublishingOverlay({ label, percent, slow, onCheck, onClose }: { label: 
       >
         {slow ? (
           <>
-            <span id="publishingOverlayText" className="mb-3 text-base font-semibold text-flask-gray-800">
+            <span
+              id="publishingOverlayText"
+              className="mb-3 text-base font-semibold text-flask-gray-800"
+            >
               Still publishing to Xero
             </span>
             <p id="publishingSlowText" className="mb-6 text-center text-sm text-flask-gray-500">
@@ -115,11 +178,28 @@ function PublishingOverlay({ label, percent, slow, onCheck, onClose }: { label: 
           </>
         ) : (
           <>
-            <svg className="mb-4 h-10 w-10 animate-spin text-flask-teal" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <svg
+              className="mb-4 h-10 w-10 animate-spin text-flask-teal"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
               <path className="opacity-75" fill="currentColor" d={SPINNER_PATH} />
             </svg>
-            <span id="publishingOverlayText" className="mb-3 text-base font-semibold text-flask-gray-800" role="status">
+            <span
+              id="publishingOverlayText"
+              className="mb-3 text-base font-semibold text-flask-gray-800"
+              role="status"
+            >
               {label}
             </span>
             <div
@@ -130,10 +210,15 @@ function PublishingOverlay({ label, percent, slow, onCheck, onClose }: { label: 
               aria-valuemax={100}
               aria-valuenow={percent}
             >
-              <div className="h-3 rounded-full bg-flask-teal transition-all duration-500 ease-out" style={{ width: `${percent}%` }} />
+              <div
+                className="h-3 rounded-full bg-flask-teal transition-all duration-500 ease-out"
+                style={{ width: `${percent}%` }}
+              />
             </div>
             <span className="text-sm font-medium text-flask-gray-500">{percent}%</span>
-            <p className="mt-3 text-center text-xs text-flask-gray-400">Please do not close or navigate away.</p>
+            <p className="mt-3 text-center text-xs text-flask-gray-400">
+              Please do not close or navigate away.
+            </p>
           </>
         )}
       </div>
@@ -146,14 +231,33 @@ function PublishingOverlay({ label, percent, slow, onCheck, onClose }: { label: 
  * minty-web's Entity & Integration, so the API's sentence comes with a full-page link there,
  * through Flask's hand-off. Flask only toasted it.
  */
-function ReconnectModal({ message, entityId, entityName, onClose }: { message: string; entityId: string; entityName: string; onClose: () => void }) {
+function ReconnectModal({
+  message,
+  entityId,
+  entityName,
+  onClose,
+}: {
+  message: string;
+  entityId: string;
+  entityName: string;
+  onClose: () => void;
+}) {
   return (
-    <Modal titleId="reconnectXeroTitle" onClose={onClose} className="rounded-flask-lg bg-flask-white p-6">
+    <Modal
+      titleId="reconnectXeroTitle"
+      onClose={onClose}
+      className="rounded-flask-lg bg-flask-white p-6"
+    >
       <div className="relative mb-6 flex items-center justify-center">
         <h2 id="reconnectXeroTitle" className="text-xl font-bold text-flask-gray-900">
           Reconnect Xero
         </h2>
-        <button type="button" onClick={onClose} aria-label="Close" className="absolute right-0 text-flask-gray-400 hover:text-flask-gray-600">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-0 text-flask-gray-400 hover:text-flask-gray-600"
+        >
           {CLOSE_ICON}
         </button>
       </div>
@@ -167,7 +271,10 @@ function ReconnectModal({ message, entityId, entityName, onClose }: { message: s
         <button type="button" onClick={onClose} className={CANCEL}>
           Close
         </button>
-        <a href={settingsTabUrl(entityId, entityName, "integration")} className={`${CONFIRM} text-center`}>
+        <a
+          href={settingsTabUrl(entityId, entityName, "integration")}
+          className={`${CONFIRM} text-center`}
+        >
           Reconnect Xero in Entity &amp; Integration
         </a>
       </div>
@@ -181,10 +288,26 @@ function ReconnectModal({ message, entityId, entityName, onClose }: { message: s
  * Flask's toast, then `onChanged` lets the page read itself again. A page that goes away cancels
  * the poll. `ui` goes in the page's overlays.
  */
-export function usePublish({ place, entityId, entityName, onChanged }: { place: PublishPlace; entityId: string; entityName: string; onChanged: () => void }) {
+export function usePublish({
+  place,
+  entityId,
+  entityName,
+  onChanged,
+}: {
+  place: PublishPlace;
+  entityId: string;
+  entityName: string;
+  onChanged: () => void;
+}) {
   const toast = useToast();
   const [confirm, setConfirm] = useState<{ reportId: string; duplicate: boolean } | null>(null);
-  const [running, setRunning] = useState<{ reportId: string; republish: boolean; label: string; percent: number; slow: boolean } | null>(null);
+  const [running, setRunning] = useState<{
+    reportId: string;
+    republish: boolean;
+    label: string;
+    percent: number;
+    slow: boolean;
+  } | null>(null);
   const [reconnect, setReconnect] = useState<string | null>(null);
   const cancel = useRef<(() => void) | null>(null);
   const changed = useRef(onChanged);
@@ -209,7 +332,14 @@ export function usePublish({ place, entityId, entityName, onChanged }: { place: 
       setRunning(null);
       switch (end.kind) {
         case "published":
-          toast(place === "history" ? PUBLISH_WORDS.historyPublished : republish ? PUBLISH_WORDS.republished : PUBLISH_WORDS.published, "success");
+          toast(
+            place === "history"
+              ? PUBLISH_WORDS.historyPublished
+              : republish
+                ? PUBLISH_WORDS.republished
+                : PUBLISH_WORDS.published,
+            "success",
+          );
           break;
         case "partial":
           toast(partialMessage(end.reasons), "warning");
@@ -223,7 +353,8 @@ export function usePublish({ place, entityId, entityName, onChanged }: { place: 
         case "refused":
           if (end.reconnect) setReconnect(end.message);
           // the Submitted page warned of a publish already under way; history said it as an error
-          else toast(end.message, end.status === 409 && place === "submitted" ? "warning" : "error");
+          else
+            toast(end.message, end.status === 409 && place === "submitted" ? "warning" : "error");
           return;
         case "signed-out":
           return;
@@ -236,7 +367,13 @@ export function usePublish({ place, entityId, entityName, onChanged }: { place: 
   const go = useCallback(
     (reportId: string, republish: boolean, start: boolean) => {
       if (cancel.current) return;
-      setRunning({ reportId, republish, label: publishingLabel(republish), percent: 0, slow: false });
+      setRunning({
+        reportId,
+        republish,
+        label: publishingLabel(republish),
+        percent: 0,
+        slow: false,
+      });
       cancel.current = runPublish(reportId, {
         republish,
         start,
@@ -269,7 +406,14 @@ export function usePublish({ place, entityId, entityName, onChanged }: { place: 
           }}
         />
       ) : null}
-      {reconnect ? <ReconnectModal message={reconnect} entityId={entityId} entityName={entityName} onClose={() => setReconnect(null)} /> : null}
+      {reconnect ? (
+        <ReconnectModal
+          message={reconnect}
+          entityId={entityId}
+          entityName={entityName}
+          onClose={() => setReconnect(null)}
+        />
+      ) : null}
       {running ? (
         <PublishingOverlay
           label={running.label}

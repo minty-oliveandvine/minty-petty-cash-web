@@ -53,7 +53,9 @@ export function DepositStep({ day }: { day: string | null }) {
 
   useEffect(() => {
     let live = true;
-    pettyCashFetch<DepositPage>("/reports/deposit", { query: { transaction_date: day ?? undefined } })
+    pettyCashFetch<DepositPage>("/reports/deposit", {
+      query: { transaction_date: day ?? undefined },
+    })
       .then((answer) => live && setPage(answer))
       .catch((err: unknown) => {
         if (!live || (err instanceof ApiError && err.status === 401)) return;
@@ -80,10 +82,27 @@ export function DepositStep({ day }: { day: string | null }) {
       </PhoneCard>
     );
   }
-  return <DepositForm page={page} entityId={auth.entityId} entityName={auth.entityName} acronym={acronym} />;
+  return (
+    <DepositForm
+      page={page}
+      entityId={auth.entityId}
+      entityName={auth.entityName}
+      acronym={acronym}
+    />
+  );
 }
 
-function DepositForm({ page, entityId, entityName, acronym }: { page: DepositPage; entityId: string; entityName: string; acronym: string }) {
+function DepositForm({
+  page,
+  entityId,
+  entityName,
+  acronym,
+}: {
+  page: DepositPage;
+  entityId: string;
+  entityName: string;
+  acronym: string;
+}) {
   const toast = useToast();
   const router = useRouter();
   const backToOpening = useBackToOpening();
@@ -91,7 +110,9 @@ function DepositForm({ page, entityId, entityName, acronym }: { page: DepositPag
   const code = page.currency_code;
   const day = page.transaction_date;
   const progress = page.draft ?? { current_section: null, completed_sections: [] };
-  const [initial] = useState(() => (page.bank_deposit > 0 ? groupMoney(page.bank_deposit.toFixed(2)) : ""));
+  const [initial] = useState(() =>
+    page.bank_deposit > 0 ? groupMoney(page.bank_deposit.toFixed(2)) : "",
+  );
   const [amount, setAmount] = useState(initial);
   // the API's refusal of the value it was sent; cleared as soon as the value changes
   const [refused, setRefused] = useState<string | null>(null);
@@ -100,7 +121,9 @@ function DepositForm({ page, entityId, entityName, acronym }: { page: DepositPag
   const field = useRef<HTMLInputElement>(null);
 
   // with the cash on hand already below zero, Fix Negative Balance is the message
-  const problem = refused ?? (page.cash_on_hand < 0 ? null : depositProblem(parseMoney(amount), page.cash_on_hand, code));
+  const problem =
+    refused ??
+    (page.cash_on_hand < 0 ? null : depositProblem(parseMoney(amount), page.cash_on_hand, code));
 
   function onStepClick(event: MouseEvent<HTMLAnchorElement>) {
     if (changed(amount, initial)) {
@@ -152,10 +175,30 @@ function DepositForm({ page, entityId, entityName, acronym }: { page: DepositPag
     <>
       {busy ? <LoadingOverlay text={busy} /> : null}
       {negative ? (
-        <FixNegativeBalanceModal balance={page.cash_on_hand} currencyCode={code} message="Cash balance cannot be negative. Choose from below to edit the error:" window>
-          <FixStepButton label="Opening" note={fixNote("Cash in", page.cash_addition, code)} noteClass="text-flask-green" onClick={() => fix("opening")} />
-          <FixStepButton label="Sales" note={fixNote("Cash in", page.cash_sales, code)} noteClass="text-flask-green" onClick={() => fix("sales")} />
-          <FixStepButton label="Expenses" note={fixNote("Cash out", page.expenses, code)} noteClass="text-flask-red" onClick={() => fix("expenses")} />
+        <FixNegativeBalanceModal
+          balance={page.cash_on_hand}
+          currencyCode={code}
+          message="Cash balance cannot be negative. Choose from below to edit the error:"
+          window
+        >
+          <FixStepButton
+            label="Opening"
+            note={fixNote("Cash in", page.cash_addition, code)}
+            noteClass="text-flask-green"
+            onClick={() => fix("opening")}
+          />
+          <FixStepButton
+            label="Sales"
+            note={fixNote("Cash in", page.cash_sales, code)}
+            noteClass="text-flask-green"
+            onClick={() => fix("sales")}
+          />
+          <FixStepButton
+            label="Expenses"
+            note={fixNote("Cash out", page.expenses, code)}
+            noteClass="text-flask-red"
+            onClick={() => fix("expenses")}
+          />
         </FixNegativeBalanceModal>
       ) : null}
     </>
@@ -167,7 +210,14 @@ function DepositForm({ page, entityId, entityName, acronym }: { page: DepositPag
       datePill={datePill(day)}
       badge={<ReportBadge draft={page.draft} />}
       backHref={home}
-      stepper={<Stepper draft={progress} page="deposit" stepHref={(step) => stepHref(entityId, entityName, step, day)} onStepClick={onStepClick} />}
+      stepper={
+        <Stepper
+          draft={progress}
+          page="deposit"
+          stepHref={(step) => stepHref(entityId, entityName, step, day)}
+          onStepClick={onStepClick}
+        />
+      }
       overlays={overlays}
     >
       <div className="mb-6 text-left">
@@ -182,17 +232,30 @@ function DepositForm({ page, entityId, entityName, acronym }: { page: DepositPag
         }}
       >
         <div className="mb-6 rounded-flask-lg bg-flask-white p-6 shadow-flask-sm">
-          <StepImage src="/img/deposit.webp" alt="Deposit" width={240} height={282} boxClass="mb-10 w-[240px]" minHeight={164} skeleton={170} />
+          <StepImage
+            src="/img/deposit.webp"
+            alt="Deposit"
+            width={240}
+            height={282}
+            boxClass="mb-10 w-[240px]"
+            minHeight={164}
+            skeleton={170}
+          />
 
           <div className="mb-6">
             <p className="text-sm text-flask-gray-600">
               <span>Current Balance: </span>
-              <span className="font-semibold break-all">{formatMoney(page.cash_on_hand, code)}</span>
+              <span className="font-semibold break-all">
+                {formatMoney(page.cash_on_hand, code)}
+              </span>
             </p>
           </div>
 
           <div className="mb-6">
-            <label htmlFor="bank_deposit" className="mb-2 block text-sm font-medium text-flask-gray-700">
+            <label
+              htmlFor="bank_deposit"
+              className="mb-2 block text-sm font-medium text-flask-gray-700"
+            >
               Deposit Amount
             </label>
             <div className="relative">
@@ -217,7 +280,10 @@ function DepositForm({ page, entityId, entityName, acronym }: { page: DepositPag
                 onBlur={() => setAmount((v) => groupMoney(v))}
                 onFocus={(e) => {
                   const input = e.currentTarget;
-                  window.setTimeout(() => input.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+                  window.setTimeout(
+                    () => input.scrollIntoView({ block: "center", behavior: "smooth" }),
+                    300,
+                  );
                 }}
                 className={`w-full cursor-pointer rounded-flask-2xl border bg-flask-white py-3 pl-12 pr-3 text-flask-black focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal ${
                   problem ? "border-flask-red-500" : "border-flask-gray-300"

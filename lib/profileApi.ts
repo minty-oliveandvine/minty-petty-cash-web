@@ -15,7 +15,12 @@ import { mintyFetch } from "@/lib/apiClient";
 const query = (entityId: string) => ({ entity: entityId || undefined });
 
 export const profileApi: ProfileApi = {
-  load: (entityId, signal) => mintyFetch<Profile>("/api/me/profile", { query: query(entityId), signal }),
+  load: (entityId, signal) =>
+    mintyFetch<Profile>("/api/me/profile", { query: query(entityId), signal }),
   save: (changes: ProfileChanges, entityId) =>
-    mintyFetch<Profile>("/api/me/profile", { method: "PATCH", json: changes, query: query(entityId) }),
+    mintyFetch<Profile>("/api/me/profile", {
+      method: "PATCH",
+      json: changes,
+      query: query(entityId),
+    }),
 };

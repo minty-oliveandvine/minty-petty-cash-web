@@ -52,21 +52,35 @@ import {
  * shows Flask's "Xero isn't connected" notice.
  */
 
-export type XeroLoad = { kind: "loading" } | { kind: "ready"; read: XeroRead } | { kind: "failed"; message: string; retry: boolean };
+export type XeroLoad =
+  | { kind: "loading" }
+  | { kind: "ready"; read: XeroRead }
+  | { kind: "failed"; message: string; retry: boolean };
 
 /** One call through the page: its busy overlay and refusal toast; null when it did not go through. */
-export type Call = <T>(path: string, init: ApiRequest, busyText?: string, onRefused?: (message: string) => void) => Promise<T | null>;
+export type Call = <T>(
+  path: string,
+  init: ApiRequest,
+  busyText?: string,
+  onRefused?: (message: string) => void,
+) => Promise<T | null>;
 
 const ADD = "__add__";
 
 /** Flask's `xero_not_connected()` notice. Connecting is on minty-web's Entity & Integration, through Flask's hand-off. */
 function NotConnected({ connectHref }: { connectHref: string }) {
   return (
-    <div role="status" className="flex items-start gap-2 rounded-flask-lg border border-flask-set-alert-edge bg-flask-set-alert-bg px-4 py-2.5 text-sm text-flask-set-gray-600">
+    <div
+      role="status"
+      className="flex items-start gap-2 rounded-flask-lg border border-flask-set-alert-edge bg-flask-set-alert-bg px-4 py-2.5 text-sm text-flask-set-gray-600"
+    >
       <Icon name="link_off" className="text-[18px] leading-5 text-flask-set-alert-icon" />
       <span>
         Xero isn&apos;t connected. Connect it in{" "}
-        <a href={connectHref} className="font-medium text-flask-set-link underline underline-offset-2">
+        <a
+          href={connectHref}
+          className="font-medium text-flask-set-link underline underline-offset-2"
+        >
           Entity &amp; Integration
         </a>{" "}
         to set these up.
@@ -90,7 +104,13 @@ function Skeleton() {
 }
 
 /** What a card shows before its read is ready: loading, or why it failed (with Try again when it may help). */
-function NotReady({ load, onRetry }: { load: Exclude<XeroLoad, { kind: "ready" }>; onRetry: () => void }) {
+function NotReady({
+  load,
+  onRetry,
+}: {
+  load: Exclude<XeroLoad, { kind: "ready" }>;
+  onRetry: () => void;
+}) {
   if (load.kind === "loading") {
     return (
       <>
@@ -136,14 +156,27 @@ export function XeroMappingCard({
 }) {
   const editable = load.kind === "ready" && load.read.permissions.edit_mapping;
   return (
-    <SettingsCard title="Xero account mapping" sub="The Xero accounts and contacts a petty cash report posts to." readOnly={load.kind === "ready" && !editable} testId="xero-mapping">
+    <SettingsCard
+      title="Xero account mapping"
+      sub="The Xero accounts and contacts a petty cash report posts to."
+      readOnly={load.kind === "ready" && !editable}
+      testId="xero-mapping"
+    >
       {load.kind !== "ready" ? (
         <NotReady load={load} onRetry={onRetry} />
       ) : !load.read.live || !load.read.mapping ? (
         <NotConnected connectHref={connectHref} />
       ) : (
         // a new read (a save) starts the form again from what the API holds
-        <MappingForm key={JSON.stringify(load.read.mapping)} fields={load.read.mapping} editable={editable} busy={busy} call={call} onSaved={onSaved} onAdded={onAdded} />
+        <MappingForm
+          key={JSON.stringify(load.read.mapping)}
+          fields={load.read.mapping}
+          editable={editable}
+          busy={busy}
+          call={call}
+          onSaved={onSaved}
+          onAdded={onAdded}
+        />
       )}
     </SettingsCard>
   );
@@ -185,7 +218,11 @@ function MappingForm({
   const [refused, setRefused] = useState(false);
   // fields an API refusal named: Flask's red edge until the field is changed
   const [marked, setMarked] = useState<ReadonlySet<MappingKey>>(new Set());
-  const [adding, setAdding] = useState<{ key: MappingKey; name: string; refusedEmpty: boolean } | null>(null);
+  const [adding, setAdding] = useState<{
+    key: MappingKey;
+    name: string;
+    refusedEmpty: boolean;
+  } | null>(null);
   const [summary, setSummary] = useState<MappingKey[] | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
   const problems = mappingProblems(fields, picked, refused);
@@ -211,15 +248,29 @@ function MappingForm({
       const current = labelOf(field.key, picked[field.key]);
       if (field.kind === "account") {
         const offered = accountOptions(field, query, current, picked);
-        const out: ComboRow[] = offered.map((o) => ({ key: o.id, label: o.name, sub: o.code || undefined, selected: o.id === picked[field.key] }));
+        const out: ComboRow[] = offered.map((o) => ({
+          key: o.id,
+          label: o.name,
+          sub: o.code || undefined,
+          selected: o.id === picked[field.key],
+        }));
         if (!offered.length) out.push({ key: "none", label: "No matches", info: true });
         return out;
       }
       const { matches, offerNew } = contactOptions(field, query, current);
-      const out: ComboRow[] = matches.map((o) => ({ key: o.id, label: o.name, selected: o.id === picked[field.key] }));
+      const out: ComboRow[] = matches.map((o) => ({
+        key: o.id,
+        label: o.name,
+        selected: o.id === picked[field.key],
+      }));
       if (!matches.length) out.push({ key: "none", label: "No Xero contact found", info: true });
       if (offerNew !== null && editable) {
-        out.push({ key: ADD, label: offerNew ? `+ Add '${offerNew}' as a new contact` : "+ Add as a new contact", muted: true, divided: matches.length > 0 });
+        out.push({
+          key: ADD,
+          label: offerNew ? `+ Add '${offerNew}' as a new contact` : "+ Add as a new contact",
+          muted: true,
+          divided: matches.length > 0,
+        });
       }
       return out;
     };
@@ -233,7 +284,11 @@ function MappingForm({
       document.getElementById(`${idOf(adding.key)}-new`)?.focus();
       return;
     }
-    const made = await call<XeroOption>("/suppliers", { method: "POST", json: { name } }, "Creating contact…");
+    const made = await call<XeroOption>(
+      "/suppliers",
+      { method: "POST", json: { name } },
+      "Creating contact…",
+    );
     if (!made) return;
     const contact = { id: made.id, name: made.name };
     setFields((f) => withContact(f, contact));
@@ -255,148 +310,177 @@ function MappingForm({
       return;
     }
     setSummary(null);
-    const answer = await call<MappingAnswer>("/settings/xero/mapping", { method: "PUT", json: mappingBody(picked) }, undefined, (message) => setMarked(new Set(fieldsNamed(message, fields))));
+    const answer = await call<MappingAnswer>(
+      "/settings/xero/mapping",
+      { method: "PUT", json: mappingBody(picked) },
+      undefined,
+      (message) => setMarked(new Set(fieldsNamed(message, fields))),
+    );
     if (answer) onSaved(answer);
   }
 
   return (
-      <form
-        noValidate
-        className="flex flex-col gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void save();
-        }}
-      >
-        {summary && summary.length > 1 ? (
-          <div ref={summaryRef} tabIndex={-1} role="alert" className="rounded-flask-lg border border-flask-set-alert-edge bg-flask-set-alert-bg px-4 py-2.5 text-sm text-flask-set-gray-700 outline-none">
-            <p className="m-0 font-semibold">Some choices are still missing. Choose each one to save the mapping.</p>
-            <ul className="m-0 mt-1 list-disc pl-5">
-              {summary.map((key) => (
-                <li key={key}>
-                  <a
-                    href={`#${idOf(key)}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      document.getElementById(idOf(key))?.focus();
-                    }}
-                    className="text-flask-set-link underline underline-offset-2"
-                  >
-                    {problems[key] ?? byKey.get(key)?.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+    <form
+      noValidate
+      className="flex flex-col gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save();
+      }}
+    >
+      {summary && summary.length > 1 ? (
+        <div
+          ref={summaryRef}
+          tabIndex={-1}
+          role="alert"
+          className="rounded-flask-lg border border-flask-set-alert-edge bg-flask-set-alert-bg px-4 py-2.5 text-sm text-flask-set-gray-700 outline-none"
+        >
+          <p className="m-0 font-semibold">
+            Some choices are still missing. Choose each one to save the mapping.
+          </p>
+          <ul className="m-0 mt-1 list-disc pl-5">
+            {summary.map((key) => (
+              <li key={key}>
+                <a
+                  href={`#${idOf(key)}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById(idOf(key))?.focus();
+                  }}
+                  className="text-flask-set-link underline underline-offset-2"
+                >
+                  {problems[key] ?? byKey.get(key)?.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
-        {MAPPING_GROUPS.map((group, gi) => (
-          <div key={group.title} className={`flex flex-col gap-2 ${gi ? "border-t border-flask-gray-100 pt-4" : ""}`}>
-            <h3 className="m-0 text-[15px] font-semibold leading-[1.375rem] text-flask-set-gray-800">{group.title}</h3>
-            {group.fields.map(({ key, sub, placeholder }) => {
-              const field = byKey.get(key);
-              if (!field) return null;
-              const id = idOf(key);
-              const problem = problems[key];
-              const problemId = `${id}-problem`;
-              if (adding?.key === key) {
-                const emptyNote = adding.refusedEmpty && !adding.name.trim() ? CONTACT_EMPTY : null;
-                return (
-                  <div key={key} className="flex flex-col gap-2">
-                    <p className={LABEL}>{sub}</p>
-                    <div className="flex flex-col gap-2 rounded-flask-lg border border-flask-gray-200 bg-flask-white p-4">
-                      <label className={LABEL} htmlFor={`${id}-new`}>
-                        New Contact <span className="text-flask-set-red-600" aria-hidden="true">*</span>
-                        <span className="sr-only"> (required)</span>
-                      </label>
-                      <input
-                        id={`${id}-new`}
-                        type="text"
-                        autoComplete="off"
-                        autoFocus
-                        aria-required
-                        placeholder="Enter a New Contact"
-                        value={adding.name}
-                        aria-invalid={emptyNote ? true : undefined}
-                        aria-describedby={emptyNote ? `${id}-new-problem` : undefined}
-                        onChange={(e) => setAdding({ ...adding, name: e.target.value })}
-                        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            void createContact();
-                          } else if (e.key === "Escape") {
-                            e.preventDefault();
-                            setAdding(null);
-                          }
-                        }}
-                        className={`${TEXT_INPUT} -mt-0.5 ${emptyNote ? INPUT_INVALID : ""}`}
-                      />
-                      {emptyNote ? (
-                        <p id={`${id}-new-problem`} className={FIELD_PROBLEM}>
-                          {emptyNote}
-                        </p>
-                      ) : null}
-                      <div className="flex gap-3">
-                        <button type="button" onClick={() => setAdding(null)} className={`${BTN_OUTLINE} flex-1`}>
-                          Cancel
-                        </button>
-                        <button type="button" disabled={busy} onClick={() => void createContact()} className={`${BTN_SOLID} flex-1`}>
-                          Create
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
+      {MAPPING_GROUPS.map((group, gi) => (
+        <div
+          key={group.title}
+          className={`flex flex-col gap-2 ${gi ? "border-t border-flask-gray-100 pt-4" : ""}`}
+        >
+          <h3 className="m-0 text-[15px] font-semibold leading-[1.375rem] text-flask-set-gray-800">
+            {group.title}
+          </h3>
+          {group.fields.map(({ key, sub, placeholder }) => {
+            const field = byKey.get(key);
+            if (!field) return null;
+            const id = idOf(key);
+            const problem = problems[key];
+            const problemId = `${id}-problem`;
+            if (adding?.key === key) {
+              const emptyNote = adding.refusedEmpty && !adding.name.trim() ? CONTACT_EMPTY : null;
               return (
                 <div key={key} className="flex flex-col gap-2">
-                  <label className={LABEL} htmlFor={id}>
-                    {sub}
-                    <span className="sr-only"> (required)</span>
-                  </label>
-                  <Combo
-                    id={id}
-                    value={texts[key]}
-                    placeholder={placeholder}
-                    disabled={!editable}
-                    required
-                    rotateChevron
-                    invalid={Boolean(problem) || marked.has(key)}
-                    describedBy={problem ? problemId : undefined}
-                    rows={rows(field)}
-                    onText={(t) => setTexts((all) => ({ ...all, [key]: t }))}
-                    onPick={(optionId) => {
-                      if (optionId === ADD) {
-                        const typed = texts[key].trim();
-                        const current = labelOf(key, picked[key]);
-                        setAdding({ key, name: typed === current ? "" : typed, refusedEmpty: false });
-                        setTexts((all) => ({ ...all, [key]: current }));
-                        return;
-                      }
-                      const option = field.options.find((o) => o.id === optionId);
-                      if (option) pick(key, option);
-                    }}
-                    onBlur={() => setTexts((all) => ({ ...all, [key]: labelOf(key, picked[key]) }))}
-                  />
-                  {problem ? (
-                    <p id={problemId} className={FIELD_PROBLEM}>
-                      {problem}
-                    </p>
-                  ) : null}
+                  <p className={LABEL}>{sub}</p>
+                  <div className="flex flex-col gap-2 rounded-flask-lg border border-flask-gray-200 bg-flask-white p-4">
+                    <label className={LABEL} htmlFor={`${id}-new`}>
+                      New Contact{" "}
+                      <span className="text-flask-set-red-600" aria-hidden="true">
+                        *
+                      </span>
+                      <span className="sr-only"> (required)</span>
+                    </label>
+                    <input
+                      id={`${id}-new`}
+                      type="text"
+                      autoComplete="off"
+                      autoFocus
+                      aria-required
+                      placeholder="Enter a New Contact"
+                      value={adding.name}
+                      aria-invalid={emptyNote ? true : undefined}
+                      aria-describedby={emptyNote ? `${id}-new-problem` : undefined}
+                      onChange={(e) => setAdding({ ...adding, name: e.target.value })}
+                      onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void createContact();
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          setAdding(null);
+                        }
+                      }}
+                      className={`${TEXT_INPUT} -mt-0.5 ${emptyNote ? INPUT_INVALID : ""}`}
+                    />
+                    {emptyNote ? (
+                      <p id={`${id}-new-problem`} className={FIELD_PROBLEM}>
+                        {emptyNote}
+                      </p>
+                    ) : null}
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setAdding(null)}
+                        className={`${BTN_OUTLINE} flex-1`}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void createContact()}
+                        className={`${BTN_SOLID} flex-1`}
+                      >
+                        Create
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
-            })}
-          </div>
-        ))}
+            }
+            return (
+              <div key={key} className="flex flex-col gap-2">
+                <label className={LABEL} htmlFor={id}>
+                  {sub}
+                  <span className="sr-only"> (required)</span>
+                </label>
+                <Combo
+                  id={id}
+                  value={texts[key]}
+                  placeholder={placeholder}
+                  disabled={!editable}
+                  required
+                  rotateChevron
+                  invalid={Boolean(problem) || marked.has(key)}
+                  describedBy={problem ? problemId : undefined}
+                  rows={rows(field)}
+                  onText={(t) => setTexts((all) => ({ ...all, [key]: t }))}
+                  onPick={(optionId) => {
+                    if (optionId === ADD) {
+                      const typed = texts[key].trim();
+                      const current = labelOf(key, picked[key]);
+                      setAdding({ key, name: typed === current ? "" : typed, refusedEmpty: false });
+                      setTexts((all) => ({ ...all, [key]: current }));
+                      return;
+                    }
+                    const option = field.options.find((o) => o.id === optionId);
+                    if (option) pick(key, option);
+                  }}
+                  onBlur={() => setTexts((all) => ({ ...all, [key]: labelOf(key, picked[key]) }))}
+                />
+                {problem ? (
+                  <p id={problemId} className={FIELD_PROBLEM}>
+                    {problem}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ))}
 
-        {editable ? (
-          <div className="mt-3 flex flex-col gap-3">
-            <button type="submit" disabled={!changed || busy} className={SAVE_BTN}>
-              Save Changes
-            </button>
-          </div>
-        ) : null}
-      </form>
+      {editable ? (
+        <div className="mt-3 flex flex-col gap-3">
+          <button type="submit" disabled={!changed || busy} className={SAVE_BTN}>
+            Save Changes
+          </button>
+        </div>
+      ) : null}
+    </form>
   );
 }
 
@@ -430,7 +514,14 @@ export function AccountCodesCard({
       ) : !load.read.live || !load.read.account_codes ? (
         <NotConnected connectHref={connectHref} />
       ) : (
-        <CodesForm key={JSON.stringify(load.read.account_codes)} codes={load.read.account_codes} editable={editable} busy={busy} call={call} onSaved={onSaved} />
+        <CodesForm
+          key={JSON.stringify(load.read.account_codes)}
+          codes={load.read.account_codes}
+          editable={editable}
+          busy={busy}
+          call={call}
+          onSaved={onSaved}
+        />
       )}
     </SettingsCard>
   );
@@ -452,7 +543,9 @@ function CodesForm({
   const searchId = useId();
   const hintId = useId();
   const [query, setQuery] = useState("");
-  const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set(codes.filter((r) => r.selected).map((r) => r.code)));
+  const [ticked, setTicked] = useState<ReadonlySet<string>>(
+    () => new Set(codes.filter((r) => r.selected).map((r) => r.code)),
+  );
   const rows = shownCodes(codes, query);
   const all = selectAllState(rows, ticked);
   const problem = editable ? codesProblem(codes, ticked) : null;
@@ -472,7 +565,10 @@ function CodesForm({
 
   async function save() {
     if (!editable || busy || problem || !changed) return;
-    const answer = await call<CodesAnswer>("/settings/xero/account-codes", { method: "PUT", json: codesBody(ticked) });
+    const answer = await call<CodesAnswer>("/settings/xero/account-codes", {
+      method: "PUT",
+      json: codesBody(ticked),
+    });
     if (answer) onSaved(answer);
   }
 
@@ -502,39 +598,67 @@ function CodesForm({
           }}
           className="block h-11 w-full rounded-flask-lg border border-flask-set-gray-300 bg-flask-white pl-3 pr-11 text-base text-flask-black outline-none transition-[border-color,box-shadow] placeholder:text-flask-set-gray-700 placeholder:opacity-100 focus:border-flask-teal focus:ring-2 focus:ring-flask-teal/25"
         />
-        <Icon name="search" className="pointer-events-none absolute inset-y-0 right-3 items-center text-[20px] text-flask-set-gray-300" />
+        <Icon
+          name="search"
+          className="pointer-events-none absolute inset-y-0 right-3 items-center text-[20px] text-flask-set-gray-300"
+        />
       </div>
 
       {!hasCodes ? (
-        <p className="m-0 py-8 text-center text-sm text-flask-menu/60">No account codes yet - I&apos;ll show them here once Xero&apos;s connected.</p>
+        <p className="m-0 py-8 text-center text-sm text-flask-menu/60">
+          No account codes yet - I&apos;ll show them here once Xero&apos;s connected.
+        </p>
       ) : (
         <>
           <ul
             aria-label="Account codes"
             className="m-0 max-h-[min(24rem,50vh)] list-none overflow-y-auto overscroll-contain rounded-b-flask-lg border-b border-r border-flask-gray-100 p-0 [scrollbar-gutter:stable] [scrollbar-width:thin]"
           >
-            <li className={`sticky top-0 z-10 ${editable ? "bg-flask-white" : "bg-flask-gray-100"}`}>
+            <li
+              className={`sticky top-0 z-10 ${editable ? "bg-flask-white" : "bg-flask-gray-100"}`}
+            >
               <label className="flex min-h-12 cursor-pointer items-center justify-between gap-3 px-3 py-3 sm:px-4">
-                <span className="min-w-0 flex-1 text-right text-base text-flask-menu">Select all</span>
+                <span className="min-w-0 flex-1 text-right text-base text-flask-menu">
+                  Select all
+                </span>
                 <Tick
                   checked={all === "all"}
                   indeterminate={all === "some"}
                   disabled={!editable || rows.length === 0}
                   label="Select all visible account codes"
-                  onChange={(on) => set(rows.map((r) => r.code), on)}
+                  onChange={(on) =>
+                    set(
+                      rows.map((r) => r.code),
+                      on,
+                    )
+                  }
                 />
               </label>
             </li>
             {rows.map((row, i) => (
-              <li key={row.code} className={i ? "border-t border-flask-gray-100" : ""} data-code={row.code}>
+              <li
+                key={row.code}
+                className={i ? "border-t border-flask-gray-100" : ""}
+                data-code={row.code}
+              >
                 <label className="flex min-h-12 cursor-pointer items-center justify-between gap-3 px-3 py-3 sm:px-4">
-                  <span className="min-w-0 flex-1 text-base text-flask-set-gray-700 [overflow-wrap:anywhere]">{codeLabel(row)}</span>
-                  <Tick checked={ticked.has(row.code)} disabled={!editable} onChange={(on) => set([row.code], on)} />
+                  <span className="min-w-0 flex-1 text-base text-flask-set-gray-700 [overflow-wrap:anywhere]">
+                    {codeLabel(row)}
+                  </span>
+                  <Tick
+                    checked={ticked.has(row.code)}
+                    disabled={!editable}
+                    onChange={(on) => set([row.code], on)}
+                  />
                 </label>
               </li>
             ))}
           </ul>
-          {rows.length === 0 ? <p className="m-0 text-center text-sm text-flask-menu/60">No codes match your search.</p> : null}
+          {rows.length === 0 ? (
+            <p className="m-0 text-center text-sm text-flask-menu/60">
+              No codes match your search.
+            </p>
+          ) : null}
         </>
       )}
 
@@ -545,7 +669,12 @@ function CodesForm({
               {problem}
             </p>
           ) : null}
-          <button type="submit" disabled={!changed || Boolean(problem) || busy} aria-describedby={problem ? hintId : undefined} className={SAVE_BTN}>
+          <button
+            type="submit"
+            disabled={!changed || Boolean(problem) || busy}
+            aria-describedby={problem ? hintId : undefined}
+            className={SAVE_BTN}
+          >
             Save Changes
           </button>
         </div>
@@ -572,7 +701,8 @@ function Tick({
   useEffect(() => {
     if (box.current) box.current.indeterminate = indeterminate;
   }, [indeterminate]);
-  const GLYPH = "pointer-events-none absolute inset-0 m-auto hidden h-3.5 w-3.5 fill-flask-white peer-disabled:opacity-40";
+  const GLYPH =
+    "pointer-events-none absolute inset-0 m-auto hidden h-3.5 w-3.5 fill-flask-white peer-disabled:opacity-40";
   return (
     <span className="relative inline-flex h-4 w-4 shrink-0">
       <input
@@ -584,10 +714,18 @@ function Tick({
         onChange={(e) => onChange(e.target.checked)}
         className="peer m-0 h-4 w-4 cursor-pointer appearance-none rounded-flask border border-flask-menu/40 bg-flask-white checked:border-flask-teal checked:bg-flask-teal indeterminate:border-flask-teal indeterminate:bg-flask-teal focus:outline-none focus-visible:ring-2 focus-visible:ring-flask-teal/50 disabled:cursor-not-allowed disabled:opacity-40"
       />
-      <svg aria-hidden="true" viewBox="0 0 24 24" className={`${GLYPH} ${indeterminate ? "" : "peer-checked:block"}`}>
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className={`${GLYPH} ${indeterminate ? "" : "peer-checked:block"}`}
+      >
         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
       </svg>
-      <svg aria-hidden="true" viewBox="0 0 24 24" className={`${GLYPH} ${indeterminate ? "block" : ""}`}>
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className={`${GLYPH} ${indeterminate ? "block" : ""}`}
+      >
         <path d="M6 11h12v2H6z" />
       </svg>
     </span>

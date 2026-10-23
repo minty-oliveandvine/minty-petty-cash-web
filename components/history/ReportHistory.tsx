@@ -52,7 +52,11 @@ function saveFile(blob: Blob, name: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-type Load = { kind: "loading" } | { kind: "ready"; page: HistoryPage } | { kind: "refused"; message: string } | { kind: "failed"; message: string };
+type Load =
+  | { kind: "loading" }
+  | { kind: "ready"; page: HistoryPage }
+  | { kind: "refused"; message: string }
+  | { kind: "failed"; message: string };
 
 /** Flask's `amount()` macro sizes, by how long the figure is. */
 const AMOUNT_SIZE = [
@@ -63,7 +67,8 @@ const AMOUNT_SIZE = [
 // Flask's columns are a fixed 62 / 74 / 90 / 116px; here those are minimums, so a long figure widens
 // its column instead of running into the next one (see the amounts' row below)
 const AMOUNT_COL = "flex flex-col min-[640px]:min-w-[90px] min-[1024px]:min-w-[116px]";
-const AMOUNT_LABEL = "text-[10px] min-[414px]:text-xs min-[640px]:text-sm min-[1024px]:text-xl font-semibold text-flask-gray-600";
+const AMOUNT_LABEL =
+  "text-[10px] min-[414px]:text-xs min-[640px]:text-sm min-[1024px]:text-xl font-semibold text-flask-gray-600";
 
 const BADGE_LOOK: Record<ReturnType<typeof historyBadge>, { bg: string; ink: string }> = {
   Published: { bg: "bg-flask-badge-published-bg", ink: "text-flask-badge-published-ink" },
@@ -72,11 +77,13 @@ const BADGE_LOOK: Record<ReturnType<typeof historyBadge>, { bg: string; ink: str
   Submitted: { bg: "bg-flask-red-soft", ink: "text-flask-red" },
 };
 
-const PAGER = "px-3 py-2 text-sm sm:px-4 sm:py-2 sm:text-base border border-flask-gray-300 rounded-flask-xl text-center";
+const PAGER =
+  "px-3 py-2 text-sm sm:px-4 sm:py-2 sm:text-base border border-flask-gray-300 rounded-flask-xl text-center";
 const PAGER_LINK = `${PAGER} text-flask-gray-700 hover:bg-flask-gray-50 transition-colors`;
 // 44px high for a finger without moving Flask's layout (the pager's 36px buttons, the 32px ⋮ and chevron)
 const TALLER = "relative before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']";
-const MENU_ITEM = "w-full px-4 py-3 hover:bg-flask-gray-50 transition-colors cursor-pointer flex items-center text-flask-gray-600 text-left";
+const MENU_ITEM =
+  "w-full px-4 py-3 hover:bg-flask-gray-50 transition-colors cursor-pointer flex items-center text-flask-gray-600 text-left";
 
 /**
  * Report history - a pixel-faithful port of Flask's ORIGINAL `report_history/report_history.html`
@@ -111,7 +118,8 @@ export function ReportHistory({ filters }: { filters: HistoryFilters }) {
         (err: unknown): Load | null => {
           // A 401 has already gone back through the hand-off.
           if (err instanceof ApiError && err.status === 401) return null;
-          if (err instanceof ApiError && err.status === 422) return { kind: "refused", message: err.message };
+          if (err instanceof ApiError && err.status === 422)
+            return { kind: "refused", message: err.message };
           return { kind: "failed", message: err instanceof ApiError ? err.message : UNREACHABLE };
         },
       ),
@@ -176,7 +184,9 @@ function HistoryBody({
 }) {
   const toast = useToast();
   const router = useRouter();
-  const [picked, setPicked] = useState<string[]>(filters.start && filters.end ? [filters.start, filters.end] : []);
+  const [picked, setPicked] = useState<string[]>(
+    filters.start && filters.end ? [filters.start, filters.end] : [],
+  );
   const [calendar, setCalendar] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [menu, setMenu] = useState<string | null>(null);
@@ -185,7 +195,12 @@ function HistoryBody({
   // a ref, not state: a second click in the same frame must see the first one
   const acting = useRef(false);
   const edit = useEditReport(entityId, entityName, acting);
-  const publish = usePublish({ place: "history", entityId, entityName, onChanged: () => void reload() });
+  const publish = usePublish({
+    place: "history",
+    entityId,
+    entityName,
+    onChanged: () => void reload(),
+  });
   const closeCalendar = useCallback(() => setCalendar(false), []);
   const range = pickedRange(picked);
   const csv = csvQuery(range.start, range.end);
@@ -241,7 +256,8 @@ function HistoryBody({
       saveFile(file.blob, file.filename ?? csvFileName(csv.start_date, csv.end_date));
       toast(CSV_EXPORTED, "success");
     } catch (err) {
-      if (!(err instanceof ApiError && err.status === 401)) toast(err instanceof ApiError ? err.message : UNREACHABLE, "error");
+      if (!(err instanceof ApiError && err.status === 401))
+        toast(err instanceof ApiError ? err.message : UNREACHABLE, "error");
     } finally {
       setExporting(false);
     }
@@ -257,7 +273,8 @@ function HistoryBody({
       await reload();
       toast(HISTORY_DELETED, "success");
     } catch (err) {
-      if (!(err instanceof ApiError && err.status === 401)) toast(err instanceof ApiError ? err.message : UNREACHABLE, "error");
+      if (!(err instanceof ApiError && err.status === 401))
+        toast(err instanceof ApiError ? err.message : UNREACHABLE, "error");
     } finally {
       acting.current = false;
       setBusy(null);
@@ -301,7 +318,15 @@ function HistoryBody({
               </div>
             ))}
           </div>
-          {calendar ? <RangeCalendar picked={picked} onPick={(day) => setPicked((p) => pickDay(p, day))} onClear={clear} onSearch={search} onClose={closeCalendar} /> : null}
+          {calendar ? (
+            <RangeCalendar
+              picked={picked}
+              onPick={(day) => setPicked((p) => pickDay(p, day))}
+              onClear={clear}
+              onSearch={search}
+              onClose={closeCalendar}
+            />
+          ) : null}
         </div>
 
         <div className="flex space-x-2">
@@ -314,15 +339,38 @@ function HistoryBody({
           >
             {exporting ? (
               <>
-                <svg className="mr-2 h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                <svg
+                  className="mr-2 h-5 w-5 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
                 </svg>
                 Exporting...
               </>
             ) : (
               <>
-                <svg width="15" height="16" viewBox="0 0 11 12" fill="none" className="mr-2" aria-hidden="true">
+                <svg
+                  width="15"
+                  height="16"
+                  viewBox="0 0 11 12"
+                  fill="none"
+                  className="mr-2"
+                  aria-hidden="true"
+                >
                   <path
                     d="M0.501831 10.3763H10.9981V11.543H0.501831V10.3763ZM6.33308 6.9813L9.87848 3.43464L10.6949 4.26297L5.74996 9.20964L0.805056 4.26297L1.62143 3.43464L5.16683 6.9813V0.459636H6.33308V6.9813Z"
                     className="fill-flask-white"
@@ -340,14 +388,26 @@ function HistoryBody({
   const overlays = (
     <>
       {busy ? <LoadingOverlay text={busy} /> : null}
-      {confirmDelete ? <DeleteReportModal wasPublished={confirmDelete.was_published} onCancel={() => setConfirmDelete(null)} onDelete={() => void remove(confirmDelete)} /> : null}
+      {confirmDelete ? (
+        <DeleteReportModal
+          wasPublished={confirmDelete.was_published}
+          onCancel={() => setConfirmDelete(null)}
+          onDelete={() => void remove(confirmDelete)}
+        />
+      ) : null}
       {publish.ui}
     </>
   );
 
   const page = load.kind === "ready" ? load.page : null;
   return (
-    <PhoneCard acronym={acronym} backHref={pettyCashHome(entityId, entityName)} toolbar={toolbar} overlays={overlays} flush>
+    <PhoneCard
+      acronym={acronym}
+      backHref={pettyCashHome(entityId, entityName)}
+      toolbar={toolbar}
+      overlays={overlays}
+      flush
+    >
       <div className="space-y-4 bg-flask-gray-50 p-6 pt-8">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-flask-gray-900">Report Results</h2>
@@ -365,7 +425,11 @@ function HistoryBody({
         {load.kind === "failed" ? (
           <div className="rounded-flask-2xl bg-flask-white p-4" role="alert">
             <p className="text-sm text-flask-gray-700">{load.message}</p>
-            <button type="button" onClick={retry} className="mt-4 rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white transition-colors hover:bg-flask-teal/80">
+            <button
+              type="button"
+              onClick={retry}
+              className="mt-4 rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white transition-colors hover:bg-flask-teal/80"
+            >
               Try again
             </button>
           </div>
@@ -397,11 +461,25 @@ function HistoryBody({
         ))}
       </div>
 
-      {page && page.total_pages > 1 ? <Pager page={page} filters={filters} entityId={entityId} entityName={entityName} inApp={inApp} /> : null}
+      {page && page.total_pages > 1 ? (
+        <Pager
+          page={page}
+          filters={filters}
+          entityId={entityId}
+          entityName={entityName}
+          inApp={inApp}
+        />
+      ) : null}
 
       {page && page.reports.length === 0 ? (
         <div className="py-12 text-center">
-          <svg className="mx-auto mb-4 h-12 w-12 text-flask-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg
+            className="mx-auto mb-4 h-12 w-12 text-flask-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -455,7 +533,9 @@ function HistoryEntry({
   const reasons = badge === "Publish failed" && row.publish_reasons.length > 0;
   const draft = row.status === "draft";
   // a draft resumes at its own step of the wizard, in this app
-  const view = draft ? stepHref(entityId, entityName, draftStep(row), row.transaction_date) : reportHref(entityId, entityName, row.id, "summary");
+  const view = draft
+    ? stepHref(entityId, entityName, draftStep(row), row.transaction_date)
+    : reportHref(entityId, entityName, row.id, "summary");
   const open = (e: MouseEvent<HTMLAnchorElement>) => inApp(e, view);
   const sales = historyAmount(row.total_sales, currencyCode);
   const expenses = historyAmount(row.total_expenses, currencyCode);
@@ -464,7 +544,11 @@ function HistoryEntry({
   // (a partly published one is re-sent selectively); Publish confirms only for one edited after a publish
   const ask: PublishAsk = {
     reportId: row.id,
-    confirm: republish ? { duplicate: badge === "Published" } : row.was_published ? { duplicate: true } : null,
+    confirm: republish
+      ? { duplicate: badge === "Published" }
+      : row.was_published
+        ? { duplicate: true }
+        : null,
   };
 
   return (
@@ -473,11 +557,15 @@ function HistoryEntry({
         <div className="flex-1">
           <div className="flex items-center justify-between gap-0.5 min-[414px]:gap-1 min-[640px]:gap-2">
             <div className="flex flex-col items-center gap-1 min-[414px]:gap-1.5 min-[640px]:gap-2">
-              <span className="text-[8px] text-flask-gray-600 min-[414px]:text-[9px] min-[640px]:text-[10px] min-[1024px]:text-sm">{day.date}</span>
+              <span className="text-[8px] text-flask-gray-600 min-[414px]:text-[9px] min-[640px]:text-[10px] min-[1024px]:text-sm">
+                {day.date}
+              </span>
               <div
                 className={`${day.weekend ? "bg-flask-weekend" : "bg-flask-teal"} flex h-[40px] w-[40px] items-center justify-center rounded-full text-flask-white min-[414px]:h-[45px] min-[414px]:w-[45px] min-[640px]:h-[50px] min-[640px]:w-[50px]`}
               >
-                <span className="text-[10px] font-semibold min-[414px]:text-xs min-[640px]:text-sm">{day.weekday}</span>
+                <span className="text-[10px] font-semibold min-[414px]:text-xs min-[640px]:text-sm">
+                  {day.weekday}
+                </span>
               </div>
             </div>
             {/* Below 640px Sales sits over Expenses: side by side, Flask's row ran past the card at a
@@ -485,11 +573,15 @@ function HistoryEntry({
             <div className="flex min-w-0 flex-col items-start gap-1 min-[640px]:flex-1 min-[640px]:flex-row min-[640px]:items-center min-[640px]:justify-center min-[640px]:gap-12 min-[1024px]:gap-16 min-[1280px]:gap-40">
               <div className={AMOUNT_COL}>
                 <span className={AMOUNT_LABEL}>Sales</span>
-                <span className={`${AMOUNT_SIZE[sales.tier]} font-semibold text-flask-green`}>{sales.text}</span>
+                <span className={`${AMOUNT_SIZE[sales.tier]} font-semibold text-flask-green`}>
+                  {sales.text}
+                </span>
               </div>
               <div className={AMOUNT_COL}>
                 <span className={AMOUNT_LABEL}>Expenses</span>
-                <span className={`${AMOUNT_SIZE[expenses.tier]} font-semibold text-flask-red-500`}>{expenses.text}</span>
+                <span className={`${AMOUNT_SIZE[expenses.tier]} font-semibold text-flask-red-500`}>
+                  {expenses.text}
+                </span>
               </div>
             </div>
             <div className="flex flex-col min-[414px]:mr-4 min-[640px]:mr-6 min-[1024px]:mr-20">
@@ -506,7 +598,12 @@ function HistoryEntry({
                     className={`inline-flex cursor-help items-center whitespace-nowrap text-[9px] font-medium focus:outline-none min-[414px]:text-[10px] min-[640px]:text-xs ${look.ink}`}
                   >
                     {badge}
-                    <svg className="ml-1 h-3 w-3 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <svg
+                      className="ml-1 h-3 w-3 shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                      aria-hidden="true"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
@@ -515,7 +612,11 @@ function HistoryEntry({
                     </svg>
                   </button>
                 ) : (
-                  <span className={`inline-flex items-center whitespace-nowrap text-[9px] font-medium min-[414px]:text-[10px] min-[640px]:text-xs ${look.ink}`}>{badge}</span>
+                  <span
+                    className={`inline-flex items-center whitespace-nowrap text-[9px] font-medium min-[414px]:text-[10px] min-[640px]:text-xs ${look.ink}`}
+                  >
+                    {badge}
+                  </span>
                 )}
                 {reasons ? (
                   <div
@@ -527,17 +628,37 @@ function HistoryEntry({
                     <p className="mb-1 font-semibold">Publish issues:</p>
                     <ul className="space-y-1 whitespace-normal break-words">
                       {row.publish_reasons.map((reason, i) => (
-                        <li key={i} className={`flex items-start gap-1.5 ${reason.resolved ? "rounded bg-flask-green-500/20 px-1 py-0.5" : ""}`}>
+                        <li
+                          key={i}
+                          className={`flex items-start gap-1.5 ${reason.resolved ? "rounded bg-flask-green-500/20 px-1 py-0.5" : ""}`}
+                        >
                           {reason.resolved ? (
                             <>
-                              <svg className="mt-px h-3 w-3 shrink-0 text-flask-green-400" fill="currentColor" viewBox="0 0 20 20" role="img" aria-label="Resolved">
-                                <path fillRule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 011.4-1.4l3.3 3.3 6.8-6.8a1 1 0 011.4 0z" clipRule="evenodd" />
+                              <svg
+                                className="mt-px h-3 w-3 shrink-0 text-flask-green-400"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                                role="img"
+                                aria-label="Resolved"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 011.4-1.4l3.3 3.3 6.8-6.8a1 1 0 011.4 0z"
+                                  clipRule="evenodd"
+                                />
                               </svg>
-                              <span className="text-flask-green-300 line-through">{reason.text}</span>
+                              <span className="text-flask-green-300 line-through">
+                                {reason.text}
+                              </span>
                             </>
                           ) : (
                             <>
-                              <svg className="mt-px h-3 w-3 shrink-0 text-flask-red-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                              <svg
+                                className="mt-px h-3 w-3 shrink-0 text-flask-red-400"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                                aria-hidden="true"
+                              >
                                 <path
                                   fillRule="evenodd"
                                   d="M10 8.586 5.707 4.293 4.293 5.707 8.586 10l-4.293 4.293 1.414 1.414L10 11.414l4.293 4.293 1.414-1.414L11.414 10l4.293-4.293-1.414-1.414L10 8.586z"
@@ -577,29 +698,65 @@ function HistoryEntry({
                   </svg>
                 </button>
                 {menuOpen ? (
-                  <div id={menuId} role="menu" aria-label="Actions" className="absolute right-0 top-full z-40 mt-2 min-w-[152px] rounded-flask-xl border border-flask-gray-200 bg-flask-white py-2 shadow-flask-xl">
+                  <div
+                    id={menuId}
+                    role="menu"
+                    aria-label="Actions"
+                    className="absolute right-0 top-full z-40 mt-2 min-w-[152px] rounded-flask-xl border border-flask-gray-200 bg-flask-white py-2 shadow-flask-xl"
+                  >
                     <div className="flex flex-col">
                       {row.permissions.edit ? (
-                        <button type="button" role="menuitem" title="Edit Report" onClick={onEdit} className={MENU_ITEM}>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          title="Edit Report"
+                          onClick={onEdit}
+                          className={MENU_ITEM}
+                        >
                           <span className="text-sm font-medium">Edit</span>
                         </button>
                       ) : null}
                       {row.permissions.delete ? (
-                        <button type="button" role="menuitem" title="Delete Report" onClick={onDelete} className={MENU_ITEM}>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          title="Delete Report"
+                          onClick={onDelete}
+                          className={MENU_ITEM}
+                        >
                           <span className="text-sm font-medium">Delete</span>
                         </button>
                       ) : null}
-                      <a href={view} role="menuitem" title="View Report" onClick={open} className={MENU_ITEM}>
+                      <a
+                        href={view}
+                        role="menuitem"
+                        title="View Report"
+                        onClick={open}
+                        className={MENU_ITEM}
+                      >
                         <span className="text-sm font-medium">View</span>
                       </a>
                       {canPublish ? (
                         draft ? (
-                          <span role="menuitem" aria-disabled="true" title="Please finish the report before publishing" className={`${MENU_ITEM} cursor-not-allowed opacity-50 hover:bg-transparent`}>
+                          <span
+                            role="menuitem"
+                            aria-disabled="true"
+                            title="Please finish the report before publishing"
+                            className={`${MENU_ITEM} cursor-not-allowed opacity-50 hover:bg-transparent`}
+                          >
                             <span className="text-sm font-medium">Publish</span>
                           </span>
                         ) : (
-                          <button type="button" role="menuitem" title={republish ? "Republish to Xero" : "Publish to Xero"} onClick={() => onPublish(ask)} className={MENU_ITEM}>
-                            <span className="text-sm font-medium">{republish ? "Republish" : "Publish"}</span>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            title={republish ? "Republish to Xero" : "Publish to Xero"}
+                            onClick={() => onPublish(ask)}
+                            className={MENU_ITEM}
+                          >
+                            <span className="text-sm font-medium">
+                              {republish ? "Republish" : "Publish"}
+                            </span>
                           </button>
                         )
                       ) : null}
@@ -614,8 +771,20 @@ function HistoryEntry({
                 aria-label={`View the ${day.date} report`}
                 className="group relative flex h-8 w-8 cursor-pointer items-center justify-center text-flask-gray-400 transition-colors before:absolute before:-inset-x-1.5 before:-bottom-2 before:-top-1 before:content-['']"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="1.5"
+                  stroke="currentColor"
+                  className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8.25 4.5l7.5 7.5-7.5 7.5"
+                  />
                 </svg>
               </a>
             </div>
@@ -627,16 +796,36 @@ function HistoryEntry({
 }
 
 /** Flask's pager: "Showing 1 to 10 of 23 reports" ("1-10/23" on a phone), Previous, the pages, Next. */
-function Pager({ page, filters, entityId, entityName, inApp }: { page: HistoryPage; filters: HistoryFilters; entityId: string; entityName: string; inApp: InApp }) {
+function Pager({
+  page,
+  filters,
+  entityId,
+  entityName,
+  inApp,
+}: {
+  page: HistoryPage;
+  filters: HistoryFilters;
+  entityId: string;
+  entityName: string;
+  inApp: InApp;
+}) {
   const { from, to } = shownRange(page.page, page.total_count);
-  const href = (p: number) => historyHref(entityId, entityName, { start: filters.start, end: filters.end, page: p });
+  const href = (p: number) =>
+    historyHref(entityId, entityName, { start: filters.start, end: filters.end, page: p });
   const step = (p: number, label: string, on: boolean) =>
     on ? (
-      <a href={href(p)} onClick={(e) => inApp(e, href(p))} className={`${PAGER_LINK} ${TALLER} min-w-[70px] font-medium`}>
+      <a
+        href={href(p)}
+        onClick={(e) => inApp(e, href(p))}
+        className={`${PAGER_LINK} ${TALLER} min-w-[70px] font-medium`}
+      >
         {label}
       </a>
     ) : (
-      <span aria-disabled="true" className={`${PAGER} min-w-[70px] cursor-not-allowed font-medium text-flask-gray-400 opacity-50`}>
+      <span
+        aria-disabled="true"
+        className={`${PAGER} min-w-[70px] cursor-not-allowed font-medium text-flask-gray-400 opacity-50`}
+      >
         {label}
       </span>
     );
@@ -661,15 +850,27 @@ function Pager({ page, filters, entityId, entityName, inApp }: { page: HistoryPa
           <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-1.5">
             {pagerItems(page.page, page.total_pages).map((p, i) =>
               p === "gap" ? (
-                <span key={`gap-${i}`} className="px-1 text-sm text-flask-gray-400 sm:px-2 sm:text-base">
+                <span
+                  key={`gap-${i}`}
+                  className="px-1 text-sm text-flask-gray-400 sm:px-2 sm:text-base"
+                >
                   ...
                 </span>
               ) : p === page.page ? (
-                <span key={p} aria-current="page" className="min-w-[36px] rounded-flask-xl bg-flask-teal px-3 py-2 text-center text-sm font-medium text-flask-white sm:min-w-[44px] sm:px-4 sm:py-2 sm:text-base">
+                <span
+                  key={p}
+                  aria-current="page"
+                  className="min-w-[36px] rounded-flask-xl bg-flask-teal px-3 py-2 text-center text-sm font-medium text-flask-white sm:min-w-[44px] sm:px-4 sm:py-2 sm:text-base"
+                >
                   {p}
                 </span>
               ) : (
-                <a key={p} href={href(p)} onClick={(e) => inApp(e, href(p))} className={`${PAGER_LINK} ${TALLER} min-w-[36px] sm:min-w-[44px]`}>
+                <a
+                  key={p}
+                  href={href(p)}
+                  onClick={(e) => inApp(e, href(p))}
+                  className={`${PAGER_LINK} ${TALLER} min-w-[36px] sm:min-w-[44px]`}
+                >
                   {p}
                 </a>
               ),

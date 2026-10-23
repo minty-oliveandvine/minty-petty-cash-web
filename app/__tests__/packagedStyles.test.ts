@@ -24,7 +24,9 @@ const PKG_SRC = "node_modules/@minty/shared/src";
 let compiled = "";
 
 beforeAll(async () => {
-  compiled = (await postcss([tailwind()]).process(readFileSync(CSS, "utf8"), { from: resolve(CSS) })).css;
+  compiled = (
+    await postcss([tailwind()]).process(readFileSync(CSS, "utf8"), { from: resolve(CSS) })
+  ).css;
 }, 120_000);
 
 describe("the stylesheet", () => {
@@ -62,7 +64,9 @@ describe("the stylesheet", () => {
     // over the shared sheet (or be overridden by it).
     for (const file of [CSS, "app/styles/flask-theme.css"]) {
       const own = readFileSync(file, "utf8");
-      expect(own, file).not.toMatch(/^\s*--(radius-(sm|md|lg|xl)|text-[\w-]+|color-(brand|surface|border|text|action|state|status|module|accent|overlay)-[\w-]+):/m);
+      expect(own, file).not.toMatch(
+        /^\s*--(radius-(sm|md|lg|xl)|text-[\w-]+|color-(brand|surface|border|text|action|state|status|module|accent|overlay)-[\w-]+):/m,
+      );
     }
   });
 

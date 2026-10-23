@@ -6,7 +6,20 @@
  * (`server_today`, Hong Kong) only.
  */
 
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 const MONTHS_LONG = [
   "January",
   "February",
@@ -67,7 +80,11 @@ export function monthOf(iso: string): { year: number; month: number } {
   return { year: y, month: m - 1 };
 }
 
-export function shiftMonth(year: number, month: number, by: number): { year: number; month: number } {
+export function shiftMonth(
+  year: number,
+  month: number,
+  by: number,
+): { year: number; month: number } {
   const date = new Date(Date.UTC(year, month + by, 1));
   return { year: date.getUTCFullYear(), month: date.getUTCMonth() };
 }

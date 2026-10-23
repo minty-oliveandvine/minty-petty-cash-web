@@ -38,9 +38,27 @@ describe("the Total Sales figures", () => {
   it("sums electronic and delivery from the method rows, cash its own", () => {
     const sales = {
       methods: [
-        { sale_id: "1", name: "Visa", value_name: "visa_sales", type: "electronic" as const, amount: 100.1 },
-        { sale_id: "2", name: "Alipay", value_name: "alipay_sales", type: "electronic" as const, amount: 0.2 },
-        { sale_id: "3", name: "Keeta", value_name: "keeta_sales", type: "delivery" as const, amount: 50 },
+        {
+          sale_id: "1",
+          name: "Visa",
+          value_name: "visa_sales",
+          type: "electronic" as const,
+          amount: 100.1,
+        },
+        {
+          sale_id: "2",
+          name: "Alipay",
+          value_name: "alipay_sales",
+          type: "electronic" as const,
+          amount: 0.2,
+        },
+        {
+          sale_id: "3",
+          name: "Keeta",
+          value_name: "keeta_sales",
+          type: "delivery" as const,
+          amount: 50,
+        },
       ],
       cash: 600,
       total: 750.3,
@@ -65,7 +83,9 @@ describe("expenses by account (Flask's grouping, the pie's top seven and Other e
   const line = (item: string, amount: number) => ({ item, amount });
 
   it("adds up an account's lines and puts the largest first", () => {
-    expect(expenseGroups([line("Food", 10), line("Rent", 100), line("Food", 15.5), line("Fuel", 25.5)])).toEqual([
+    expect(
+      expenseGroups([line("Food", 10), line("Rent", 100), line("Food", 15.5), line("Fuel", 25.5)]),
+    ).toEqual([
       { item: "Rent", amount: 100 },
       { item: "Food", amount: 25.5 },
       { item: "Fuel", amount: 25.5 },
@@ -79,7 +99,15 @@ describe("expenses by account (Flask's grouping, the pie's top seven and Other e
     const groups = expenseGroups(Array.from({ length: 10 }, (_, i) => line(`A${i}`, 100 - i)));
     const slices = pieSlices(groups);
     expect(slices).toHaveLength(8);
-    expect(slices.slice(0, 7).map((s) => s.name)).toEqual(["A0", "A1", "A2", "A3", "A4", "A5", "A6"]);
+    expect(slices.slice(0, 7).map((s) => s.name)).toEqual([
+      "A0",
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5",
+      "A6",
+    ]);
     expect(slices[7]).toEqual({ name: OTHER_EXPENSES, amount: 93 + 92 + 91, other: true });
   });
   it("has no Other expenses with seven accounts or fewer", () => {
@@ -89,7 +117,11 @@ describe("expenses by account (Flask's grouping, the pie's top seven and Other e
 });
 
 describe("the donut (Flask's initializePieChart)", () => {
-  const slice = (amount: number, other = false) => ({ name: other ? OTHER_EXPENSES : "x", amount, other });
+  const slice = (amount: number, other = false) => ({
+    name: other ? OTHER_EXPENSES : "x",
+    amount,
+    other,
+  });
 
   it("shares the circle by amount, from the top, with a 0.03 gap after each slice", () => {
     const arcs = pieArcs([slice(300), slice(100)]);
@@ -118,14 +150,17 @@ describe("the donut (Flask's initializePieChart)", () => {
     expect(pieArcs([slice(0)])).toEqual([]);
   });
   it("closes every segment's path", () => {
-    expect(arcPath({ start: 0, end: 1 }, 100, 100, 60, 80)).toMatch(/^M .* A 80 80 0 0 1 .* A 60 60 0 0 0 .* Z$/);
+    expect(arcPath({ start: 0, end: 1 }, 100, 100, 60, 80)).toMatch(
+      /^M .* A 80 80 0 0 1 .* A 60 60 0 0 0 .* Z$/,
+    );
     expect(arcPath({ start: 0, end: 4 }, 100, 100, 60, 80)).toContain("A 80 80 0 1 1");
     expect(arcPath({ start: 0, end: 0.005 }, 100, 100, 60, 80)).not.toContain(" A ");
   });
 });
 
 describe("Sales History (Flask's initializeBarChart, scrollable, seven to a view)", () => {
-  const days = (totals: number[]) => totals.map((total, i) => ({ date: `2026-10-${String(i + 1).padStart(2, "0")}`, total }));
+  const days = (totals: number[]) =>
+    totals.map((total, i) => ({ date: `2026-10-${String(i + 1).padStart(2, "0")}`, total }));
 
   it("scales the tallest bar to the full drawing height, the others in proportion", () => {
     const { bars, chartHeight, top } = barLayout(days([50, 200, 100]), 700, 240, false);

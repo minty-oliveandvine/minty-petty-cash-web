@@ -7,10 +7,22 @@ import { WEEKDAY_HEADINGS, formatMonth, monthGrid, monthOf, shiftMonth } from "@
 const TODAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Hong_Kong" });
 
 /** Flatpickr's arrows (its own SVGs). */
-const PREV = "M5.207 8.471l7.146 7.147-0.707 0.707-7.853-7.854 7.854-7.853 0.707 0.707-7.147 7.146z";
-const NEXT = "M13.207 8.472l-7.854 7.854-0.707-0.707 7.146-7.146-7.146-7.148 0.707-0.707 7.854 7.854z";
+const PREV =
+  "M5.207 8.471l7.146 7.147-0.707 0.707-7.853-7.854 7.854-7.853 0.707 0.707-7.147 7.146z";
+const NEXT =
+  "M13.207 8.472l-7.854 7.854-0.707-0.707 7.146-7.146-7.146-7.148 0.707-0.707 7.854 7.854z";
 
-function Arrow({ d, label, onClick, side }: { d: string; label: string; onClick: () => void; side: "left" | "right" }) {
+function Arrow({
+  d,
+  label,
+  onClick,
+  side,
+}: {
+  d: string;
+  label: string;
+  onClick: () => void;
+  side: "left" | "right";
+}) {
   return (
     <button
       type="button"
@@ -18,7 +30,13 @@ function Arrow({ d, label, onClick, side }: { d: string; label: string; onClick:
       aria-label={label}
       className={`group absolute top-0 z-[3] flex h-[34px] items-center px-[10px] ${side === "left" ? "left-0" : "right-0"}`}
     >
-      <svg width="14" height="14" viewBox="0 0 17 17" className="fill-flask-black/90 group-hover:fill-flask-calendar-arrow-hover" aria-hidden="true">
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 17 17"
+        className="fill-flask-black/90 group-hover:fill-flask-calendar-arrow-hover"
+        aria-hidden="true"
+      >
         <path d={d} />
       </svg>
     </button>
@@ -77,7 +95,9 @@ export function RangeCalendar({
   }, [onClose]);
 
   const [start, end] = [picked[0] ?? "", picked[1] ?? picked[0] ?? ""];
-  const months = Array.from({ length: two ? 2 : 1 }, (_, i) => shiftMonth(view.year, view.month, i));
+  const months = Array.from({ length: two ? 2 : 1 }, (_, i) =>
+    shiftMonth(view.year, view.month, i),
+  );
 
   return (
     <div
@@ -88,8 +108,18 @@ export function RangeCalendar({
       className="absolute left-3 top-full z-[60] mt-0.5 w-[calc(100vw-24px)] max-w-[360px] rounded-flask-xl bg-flask-white text-sm shadow-flask-calendar outline-none sm:left-6 sm:right-6 sm:w-auto sm:max-w-none"
     >
       <div className="relative flex">
-        <Arrow d={PREV} label="Previous month" side="left" onClick={() => setView((v) => shiftMonth(v.year, v.month, -1))} />
-        <Arrow d={NEXT} label="Next month" side="right" onClick={() => setView((v) => shiftMonth(v.year, v.month, 1))} />
+        <Arrow
+          d={PREV}
+          label="Previous month"
+          side="left"
+          onClick={() => setView((v) => shiftMonth(v.year, v.month, -1))}
+        />
+        <Arrow
+          d={NEXT}
+          label="Next month"
+          side="right"
+          onClick={() => setView((v) => shiftMonth(v.year, v.month, 1))}
+        />
         {months.map(({ year, month }) => (
           <div key={`${year}-${month}`} className="min-w-0 flex-1">
             {/* Flatpickr's month name, then its lighter year */}
@@ -98,19 +128,36 @@ export function RangeCalendar({
             </p>
             <div className="flex h-[28px] items-center" aria-hidden="true">
               {WEEKDAY_HEADINGS.map((w) => (
-                <span key={w} className="flex-1 text-center text-[90%] font-bold text-flask-black/54">
+                <span
+                  key={w}
+                  className="flex-1 text-center text-[90%] font-bold text-flask-black/54"
+                >
                   {w}
                 </span>
               ))}
             </div>
             <div className="flex flex-wrap justify-around sm:justify-start">
               {monthGrid(year, month).map(({ iso, inMonth }) => {
-                if (!inMonth) return <span key={iso} className="invisible h-[42px] w-[14.2857143%] max-w-[39px] sm:h-[39px] sm:max-w-[14.2857143%]" aria-hidden="true" />;
+                if (!inMonth)
+                  return (
+                    <span
+                      key={iso}
+                      className="invisible h-[42px] w-[14.2857143%] max-w-[39px] sm:h-[39px] sm:max-w-[14.2857143%]"
+                      aria-hidden="true"
+                    />
+                  );
                 const isStart = iso === start;
                 const isEnd = iso === end;
                 const ends = isStart || isEnd;
                 const between = !!start && iso > start && iso < end;
-                const shape = isStart && isEnd ? "rounded-[50px]" : isStart ? "rounded-l-[50px] rounded-r-none" : isEnd ? "rounded-l-none rounded-r-[50px]" : "rounded-[150px] sm:rounded-[10px]";
+                const shape =
+                  isStart && isEnd
+                    ? "rounded-[50px]"
+                    : isStart
+                      ? "rounded-l-[50px] rounded-r-none"
+                      : isEnd
+                        ? "rounded-l-none rounded-r-[50px]"
+                        : "rounded-[150px] sm:rounded-[10px]";
                 const look = ends
                   ? "border-flask-teal bg-flask-teal text-flask-white hover:border-flask-teal-hover hover:bg-flask-teal-hover"
                   : between

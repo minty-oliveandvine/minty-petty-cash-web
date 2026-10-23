@@ -13,22 +13,52 @@ const BADGE = "shrink-0 whitespace-nowrap rounded-full px-2 py-1 text-xs font-me
  * Xero), Publish failed, Draft (a draft, or a report not started yet), else Submitted.
  */
 export function ReportBadge({ draft }: { draft: OpeningPage["draft"] }) {
-  if (draft?.xero_integrated) return <span className={`${BADGE} bg-flask-badge-published-bg text-flask-badge-published-ink`}>Published</span>;
+  if (draft?.xero_integrated)
+    return (
+      <span className={`${BADGE} bg-flask-badge-published-bg text-flask-badge-published-ink`}>
+        Published
+      </span>
+    );
   if (draft?.publishing_status === "failed") {
-    return <span className={`${BADGE} bg-flask-badge-published-bg text-flask-badge-published-ink`}>Publish failed</span>;
+    return (
+      <span className={`${BADGE} bg-flask-badge-published-bg text-flask-badge-published-ink`}>
+        Publish failed
+      </span>
+    );
   }
-  if (!draft || draft.status === "draft") return <span className={`${BADGE} bg-flask-submitted text-flask-badge-draft-ink`}>Draft</span>;
+  if (!draft || draft.status === "draft")
+    return <span className={`${BADGE} bg-flask-submitted text-flask-badge-draft-ink`}>Draft</span>;
   return <span className={`${BADGE} bg-flask-red-soft text-flask-red`}>Submitted</span>;
 }
 
 /** Flask's `components/loading_overlay.html`: over the phone card while a step saves. */
 export function LoadingOverlay({ text = "Saving..." }: { text?: string }) {
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-flask-black/30" role="status">
+    <div
+      className="absolute inset-0 z-30 flex items-center justify-center bg-flask-black/30"
+      role="status"
+    >
       <div className="flex items-center gap-3 rounded-flask-lg bg-flask-white p-4 shadow-flask-lg">
-        <svg className="h-5 w-5 animate-spin text-flask-teal" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        <svg
+          className="h-5 w-5 animate-spin text-flask-teal"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
         </svg>
         <span className="font-medium text-flask-gray-700">{text}</span>
       </div>
@@ -69,7 +99,14 @@ export function Modal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div ref={panel} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={`mx-auto w-full min-w-0 ${wide ? "max-w-md" : "max-w-sm"} outline-none ${className}`}>
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className={`mx-auto w-full min-w-0 ${wide ? "max-w-md" : "max-w-sm"} outline-none ${className}`}
+      >
         {children}
       </div>
     </div>
@@ -124,10 +161,20 @@ export function FixNegativeBalanceModal({
 }) {
   const fit = overWindow;
   const figure = useFitText(fit);
-  const shown = balance < 0 ? `(${formatMoney(Math.abs(balance), currencyCode)})` : formatMoney(balance, currencyCode);
+  const shown =
+    balance < 0
+      ? `(${formatMoney(Math.abs(balance), currencyCode)})`
+      : formatMoney(balance, currencyCode);
   return (
-    <div className={`${overWindow ? "fixed" : "absolute"} inset-0 z-50 flex items-center justify-center bg-flask-black/50 p-4`}>
-      <div role="alertdialog" aria-modal="true" aria-labelledby="fix-negative-title" className="mx-auto w-full max-w-sm rounded-flask-lg bg-flask-white p-6">
+    <div
+      className={`${overWindow ? "fixed" : "absolute"} inset-0 z-50 flex items-center justify-center bg-flask-black/50 p-4`}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="fix-negative-title"
+        className="mx-auto w-full max-w-sm rounded-flask-lg bg-flask-white p-6"
+      >
         <div className="mb-6">
           <h2 id="fix-negative-title" className="mb-2 text-xl font-bold text-flask-gray-900">
             Fix Negative Balance
@@ -148,7 +195,17 @@ export function FixNegativeBalanceModal({
 }
 
 /** One way out of {@link FixNegativeBalanceModal}: the step's name, its figure in brackets, the chevron. */
-export function FixStepButton({ label, note, noteClass, onClick }: { label: string; note: string; noteClass: string; onClick: () => void }) {
+export function FixStepButton({
+  label,
+  note,
+  noteClass,
+  onClick,
+}: {
+  label: string;
+  note: string;
+  noteClass: string;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
@@ -159,7 +216,15 @@ export function FixStepButton({ label, note, noteClass, onClick }: { label: stri
         {label}
         <span className={`ml-2 min-w-0 ${noteClass}`}>{note}</span>
       </span>
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4 shrink-0 text-flask-gray-900 transition-transform group-hover:translate-x-1" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        strokeWidth="1.5"
+        stroke="currentColor"
+        className="h-4 w-4 shrink-0 text-flask-gray-900 transition-transform group-hover:translate-x-1"
+        aria-hidden="true"
+      >
         <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
       </svg>
     </button>
@@ -167,7 +232,11 @@ export function FixStepButton({ label, note, noteClass, onClick }: { label: stri
 }
 
 /** A figure as the Fix modal's buttons write it: `formatMoney`'s `HKD 1,234.50` (Flask's had the same space after the code). */
-export function fixNote(kind: "Cash in" | "Cash out", amount: number, currencyCode: string | null): string {
+export function fixNote(
+  kind: "Cash in" | "Cash out",
+  amount: number,
+  currencyCode: string | null,
+): string {
   return `(${kind}: ${formatMoney(amount, currencyCode)})`;
 }
 
@@ -181,7 +250,14 @@ export function SaveButtons({ disabled, onExit }: { disabled: boolean; onExit: (
         className="group flex min-h-[40px] w-full items-center justify-center gap-4 rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white shadow-flask-md transition-colors hover:bg-flask-teal/80 disabled:opacity-70"
       >
         <span>Save &amp; Next</span>
-        <svg className="transition-transform group-hover:translate-x-1" width="14" height="13" viewBox="0 0 14 13" fill="none" aria-hidden="true">
+        <svg
+          className="transition-transform group-hover:translate-x-1"
+          width="14"
+          height="13"
+          viewBox="0 0 14 13"
+          fill="none"
+          aria-hidden="true"
+        >
           <path
             d="M10.534 5.66477L6.16282 1.18659L7.31648 -9.53674e-07L13.6377 6.50026L7.31648 13L6.16282 11.8139L10.534 7.33576H0.637695V5.66477H10.534Z"
             className="fill-flask-white"
@@ -238,9 +314,15 @@ export function StepImage({
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   return (
-    <div className={`relative mx-auto block ${boxClass}`} style={{ minHeight: loaded ? "auto" : minHeight }}>
+    <div
+      className={`relative mx-auto block ${boxClass}`}
+      style={{ minHeight: loaded ? "auto" : minHeight }}
+    >
       {!loaded && !failed ? (
-        <div className="absolute left-1/2 top-0 -translate-x-1/2 animate-pulse rounded-full bg-flask-gray-200" style={{ width: skeleton, height: skeleton }} />
+        <div
+          className="absolute left-1/2 top-0 -translate-x-1/2 animate-pulse rounded-full bg-flask-gray-200"
+          style={{ width: skeleton, height: skeleton }}
+        />
       ) : null}
       <Image
         src={src}

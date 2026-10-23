@@ -49,7 +49,10 @@ export const NAME_MAX = 100;
 export const NAME_EMPTY = "The method's name is still empty. Type a name to add it.";
 
 /** Flask's wording for each card (`partials/electronic_delivery_section.html`, the script's KINDS). */
-export const KIND: Record<MethodType, { title: string; sub: string; noun: string; pick: string; enter: string }> = {
+export const KIND: Record<
+  MethodType,
+  { title: string; sub: string; noun: string; pick: string; enter: string }
+> = {
   electronic: {
     title: "Electronic",
     sub: "Card and wallet payments a sales report can record.",
@@ -105,8 +108,10 @@ export function countryChange(
   picked: { country_code: string; currency_id: string },
 ): { country_code?: string; currency_id?: string } | null {
   const body: { country_code?: string; currency_id?: string } = {};
-  if (picked.country_code && picked.country_code !== (read.country.country_code ?? "")) body.country_code = picked.country_code;
-  if (picked.currency_id && picked.currency_id !== (read.country.currency_id ?? "")) body.currency_id = picked.currency_id;
+  if (picked.country_code && picked.country_code !== (read.country.country_code ?? ""))
+    body.country_code = picked.country_code;
+  if (picked.currency_id && picked.currency_id !== (read.country.currency_id ?? ""))
+    body.currency_id = picked.currency_id;
   return Object.keys(body).length ? body : null;
 }
 
@@ -122,12 +127,18 @@ export function catalogueOptions(available: CatalogueMethod[], query: string): C
  * says nothing here; the Add that is refused for it says `NAME_EMPTY`. `except` is the method
  * being renamed, which may keep its own name.
  */
-export function methodNameProblem(name: string, listed: SalesMethod[], except?: string): string | null {
+export function methodNameProblem(
+  name: string,
+  listed: SalesMethod[],
+  except?: string,
+): string | null {
   const wanted = name.trim();
   if (!wanted) return null;
-  if (wanted.length > NAME_MAX) return `That name is too long. Keep it to ${NAME_MAX} characters or fewer.`;
+  if (wanted.length > NAME_MAX)
+    return `That name is too long. Keep it to ${NAME_MAX} characters or fewer.`;
   const folded = wanted.toLowerCase();
-  if (listed.some((m) => m.id !== except && m.name.trim().toLowerCase() === folded)) return `${wanted} is already on the list.`;
+  if (listed.some((m) => m.id !== except && m.name.trim().toLowerCase() === folded))
+    return `${wanted} is already on the list.`;
   return null;
 }
 
@@ -148,5 +159,11 @@ export function movedIds(ids: string[], index: number, step: -1 | 1): string[] |
 
 /** Nothing on the page is this person's to change (a cashier): Flask's view-only notice. */
 export function viewOnly(p: SettingsPermissions): boolean {
-  return !(p.edit_country || p.add_sales_method || p.rename_sales_method || p.remove_sales_method || p.reorder_sales_methods);
+  return !(
+    p.edit_country ||
+    p.add_sales_method ||
+    p.rename_sales_method ||
+    p.remove_sales_method ||
+    p.reorder_sales_methods
+  );
 }

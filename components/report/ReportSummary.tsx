@@ -26,10 +26,28 @@ import { formatMoney, NO_CURRENCY_NOTE } from "@/lib/money";
 import { flaskLabel, sections } from "@/lib/sales";
 
 /** Flask's slice colours, in its order, as whole class names (Tailwind reads them from here). */
-const PIE_FILL = ["fill-flask-pie-1", "fill-flask-pie-2", "fill-flask-pie-3", "fill-flask-pie-4", "fill-flask-pie-5", "fill-flask-pie-6", "fill-flask-pie-7"];
-const PIE_DOT = ["bg-flask-pie-1", "bg-flask-pie-2", "bg-flask-pie-3", "bg-flask-pie-4", "bg-flask-pie-5", "bg-flask-pie-6", "bg-flask-pie-7"];
-const pieFill = (s: Slice, i: number) => (s.other ? "fill-flask-pie-other" : PIE_FILL[i % PIE_FILL.length]);
-const pieDot = (s: Slice, i: number) => (s.other ? "bg-flask-pie-other" : PIE_DOT[i % PIE_DOT.length]);
+const PIE_FILL = [
+  "fill-flask-pie-1",
+  "fill-flask-pie-2",
+  "fill-flask-pie-3",
+  "fill-flask-pie-4",
+  "fill-flask-pie-5",
+  "fill-flask-pie-6",
+  "fill-flask-pie-7",
+];
+const PIE_DOT = [
+  "bg-flask-pie-1",
+  "bg-flask-pie-2",
+  "bg-flask-pie-3",
+  "bg-flask-pie-4",
+  "bg-flask-pie-5",
+  "bg-flask-pie-6",
+  "bg-flask-pie-7",
+];
+const pieFill = (s: Slice, i: number) =>
+  s.other ? "fill-flask-pie-other" : PIE_FILL[i % PIE_FILL.length];
+const pieDot = (s: Slice, i: number) =>
+  s.other ? "bg-flask-pie-other" : PIE_DOT[i % PIE_DOT.length];
 
 const CARD = "mb-6 rounded-flask-lg bg-flask-white p-6 shadow-flask-sm";
 const CARD_TITLE = "text-sm font-semibold text-flask-gray-900 sm:text-lg";
@@ -81,11 +99,21 @@ export function ReportSummary({
 }
 
 /** Flask's red "Cash Shortage" or green "Cash Surplus" box with the reason; nothing when the count balanced. */
-function DifferenceBox({ difference, code, reasonEditor }: { difference: ClosePage["cash"]["difference"]; code: string | null; reasonEditor?: ReactNode }) {
+function DifferenceBox({
+  difference,
+  code,
+  reasonEditor,
+}: {
+  difference: ClosePage["cash"]["difference"];
+  code: string | null;
+  reasonEditor?: ReactNode;
+}) {
   if (difference.amount === 0) return null;
   const short = difference.amount < 0;
   return (
-    <div className={`mb-6 rounded-flask-lg p-4 ${short ? "bg-flask-danger-bg" : "bg-flask-success-bg"}`}>
+    <div
+      className={`mb-6 rounded-flask-lg p-4 ${short ? "bg-flask-danger-bg" : "bg-flask-success-bg"}`}
+    >
       <div className="flex items-start">
         <div className="flex-shrink-0">
           <svg
@@ -97,15 +125,26 @@ function DifferenceBox({ difference, code, reasonEditor }: { difference: ClosePa
             className={`size-6 ${short ? "text-flask-danger" : "text-flask-green-500"}`}
             aria-hidden="true"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+            />
           </svg>
         </div>
         <div className="ml-3 min-w-0 flex-1">
-          <h3 className={`text-sm font-medium ${short ? "text-flask-red-800" : "text-flask-success-ink"}`}>
+          <h3
+            className={`text-sm font-medium ${short ? "text-flask-red-800" : "text-flask-success-ink"}`}
+          >
             {short ? "Cash Shortage: " : "Cash Surplus: "}
             <span className="break-all">{formatMoney(Math.abs(difference.amount), code)}</span>
           </h3>
-          {reasonEditor ?? (difference.reason ? <p className="mt-1 text-sm text-flask-gray-600 [overflow-wrap:anywhere]">{difference.reason}</p> : null)}
+          {reasonEditor ??
+            (difference.reason ? (
+              <p className="mt-1 text-sm text-flask-gray-600 [overflow-wrap:anywhere]">
+                {difference.reason}
+              </p>
+            ) : null)}
         </div>
       </div>
     </div>
@@ -116,7 +155,15 @@ function DifferenceBox({ difference, code, reasonEditor }: { difference: ClosePa
  * Flask's "Show more" (teal, its chevron pointing up while closed, down while open). The button
  * keeps Flask's 20px line in the layout and reaches 44px for a finger through negative margins.
  */
-function ShowMore({ open, controls, onToggle }: { open: boolean; controls: string; onToggle: () => void }) {
+function ShowMore({
+  open,
+  controls,
+  onToggle,
+}: {
+  open: boolean;
+  controls: string;
+  onToggle: () => void;
+}) {
   return (
     <div className="mt-4 flex justify-end">
       <button
@@ -163,7 +210,8 @@ function Figure({ className, children }: { className: string; children: string }
   );
 }
 
-const UP_ARROW = "M3.66137 2.29115C4.05567 1.68409 4.94433 1.68409 5.33863 2.29115L7.3938 5.45529C7.8259 6.12057 7.34846 7 6.55517 7H2.44483C1.65154 7 1.17409 6.12057 1.6062 5.4553L3.66137 2.29115Z";
+const UP_ARROW =
+  "M3.66137 2.29115C4.05567 1.68409 4.94433 1.68409 5.33863 2.29115L7.3938 5.45529C7.8259 6.12057 7.34846 7 6.55517 7H2.44483C1.65154 7 1.17409 6.12057 1.6062 5.4553L3.66137 2.29115Z";
 
 function TotalSales({ sales, yesterday }: { sales: SummarySales; yesterday: number | null }) {
   const [open, setOpen] = useState(false);
@@ -192,12 +240,16 @@ function TotalSales({ sales, yesterday }: { sales: SummarySales; yesterday: numb
         <div className="flex items-center justify-between">
           <h3 className={CARD_TITLE}>Total Sales</h3>
         </div>
-        <Figure className="text-[30px] font-semibold text-flask-gray-900 sm:text-[45px]">{plain(sales.total)}</Figure>
+        <Figure className="text-[30px] font-semibold text-flask-gray-900 sm:text-[45px]">
+          {plain(sales.total)}
+        </Figure>
         <div className="flex flex-wrap items-center gap-x-2">
           {compare.percent ? (
             <span className="flex items-center">
               {arrow}
-              <span className={`text-sm font-semibold sm:text-xl ${compare.up ? "text-flask-green" : "text-flask-red-500"}`}>
+              <span
+                className={`text-sm font-semibold sm:text-xl ${compare.up ? "text-flask-green" : "text-flask-red-500"}`}
+              >
                 <span className="sr-only">{compare.up ? "Up " : "Down "}</span>
                 {compare.percent}
               </span>
@@ -205,7 +257,9 @@ function TotalSales({ sales, yesterday }: { sales: SummarySales; yesterday: numb
           ) : (
             arrow
           )}
-          <span className="text-sm font-semibold text-flask-gray-400 sm:text-xl">Compared to Yesterday</span>
+          <span className="text-sm font-semibold text-flask-gray-400 sm:text-xl">
+            Compared to Yesterday
+          </span>
         </div>
       </div>
       <div className="mt-6">
@@ -215,7 +269,9 @@ function TotalSales({ sales, yesterday }: { sales: SummarySales; yesterday: numb
               {i > 0 ? <div className="mx-2 h-12 w-px shrink-0 bg-flask-gray-100" /> : null}
               <div className="flex min-w-0 flex-1 flex-col items-start">
                 <span className="text-[12px] text-flask-gray-400 sm:text-lg">{label}</span>
-                <Figure className="mt-1 text-[16px] font-bold text-flask-gray-600 sm:text-[20px]">{plain(amount)}</Figure>
+                <Figure className="mt-1 text-[16px] font-bold text-flask-gray-600 sm:text-[20px]">
+                  {plain(amount)}
+                </Figure>
               </div>
             </div>
           ))}
@@ -231,7 +287,11 @@ function TotalSales({ sales, yesterday }: { sales: SummarySales; yesterday: numb
             <div className="min-w-0 flex-1 space-y-4">
               <div>
                 {delivery.map((m) => (
-                  <Row key={m.value_name} label={flaskLabel(m.name)} value={plainOrDash(m.amount)} />
+                  <Row
+                    key={m.value_name}
+                    label={flaskLabel(m.name)}
+                    value={plainOrDash(m.amount)}
+                  />
                 ))}
               </div>
               <div>
@@ -254,7 +314,8 @@ function useBox<T extends HTMLElement>() {
     const el = ref.current;
     if (!el) return;
     const phoneQuery = window.matchMedia("(max-width: 639.98px)");
-    const read = () => setBox({ width: el.clientWidth, height: el.clientHeight, phone: phoneQuery.matches });
+    const read = () =>
+      setBox({ width: el.clientWidth, height: el.clientHeight, phone: phoneQuery.matches });
     read();
     const observer = new ResizeObserver(read);
     observer.observe(el);
@@ -276,7 +337,9 @@ function SalesHistory({ history }: { history: ClosePage["sales"]["history"] }) {
     const el = ref.current;
     if (el) el.scrollLeft = el.scrollWidth;
   }, [ref, chart.svgWidth, chart.bars.length]);
-  const label = last ? `Sales for the 30 days to ${barDate(last.date).day}; that day ${plain(last.total)}` : "Sales History";
+  const label = last
+    ? `Sales for the 30 days to ${barDate(last.date).day}; that day ${plain(last.total)}`
+    : "Sales History";
   return (
     <div className={CARD}>
       <div className="mb-4 flex items-center justify-between">
@@ -284,7 +347,12 @@ function SalesHistory({ history }: { history: ClosePage["sales"]["history"] }) {
           <h3 className={CARD_TITLE}>Sales History</h3>
         </div>
       </div>
-      <div ref={ref} className="h-[120px] w-full overflow-x-auto overflow-y-hidden sm:h-[240px]" role="img" aria-label={label}>
+      <div
+        ref={ref}
+        className="h-[120px] w-full overflow-x-auto overflow-y-hidden sm:h-[240px]"
+        role="img"
+        aria-label={label}
+      >
         {chart.bars.length ? (
           <svg
             width={chart.svgWidth}
@@ -309,13 +377,32 @@ function SalesHistory({ history }: { history: ClosePage["sales"]["history"] }) {
                       ry={chart.radius}
                       className={bar.highlight ? "fill-flask-red" : "fill-flask-chart-bar"}
                     />
-                    <text x={mid} y={bar.y - 5} textAnchor="middle" fontSize={chart.font} fontWeight={500} className={bar.highlight ? "fill-flask-red-500" : "fill-flask-chart-label"}>
+                    <text
+                      x={mid}
+                      y={bar.y - 5}
+                      textAnchor="middle"
+                      fontSize={chart.font}
+                      fontWeight={500}
+                      className={bar.highlight ? "fill-flask-red-500" : "fill-flask-chart-label"}
+                    >
                       {barValue(bar.value)}
                     </text>
-                    <text x={mid} y={chart.chartHeight + (box.phone ? 12 : 15)} textAnchor="middle" fontSize={chart.font} className="fill-flask-gray-500">
+                    <text
+                      x={mid}
+                      y={chart.chartHeight + (box.phone ? 12 : 15)}
+                      textAnchor="middle"
+                      fontSize={chart.font}
+                      className="fill-flask-gray-500"
+                    >
                       {day}
                     </text>
-                    <text x={mid} y={chart.chartHeight + (box.phone ? 24 : 28)} textAnchor="middle" fontSize={chart.font} className="fill-flask-gray-500">
+                    <text
+                      x={mid}
+                      y={chart.chartHeight + (box.phone ? 24 : 28)}
+                      textAnchor="middle"
+                      fontSize={chart.font}
+                      className="fill-flask-gray-500"
+                    >
                       {weekday}
                     </text>
                   </g>
@@ -333,7 +420,17 @@ function SalesHistory({ history }: { history: ClosePage["sales"]["history"] }) {
  * Flask's donut: the slices, and in the hole the total - or the slice under the pointer (on the
  * chart or its name in the list) - at 20px, shrunk 5% at a time to fit, never under 12px.
  */
-function ExpensePie({ slices, total, active, onActive }: { slices: Slice[]; total: number; active: number | null; onActive: (i: number | null) => void }) {
+function ExpensePie({
+  slices,
+  total,
+  active,
+  onActive,
+}: {
+  slices: Slice[];
+  total: number;
+  active: number | null;
+  onActive: (i: number | null) => void;
+}) {
   const [ref, box] = useBox<HTMLDivElement>();
   const text = useRef<SVGTextElement>(null);
   const size = box.width || 200;
@@ -356,7 +453,14 @@ function ExpensePie({ slices, total, active, onActive }: { slices: Slice[]; tota
   }, [label, inner]);
   return (
     <div ref={ref} className="aspect-square w-full max-w-[200px] sm:max-w-[340px]">
-      <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} className="overflow-visible" role="img" aria-label={`Expenses by account, ${plain(total)} in all`}>
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${size} ${size}`}
+        className="overflow-visible"
+        role="img"
+        aria-label={`Expenses by account, ${plain(total)} in all`}
+      >
         {arcs.map((arc) => (
           <path
             key={arc.index}
@@ -370,7 +474,16 @@ function ExpensePie({ slices, total, active, onActive }: { slices: Slice[]; tota
             onMouseLeave={() => onActive(null)}
           />
         ))}
-        <text ref={text} x={size / 2} y={size / 2} textAnchor="middle" dominantBaseline="middle" fontSize={20} fontWeight={600} className="fill-flask-gray-900">
+        <text
+          ref={text}
+          x={size / 2}
+          y={size / 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize={20}
+          fontWeight={600}
+          className="fill-flask-gray-900"
+        >
           {label}
         </text>
       </svg>
@@ -411,9 +524,14 @@ function TotalExpenses({ lines }: { lines: Pick<CloseLine, "item" | "amount">[] 
                         onMouseLeave={() => setActive(null)}
                         title={slice.name}
                       >
-                        <span className={`h-1 w-1 flex-shrink-0 rounded-full ${pieDot(slice, i)}`} aria-hidden="true" />
+                        <span
+                          className={`h-1 w-1 flex-shrink-0 rounded-full ${pieDot(slice, i)}`}
+                          aria-hidden="true"
+                        />
                         <span className="flex min-w-0 flex-1 flex-col overflow-hidden">
-                          <span className="block truncate text-[12px] font-semibold text-flask-gray-700 sm:text-lg">{slice.name}</span>
+                          <span className="block truncate text-[12px] font-semibold text-flask-gray-700 sm:text-lg">
+                            {slice.name}
+                          </span>
                         </span>
                       </li>
                     ))}
@@ -429,7 +547,11 @@ function TotalExpenses({ lines }: { lines: Pick<CloseLine, "item" | "amount">[] 
                 ))}
               </div>
             </div>
-            <ShowMore open={open} controls="expenses_breakdown" onToggle={() => setOpen((o) => !o)} />
+            <ShowMore
+              open={open}
+              controls="expenses_breakdown"
+              onToggle={() => setOpen((o) => !o)}
+            />
           </>
         ) : (
           <div className="py-4 text-center">
@@ -450,7 +572,9 @@ function CashBalance({ till, safeBox }: { till: number; safeBox: number }) {
         <div className="flex items-center gap-2">
           <h3 className={CARD_TITLE}>Cash Balance</h3>
         </div>
-        <span className="min-w-0 text-right text-lg font-semibold text-flask-gray-900 [overflow-wrap:anywhere] sm:text-2xl">{plain(cents(till + safeBox))}</span>
+        <span className="min-w-0 text-right text-lg font-semibold text-flask-gray-900 [overflow-wrap:anywhere] sm:text-2xl">
+          {plain(cents(till + safeBox))}
+        </span>
       </div>
       <div hidden={!open}>
         <div className="mb-4 mt-4 border-t border-flask-gray-100" />

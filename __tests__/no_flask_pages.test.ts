@@ -21,10 +21,22 @@ const DECLARED = "lib/env.ts";
 /** file -> the Flask addresses it may build, each a backend route and never a page. */
 const ALLOWED: Record<string, { pattern: RegExp; why: string }[]> = {
   "lib/handoff.ts": [
-    { pattern: /^ACCOUNTS_API_URL\}\/handoff\/petty-cash-web\?/, why: "mints this app's token and redirects back" },
-    { pattern: /^ACCOUNTS_API_URL\}\/handoff\/minty-web\?/, why: "mints minty-web's token and redirects there" },
-    { pattern: /^ACCOUNTS_API_URL\}\/entity\/\$\{id\}\/payment-request`/, why: "mints the payments app's token and redirects to its home" },
-    { pattern: /^ACCOUNTS_API_URL\}\/entity\/\$\{id\}\/settings\/payment-request`/, why: "mints the payments app's token and redirects to its settings" },
+    {
+      pattern: /^ACCOUNTS_API_URL\}\/handoff\/petty-cash-web\?/,
+      why: "mints this app's token and redirects back",
+    },
+    {
+      pattern: /^ACCOUNTS_API_URL\}\/handoff\/minty-web\?/,
+      why: "mints minty-web's token and redirects there",
+    },
+    {
+      pattern: /^ACCOUNTS_API_URL\}\/entity\/\$\{id\}\/payment-request`/,
+      why: "mints the payments app's token and redirects to its home",
+    },
+    {
+      pattern: /^ACCOUNTS_API_URL\}\/entity\/\$\{id\}\/settings\/payment-request`/,
+      why: "mints the payments app's token and redirects to its settings",
+    },
     { pattern: /^ACCOUNTS_API_URL\}\/logout`/, why: "ends the session" },
     {
       // flaskBackendUrl: after the host switch `pettycash.` is this app, so an old caller of one of
@@ -36,7 +48,9 @@ const ALLOWED: Record<string, { pattern: RegExp; why: string }[]> = {
       why: "an old caller's backend path, passed on to accounts-api after the host switch",
     },
   ],
-  "lib/apiClient.ts": [{ pattern: /^ACCOUNTS_API_URL, path, init\)/, why: "mintyFetch - Flask's JSON hub API" }],
+  "lib/apiClient.ts": [
+    { pattern: /^ACCOUNTS_API_URL, path, init\)/, why: "mintyFetch - Flask's JSON hub API" },
+  ],
 };
 
 function sources(dir: string): string[] {
@@ -74,15 +88,24 @@ describe("the guard itself", () => {
     ["components/x.tsx", "const u = `${env.ACCOUNTS_API_URL}/entity/${id}/settings/petty-cash`;"],
     ["lib/handoff.ts", "return `${env.ACCOUNTS_API_URL}/entity/${id}/petty-cash/reports/resume`;"],
     ["lib/handoff.ts", "return `${env.ACCOUNTS_API_URL}${path}`;"],
-    ["lib/flaskPages.ts", "return `${env.ACCOUNTS_API_URL}/entity/${encodeURIComponent(entityId)}`;"],
+    [
+      "lib/flaskPages.ts",
+      "return `${env.ACCOUNTS_API_URL}/entity/${encodeURIComponent(entityId)}`;",
+    ],
   ])("catches a Flask page in %s", (rel, sample) => {
     expect(offences(rel, sample)).toHaveLength(1);
   });
 
   it.each([
-    ["lib/handoff.ts", "withReturnOrigin(`${env.ACCOUNTS_API_URL}/handoff/minty-web?${qs.toString()}`)"],
+    [
+      "lib/handoff.ts",
+      "withReturnOrigin(`${env.ACCOUNTS_API_URL}/handoff/minty-web?${qs.toString()}`)",
+    ],
     ["lib/handoff.ts", "return `${env.ACCOUNTS_API_URL}/logout`;"],
-    ["lib/handoff.ts", "return isFlaskBackendPath(backendPath) ? `${env.ACCOUNTS_API_URL}${backendPath}${search}` : null;"],
+    [
+      "lib/handoff.ts",
+      "return isFlaskBackendPath(backendPath) ? `${env.ACCOUNTS_API_URL}${backendPath}${search}` : null;",
+    ],
     ["lib/apiClient.ts", "return requestJson<T>(env.ACCOUNTS_API_URL, path, init);"],
     ["lib/env.ts", 'ACCOUNTS_API_URL: url(process.env.ACCOUNTS_API_URL, "http://localhost:8000"),'],
   ])("lets the backend address in %s through", (rel, sample) => {
@@ -92,8 +115,19 @@ describe("the guard itself", () => {
 
 describe("No Flask pages: Flask is a backend only", () => {
   it("builds a Flask address only through the hand-off and API helpers", () => {
-    const files = [...DIRS.flatMap((dir) => sources(join(ROOT, dir))), ...ROOT_FILES.map((f) => join(ROOT, f))];
-    const found = files.flatMap((file) => offences(relative(ROOT, file).split(sep).join("/"), stripComments(readFileSync(file, "utf8"))));
-    expect(found, `a Flask address outside the allowed hand-offs and APIs (lib/handoff.ts):\n${found.join("\n")}`).toEqual([]);
+    const files = [
+      ...DIRS.flatMap((dir) => sources(join(ROOT, dir))),
+      ...ROOT_FILES.map((f) => join(ROOT, f)),
+    ];
+    const found = files.flatMap((file) =>
+      offences(
+        relative(ROOT, file).split(sep).join("/"),
+        stripComments(readFileSync(file, "utf8")),
+      ),
+    );
+    expect(
+      found,
+      `a Flask address outside the allowed hand-offs and APIs (lib/handoff.ts):\n${found.join("\n")}`,
+    ).toEqual([]);
   });
 });

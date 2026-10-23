@@ -3,7 +3,12 @@ import { NextResponse } from "next/server";
 
 import { previewSetSlug } from "@/lib/previewSibling";
 
-import { AUTH_COOKIE_NAME, ENTITY_ID_COOKIE_NAME, ENTITY_NAME_COOKIE_NAME, decodeJwtPayload } from "@/lib/auth";
+import {
+  AUTH_COOKIE_NAME,
+  ENTITY_ID_COOKIE_NAME,
+  ENTITY_NAME_COOKIE_NAME,
+  decodeJwtPayload,
+} from "@/lib/auth";
 import { companyRefFromPath, pettyCashHome } from "@/lib/companyPages";
 import { flaskBackendUrl, handoffUrl, hubUrl } from "@/lib/handoff";
 import { type OldLink, oldLink } from "@/lib/oldLinks";
@@ -34,7 +39,11 @@ export const RENEW_WITHIN_SECONDS = 5 * 60;
  * redirected with or without a token - a share link to `/share/...`, an older Petty Cash address
  * to this app's, another Flask page to minty-web's hand-off, a backend path to accounts-api.
  */
-const SHARE_HEADERS = { "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow", "Cache-Control": "no-store" };
+const SHARE_HEADERS = {
+  "Referrer-Policy": "no-referrer",
+  "X-Robots-Tag": "noindex, nofollow",
+  "Cache-Control": "no-store",
+};
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -69,7 +78,10 @@ export function proxy(request: NextRequest) {
 
   const exp = decodeJwtPayload(token)?.exp;
   if (typeof exp === "number" && exp - Date.now() / 1000 < RENEW_WITHIN_SECONDS) {
-    return toFlask(request, handoffUrl(pathname + search, cookieEntity || addressCompany || undefined, origin));
+    return toFlask(
+      request,
+      handoffUrl(pathname + search, cookieEntity || addressCompany || undefined, origin),
+    );
   }
 
   if (pathname === "/" && cookieEntity) {
@@ -85,7 +97,12 @@ export function proxy(request: NextRequest) {
  * An old `pettycash.` link after the host switch (lib/oldLinks.ts), answered before the gate - with
  * or without a token - and never logged (a share link carries its secret).
  */
-function toOldLinkTarget(request: NextRequest, old: OldLink, token: string | undefined, cookieEntity: string): NextResponse {
+function toOldLinkTarget(
+  request: NextRequest,
+  old: OldLink,
+  token: string | undefined,
+  cookieEntity: string,
+): NextResponse {
   const { search, origin } = request.nextUrl;
   switch (old.kind) {
     case "share": {
@@ -98,7 +115,8 @@ function toOldLinkTarget(request: NextRequest, old: OldLink, token: string | und
       return NextResponse.redirect(new URL(old.to + search, request.url), 308);
     case "backend": {
       const url = flaskBackendUrl(old.path, search);
-      if (url === null) throw new Error("oldLink named a backend path that lib/handoff.ts does not allow");
+      if (url === null)
+        throw new Error("oldLink named a backend path that lib/handoff.ts does not allow");
       return NextResponse.redirect(url, 308);
     }
     case "hub":
@@ -135,6 +153,9 @@ export function toFlask(request: NextRequest, url: string): NextResponse {
   const attr = url.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
   return new NextResponse(
     `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${attr}"><title>Minty</title>`,
-    { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } },
+    {
+      status: 200,
+      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+    },
   );
 }

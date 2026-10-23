@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { BeforeYouStartModal, DepositModal, SetupRequiredModal, type Confirmation } from "@/components/dashboard/Modals";
+import {
+  BeforeYouStartModal,
+  DepositModal,
+  SetupRequiredModal,
+  type Confirmation,
+} from "@/components/dashboard/Modals";
 import { ReportCalendar } from "@/components/dashboard/ReportCalendar";
 import { Stepper } from "@/components/flask/Stepper";
 import { PhoneCard } from "@/components/flask/PhoneCard";
@@ -38,7 +43,8 @@ const READ_ONLY = "Read-only access";
 const TEAL_BUTTON =
   "flex w-full items-center justify-center gap-2 rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white shadow-flask-md transition-colors hover:bg-flask-teal/80 disabled:cursor-not-allowed disabled:opacity-50";
 
-type Load = { kind: "loading" } | { kind: "ready"; home: Home; nextDay: string | null } | { kind: "failed" };
+type Load =
+  { kind: "loading" } | { kind: "ready"; home: Home; nextDay: string | null } | { kind: "failed" };
 
 /**
  * The Petty Cash dashboard - a pixel-faithful port of Flask's `entity/entity_dashboard_v2.html`:
@@ -85,7 +91,15 @@ export function Dashboard() {
       </PhoneCard>
     );
   }
-  return <DashboardBody home={load.home} nextDay={load.nextDay} entityId={auth?.entityId ?? ""} entityName={auth?.entityName ?? ""} acronym={acronym} />;
+  return (
+    <DashboardBody
+      home={load.home}
+      nextDay={load.nextDay}
+      entityId={auth?.entityId ?? ""}
+      entityName={auth?.entityName ?? ""}
+      acronym={acronym}
+    />
+  );
 }
 
 function DashboardBody({
@@ -105,7 +119,11 @@ function DashboardBody({
   const toast = useToast();
   // A first report opens on onboarding's start date; a hand-over's day wins.
   const [selected, setSelected] = useState<string | null>(nextDay ?? firstReportDay(home));
-  const [confirming, setConfirming] = useState<{ day: string; deposit: number; submitter: string | null } | null>(null);
+  const [confirming, setConfirming] = useState<{
+    day: string;
+    deposit: number;
+    submitter: string | null;
+  } | null>(null);
   const [step, setStep] = useState<"confirm" | "amount">("confirm");
   const [busy, setBusy] = useState(false);
 
@@ -144,7 +162,11 @@ function DashboardBody({
     const previous = depositToConfirm(home, day);
     if (!previous) return open(day);
     setStep("confirm");
-    setConfirming({ day: previous.day, deposit: previous.report.bank_deposit, submitter: previous.report.submitter_first_name });
+    setConfirming({
+      day: previous.day,
+      deposit: previous.report.bank_deposit,
+      submitter: previous.report.submitter_first_name,
+    });
   }
 
   const started = useRef(false); // once, though development runs effects twice
@@ -159,7 +181,11 @@ function DashboardBody({
     if (!confirming) return;
     setBusy(kind === "change");
     try {
-      const answer = await pettyCashFetch<{ status: string; message?: string; next_transaction_date: string }>("/deposit-correction", {
+      const answer = await pettyCashFetch<{
+        status: string;
+        message?: string;
+        next_transaction_date: string;
+      }>("/deposit-correction", {
         method: "POST",
         json: { kind, date: confirming.day, amount },
       });
@@ -167,7 +193,12 @@ function DashboardBody({
       leaveTo(stepHref(entityId, entityName, "opening", answer.next_transaction_date));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
-      toast(err instanceof ApiError ? err.message : "I couldn't save that deposit correction. Mind trying again?", "error");
+      toast(
+        err instanceof ApiError
+          ? err.message
+          : "I couldn't save that deposit correction. Mind trying again?",
+        "error",
+      );
       setBusy(false);
     }
   }
@@ -218,7 +249,12 @@ function DashboardBody({
           onProceed={proceedAmount}
         />
       ) : null}
-      {setupNeeded.length ? <SetupRequiredModal missing={setupNeeded} settingsHref={settingsHref(entityId, entityName)} /> : null}
+      {setupNeeded.length ? (
+        <SetupRequiredModal
+          missing={setupNeeded}
+          settingsHref={settingsHref(entityId, entityName)}
+        />
+      ) : null}
     </>
   );
 
@@ -227,15 +263,33 @@ function DashboardBody({
       <div className="mb-6">
         {previousDayUnfinished(home) ? (
           <div className="mb-4">
-            <div className="mb-10 flex w-full items-start rounded-[8px] border-l-4 border-l-flask-amber-edge bg-flask-amber-bg px-4 py-3" role="status">
-              <svg className="mr-3 mt-0.5 flex-shrink-0" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <circle cx="10" cy="10" r="9" className="fill-flask-amber-bg stroke-flask-amber" strokeWidth="2" />
+            <div
+              className="mb-10 flex w-full items-start rounded-[8px] border-l-4 border-l-flask-amber-edge bg-flask-amber-bg px-4 py-3"
+              role="status"
+            >
+              <svg
+                className="mr-3 mt-0.5 flex-shrink-0"
+                width="20"
+                height="20"
+                viewBox="0 0 20 20"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="10"
+                  cy="10"
+                  r="9"
+                  className="fill-flask-amber-bg stroke-flask-amber"
+                  strokeWidth="2"
+                />
                 <rect x="9" y="8" width="2" height="5" rx="1" className="fill-flask-amber" />
                 <rect x="9" y="5" width="2" height="2" rx="1" className="fill-flask-amber" />
               </svg>
               <div>
                 <p className="mb-1 text-sm font-bold text-flask-amber-ink">Warning</p>
-                <p className="text-sm leading-snug text-flask-amber-ink">Earlier reports need finishing before this one. Want to catch those up first?</p>
+                <p className="text-sm leading-snug text-flask-amber-ink">
+                  Earlier reports need finishing before this one. Want to catch those up first?
+                </p>
               </div>
             </div>
           </div>
@@ -245,11 +299,23 @@ function DashboardBody({
           <div className="mb-6">
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-flask-green-ink/10">
-                <svg width="16" height="14" viewBox="0 0 16 14" fill="none" className="size-5" aria-hidden="true">
-                  <path d="M6.25 9.6412L13.8443 2L15 3.1794L6.25 12L1 6.701L2.15566 5.53821L6.25 9.6412Z" className="fill-flask-green" />
+                <svg
+                  width="16"
+                  height="14"
+                  viewBox="0 0 16 14"
+                  fill="none"
+                  className="size-5"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M6.25 9.6412L13.8443 2L15 3.1794L6.25 12L1 6.701L2.15566 5.53821L6.25 9.6412Z"
+                    className="fill-flask-green"
+                  />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-flask-gray-900">Today&apos;s report is submitted</h2>
+              <h2 className="text-xl font-bold text-flask-gray-900">
+                Today&apos;s report is submitted
+              </h2>
             </div>
           </div>
         ) : null}
@@ -258,19 +324,35 @@ function DashboardBody({
           <div className="mb-6 flex flex-row items-center justify-between gap-4">
             <div>
               <span className="mb-1 block text-sm text-flask-gray-500">Report in Progress</span>
-              <div className="text-lg font-semibold text-flask-gray-900">{summaryDay ? formatDay(summaryDay) : "Today"}</div>
+              <div className="text-lg font-semibold text-flask-gray-900">
+                {summaryDay ? formatDay(summaryDay) : "Today"}
+              </div>
             </div>
             <div>
               <span className="mb-1 block text-sm text-flask-gray-500">Current balance</span>
-              <div className="text-right text-lg font-semibold text-flask-gray-900">{formatMoney(summaryBalance, code)}</div>
+              <div className="text-right text-lg font-semibold text-flask-gray-900">
+                {formatMoney(summaryBalance, code)}
+              </div>
             </div>
           </div>
         ) : (
           <div className="mb-16">
             <div className="mb-10 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-flask-red-soft">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="h-5 w-5 text-flask-red" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="2"
+                  stroke="currentColor"
+                  className="h-5 w-5 text-flask-red"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                  />
                 </svg>
               </div>
               <h2 className="text-xl font-bold text-flask-gray-900">Pick up where you left off</h2>
@@ -278,18 +360,36 @@ function DashboardBody({
 
             <div className="rounded-flask-xl border border-flask-gray-200 bg-flask-white p-4 shadow-flask-lg">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-base font-semibold text-flask-gray-900">Daily Report Progress</h3>
+                <h3 className="text-base font-semibold text-flask-gray-900">
+                  Daily Report Progress
+                </h3>
                 <span className="text-sm font-medium text-flask-green-ink">
                   {draft.completed_sections.length}/{STEPS.length} Complete
                 </span>
               </div>
-              <p className="mb-4 text-sm text-flask-gray-600">{home.draft_date ? formatDayWithWeekday(home.draft_date) : "Today"}</p>
+              <p className="mb-4 text-sm text-flask-gray-600">
+                {home.draft_date ? formatDayWithWeekday(home.draft_date) : "Today"}
+              </p>
               <div className="mb-4">
-                <Stepper draft={draft} stepHref={(key) => stepHref(entityId, entityName, key, home.draft_date ?? home.server_today)} />
+                <Stepper
+                  draft={draft}
+                  stepHref={(key) =>
+                    stepHref(entityId, entityName, key, home.draft_date ?? home.server_today)
+                  }
+                />
               </div>
               <button
                 type="button"
-                onClick={() => leaveTo(stepHref(entityId, entityName, sectionStep(draft.current_section), home.draft_date ?? home.server_today))}
+                onClick={() =>
+                  leaveTo(
+                    stepHref(
+                      entityId,
+                      entityName,
+                      sectionStep(draft.current_section),
+                      home.draft_date ?? home.server_today,
+                    ),
+                  )
+                }
                 disabled={readOnly}
                 title={readOnly ? READ_ONLY : undefined}
                 className={`${TEAL_BUTTON} mb-12`}
@@ -302,7 +402,9 @@ function DashboardBody({
                 </svg>
                 <span>Continue Report</span>
               </button>
-              <p className="text-right text-xs text-flask-gray-500">Last edit {lastEditText(draft.last_edit_seconds)} ago</p>
+              <p className="text-right text-xs text-flask-gray-500">
+                Last edit {lastEditText(draft.last_edit_seconds)} ago
+              </p>
             </div>
           </div>
         )}
@@ -312,7 +414,10 @@ function DashboardBody({
             {viewing ? (
               <button
                 type="button"
-                onClick={() => actionReport && leaveTo(reportHref(entityId, entityName, actionReport.id, "summary"))}
+                onClick={() =>
+                  actionReport &&
+                  leaveTo(reportHref(entityId, entityName, actionReport.id, "summary"))
+                }
                 className="flex w-full items-center justify-center rounded-flask-xl bg-flask-green px-4 py-3 font-medium text-flask-white shadow-flask-md transition-colors hover:bg-flask-green/80"
               >
                 <span>View Report</span>
@@ -326,7 +431,10 @@ function DashboardBody({
                 className={TEAL_BUTTON}
               >
                 <svg width="13" height="14" viewBox="0 0 13 14" fill="none" aria-hidden="true">
-                  <path d="M5.57143 5.69643V0.125H7.42857V5.69643H13V7.55357H7.42857V13.125H5.57143V7.55357H0V5.69643H5.57143Z" className="fill-flask-white" />
+                  <path
+                    d="M5.57143 5.69643V0.125H7.42857V5.69643H13V7.55357H7.42857V13.125H5.57143V7.55357H0V5.69643H5.57143Z"
+                    className="fill-flask-white"
+                  />
                 </svg>
                 <span>Start New Report</span>
               </button>
@@ -347,11 +455,16 @@ function DashboardBody({
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-flask-purple-bg">
                 <svg width="21" height="28" viewBox="0 0 15 22" fill="none" aria-hidden="true">
-                  <path d="M2.38956 11.291H3.55581V16.541H2.38956V11.291ZM11.7196 8.95768H12.8858V16.541H11.7196V8.95768ZM7.05456 5.45768H8.22081V16.541H7.05456V5.45768Z" className="fill-flask-purple" />
+                  <path
+                    d="M2.38956 11.291H3.55581V16.541H2.38956V11.291ZM11.7196 8.95768H12.8858V16.541H11.7196V8.95768ZM7.05456 5.45768H8.22081V16.541H7.05456V5.45768Z"
+                    className="fill-flask-purple"
+                  />
                 </svg>
               </div>
               <a href={historyHref(entityId, entityName)} className="flex-1">
-                <h3 className="text-xs font-semibold text-flask-gray-900 sm:text-sm">View History</h3>
+                <h3 className="text-xs font-semibold text-flask-gray-900 sm:text-sm">
+                  View History
+                </h3>
                 <p className="text-xs text-flask-gray-500">Reports &amp; Summary</p>
               </a>
             </div>
@@ -367,7 +480,9 @@ function DashboardBody({
                 </svg>
               </div>
               <a href={settingsHref(entityId, entityName)} className="flex-1">
-                <h3 className="text-xs font-semibold text-flask-gray-900 sm:text-sm">Entity Settings</h3>
+                <h3 className="text-xs font-semibold text-flask-gray-900 sm:text-sm">
+                  Entity Settings
+                </h3>
                 <p className="text-xs text-flask-gray-500">Edit Sales Method</p>
               </a>
             </div>

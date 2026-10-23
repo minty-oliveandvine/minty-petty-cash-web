@@ -10,7 +10,12 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
  */
 
 export type ToastKind = "success" | "error" | "warning" | "info";
-const LABEL: Record<ToastKind, string> = { success: "Success", error: "Error", warning: "Warning", info: "Information" };
+const LABEL: Record<ToastKind, string> = {
+  success: "Success",
+  error: "Error",
+  warning: "Warning",
+  info: "Information",
+};
 const SHOW_MS = 4000;
 
 type Toast = { id: number; kind: ToastKind; message: string };
@@ -23,7 +28,10 @@ let nextId = 1;
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const dismiss = useCallback((id: number) => setToasts((all) => all.filter((t) => t.id !== id)), []);
+  const dismiss = useCallback(
+    (id: number) => setToasts((all) => all.filter((t) => t.id !== id)),
+    [],
+  );
   const show = useCallback<Show>(
     (message, kind = "error") => {
       const id = nextId++;
@@ -65,6 +73,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export function useToast(): Show {
   const show = useContext(ToastContext);
-  if (!show) throw new Error("useToast needs <ToastProvider> - app/layout.tsx wraps every page in it.");
+  if (!show)
+    throw new Error("useToast needs <ToastProvider> - app/layout.tsx wraps every page in it.");
   return show;
 }

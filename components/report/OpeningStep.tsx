@@ -7,7 +7,12 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { PhoneCard } from "@/components/flask/PhoneCard";
 import { Stepper } from "@/components/flask/Stepper";
 import { useToast } from "@/components/flask/Toasts";
-import { FixNegativeBalanceModal, FixStepButton, LoadingOverlay, ReportBadge } from "@/components/report/ReportChrome";
+import {
+  FixNegativeBalanceModal,
+  FixStepButton,
+  LoadingOverlay,
+  ReportBadge,
+} from "@/components/report/ReportChrome";
 import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
@@ -38,7 +43,9 @@ export function OpeningStep({ day }: { day: string | null }) {
 
   useEffect(() => {
     let live = true;
-    pettyCashFetch<OpeningPage>("/reports/opening", { query: { transaction_date: day ?? undefined } })
+    pettyCashFetch<OpeningPage>("/reports/opening", {
+      query: { transaction_date: day ?? undefined },
+    })
       .then((answer) => live && setPage(answer))
       .catch((err: unknown) => {
         if (!live || (err instanceof ApiError && err.status === 401)) return;
@@ -62,16 +69,35 @@ export function OpeningStep({ day }: { day: string | null }) {
       </PhoneCard>
     );
   }
-  return <OpeningForm page={page} entityId={auth.entityId} entityName={auth.entityName} acronym={acronym} />;
+  return (
+    <OpeningForm
+      page={page}
+      entityId={auth.entityId}
+      entityName={auth.entityName}
+      acronym={acronym}
+    />
+  );
 }
 
-function OpeningForm({ page, entityId, entityName, acronym }: { page: OpeningPage; entityId: string; entityName: string; acronym: string }) {
+function OpeningForm({
+  page,
+  entityId,
+  entityName,
+  acronym,
+}: {
+  page: OpeningPage;
+  entityId: string;
+  entityName: string;
+  acronym: string;
+}) {
   const toast = useToast();
   const router = useRouter();
   const home = pettyCashHome(entityId, entityName);
   const initialAddition = page.cash_addition ? groupMoney(String(page.cash_addition)) : "";
   const [addition, setAddition] = useState(initialAddition);
-  const [withdrawal, setWithdrawal] = useState<"company" | "personal">(page.withdrawal === "company" ? "company" : "personal");
+  const [withdrawal, setWithdrawal] = useState<"company" | "personal">(
+    page.withdrawal === "company" ? "company" : "personal",
+  );
   const [withdrawalDirty, setWithdrawalDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [negative, setNegative] = useState(page.yesterday_closing_balance < 0);
@@ -112,7 +138,8 @@ function OpeningForm({ page, entityId, entityName, acronym }: { page: OpeningPag
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
       const body = err instanceof ApiError ? (err.body as { to?: string } | null) : null;
-      const message = err instanceof ApiError ? err.message : "I couldn't save that. Mind trying again?";
+      const message =
+        err instanceof ApiError ? err.message : "I couldn't save that. Mind trying again?";
       if (body?.to === "dashboard") {
         // Flask sends a refused day to the dashboard and shows why there.
         setFlash(message, "error");
@@ -169,44 +196,56 @@ function OpeningForm({ page, entityId, entityName, acronym }: { page: OpeningPag
       >
         <div className="mb-6 rounded-flask-lg bg-flask-white p-6 shadow-flask-sm">
           <div className="mb-2">
-          <div className="relative mx-auto mb-10 block w-[240px]" style={{ minHeight: imageLoaded ? "auto" : 156 }}>
-            {!imageLoaded ? (
-              <div className="absolute left-1/2 top-1/2 h-[170px] w-[170px] -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-flask-gray-200" />
-            ) : null}
-            <Image
-              src="/img/opening.webp"
-              alt="Opening"
-              width={240}
-              height={156}
-              unoptimized
-              priority
-              onLoad={() => setImageLoaded(true)}
-              className={`h-auto w-[240px] transition-opacity duration-300 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
-            />
-          </div>
-
-          <div className="rounded-flask-2xl bg-flask-gray-100 p-4">
-            <div className="flex items-center justify-between border-b border-flask-gray-300 pb-2">
-              <span className="text-sm font-medium text-flask-gray-500">Starting Cash Balance</span>
-              <span className="text-sm font-medium text-flask-gray-500">{formatMoney(page.starting_cash_balance, code)}</span>
+            <div
+              className="relative mx-auto mb-10 block w-[240px]"
+              style={{ minHeight: imageLoaded ? "auto" : 156 }}
+            >
+              {!imageLoaded ? (
+                <div className="absolute left-1/2 top-1/2 h-[170px] w-[170px] -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-flask-gray-200" />
+              ) : null}
+              <Image
+                src="/img/opening.webp"
+                alt="Opening"
+                width={240}
+                height={156}
+                unoptimized
+                priority
+                onLoad={() => setImageLoaded(true)}
+                className={`h-auto w-[240px] transition-opacity duration-300 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
+              />
             </div>
-            <div className="pt-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-flask-gray-400">Cash Till Balance</span>
-                <span className="text-sm font-medium text-flask-gray-400">
-                  {formatMoney(page.yesterday_closing_balance - page.safebox_balance, code)}
+
+            <div className="rounded-flask-2xl bg-flask-gray-100 p-4">
+              <div className="flex items-center justify-between border-b border-flask-gray-300 pb-2">
+                <span className="text-sm font-medium text-flask-gray-500">
+                  Starting Cash Balance
+                </span>
+                <span className="text-sm font-medium text-flask-gray-500">
+                  {formatMoney(page.starting_cash_balance, code)}
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-flask-gray-400">Safebox</span>
-                <span className="text-sm font-medium text-flask-gray-400">{formatMoney(page.safebox_balance, code)}</span>
+              <div className="pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-flask-gray-400">Cash Till Balance</span>
+                  <span className="text-sm font-medium text-flask-gray-400">
+                    {formatMoney(page.yesterday_closing_balance - page.safebox_balance, code)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-flask-gray-400">Safebox</span>
+                  <span className="text-sm font-medium text-flask-gray-400">
+                    {formatMoney(page.safebox_balance, code)}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
           </div>
 
           <div className="mb-4">
-            <label htmlFor="additiontocashbalance" className="mb-2 block text-sm font-medium text-flask-gray-700">
+            <label
+              htmlFor="additiontocashbalance"
+              className="mb-2 block text-sm font-medium text-flask-gray-700"
+            >
               Addition to Cash Drawer
             </label>
             <div className="relative">
@@ -224,14 +263,21 @@ function OpeningForm({ page, entityId, entityName, acronym }: { page: OpeningPag
                 value={addition}
                 onChange={(e) => setAddition(sanitizeMoney(e.target.value))}
                 onBlur={() => setAddition(groupMoney(addition))}
-                onFocus={() => window.setTimeout(() => field.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 300)}
+                onFocus={() =>
+                  window.setTimeout(
+                    () => field.current?.scrollIntoView({ block: "center", behavior: "smooth" }),
+                    300,
+                  )
+                }
                 className="w-full cursor-pointer rounded-flask-xl border border-flask-gray-300 bg-flask-white py-3 pl-12 pr-3 text-flask-gray-700 placeholder:text-flask-gray-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal"
               />
             </div>
           </div>
 
           <fieldset className="mb-4">
-            <legend className="mb-2 block text-sm font-medium text-flask-gray-700">Withdrawal from:</legend>
+            <legend className="mb-2 block text-sm font-medium text-flask-gray-700">
+              Withdrawal from:
+            </legend>
             <div className="space-y-2">
               {(
                 [
@@ -272,7 +318,14 @@ function OpeningForm({ page, entityId, entityName, acronym }: { page: OpeningPag
             className="group flex w-full items-center justify-center gap-4 rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white shadow-flask-md transition-colors hover:bg-flask-teal/80 disabled:opacity-70"
           >
             <span>Save &amp; Next</span>
-            <svg className="transition-transform group-hover:translate-x-1" width="14" height="13" viewBox="0 0 14 13" fill="none" aria-hidden="true">
+            <svg
+              className="transition-transform group-hover:translate-x-1"
+              width="14"
+              height="13"
+              viewBox="0 0 14 13"
+              fill="none"
+              aria-hidden="true"
+            >
               <path
                 d="M10.534 5.66477L6.16282 1.18659L7.31648 -9.53674e-07L13.6377 6.50026L7.31648 13L6.16282 11.8139L10.534 7.33576H0.637695V5.66477H10.534Z"
                 className="fill-flask-white"
@@ -299,7 +352,15 @@ function OpeningForm({ page, entityId, entityName, acronym }: { page: OpeningPag
  * Flask's #fixNegativeBalanceModal on Opening: yesterday ended below zero, or this opening would.
  * It cannot be dismissed - the one way on is the dashboard.
  */
-function OpeningNegativeModal({ balance, currencyCode, onDashboard }: { balance: number; currencyCode: string | null; onDashboard: () => void }) {
+function OpeningNegativeModal({
+  balance,
+  currencyCode,
+  onDashboard,
+}: {
+  balance: number;
+  currencyCode: string | null;
+  onDashboard: () => void;
+}) {
   return (
     <FixNegativeBalanceModal
       balance={balance}

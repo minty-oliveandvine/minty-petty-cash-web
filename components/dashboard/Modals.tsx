@@ -20,8 +20,20 @@ const CLOSE_ICON = (
 );
 
 const NOTE_ICON = (tone: string) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className={`h-5 w-5 ${tone}`} aria-hidden="true">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth="2"
+    stroke="currentColor"
+    className={`h-5 w-5 ${tone}`}
+    aria-hidden="true"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+    />
   </svg>
 );
 
@@ -131,29 +143,47 @@ export function BeforeYouStartModal({
         onChange={() => setChoice(value)}
         className="flask-radio flask-radio-grey"
       />
-      <label htmlFor={`confirm-${value}`} className={`ml-2 text-sm ${disabled ? "text-flask-gray-400" : "text-flask-gray-700"}`}>
+      <label
+        htmlFor={`confirm-${value}`}
+        className={`ml-2 text-sm ${disabled ? "text-flask-gray-400" : "text-flask-gray-700"}`}
+      >
         {label}
       </label>
     </div>
   );
 
   return (
-    <Frame title="Before You Start" z="z-30" onClose={onClose} onBackdrop={onClose} narrow={choice === "change"}>
+    <Frame
+      title="Before You Start"
+      z="z-30"
+      onClose={onClose}
+      onBackdrop={onClose}
+      narrow={choice === "change"}
+    >
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold text-flask-gray-900">Before You Start</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-flask-gray-400 hover:text-flask-gray-600">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-flask-gray-400 hover:text-flask-gray-600"
+          >
             {CLOSE_ICON}
           </button>
         </div>
-        <p className="mt-1 text-sm text-flask-gray-500">Previous report submitted by {submitter || "—"}</p>
+        <p className="mt-1 text-sm text-flask-gray-500">
+          Previous report submitted by {submitter || "—"}
+        </p>
       </div>
 
       <div className="space-y-6">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-flask-gray-600">Deposited</span>
-            <span className="text-sm font-bold text-flask-gray-900">{formatMoney(amount, currencyCode)}</span>
+            <span className="text-sm font-bold text-flask-gray-900">
+              {formatMoney(amount, currencyCode)}
+            </span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-flask-gray-600">To</span>
@@ -170,9 +200,12 @@ export function BeforeYouStartModal({
             <div className="flex items-start">
               <div className="flex-shrink-0">{NOTE_ICON("text-flask-danger")}</div>
               <div className="ml-3">
-                <p className="text-sm font-bold text-flask-danger-ink">Deposit cannot be corrected</p>
+                <p className="text-sm font-bold text-flask-danger-ink">
+                  Deposit cannot be corrected
+                </p>
                 <p className="mt-1 text-sm text-flask-danger-ink">
-                  The following entity setting(s) are not configured: <span className="font-semibold">{blockedBy.join(", ")}</span>. Configure them in{" "}
+                  The following entity setting(s) are not configured:{" "}
+                  <span className="font-semibold">{blockedBy.join(", ")}</span>. Configure them in{" "}
                   <a href={settingsHref} className="font-semibold underline">
                     Settings → Petty Cash
                   </a>{" "}
@@ -199,7 +232,8 @@ export function BeforeYouStartModal({
                   <span className="font-bold">Please Note:</span>
                 </p>
                 <p className="mt-1 text-sm text-flask-amber-ink">
-                  By proceeding, you confirm that the stated deposit is accurate and has been deposited to the specified bank.
+                  By proceeding, you confirm that the stated deposit is accurate and has been
+                  deposited to the specified bank.
                 </p>
               </div>
             </div>
@@ -212,7 +246,9 @@ export function BeforeYouStartModal({
                 <p className="text-sm text-flask-danger-ink">
                   <span className="font-bold">Please Note:</span>
                 </p>
-                <p className="mt-1 text-sm text-flask-danger-ink">By proceeding, you confirm that stated deposit amount will be reversed in Xero.</p>
+                <p className="mt-1 text-sm text-flask-danger-ink">
+                  By proceeding, you confirm that stated deposit amount will be reversed in Xero.
+                </p>
               </div>
             </div>
           </div>
@@ -278,7 +314,12 @@ export function DepositModal({
     <Frame title="Deposit to Bank" z="z-50" onClose={busy ? undefined : onClose}>
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-xl font-bold text-flask-gray-900">Deposit to Bank</h2>
-        <button type="button" onClick={onClose} aria-label="Close" className="text-flask-gray-400 hover:text-flask-gray-600">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="text-flask-gray-400 hover:text-flask-gray-600"
+        >
           {CLOSE_ICON}
         </button>
       </div>
@@ -312,10 +353,18 @@ export function DepositModal({
         <button type="button" onClick={onBack} disabled={busy} className={BACK_BUTTON}>
           Back
         </button>
-        <button type="button" onClick={() => onProceed(parseAmount(value))} disabled={busy} className={PROCEED_BUTTON}>
+        <button
+          type="button"
+          onClick={() => onProceed(parseAmount(value))}
+          disabled={busy}
+          className={PROCEED_BUTTON}
+        >
           {busy ? (
             <>
-              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-flask-white border-t-transparent" aria-hidden="true" />
+              <span
+                className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-flask-white border-t-transparent"
+                aria-hidden="true"
+              />
               Please wait...
             </>
           ) : (
@@ -332,12 +381,20 @@ export function DepositModal({
  * `missing` is lib/dashboard.ts `setupMissing`; its currency line links to Petty Cash Settings, whose first card is
  * Country & currency.
  */
-export function SetupRequiredModal({ missing, settingsHref }: { missing: string[]; settingsHref: string }) {
+export function SetupRequiredModal({
+  missing,
+  settingsHref,
+}: {
+  missing: string[];
+  settingsHref: string;
+}) {
   return (
     <Frame title="Setup Required" z="z-50">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-flask-gray-900">Setup Required</h2>
-        <p className="mt-2 text-sm text-flask-gray-600">Please complete your entity settings before proceeding.</p>
+        <p className="mt-2 text-sm text-flask-gray-600">
+          Please complete your entity settings before proceeding.
+        </p>
       </div>
       <div className="space-y-4">
         <div className="rounded-flask-lg border-l-4 border-l-flask-amber bg-flask-amber-bg p-4">

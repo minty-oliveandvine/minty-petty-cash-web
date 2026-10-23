@@ -21,7 +21,9 @@ afterEach(() => _resetHandoffForTests());
 
 describe("handoffUrl", () => {
   it("is Flask's petty-cash hand-off with the page and the company", () => {
-    const url = new URL(handoffUrl("/entity/360812e1/olive-and-vine/petty-cash", ENTITY, "http://localhost:3010"));
+    const url = new URL(
+      handoffUrl("/entity/360812e1/olive-and-vine/petty-cash", ENTITY, "http://localhost:3010"),
+    );
     expect(url.origin).toBe("http://localhost:8000");
     expect(url.pathname).toBe("/handoff/petty-cash-web");
     expect(url.searchParams.get("next")).toBe("/entity/360812e1/olive-and-vine/petty-cash");
@@ -47,7 +49,9 @@ describe("the other hand-offs (Flask as a backend only - no Flask page)", () => 
   it("reaches a minty-web page through /handoff/minty-web, scoped to the company when given", () => {
     const url = new URL(hubUrl("/entity/360812e1/olive-and-vine/settings/integration", ENTITY));
     expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
-    expect(url.searchParams.get("next")).toBe("/entity/360812e1/olive-and-vine/settings/integration");
+    expect(url.searchParams.get("next")).toBe(
+      "/entity/360812e1/olive-and-vine/settings/integration",
+    );
     expect(url.searchParams.get("entity_id")).toBe(ENTITY);
     const bare = new URL(hubUrl("/entities"));
     expect(bare.searchParams.get("next")).toBe("/entities");
@@ -61,7 +65,9 @@ describe("the other hand-offs (Flask as a backend only - no Flask page)", () => 
 
   it("reaches the payments app through Flask's hand-offs that mint its token", () => {
     expect(new URL(paymentsUrl(ENTITY, "home")).pathname).toBe(`/entity/${ENTITY}/payment-request`);
-    expect(new URL(paymentsUrl(ENTITY, "settings")).pathname).toBe(`/entity/${ENTITY}/settings/payment-request`);
+    expect(new URL(paymentsUrl(ENTITY, "settings")).pathname).toBe(
+      `/entity/${ENTITY}/settings/payment-request`,
+    );
   });
 
   it("ends the session at Flask's /logout", () => {
@@ -86,7 +92,9 @@ describe("redirectToHandoff", () => {
 
 describe("flaskBackendUrl", () => {
   it("is the same path and query on accounts-api, for a backend path only", () => {
-    expect(flaskBackendUrl("/callback", "?code=c&state=s")).toBe("http://localhost:8000/callback?code=c&state=s");
+    expect(flaskBackendUrl("/callback", "?code=c&state=s")).toBe(
+      "http://localhost:8000/callback?code=c&state=s",
+    );
     expect(flaskBackendUrl("/api/me/profile", "")).toBe("http://localhost:8000/api/me/profile");
   });
 

@@ -15,7 +15,14 @@ const API = "**/api/petty-cash/v1/companies/*";
 
 type Json = Record<string, unknown>;
 
-const DRAFT = { id: "d", status: "draft", current_section: "cash_count", completed_sections: ["opening", "sales", "expenses", "deposit"], xero_integrated: false, publishing_status: "unpublished" };
+const DRAFT = {
+  id: "d",
+  status: "draft",
+  current_section: "cash_count",
+  completed_sections: ["opening", "sales", "expenses", "deposit"],
+  xero_integrated: false,
+  publishing_status: "unpublished",
+};
 
 const DENOMINATIONS = [
   { id: "n1000", value: 1000, kind: "note", name: "$1,000", count: 0 },
@@ -48,7 +55,16 @@ const HOME = {
   server_today: "2026-10-14",
   user_count: 1,
   currency_code: "HKD",
-  latest: { date: null, closing_balance: 0, deposit: 0, deposit_bank_name: "No deposit", deposit_bank_number: "", deposit_correction_missing_settings: [], can_correct_deposit: true, submitter_first_name: null },
+  latest: {
+    date: null,
+    closing_balance: 0,
+    deposit: 0,
+    deposit_bank_name: "No deposit",
+    deposit_bank_number: "",
+    deposit_correction_missing_settings: [],
+    can_correct_deposit: true,
+    submitter_first_name: null,
+  },
   draft: null,
   draft_date: null,
   published: {},
@@ -58,7 +74,16 @@ const HOME = {
   permissions: { read_only: false, correct_deposit: true },
 };
 
-const OPENING = { transaction_date: DAY, currency_code: "HKD", draft: DRAFT, starting_cash_balance: 0, yesterday_closing_balance: 0, safebox_balance: 0, cash_addition: null, withdrawal: "personal" };
+const OPENING = {
+  transaction_date: DAY,
+  currency_code: "HKD",
+  draft: DRAFT,
+  starting_cash_balance: 0,
+  yesterday_closing_balance: 0,
+  safebox_balance: 0,
+  cash_addition: null,
+  withdrawal: "personal",
+};
 
 const saved = (next: string, discrepancy: Json = { amount: 0, kind: "none" }) => ({
   draft_id: "d",
@@ -69,7 +94,10 @@ const saved = (next: string, discrepancy: Json = { amount: 0, kind: "none" }) =>
   discrepancy,
 });
 
-type Handlers = { onSave?: (body: Json, route: Route) => Promise<void>; onRead?: (route: Route) => Promise<void> };
+type Handlers = {
+  onSave?: (body: Json, route: Route) => Promise<void>;
+  onRead?: (route: Route) => Promise<void>;
+};
 
 async function stub(page: Page, answer: Json, h: Handlers = {}) {
   await page.route(`${API}/reports/cash-count**`, async (route) => {
@@ -82,7 +110,14 @@ async function stub(page: Page, answer: Json, h: Handlers = {}) {
     else await route.fulfill({ json: answer });
   });
   await page.route(`${API}/reports/deposit**`, (route) =>
-    route.fulfill({ json: { ...countAnswer(), denominations: undefined, safe_box_balance: undefined, discrepancy: undefined } }),
+    route.fulfill({
+      json: {
+        ...countAnswer(),
+        denominations: undefined,
+        safe_box_balance: undefined,
+        discrepancy: undefined,
+      },
+    }),
   );
   await page.route(`${API}/reports/opening**`, (route) => route.fulfill({ json: OPENING }));
   // This app's own Ending step (e2e/08_ending.spec.ts covers it): a quiet stub, so Save & Next lands.
@@ -92,14 +127,22 @@ async function stub(page: Page, answer: Json, h: Handlers = {}) {
         ...countAnswer(),
         sales: { methods: [], cash: 600, total: 600, yesterday_total: null, history: [] },
         expenses: { lines: [], total: 88.5 },
-        cash: { bank_deposit: 300, expected: 1211.5, counted: 1211.5, safe_box: 0, difference: { amount: 0, kind: "none", reason: "" } },
+        cash: {
+          bank_deposit: 300,
+          expected: 1211.5,
+          counted: 1211.5,
+          safe_box: 0,
+          difference: { amount: 0, kind: "none", reason: "" },
+        },
         closing_balance: 1211.5,
         problem: null,
       },
     }),
   );
   await page.route(`${API}/home`, (route) => route.fulfill({ json: HOME }));
-  await page.route("**/api/me/profile**", (route) => route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }));
+  await page.route("**/api/me/profile**", (route) =>
+    route.fulfill({ json: { user: { name: "Tess Tester", initials: "TT" } } }),
+  );
   // a Flask page address: nothing here opens one (Flask is a backend only), so a regression lands on this stub, never Flask
   await page.route(/\/entity\/[0-9a-f-]{36}\/petty-cash\/reports\//, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Flask page</title><p>Flask page</p>" }),
@@ -107,8 +150,15 @@ async function stub(page: Page, answer: Json, h: Handlers = {}) {
 }
 
 async function enter(page: Page, next = `${BASE}/reports/new/cash-count?transaction_date=${DAY}`) {
-  const token = mintModuleToken({ secret: "stub", userId: "u", entityId: ENTITY, entityName: NAME });
-  await page.goto(`/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next })}`);
+  const token = mintModuleToken({
+    secret: "stub",
+    userId: "u",
+    entityId: ENTITY,
+    entityName: NAME,
+  });
+  await page.goto(
+    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next })}`,
+  );
 }
 
 async function openWith(page: Page, answer: Json, h: Handlers = {}) {
@@ -117,7 +167,8 @@ async function openWith(page: Page, answer: Json, h: Handlers = {}) {
   await expect(page.getByRole("heading", { name: "Cash Count", exact: true })).toBeVisible();
 }
 
-const toast = (page: Page, text: string | RegExp) => page.locator("[data-toast-type]").filter({ hasText: text });
+const toast = (page: Page, text: string | RegExp) =>
+  page.locator("[data-toast-type]").filter({ hasText: text });
 const safebox = (page: Page) => page.getByRole("textbox", { name: "Safebox Cash Balance" });
 const cashBox = (page: Page) => page.getByRole("textbox", { name: "Cash Box Balance" });
 const reason = (page: Page) => page.getByRole("textbox", { name: "Description" });
@@ -127,12 +178,15 @@ const calculator = (page: Page) => page.getByRole("dialog", { name: "Use Calcula
 async function count(page: Page, rows: Record<string, string>) {
   await page.getByRole("button", { name: "Calculator" }).click();
   const dialog = calculator(page);
-  for (const [label, n] of Object.entries(rows)) await dialog.getByRole("textbox", { name: label, exact: true }).fill(n);
+  for (const [label, n] of Object.entries(rows))
+    await dialog.getByRole("textbox", { name: label, exact: true }).fill(n);
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toHaveCount(0);
 }
 
-test("Flask's page: the expected cash, the two fields, the total and the shortage so far", async ({ page }) => {
+test("Flask's page: the expected cash, the two fields, the total and the shortage so far", async ({
+  page,
+}) => {
   await openWith(page, countAnswer());
   await expect(page.getByText("Expected Cash Count Balance")).toBeVisible();
   await expect(page.getByText("HKD 1,211.50").first()).toBeVisible();
@@ -146,12 +200,16 @@ test("Flask's page: the expected cash, the two fields, the total and the shortag
   await expect(page.getByRole("heading", { name: /Discrepancy Details/ })).toBeVisible();
   // nothing counted yet: 1,211.50 short, so the reason is open and asked for
   await expect(page.getByText("Cash Shortage: HKD 1,211.50")).toBeVisible();
-  await expect(page.getByText("Please review your entries or provide a reason for the discrepancy below.")).toBeVisible();
+  await expect(
+    page.getByText("Please review your entries or provide a reason for the discrepancy below."),
+  ).toBeVisible();
   await expect(reason(page)).toHaveAttribute("aria-required", "true");
   await expectNoHorizontalScroll(page);
 });
 
-test("the calculator: a 0.50 coin, its row totals, and Save fills the cash box", async ({ page }) => {
+test("the calculator: a 0.50 coin, its row totals, and Save fills the cash box", async ({
+  page,
+}) => {
   await openWith(page, countAnswer());
   await page.getByRole("button", { name: "Calculator" }).click();
   const dialog = calculator(page);
@@ -182,7 +240,9 @@ test("Escape and the X close the calculator without applying", async ({ page }) 
   await expect(calculator(page)).toHaveCount(0);
   await expect(cashBox(page)).toHaveValue("");
   await page.getByRole("button", { name: "Calculator" }).click();
-  await expect(calculator(page).getByRole("textbox", { name: "HKD 1,000", exact: true })).toHaveValue("");
+  await expect(
+    calculator(page).getByRole("textbox", { name: "HKD 1,000", exact: true }),
+  ).toHaveValue("");
   await calculator(page).getByRole("button", { name: "Close" }).click();
   await expect(calculator(page)).toHaveCount(0);
 });
@@ -193,7 +253,9 @@ test("a count past the limit is said in the row and not applied", async ({ page 
   const dialog = calculator(page);
   const row = dialog.getByRole("textbox", { name: "HKD 1", exact: true });
   await row.fill("2000000");
-  await expect(dialog.getByText("A count can't be more than 1,000,000. Enter 1,000,000 or less.")).toBeVisible();
+  await expect(
+    dialog.getByText("A count can't be more than 1,000,000. Enter 1,000,000 or less."),
+  ).toBeVisible();
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(row).toBeFocused();
   await expect(dialog).toBeVisible();
@@ -209,7 +271,10 @@ test("a surplus is green, and none locks the reason", async ({ page }) => {
   await reason(page).fill("Tips jar");
   await safebox(page).fill("11.5");
   await expect(page.getByText(/Cash (Surplus|Shortage)/)).toHaveCount(0);
-  await expect(reason(page)).toHaveAttribute("placeholder", "No discrepancy — description not required");
+  await expect(reason(page)).toHaveAttribute(
+    "placeholder",
+    "No discrepancy — description not required",
+  );
   await expect(reason(page)).toHaveAttribute("readonly", "");
   // the reason for a difference now gone is dropped, as Flask does
   await expect(reason(page)).toHaveValue("");
@@ -229,12 +294,16 @@ test("one cent short counts, and Save & Next needs a reason", async ({ page }) =
   await expect(page.getByText("Cash Shortage: HKD 0.01")).toBeVisible();
   await page.getByRole("button", { name: "Save & Next" }).click();
   await expect(toast(page, "Please enter description")).toBeVisible();
-  await expect(page.getByText("The count is HKD 0.01 short. Add the reason to continue.")).toBeVisible();
+  await expect(
+    page.getByText("The count is HKD 0.01 short. Add the reason to continue."),
+  ).toBeVisible();
   await expect(reason(page)).toBeFocused();
   await expect(reason(page)).toHaveAttribute("aria-invalid", "true");
   expect(sent).toBeNull();
   await reason(page).fill("Rounding at the till");
-  await expect(page.getByText("The count is HKD 0.01 short. Add the reason to continue.")).toHaveCount(0);
+  await expect(
+    page.getByText("The count is HKD 0.01 short. Add the reason to continue."),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "Save & Next" }).click();
   await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/ending\\?transaction_date=${DAY}$`));
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
@@ -263,7 +332,8 @@ test("Save & Exit keeps a difference without a reason", async ({ page }) => {
 test("the server's 422 shows on its field", async ({ page }) => {
   const why = "The count is HKD 1,211.50 short. Add the reason to continue.";
   await openWith(page, countAnswer(), {
-    onSave: (_body, route) => route.fulfill({ status: 422, json: { error: why, field: "discrepancy_reason" } }),
+    onSave: (_body, route) =>
+      route.fulfill({ status: 422, json: { error: why, field: "discrepancy_reason" } }),
   });
   await reason(page).fill("x");
   await page.getByRole("button", { name: "Save & Next" }).click();
@@ -275,7 +345,9 @@ test("a saved count comes back: the cash box, the safebox and the reason", async
   await openWith(
     page,
     countAnswer({
-      denominations: DENOMINATIONS.map((d) => (d.id === "n1000" ? { ...d, count: 1 } : d.id === "c050" ? { ...d, count: 1 } : d)),
+      denominations: DENOMINATIONS.map((d) =>
+        d.id === "n1000" ? { ...d, count: 1 } : d.id === "c050" ? { ...d, count: 1 } : d,
+      ),
       safe_box_balance: 200,
       discrepancy: { amount: -11, kind: "short", reason: "Paid a courier" },
     }),
@@ -293,13 +365,19 @@ test("a negative expected cash holds the page on Fix Negative Balance", async ({
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText("(HKD 88.50)")).toBeVisible();
   await expect(dialog.getByText("Cash balance cannot be negative, let's go back to")).toBeVisible();
-  for (const name of ["Opening (Cash in: HKD 0.00)", "Sales (Cash in: HKD 600.00)", "Expenses (Cash out: HKD 88.50)"]) {
+  for (const name of [
+    "Opening (Cash in: HKD 0.00)",
+    "Sales (Cash in: HKD 600.00)",
+    "Expenses (Cash out: HKD 88.50)",
+  ]) {
     await expect(dialog.getByRole("button", { name })).toBeVisible();
   }
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Deposit (Cash out: HKD 1,600.00)" }).click();
-  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/deposit\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${BASE}/reports/new/deposit\\?transaction_date=${DAY}$`),
+  );
   await expect(page.getByRole("heading", { name: "Deposit to Bank" })).toBeVisible();
 });
 
@@ -307,39 +385,74 @@ test("unsaved changes hold the stepper back", async ({ page }) => {
   await openWith(page, countAnswer());
   await safebox(page).fill("5");
   await page.getByRole("link", { name: /^Expenses/ }).click();
-  await expect(toast(page, "You have unsaved changes. Please save your changes first.")).toBeVisible();
+  await expect(
+    toast(page, "You have unsaved changes. Please save your changes first."),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Cash Count", exact: true })).toBeVisible();
 });
 
 test("a day with no draft goes back to Opening and says why", async ({ page }) => {
   const why = "I don't see a draft yet - let's start with the opening entry.";
-  await stub(page, countAnswer(), { onRead: (route) => route.fulfill({ status: 409, json: { error: why, to: "opening" } }) });
+  await stub(page, countAnswer(), {
+    onRead: (route) => route.fulfill({ status: 409, json: { error: why, to: "opening" } }),
+  });
   await enter(page);
-  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/opening\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${BASE}/reports/new/opening\\?transaction_date=${DAY}$`),
+  );
   await expect(page.getByRole("heading", { name: "Opening" })).toBeVisible();
   await expect(toast(page, why)).toBeVisible();
 });
 
 test("Expenses → Deposit → Cash Count, all in this app", async ({ page }) => {
   await stub(page, countAnswer());
-  const expenses = { transaction_date: DAY, currency_code: "HKD", draft: DRAFT, lines: [], total: 88.5, suppliers: [], accounts: [], permissions: { create_supplier: false } };
+  const expenses = {
+    transaction_date: DAY,
+    currency_code: "HKD",
+    draft: DRAFT,
+    lines: [],
+    total: 88.5,
+    suppliers: [],
+    accounts: [],
+    permissions: { create_supplier: false },
+  };
   await page.route(`${API}/reports/expenses**`, async (route) => {
     if (route.request().method() === "PUT") {
-      await route.fulfill({ json: { draft_id: "d", transaction_date: DAY, current_section: "deposit", completed_sections: ["opening", "sales", "expenses"], next: "deposit" } });
+      await route.fulfill({
+        json: {
+          draft_id: "d",
+          transaction_date: DAY,
+          current_section: "deposit",
+          completed_sections: ["opening", "sales", "expenses"],
+          next: "deposit",
+        },
+      });
       return;
     }
     await route.fulfill({ json: expenses });
   });
   await page.route(`${API}/reports/deposit**`, async (route) => {
     if (route.request().method() === "PUT") {
-      await route.fulfill({ json: { draft_id: "d", transaction_date: DAY, current_section: "cash_count", completed_sections: ["opening", "sales", "expenses", "deposit"], next: "cash_count" } });
+      await route.fulfill({
+        json: {
+          draft_id: "d",
+          transaction_date: DAY,
+          current_section: "cash_count",
+          completed_sections: ["opening", "sales", "expenses", "deposit"],
+          next: "cash_count",
+        },
+      });
       return;
     }
     await route.fulfill({ json: { ...countAnswer(), bank_deposit: 0, expected_cash: 1511.5 } });
   });
   let left = false;
   page.on("framenavigated", (frame) => {
-    if (frame === page.mainFrame() && !frame.url().startsWith(new URL(page.url() || "http://localhost:3010").origin)) left = true;
+    if (
+      frame === page.mainFrame() &&
+      !frame.url().startsWith(new URL(page.url() || "http://localhost:3010").origin)
+    )
+      left = true;
   });
   await enter(page, `${BASE}/reports/new/expense?transaction_date=${DAY}`);
   await expect(page.getByRole("heading", { name: "Expenses", exact: true })).toBeVisible();
@@ -348,7 +461,9 @@ test("Expenses → Deposit → Cash Count, all in this app", async ({ page }) =>
   await page.getByRole("textbox", { name: "Deposit Amount" }).fill("300");
   await page.getByRole("button", { name: "Save & Next" }).click();
   await expect(page.getByRole("heading", { name: "Cash Count", exact: true })).toBeVisible();
-  await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/cash-count\\?transaction_date=${DAY}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`${BASE}/reports/new/cash-count\\?transaction_date=${DAY}$`),
+  );
   expect(left).toBe(false);
 });
 

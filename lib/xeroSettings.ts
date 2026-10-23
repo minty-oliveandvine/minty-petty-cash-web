@@ -30,7 +30,13 @@ export const MAPPING_KEYS: readonly MappingKey[] = [
 ];
 
 export type XeroOption = { id: string; name: string; code?: string };
-export type MappingField = { key: MappingKey; label: string; kind: "account" | "contact"; options: XeroOption[]; selected: string | null };
+export type MappingField = {
+  key: MappingKey;
+  label: string;
+  kind: "account" | "contact";
+  options: XeroOption[];
+  selected: string | null;
+};
 export type AccountCode = { code: string; name: string; selected: boolean };
 
 export type XeroRead = {
@@ -49,33 +55,79 @@ export type CodesAnswer = XeroRead & { message: string };
  * Flask's mapping card, group by group (`xero_account_mapping_cards_classic.html`): each group's
  * heading, then each field's line above its picker and the picker's placeholder.
  */
-export const MAPPING_GROUPS: readonly { title: string; fields: readonly { key: MappingKey; sub: string; placeholder: string }[] }[] = [
-  { title: "Petty Cash Account", fields: [{ key: "main_bank", sub: "Select Petty Cash bank account from Xero", placeholder: "Select a bank account" }] },
-  { title: "Deposit Bank Account", fields: [{ key: "deposit_bank", sub: "Select bank account to deposit excess cash", placeholder: "Select a bank account" }] },
+export const MAPPING_GROUPS: readonly {
+  title: string;
+  fields: readonly { key: MappingKey; sub: string; placeholder: string }[];
+}[] = [
+  {
+    title: "Petty Cash Account",
+    fields: [
+      {
+        key: "main_bank",
+        sub: "Select Petty Cash bank account from Xero",
+        placeholder: "Select a bank account",
+      },
+    ],
+  },
+  {
+    title: "Deposit Bank Account",
+    fields: [
+      {
+        key: "deposit_bank",
+        sub: "Select bank account to deposit excess cash",
+        placeholder: "Select a bank account",
+      },
+    ],
+  },
   {
     title: "Cash Sales",
     fields: [
-      { key: "cashsale_account", sub: "Select account code for cash sales", placeholder: "Select an account code" },
-      { key: "cashsale_contact", sub: "Select the Customer contact", placeholder: "Select a contact" },
+      {
+        key: "cashsale_account",
+        sub: "Select account code for cash sales",
+        placeholder: "Select an account code",
+      },
+      {
+        key: "cashsale_contact",
+        sub: "Select the Customer contact",
+        placeholder: "Select a contact",
+      },
     ],
   },
   {
     title: "Director Personal Account",
     fields: [
-      { key: "owners_account", sub: "Select account code for the Advance Payment from director", placeholder: "Select an account code" },
-      { key: "owners_contact", sub: "Select Director or Responsible person", placeholder: "Select a contact" },
+      {
+        key: "owners_account",
+        sub: "Select account code for the Advance Payment from director",
+        placeholder: "Select an account code",
+      },
+      {
+        key: "owners_contact",
+        sub: "Select Director or Responsible person",
+        placeholder: "Select a contact",
+      },
     ],
   },
   {
     title: "Discrepancy - Other Expense",
     fields: [
-      { key: "discrepancy_account", sub: "Select account code to record Cash Discrepancy", placeholder: "Select an account code" },
-      { key: "discrepancy_contact", sub: "Select Director or Responsible person", placeholder: "Select a contact" },
+      {
+        key: "discrepancy_account",
+        sub: "Select account code to record Cash Discrepancy",
+        placeholder: "Select an account code",
+      },
+      {
+        key: "discrepancy_contact",
+        sub: "Select Director or Responsible person",
+        placeholder: "Select a contact",
+      },
     ],
   },
 ];
 
-export const SAME_BANK = "The Petty Cash Account and the Deposit Bank Account can't be the same. Choose a different one for each.";
+export const SAME_BANK =
+  "The Petty Cash Account and the Deposit Bank Account can't be the same. Choose a different one for each.";
 export const CODES_NONE = "Pick at least one account code.";
 export const CONTACT_EMPTY = "The contact's name is still empty. Type a name to create it.";
 
@@ -110,12 +162,19 @@ function otherBank(key: MappingKey, picked: Selection): string | null {
  * An account picker's rows for what is typed (Flask's `initialize*Search`): every option when the box
  * is empty or still shows the current choice, else those whose name or code holds the text, any case.
  */
-export function accountOptions(field: MappingField, query: string, currentLabel: string, picked: Selection): XeroOption[] {
+export function accountOptions(
+  field: MappingField,
+  query: string,
+  currentLabel: string,
+  picked: Selection,
+): XeroOption[] {
   const skip = otherBank(field.key, picked);
   const offered = field.options.filter((o) => o.id !== skip);
   const q = query.trim().toLowerCase();
   if (!q || q === currentLabel.trim().toLowerCase()) return offered;
-  return offered.filter((o) => o.name.toLowerCase().includes(q) || (o.code ?? "").toLowerCase().includes(q));
+  return offered.filter(
+    (o) => o.name.toLowerCase().includes(q) || (o.code ?? "").toLowerCase().includes(q),
+  );
 }
 
 /**
@@ -123,9 +182,14 @@ export function accountOptions(field: MappingField, query: string, currentLabel:
  * text to offer as a new contact when no name is exactly it (Flask's "+ Add '<name>' as a new
  * contact"), or "" for its bare "+ Add as a new contact" when nothing is typed and nothing matches.
  */
-export function contactOptions(field: MappingField, query: string, currentLabel: string): { matches: XeroOption[]; offerNew: string | null } {
+export function contactOptions(
+  field: MappingField,
+  query: string,
+  currentLabel: string,
+): { matches: XeroOption[]; offerNew: string | null } {
   const q = query.trim();
-  if (!q || q.toLowerCase() === currentLabel.trim().toLowerCase()) return { matches: field.options, offerNew: field.options.length ? null : "" };
+  if (!q || q.toLowerCase() === currentLabel.trim().toLowerCase())
+    return { matches: field.options, offerNew: field.options.length ? null : "" };
   const folded = q.toLowerCase();
   const matches = field.options.filter((o) => o.name.toLowerCase().includes(folded));
   const exact = field.options.some((o) => o.name.toLowerCase() === folded);
@@ -137,10 +201,15 @@ export function contactOptions(field: MappingField, query: string, currentLabel:
  * sentence; empty when it may go). An empty field is only reported once a save was refused for it
  * (`refused`), as CLAUDE.md asks; the two banks being one is said at once.
  */
-export function mappingProblems(mapping: MappingField[], picked: Selection, refused: boolean): Partial<Record<MappingKey, string>> {
+export function mappingProblems(
+  mapping: MappingField[],
+  picked: Selection,
+  refused: boolean,
+): Partial<Record<MappingKey, string>> {
   const out: Partial<Record<MappingKey, string>> = {};
   if (refused) {
-    for (const field of mapping) if (!picked[field.key]) out[field.key] = `Choose the ${field.label}.`;
+    for (const field of mapping)
+      if (!picked[field.key]) out[field.key] = `Choose the ${field.label}.`;
   }
   if (picked.main_bank && picked.main_bank === picked.deposit_bank) {
     out.main_bank = SAME_BANK;
@@ -162,7 +231,11 @@ export function mappingBody(picked: Selection): Selection {
 
 /** A new contact goes into every contact picker's list (one Xero contact list), and is chosen in its own. */
 export function withContact(mapping: MappingField[], contact: XeroOption): MappingField[] {
-  return mapping.map((f) => (f.kind === "contact" && !f.options.some((o) => o.id === contact.id) ? { ...f, options: [...f.options, contact] } : f));
+  return mapping.map((f) =>
+    f.kind === "contact" && !f.options.some((o) => o.id === contact.id)
+      ? { ...f, options: [...f.options, contact] }
+      : f,
+  );
 }
 
 // --- the account codes ---------------------------------------------------------------------------
@@ -180,7 +253,10 @@ export function shownCodes(codes: AccountCode[], query: string): AccountCode[] {
 }
 
 /** "Select all"'s box for the rows shown: all ticked, some (indeterminate) or none. */
-export function selectAllState(rows: AccountCode[], ticked: ReadonlySet<string>): "all" | "some" | "none" {
+export function selectAllState(
+  rows: AccountCode[],
+  ticked: ReadonlySet<string>,
+): "all" | "some" | "none" {
   const on = rows.filter((r) => ticked.has(r.code)).length;
   if (rows.length > 0 && on === rows.length) return "all";
   return on > 0 ? "some" : "none";

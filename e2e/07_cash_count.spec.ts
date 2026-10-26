@@ -223,6 +223,24 @@ test("at a phone's width a large total stays on one line; the label wraps instea
   await expectNoHorizontalScroll(page);
 });
 
+test("at a phone's width the calculator's largest row total stays on one line, below its count", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "a phone-width layout check");
+  await openWith(page, countAnswer());
+  await page.getByRole("button", { name: "Calculator" }).click();
+  const dialog = calculator(page);
+  await dialog.getByRole("textbox", { name: "HKD 1,000", exact: true }).fill("999999");
+  const total = dialog.getByText("999,999,000.00", { exact: true });
+  await expect(total).toBeVisible();
+  const { height, lineHeight } = await total.evaluate((el) => ({
+    height: el.getBoundingClientRect().height,
+    lineHeight: parseFloat(getComputedStyle(el).lineHeight),
+  }));
+  expect(height).toBeLessThan(lineHeight * 1.5);
+  await expectNoHorizontalScroll(page);
+});
+
 test("the calculator: a 0.50 coin, its row totals, and Save fills the cash box", async ({
   page,
 }) => {

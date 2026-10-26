@@ -716,11 +716,13 @@ function CalculatorModal({
                       }`}
                     />
                   </div>
-                  <div className="col-start-2 flex min-w-0 items-center justify-between gap-2 rounded-flask-2xl border border-flask-gray-500 bg-flask-gray-300/20 px-3 py-3 sm:w-40 sm:shrink-0">
+                  {/* The row's total: on a phone its own full-width line under the count, beside it
+                      from sm up (growing past w-40 for the largest totals); never split mid-number. */}
+                  <div className="col-span-2 flex min-w-0 items-center justify-between gap-2 rounded-flask-2xl border border-flask-gray-500 bg-flask-gray-300/20 px-3 py-3 sm:w-auto sm:min-w-40 sm:shrink-0">
                     <span className="font-medium text-flask-gray-500/60">{code}</span>
                     <output
                       htmlFor={id}
-                      className="min-w-0 break-all text-right text-flask-gray-700"
+                      className="whitespace-nowrap text-right text-flask-gray-700"
                     >
                       {rowTotal(d.value, parseCount(value)).toLocaleString("en-US", {
                         minimumFractionDigits: 2,

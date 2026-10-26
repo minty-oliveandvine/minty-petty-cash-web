@@ -357,6 +357,65 @@ test("the server's refusal is shown as it says it, and the card stays open", asy
   await expect(page.getByRole("heading", { name: "Add New Expense" })).toBeVisible();
 });
 
+test("a description past 300 characters is said as it is typed, and Add waits for it", async ({
+  page,
+}) => {
+  let adds = 0;
+  await openWith(page, expensesAnswer(), {
+    onAdd: async (_req, route) => {
+      adds += 1;
+      await route.fulfill({ status: 201, json: { line: { ...LINE, id: "new" }, total: 2435 } });
+    },
+  });
+  await fillAdd(page);
+  const description = page.getByRole("textbox", { name: "Description" });
+  const why = "Keep the description to 300 characters or fewer.";
+  await description.fill("x".repeat(300));
+  await expect(page.getByText(why)).toHaveCount(0);
+  await expect(description).not.toHaveAttribute("aria-invalid", "true");
+  await description.fill("x".repeat(301));
+  await expect(page.getByText(why)).toBeVisible();
+  await expect(description).toHaveAttribute("aria-invalid", "true");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(description).toBeFocused();
+  expect(adds).toBe(0);
+  await description.press("Backspace");
+  await expect(page.getByText(why)).toHaveCount(0);
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(toast(page, "Expense added successfully!")).toBeVisible();
+  expect(adds).toBe(1);
+});
+
+test("a new contact's name past 150 characters is said as it is typed, and Create waits for it", async ({
+  page,
+}) => {
+  const created: Json[] = [];
+  await openWith(page, expensesAnswer(), {
+    onSupplier: async (body, route) => {
+      created.push(body);
+      await route.fulfill({ status: 201, json: { id: "s-new", name: body.name } });
+    },
+  });
+  await page.getByRole("button", { name: "Add New Expense" }).click();
+  await page.getByRole("combobox", { name: /Suppliers/ }).fill("Kee Wah");
+  await page.getByRole("option", { name: "+ Add 'Kee Wah' as a new contact" }).click();
+  const newContact = page.getByRole("textbox", { name: /New Contact/ });
+  const why = "Keep the supplier's name to 150 characters or fewer.";
+  await expect(page.getByText(why)).toHaveCount(0);
+  await expect(newContact).not.toHaveAttribute("aria-invalid", "true");
+  await newContact.fill("k".repeat(151));
+  await expect(page.getByText(why)).toBeVisible();
+  await expect(newContact).toHaveAttribute("aria-invalid", "true");
+  await page.getByRole("button", { name: "Create" }).click();
+  await newContact.press("Enter");
+  expect(created).toEqual([]);
+  await newContact.fill("k".repeat(150));
+  await expect(page.getByText(why)).toHaveCount(0);
+  await page.getByRole("button", { name: "Create" }).click();
+  await expect(toast(page, "That contact's added!")).toBeVisible();
+  expect(created).toEqual([{ name: "k".repeat(150) }]);
+});
+
 test("suppliers are searched A to Z, and a new one is created and chosen", async ({ page }) => {
   let created: Json | null = null;
   await openWith(page, expensesAnswer(), {

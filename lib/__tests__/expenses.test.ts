@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   detailRows,
   missingFields,
+  newContactProblem,
   receiptKind,
   receiptProblem,
   searchAccounts,
@@ -169,5 +170,16 @@ describe("detailRows", () => {
         account: { id: "1", code: "429", name: "General Expenses" },
       }),
     ).toEqual({ contact: "Wellcome", description: "Milk", account: "429 General Expenses" });
+  });
+});
+
+describe("newContactProblem", () => {
+  it("says nothing up to 150 characters, then the API's sentence", () => {
+    expect(newContactProblem("")).toBeNull();
+    expect(newContactProblem("x".repeat(150))).toBeNull();
+    expect(newContactProblem(` ${"x".repeat(150)} `)).toBeNull();
+    expect(newContactProblem("x".repeat(151))).toBe(
+      "Keep the supplier's name to 150 characters or fewer.",
+    );
   });
 });

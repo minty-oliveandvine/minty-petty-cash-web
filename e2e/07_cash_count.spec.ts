@@ -207,6 +207,22 @@ test("Flask's page: the expected cash, the two fields, the total and the shortag
   await expectNoHorizontalScroll(page);
 });
 
+test("at a phone's width a large total stays on one line; the label wraps instead", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "a phone-width layout check");
+  await openWith(page, countAnswer());
+  await safebox(page).fill("1234567.8");
+  const total = page.getByText("HKD 1,234,567.80", { exact: true });
+  await expect(total).toBeVisible();
+  const { height, lineHeight } = await total.evaluate((el) => ({
+    height: el.getBoundingClientRect().height,
+    lineHeight: parseFloat(getComputedStyle(el).lineHeight),
+  }));
+  expect(height).toBeLessThan(lineHeight * 1.5);
+  await expectNoHorizontalScroll(page);
+});
+
 test("the calculator: a 0.50 coin, its row totals, and Save fills the cash box", async ({
   page,
 }) => {

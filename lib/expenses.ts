@@ -104,6 +104,16 @@ export function receiptKind(
   return kind === "other" && name !== undefined ? of(name) : kind;
 }
 
+/** The API's limit on a new contact's name (`MAX_SUPPLIER_NAME` in `routes/expenses.py`). */
+export const MAX_SUPPLIER_NAME = 150;
+
+/** A New Contact name as it is typed, in the API's words; null when it fits. */
+export function newContactProblem(name: string): string | null {
+  return name.trim().length > MAX_SUPPLIER_NAME
+    ? `Keep the supplier's name to ${MAX_SUPPLIER_NAME} characters or fewer.`
+    : null;
+}
+
 export type AddForm = {
   amount: string;
   supplierText: string;

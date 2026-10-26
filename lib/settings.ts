@@ -44,8 +44,12 @@ export type SettingsRead = {
 /** Every write answers the whole read again, with the sentence to show. */
 export type SettingsAnswer = SettingsRead & { message: string };
 
-/** The API's limit on a method's name (`NAME_MAX`). */
-export const NAME_MAX = 100;
+/**
+ * The API's limits on a method's name: a new one leaves room for the "_sales" of its 80-character
+ * value name (`ADD_NAME_MAX`), a rename may use all 80 (`RENAME_NAME_MAX`).
+ */
+export const ADD_NAME_MAX = 80 - "_sales".length;
+export const RENAME_NAME_MAX = 80;
 export const NAME_EMPTY = "The method's name is still empty. Type a name to add it.";
 
 /** Flask's wording for each card (`partials/electronic_delivery_section.html`, the script's KINDS). */
@@ -122,20 +126,20 @@ export function catalogueOptions(available: CatalogueMethod[], query: string): C
 }
 
 /**
- * A new or renamed method's name, checked as it is typed: too long, or already on this type's
- * list (any case, as the API's 409) - null when fine. An empty name is only "not finished", so it
- * says nothing here; the Add that is refused for it says `NAME_EMPTY`. `except` is the method
- * being renamed, which may keep its own name.
+ * A new or renamed method's name, checked as it is typed: longer than `max` (`ADD_NAME_MAX` or
+ * `RENAME_NAME_MAX`), or already on this type's list (any case, as the API's 409) - null when
+ * fine. An empty name is only "not finished", so it says nothing here; the Add that is refused for
+ * it says `NAME_EMPTY`. `except` is the method being renamed, which may keep its own name.
  */
 export function methodNameProblem(
   name: string,
   listed: SalesMethod[],
+  max: number,
   except?: string,
 ): string | null {
   const wanted = name.trim();
   if (!wanted) return null;
-  if (wanted.length > NAME_MAX)
-    return `That name is too long. Keep it to ${NAME_MAX} characters or fewer.`;
+  if (wanted.length > max) return `That name is too long. Keep it to ${max} characters or fewer.`;
   const folded = wanted.toLowerCase();
   if (listed.some((m) => m.id !== except && m.name.trim().toLowerCase() === folded))
     return `${wanted} is already on the list.`;

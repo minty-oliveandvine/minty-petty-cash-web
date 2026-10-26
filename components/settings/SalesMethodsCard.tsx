@@ -15,8 +15,10 @@ import {
   type ComboRow,
 } from "@/components/settings/SettingsParts";
 import {
+  ADD_NAME_MAX,
   KIND,
   NAME_EMPTY,
+  RENAME_NAME_MAX,
   catalogueOptions,
   methodNameProblem,
   sharedRenameMessage,
@@ -208,7 +210,7 @@ function RenameBox({
   const [text, setText] = useState(method.name);
   const box = useRef<HTMLInputElement>(null);
   const problemId = useId();
-  const problem = methodNameProblem(text, listed, method.id);
+  const problem = methodNameProblem(text, listed, RENAME_NAME_MAX, method.id);
   // a ref: Enter then the blur it causes must send once
   const done = useRef(false);
 
@@ -359,7 +361,8 @@ function AddForm({
   const catalog = useRef<HTMLInputElement | null>(null);
   const nameBox = useRef<HTMLInputElement>(null);
   const nameProblem =
-    methodNameProblem(name, methods) ?? (refusedEmpty && !name.trim() ? NAME_EMPTY : null);
+    methodNameProblem(name, methods, ADD_NAME_MAX) ??
+    (refusedEmpty && !name.trim() ? NAME_EMPTY : null);
 
   useEffect(() => {
     catalog.current = document.getElementById(catalogId) as HTMLInputElement | null;

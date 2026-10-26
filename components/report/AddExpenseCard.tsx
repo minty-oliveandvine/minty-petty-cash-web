@@ -14,10 +14,12 @@ import { useAmountInput } from "@minty/shared/amountInput";
 
 import { useToast } from "@/components/flask/Toasts";
 import { ReceiptViewer, type ShownReceipt } from "@/components/report/ReceiptViewer";
+import { FieldMessage } from "@/components/report/ReportChrome";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { parseMoney } from "@/lib/currencyInput";
 import {
   missingFields,
+  newContactProblem,
   receiptKind,
   receiptProblem,
   searchAccounts,
@@ -28,6 +30,7 @@ import {
   type RequiredField,
   type Supplier,
 } from "@/lib/expenses";
+import { remarksProblem } from "@/lib/report";
 
 const FIELD =
   "w-full rounded-flask-2xl border bg-flask-white py-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal cursor-pointer";
@@ -101,6 +104,8 @@ export function AddExpenseCard(props: AddExpenseProps) {
     },
   });
   const [remarks, setRemarks] = useState("");
+  const remarksField = useRef<HTMLInputElement>(null);
+  const remarksMessage = remarksProblem(remarks);
   const [supplierText, setSupplierText] = useState("");
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [accountText, setAccountText] = useState("");
@@ -111,6 +116,8 @@ export function AddExpenseCard(props: AddExpenseProps) {
   useEffect(() => () => revoke(pickedRef.current), []);
   const file = picked?.file ?? null;
   const [newContact, setNewContact] = useState<string | null>(null);
+  const newContactField = useRef<HTMLInputElement>(null);
+  const newContactMessage = newContact === null ? null : newContactProblem(newContact);
   const [errors, setErrors] = useState<Set<RequiredField>>(new Set());
   const [sending, setSending] = useState(false);
 
@@ -144,6 +151,10 @@ export function AddExpenseCard(props: AddExpenseProps) {
   }
 
   async function createSupplier() {
+    if (newContactMessage) {
+      newContactField.current?.focus();
+      return;
+    }
     const name = (newContact ?? "").trim();
     setNewContact(name);
     if (!name) {
@@ -168,6 +179,10 @@ export function AddExpenseCard(props: AddExpenseProps) {
   async function add(event: FormEvent) {
     event.preventDefault();
     if (sending) return;
+    if (remarksMessage) {
+      remarksField.current?.focus();
+      return;
+    }
     const missing = missingFields({ amount, supplierText, supplier, accountText, account, file });
     setErrors(new Set(missing));
     if (missing.length > 0 || !supplier || !account || !file) {
@@ -251,19 +266,25 @@ export function AddExpenseCard(props: AddExpenseProps) {
         </div>
       </div>
 
-      <div>
+      <div className="mb-4">
         <label htmlFor="expense_remarks" className={LABEL}>
           Description
         </label>
         <input
+          ref={remarksField}
           id="expense_remarks"
           type="text"
           autoComplete="off"
           placeholder="Description (Optional)"
           value={remarks}
+          aria-invalid={remarksMessage ? true : undefined}
+          aria-describedby={remarksMessage ? "expense_remarks_message" : undefined}
           onChange={(e) => setRemarks(e.target.value)}
-          className={`${FIELD} mb-4 border-flask-gray-300 pl-3 pr-3 text-flask-gray-700`}
+          className={`${FIELD} ${remarksMessage ? "border-flask-red-500" : "border-flask-gray-300"} pl-3 pr-3 text-flask-gray-700`}
         />
+        {remarksMessage ? (
+          <FieldMessage id="expense_remarks_message">{remarksMessage}</FieldMessage>
+        ) : null}
       </div>
 
       {newContact === null ? (
@@ -308,11 +329,14 @@ export function AddExpenseCard(props: AddExpenseProps) {
             New Contact <Star />
           </label>
           <input
+            ref={newContactField}
             id="new_contact"
             type="text"
             autoComplete="off"
             placeholder="Enter a New Contact"
             aria-required="true"
+            aria-invalid={newContactMessage ? true : undefined}
+            aria-describedby={newContactMessage ? "new_contact_message" : undefined}
             value={newContact}
             onChange={(e) => setNewContact(e.target.value)}
             onKeyDown={(e) => {
@@ -321,8 +345,11 @@ export function AddExpenseCard(props: AddExpenseProps) {
                 void createSupplier();
               }
             }}
-            className={`${FIELD} border-flask-gray-300 pl-3 pr-3 text-flask-gray-700`}
+            className={`${FIELD} ${newContactMessage ? "border-flask-red-500" : "border-flask-gray-300"} pl-3 pr-3 text-flask-gray-700`}
           />
+          {newContactMessage ? (
+            <FieldMessage id="new_contact_message">{newContactMessage}</FieldMessage>
+          ) : null}
           <div className="mt-2 flex gap-2">
             <button
               type="button"

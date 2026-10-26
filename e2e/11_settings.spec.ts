@@ -465,9 +465,12 @@ test("adding by name: Other, the name checked as it is typed, then sent", async 
   await expect(
     delivery.getByText("The method's name is still empty. Type a name to add it."),
   ).toBeVisible();
-  await name.fill("x".repeat(101));
+  // the API's add limit: 80 less the "_sales" its value name gets
+  await name.fill("x".repeat(74));
+  await expect(delivery.getByText(/too long/)).toHaveCount(0);
+  await name.fill("x".repeat(75));
   await expect(
-    delivery.getByText("That name is too long. Keep it to 100 characters or fewer."),
+    delivery.getByText("That name is too long. Keep it to 74 characters or fewer."),
   ).toBeVisible();
   await expect(name).toHaveAttribute("aria-invalid", "true");
   await name.fill("foodpanda");
@@ -510,6 +513,15 @@ test("renaming: click the name, Enter saves; Escape puts it back", async ({ page
   await expect(box).toBeFocused();
   await box.fill("visa");
   await expect(electronic.getByText("visa is already on the list.")).toBeVisible();
+  // a rename may run to the API's 80 characters
+  await box.fill("x".repeat(80));
+  await expect(electronic.getByText(/too long/)).toHaveCount(0);
+  await box.fill("x".repeat(81));
+  await expect(
+    electronic.getByText("That name is too long. Keep it to 80 characters or fewer."),
+  ).toBeVisible();
+  await box.press("Enter");
+  expect(sent).toEqual([]);
   await box.press("Escape");
   await expect(electronic.getByRole("button", { name: "AlipayHK", exact: true })).toBeVisible();
   expect(sent).toEqual([]);

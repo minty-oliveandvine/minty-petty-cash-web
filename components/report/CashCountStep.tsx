@@ -446,9 +446,11 @@ function CashCountForm({
               ) : null}
             </div>
             <div className="mt-2 flex items-center justify-between gap-3 rounded-flask-2xl bg-flask-teal-soft/50 p-3">
-              <span className="text-sm font-medium text-flask-teal-count">Total Cash Count</span>
+              <span className="min-w-0 text-sm font-medium text-flask-teal-count">
+                Total Cash Count
+              </span>
               <span
-                className="min-w-0 break-all text-right text-sm font-medium text-flask-teal-count"
+                className="whitespace-nowrap text-right text-sm font-medium text-flask-teal-count"
                 aria-live="polite"
               >
                 {formatMoney(cents(till + safeAmount), code)}
@@ -554,7 +556,7 @@ function DiscrepancyAlert({
             className={`text-sm font-medium ${short ? "text-flask-red-800" : "text-flask-success-ink"}`}
           >
             {short ? "Cash Shortage: " : "Cash Surplus: "}
-            <span className="break-all">{formatMoney(Math.abs(amount), code)}</span>
+            <span className="whitespace-nowrap">{formatMoney(Math.abs(amount), code)}</span>
           </h3>
           <p className="mt-1 text-sm text-flask-gray-600">
             Please review your entries or provide a reason for the discrepancy below.
@@ -733,9 +735,11 @@ function CalculatorModal({
           })}
 
           <div className="mb-4 flex items-center justify-between gap-3 rounded-flask-2xl">
-            <span className="text-sm font-medium text-flask-gray-700">Total Cash Till Balance</span>
+            <span className="min-w-0 text-sm font-medium text-flask-gray-700">
+              Total Cash Till Balance
+            </span>
             <span
-              className="min-w-0 break-all text-right text-sm font-medium text-flask-gray-700"
+              className="whitespace-nowrap text-right text-sm font-medium text-flask-gray-700"
               aria-live="polite"
             >
               {formatMoney(total, code)}

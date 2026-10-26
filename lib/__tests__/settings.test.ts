@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ADD_NAME_MAX,
   NAME_EMPTY,
+  RENAME_NAME_MAX,
   catalogueOptions,
   countryChange,
   methodNameProblem,
@@ -148,25 +150,33 @@ describe("a method's name, checked as it is typed", () => {
   ];
 
   it("says nothing while it is empty: that only means it is not finished", () => {
-    expect(methodNameProblem("", listed)).toBeNull();
-    expect(methodNameProblem("   ", listed)).toBeNull();
+    expect(methodNameProblem("", listed, ADD_NAME_MAX)).toBeNull();
+    expect(methodNameProblem("   ", listed, ADD_NAME_MAX)).toBeNull();
     expect(NAME_EMPTY).toBe("The method's name is still empty. Type a name to add it.");
   });
 
-  it("names the limit past 100 characters", () => {
-    expect(methodNameProblem("x".repeat(100), listed)).toBeNull();
-    expect(methodNameProblem("x".repeat(101), listed)).toBe(
-      "That name is too long. Keep it to 100 characters or fewer.",
+  it("names the API's limits: 74 to add (room for _sales), 80 to rename", () => {
+    expect(ADD_NAME_MAX).toBe(74);
+    expect(RENAME_NAME_MAX).toBe(80);
+    expect(methodNameProblem("x".repeat(74), listed, ADD_NAME_MAX)).toBeNull();
+    expect(methodNameProblem("x".repeat(75), listed, ADD_NAME_MAX)).toBe(
+      "That name is too long. Keep it to 74 characters or fewer.",
+    );
+    expect(methodNameProblem("x".repeat(80), listed, RENAME_NAME_MAX, "a")).toBeNull();
+    expect(methodNameProblem("x".repeat(81), listed, RENAME_NAME_MAX, "a")).toBe(
+      "That name is too long. Keep it to 80 characters or fewer.",
     );
   });
 
   it("refuses a name already on the list, in any case, as the API does", () => {
-    expect(methodNameProblem(" visa ", listed)).toBe("visa is already on the list.");
+    expect(methodNameProblem(" visa ", listed, ADD_NAME_MAX)).toBe("visa is already on the list.");
   });
 
   it("lets a rename keep its own name", () => {
-    expect(methodNameProblem("VISA", listed, "a")).toBeNull();
-    expect(methodNameProblem("Octopus", listed, "a")).toBe("Octopus is already on the list.");
+    expect(methodNameProblem("VISA", listed, RENAME_NAME_MAX, "a")).toBeNull();
+    expect(methodNameProblem("Octopus", listed, RENAME_NAME_MAX, "a")).toBe(
+      "Octopus is already on the list.",
+    );
   });
 });
 

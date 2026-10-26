@@ -2,6 +2,9 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
+import { useAmountInput } from "@minty/shared/amountInput";
+
+import { parseMoney } from "@/lib/currencyInput";
 import { CHOOSE_CURRENCY } from "@/lib/dashboard";
 import { formatDay } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
@@ -268,30 +271,6 @@ export function BeforeYouStartModal({
 }
 
 /**
- * Flask's `formatCurrencyModal` as you type: digits and one point, two decimals at most, thousands
- * commas. (Flask also turned a zero into "-", which made "0.50" impossible to type - not kept.)
- */
-export function formatAmountTyping(raw: string): string {
-  const digits = raw.replace(/[^\d.]/g, "");
-  if (!digits) return "";
-  const [whole, ...rest] = digits.split(".");
-  const wholeNumber = whole.replace(/^0+(?=\d)/, "") || (rest.length ? "0" : "");
-  const grouped = wholeNumber.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return rest.length ? `${grouped}.${rest.join("").slice(0, 2)}` : grouped;
-}
-
-/** Flask's `formatWithCommasModal` on blur: two decimals always. */
-export function formatAmountBlur(text: string): string {
-  if (text === "") return text;
-  const [whole, decimals = ""] = text.split(".");
-  return `${whole || "0"}.${decimals.padEnd(2, "0")}`;
-}
-
-export function parseAmount(text: string): number {
-  return Number(text.replace(/,/g, "")) || 0;
-}
-
-/**
  * Flask's "Deposit to Bank" (#depositModal), reached by "No, there was a change": the amount really
  * deposited. Its Bank Account and Deposit Date fields were always hidden in Flask and are not drawn.
  */
@@ -309,6 +288,7 @@ export function DepositModal({
   onProceed: (amount: number) => void;
 }) {
   const [value, setValue] = useState("");
+  const amountInput = useAmountInput({ value, onValue: setValue });
   const fieldId = useId();
   return (
     <Frame title="Deposit to Bank" z="z-50" onClose={busy ? undefined : onClose}>
@@ -334,15 +314,11 @@ export function DepositModal({
             </div>
             <input
               id={fieldId}
-              type="text"
-              inputMode="decimal"
               autoComplete="off"
               placeholder="Enter amount deposited to bank"
-              value={value}
-              onChange={(e) => setValue(formatAmountTyping(e.target.value))}
-              onBlur={() => setValue(formatAmountBlur(value))}
+              {...amountInput}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !busy) onProceed(parseAmount(value));
+                if (e.key === "Enter" && !busy) onProceed(parseMoney(value));
               }}
               className="w-full rounded-flask-2xl border border-flask-gray-300 bg-flask-white py-3 pl-12 pr-3 text-flask-gray-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal"
             />
@@ -355,7 +331,7 @@ export function DepositModal({
         </button>
         <button
           type="button"
-          onClick={() => onProceed(parseAmount(value))}
+          onClick={() => onProceed(parseMoney(value))}
           disabled={busy}
           className={PROCEED_BUTTON}
         >

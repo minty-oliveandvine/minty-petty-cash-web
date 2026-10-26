@@ -141,8 +141,9 @@ test("the addition is cleaned as typed, grouped on leaving, and moves the Openin
     });
   });
   const field = page.getByRole("textbox", { name: "Addition to Cash Drawer" });
-  await field.fill("12a50.555");
-  await expect(field).toHaveValue("1250.55");
+  // commas as it is typed; the letter and the third place are refused, not cut
+  await field.pressSequentially("12a50.555");
+  await expect(field).toHaveValue("1,250.55");
   await field.blur();
   await expect(field).toHaveValue("1,250.55");
   await expect(page.getByText("HKD 2,450.55")).toBeVisible();

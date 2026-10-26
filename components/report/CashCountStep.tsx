@@ -1,7 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type ComponentProps, type MouseEvent } from "react";
+
+import { useAmountInput } from "@minty/shared/amountInput";
+import { formatAmount } from "@minty/shared/money";
 
 import { PhoneCard } from "@/components/flask/PhoneCard";
 import { Stepper } from "@/components/flask/Stepper";
@@ -29,13 +32,13 @@ import {
   reasonNeeded,
   reasonProblem,
   rowTotal,
-  sanitizeCount,
+  COUNT_DIGITS,
   tillTotal,
   type CashCountPage,
   type Denomination,
 } from "@/lib/cash";
 import { pettyCashHome } from "@/lib/companyPages";
-import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
+import { parseMoney } from "@/lib/currencyInput";
 import { formatMoney } from "@/lib/money";
 import { datePill } from "@/lib/opening";
 import { changed } from "@/lib/sales";
@@ -137,7 +140,7 @@ function CashCountForm({
 
   const [initial] = useState(() => ({
     counts: savedCounts(page.denominations),
-    safe: page.safe_box_balance ? groupMoney(String(page.safe_box_balance)) : "",
+    safe: page.safe_box_balance ? formatAmount(page.safe_box_balance) : "",
     reason: page.discrepancy.reason,
   }));
   const [counts, setCounts] = useState<Counts>(initial.counts);
@@ -151,6 +154,14 @@ function CashCountForm({
   const [reasonAsked, setReasonAsked] = useState(false);
   // the API's 422, by the field it named; each clears when its field changes
   const [refused, setRefused] = useState<{ field: string; message: string } | null>(null);
+  const safeInput = useAmountInput({
+    value: safe,
+    onValue: (next) => {
+      setSafe(next);
+      if (refused?.field === "safe_box_balance") setRefused(null);
+      settle(counts, next);
+    },
+  });
   const [calculator, setCalculator] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [negative, setNegative] = useState(expected < 0);
@@ -412,21 +423,12 @@ function CashCountForm({
                   ref={safeField}
                   id="safeBoxBalance"
                   name="safe_box_balance"
-                  type="text"
-                  inputMode="decimal"
                   autoComplete="off"
                   aria-labelledby="safe_box_label"
                   aria-invalid={safeMessage ? true : undefined}
                   aria-describedby={safeMessage ? "safe_box_message" : undefined}
                   placeholder="Please enter Balance of the safebox"
-                  value={safe}
-                  onChange={(e) => {
-                    const next = sanitizeMoney(e.target.value);
-                    setSafe(next);
-                    if (refused?.field === "safe_box_balance") setRefused(null);
-                    settle(counts, next);
-                  }}
-                  onBlur={() => setSafe((v) => groupMoney(v))}
+                  {...safeInput}
                   onFocus={(e) => {
                     const input = e.currentTarget;
                     window.setTimeout(
@@ -569,6 +571,19 @@ function DiscrepancyAlert({
  * the counts into the page. The X, a click outside and Escape close it without applying anything.
  * Like Flask's (`fixed inset-0`), its backdrop covers the whole window, not just the phone card.
  */
+/** One denomination's count: commas as it is typed, whole numbers, at most COUNT_DIGITS digits. */
+function CountInput({
+  value,
+  onValue,
+  ...rest
+}: Omit<ComponentProps<"input">, "value" | "onChange" | "onBlur" | "type" | "inputMode"> & {
+  value: string;
+  onValue: (value: string) => void;
+}) {
+  const count = useAmountInput({ value, onValue, kind: "count", maxDigits: COUNT_DIGITS });
+  return <input {...rest} {...count} />;
+}
+
 function CalculatorModal({
   denominations,
   counts,
@@ -683,21 +698,17 @@ function CalculatorModal({
                     >
                       X
                     </div>
-                    <input
+                    <CountInput
                       ref={(el) => {
                         inputs.current[d.id] = el;
                       }}
                       id={id}
-                      type="text"
-                      inputMode="numeric"
                       autoComplete="off"
                       placeholder="0"
                       value={value}
                       aria-invalid={problem ? true : undefined}
                       aria-describedby={problem ? `${id}_message` : undefined}
-                      onChange={(e) =>
-                        setTyped((all) => ({ ...all, [d.id]: sanitizeCount(e.target.value) }))
-                      }
+                      onValue={(next) => setTyped((all) => ({ ...all, [d.id]: next }))}
                       className={`w-full cursor-pointer rounded-flask-2xl border bg-flask-white py-3 pl-10 pr-3 text-right text-flask-black focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal ${
                         problem ? "border-flask-red-500" : "border-flask-gray-300"
                       }`}

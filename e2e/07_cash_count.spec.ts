@@ -216,7 +216,7 @@ test("the calculator: a 0.50 coin, its row totals, and Save fills the cash box",
   const labels = await dialog.locator("label").allTextContents();
   expect(labels).toEqual(["HKD\u00a01,000", "HKD\u00a0100", "HKD\u00a01", "HKD\u00a00.50"]);
   const coin = dialog.getByRole("textbox", { name: "HKD 0.50", exact: true });
-  await coin.fill("3.7x");
+  await coin.pressSequentially("3.7x");
   await expect(coin).toHaveValue("37");
   await coin.fill("3");
   await dialog.getByRole("textbox", { name: "HKD 1,000", exact: true }).fill("1");
@@ -230,6 +230,16 @@ test("the calculator: a 0.50 coin, its row totals, and Save fills the cash box",
   await expect(dialog).toHaveCount(0);
   await expect(cashBox(page)).toHaveValue("HKD\u00a01,201.50");
   await expect(page.getByText("Cash Shortage: HKD 10.00")).toBeVisible();
+});
+
+test("a count is grouped as it is typed and still totals", async ({ page }) => {
+  await openWith(page, countAnswer());
+  await page.getByRole("button", { name: "Calculator" }).click();
+  const dialog = calculator(page);
+  const row = dialog.getByRole("textbox", { name: "HKD 1", exact: true });
+  await row.pressSequentially("1500");
+  await expect(row).toHaveValue("1,500");
+  await expect(dialog.getByText("1,500.00", { exact: true })).toBeVisible();
 });
 
 test("Escape and the X close the calculator without applying", async ({ page }) => {
@@ -253,6 +263,7 @@ test("a count past the limit is said in the row and not applied", async ({ page 
   const dialog = calculator(page);
   const row = dialog.getByRole("textbox", { name: "HKD 1", exact: true });
   await row.fill("2000000");
+  await expect(row).toHaveValue("2,000,000");
   await expect(
     dialog.getByText("A count can't be more than 1,000,000. Enter 1,000,000 or less."),
   ).toBeVisible();

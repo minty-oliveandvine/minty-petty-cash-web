@@ -166,7 +166,8 @@ test("a deposit yesterday is confirmed before today's report, and a change is se
 
   const amount = page.getByRole("dialog", { name: "Deposit to Bank" });
   const field = amount.getByRole("textbox", { name: /Deposit Amount/ });
-  await field.fill("1250.555");
+  // commas as it is typed; the third place is refused, not cut
+  await field.pressSequentially("1250.555");
   await expect(field).toHaveValue("1,250.55");
   await field.fill("250.5");
   await field.blur();

@@ -200,8 +200,8 @@ test("amounts are cleaned as typed, totalled, and sent by method", async ({ page
     });
   });
   const visa = page.getByRole("textbox", { name: "Visa" });
-  await visa.fill("1a200.555");
-  await expect(visa).toHaveValue("1200.55");
+  await visa.pressSequentially("1a200.555");
+  await expect(visa).toHaveValue("1,200.55");
   await visa.blur();
   await expect(visa).toHaveValue("1,200.55");
   await page.getByRole("textbox", { name: "Wechat Pay" }).fill("10");

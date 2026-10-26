@@ -11,7 +11,6 @@ import {
   reasonNeeded,
   reasonProblem,
   rowTotal,
-  sanitizeCount,
   tillTotal,
 } from "@/lib/cash";
 
@@ -75,15 +74,18 @@ describe("denomination labels", () => {
 });
 
 describe("counts", () => {
-  it("take whole numbers only", () => {
-    expect(sanitizeCount("12")).toBe("12");
-    expect(sanitizeCount("1.5")).toBe("15");
-    expect(sanitizeCount("-3e2")).toBe("32");
-    expect(sanitizeCount("007")).toBe("7");
-    expect(sanitizeCount("0")).toBe("0");
-    expect(sanitizeCount("123456789")).toBe("1234567");
+  it("read empty as 0", () => {
     expect(parseCount("")).toBe(0);
     expect(parseCount("42")).toBe(42);
+  });
+
+  it("read a grouped count - the field puts commas in as the person types", () => {
+    expect(parseCount("1,000")).toBe(1000);
+    expect(parseCount("1,000,000")).toBe(1000000);
+    expect(countProblem("1,000,000")).toBeNull();
+    expect(countProblem("1,000,001")).toBe(
+      "A count can't be more than 1,000,000. Enter 1,000,000 or less.",
+    );
   });
 
   it("refuse more than the API's limit, naming it", () => {

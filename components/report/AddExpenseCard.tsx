@@ -10,10 +10,12 @@ import {
   type ReactNode,
 } from "react";
 
+import { useAmountInput } from "@minty/shared/amountInput";
+
 import { useToast } from "@/components/flask/Toasts";
 import { ReceiptViewer, type ShownReceipt } from "@/components/report/ReceiptViewer";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
-import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
+import { parseMoney } from "@/lib/currencyInput";
 import {
   missingFields,
   receiptKind,
@@ -91,6 +93,13 @@ export function AddExpenseCard(props: AddExpenseProps) {
   const toast = useToast();
   const card = useRef<HTMLFormElement>(null);
   const [amount, setAmount] = useState("");
+  const amountInput = useAmountInput({
+    value: amount,
+    onValue: (v) => {
+      setAmount(v);
+      clearError("amount");
+    },
+  });
   const [remarks, setRemarks] = useState("");
   const [supplierText, setSupplierText] = useState("");
   const [supplier, setSupplier] = useState<Supplier | null>(null);
@@ -232,18 +241,11 @@ export function AddExpenseCard(props: AddExpenseProps) {
           </div>
           <input
             id="expense_amount"
-            type="text"
-            inputMode="decimal"
             autoComplete="off"
             placeholder="0.00"
             aria-required="true"
             aria-invalid={errors.has("amount") || undefined}
-            value={amount}
-            onChange={(e) => {
-              setAmount(sanitizeMoney(e.target.value));
-              clearError("amount");
-            }}
-            onBlur={() => setAmount((v) => groupMoney(v))}
+            {...amountInput}
             className={`${FIELD} ${border("amount")} pl-12 pr-3 text-flask-black`}
           />
         </div>

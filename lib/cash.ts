@@ -89,15 +89,13 @@ export function denominationLabel(
   return currencyCode ? `${currencyCode}\u00a0${figure}` : figure;
 }
 
-/** A count as typed: digits only (a whole number), at most seven of them; empty stays empty. */
-export function sanitizeCount(raw: string): string {
-  const digits = raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
-  return digits.slice(0, String(MAX_COUNT).length);
-}
+/** Most digits a count may be typed with: MAX_COUNT's, so one past the limit can still be named. */
+export const COUNT_DIGITS = String(MAX_COUNT).length;
 
-/** A typed count as a number (empty is 0). */
+/** A typed count as a number - grouped as it is typed ("1,000"), empty is 0. */
 export function parseCount(value: string): number {
-  return value === "" ? 0 : Number.parseInt(value, 10) || 0;
+  const digits = value.replace(/,/g, "");
+  return digits === "" ? 0 : Number.parseInt(digits, 10) || 0;
 }
 
 /** A count above the API's limit, in Part 11's words; null when it is fine. */

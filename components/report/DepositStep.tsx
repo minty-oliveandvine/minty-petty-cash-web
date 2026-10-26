@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 
+import { useAmountInput } from "@minty/shared/amountInput";
+import { formatAmount } from "@minty/shared/money";
+
 import { PhoneCard } from "@/components/flask/PhoneCard";
 import { Stepper } from "@/components/flask/Stepper";
 import { useToast } from "@/components/flask/Toasts";
@@ -21,7 +24,7 @@ import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { depositProblem, type DepositPage } from "@/lib/cash";
 import { pettyCashHome } from "@/lib/companyPages";
-import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
+import { parseMoney } from "@/lib/currencyInput";
 import { formatMoney } from "@/lib/money";
 import { datePill } from "@/lib/opening";
 import { changed } from "@/lib/sales";
@@ -110,12 +113,17 @@ function DepositForm({
   const code = page.currency_code;
   const day = page.transaction_date;
   const progress = page.draft ?? { current_section: null, completed_sections: [] };
-  const [initial] = useState(() =>
-    page.bank_deposit > 0 ? groupMoney(page.bank_deposit.toFixed(2)) : "",
-  );
+  const [initial] = useState(() => (page.bank_deposit > 0 ? formatAmount(page.bank_deposit) : ""));
   const [amount, setAmount] = useState(initial);
   // the API's refusal of the value it was sent; cleared as soon as the value changes
   const [refused, setRefused] = useState<string | null>(null);
+  const amountInput = useAmountInput({
+    value: amount,
+    onValue: (v) => {
+      setAmount(v);
+      setRefused(null);
+    },
+  });
   const [busy, setBusy] = useState<string | null>(null);
   const [negative, setNegative] = useState(page.cash_on_hand < 0);
   const field = useRef<HTMLInputElement>(null);
@@ -266,18 +274,11 @@ function DepositForm({
                 ref={field}
                 id="bank_deposit"
                 name="bank_deposit"
-                type="text"
-                inputMode="decimal"
                 autoComplete="off"
                 placeholder="0.00"
-                value={amount}
+                {...amountInput}
                 aria-invalid={problem ? true : undefined}
                 aria-describedby={problem ? "bank_deposit_message" : undefined}
-                onChange={(e) => {
-                  setAmount(sanitizeMoney(e.target.value));
-                  setRefused(null);
-                }}
-                onBlur={() => setAmount((v) => groupMoney(v))}
                 onFocus={(e) => {
                   const input = e.currentTarget;
                   window.setTimeout(

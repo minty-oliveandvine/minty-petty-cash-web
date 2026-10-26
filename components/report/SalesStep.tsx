@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 
+import { useAmountInput } from "@minty/shared/amountInput";
+import { formatAmount } from "@minty/shared/money";
+
 import { PhoneCard } from "@/components/flask/PhoneCard";
 import { Stepper } from "@/components/flask/Stepper";
 import { useToast } from "@/components/flask/Toasts";
@@ -10,7 +13,7 @@ import { LoadingOverlay, ReportBadge } from "@/components/report/ReportChrome";
 import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
-import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
+import { parseMoney } from "@/lib/currencyInput";
 import { formatMoney } from "@/lib/money";
 import { datePill } from "@/lib/opening";
 import {
@@ -83,7 +86,7 @@ export function SalesStep({ day }: { day: string | null }) {
 
 /** How a saved amount first shows: grouped, and a zero or none as an empty field (the placeholder). */
 function shown(amount: number | null): string {
-  return amount ? groupMoney(String(amount)) : "";
+  return amount ? formatAmount(amount) : "";
 }
 
 function SalesForm({
@@ -347,6 +350,7 @@ function MoneyInput({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const amountInput = useAmountInput({ value, onValue: onChange });
   return (
     <div className="relative">
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -355,13 +359,9 @@ function MoneyInput({
       <input
         id={id}
         aria-label={ariaLabel}
-        type="text"
-        inputMode="decimal"
         autoComplete="off"
         placeholder="0.00"
-        value={value}
-        onChange={(e) => onChange(sanitizeMoney(e.target.value))}
-        onBlur={() => onChange(groupMoney(value))}
+        {...amountInput}
         onFocus={(e) => {
           const input = e.currentTarget;
           window.setTimeout(

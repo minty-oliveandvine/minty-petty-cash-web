@@ -4,6 +4,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 
+import { useAmountInput } from "@minty/shared/amountInput";
+import { formatAmount } from "@minty/shared/money";
+
 import { PhoneCard } from "@/components/flask/PhoneCard";
 import { Stepper } from "@/components/flask/Stepper";
 import { useToast } from "@/components/flask/Toasts";
@@ -16,7 +19,7 @@ import {
 import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome } from "@/lib/companyPages";
-import { groupMoney, parseMoney, sanitizeMoney } from "@/lib/currencyInput";
+import { parseMoney } from "@/lib/currencyInput";
 import { setFlash } from "@/lib/flash";
 import { formatMoney } from "@/lib/money";
 import { datePill, type OpeningPage } from "@/lib/opening";
@@ -93,8 +96,9 @@ function OpeningForm({
   const toast = useToast();
   const router = useRouter();
   const home = pettyCashHome(entityId, entityName);
-  const initialAddition = page.cash_addition ? groupMoney(String(page.cash_addition)) : "";
+  const initialAddition = page.cash_addition ? formatAmount(page.cash_addition) : "";
   const [addition, setAddition] = useState(initialAddition);
+  const additionInput = useAmountInput({ value: addition, onValue: setAddition });
   const [withdrawal, setWithdrawal] = useState<"company" | "personal">(
     page.withdrawal === "company" ? "company" : "personal",
   );
@@ -256,13 +260,9 @@ function OpeningForm({
                 ref={field}
                 id="additiontocashbalance"
                 name="cash_addition"
-                type="text"
-                inputMode="decimal"
                 autoComplete="off"
                 placeholder="Please enter any cash addition"
-                value={addition}
-                onChange={(e) => setAddition(sanitizeMoney(e.target.value))}
-                onBlur={() => setAddition(groupMoney(addition))}
+                {...additionInput}
                 onFocus={() =>
                   window.setTimeout(
                     () => field.current?.scrollIntoView({ block: "center", behavior: "smooth" }),

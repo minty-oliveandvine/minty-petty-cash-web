@@ -200,6 +200,21 @@ describe("the Count the drawer sheet", () => {
     expect(screen.getByLabelText(/Number of HKD 500 notes/)).toHaveValue("2");
   });
 
+  it("groups a count as it is typed, and still totals it (a grouped count once read as 1)", async () => {
+    // owner 2026-10-26: commas as you type, counts too
+    const user = userEvent.setup();
+    renderStage();
+    const sheet = await openSheet(user);
+    const coins = within(sheet).getByLabelText(/Number of HKD 5 coins/);
+    await user.type(coins, "1500");
+    expect(coins).toHaveValue("1,500");
+    expect(within(sheet).getByText("Total in the drawer").nextSibling).toHaveTextContent(
+      "HKD 7,500.00",
+    );
+    await user.type(coins, "x.");
+    expect(coins).toHaveValue("1,500");
+  });
+
   it("stays open on a count above the limit", async () => {
     const user = userEvent.setup();
     renderStage();

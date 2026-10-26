@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import { AmountInput } from "@/components/closing/Stage";
 
-// The stages' money input on @minty/shared/money (owner 2026-10-21: one money rule): what a
-// keystroke may add, what blur shows, and the currency it names.
+// The stages' money input on @minty/shared/amountInput (owner 2026-10-26: commas as you type): what
+// a keystroke may add, what blur shows, and the currency it names.
 
 function Harness({ code, initial = "" }: { code: string | null; initial?: string }) {
   const [value, setValue] = useState(initial);
@@ -26,22 +26,23 @@ describe("AmountInput", () => {
     expect(box().value).toBe("123");
     type("1234.56");
     type("1234.567");
-    expect(box().value).toBe("1234.56");
+    expect(box().value).toBe("1,234.56");
     type("-50");
-    expect(box().value).toBe("1234.56");
+    expect(box().value).toBe("1,234.56");
     type("1.2.3");
-    expect(box().value).toBe("1234.56");
+    expect(box().value).toBe("1,234.56");
     type("12345678901");
     type("123456789012");
-    expect(box().value).toBe("12345678901");
+    expect(box().value).toBe("12,345,678,901");
   });
 
-  it("keeps plain digits while typing over a grouped value, and never groups as it goes", () => {
+  it("groups as it is typed, a grouped value or a plain one", () => {
+    // owner 2026-10-26: commas as you type (was plain digits until blur)
     render(<Harness code="HKD" initial="1,234.50" />);
     type("1,234.5");
-    expect(box().value).toBe("1234.5");
+    expect(box().value).toBe("1,234.5");
     type("12345");
-    expect(box().value).toBe("12345");
+    expect(box().value).toBe("12,345");
   });
 
   it("groups and pads on blur, and leaves an empty field empty", () => {

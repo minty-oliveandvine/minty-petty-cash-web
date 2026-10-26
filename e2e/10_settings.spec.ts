@@ -492,10 +492,13 @@ test("adding by name is checked as typed, and a refused addition shows the API's
     "The method's name is still empty. Choose a method or type a new name to add it.",
   );
   await expect(field).toBeFocused();
-  // As typed: over 100 at once, and a name already on the list at once.
-  await field.fill("x".repeat(101));
+  // As typed: over the API's add limit at once (80 less the "_sales" its value name gets), and a
+  // name already on the list at once.
+  await field.fill("x".repeat(74));
+  await expect(panel.getByRole("alert")).toHaveCount(0);
+  await field.fill("x".repeat(75));
   await expect(panel.getByRole("alert")).toHaveText(
-    "The name is 101 characters. Shorten it to 100 characters or fewer.",
+    "The name is 75 characters. Shorten it to 74 characters or fewer.",
   );
   await field.fill("visa");
   await expect(panel.getByRole("alert")).toHaveText(
@@ -540,6 +543,15 @@ test("renaming is checked as typed, and a 409 the read did not foresee shows the
   await expect(dialog.getByRole("alert")).toHaveText(
     "ALIPAYHK is already on the list. Type another name.",
   );
+  // a saved method's new name may run to the API's 80 characters
+  await field.fill("x".repeat(80));
+  await expect(dialog.getByRole("alert")).toHaveCount(0);
+  await field.fill("x".repeat(81));
+  await expect(dialog.getByRole("alert")).toHaveText(
+    "The name is 81 characters. Shorten it to 80 characters or fewer.",
+  );
+  await field.press("Enter");
+  await expect(dialog).toBeVisible();
   await field.fill("Octopus Card");
   await field.press("Enter");
   await expect(dialog).toHaveCount(0);

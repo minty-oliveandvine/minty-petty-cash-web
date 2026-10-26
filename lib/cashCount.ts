@@ -66,7 +66,7 @@ export type CashCountSaved = {
 /** The API's limits: a count is a whole number up to a million; a reason up to 300 characters. */
 export const MAX_COUNT = 1_000_000;
 export const MAX_REASON = 300;
-const MAX_COUNT_DIGITS = String(MAX_COUNT).length;
+export const MAX_COUNT_DIGITS = String(MAX_COUNT).length;
 
 const cents = (amount: number) => Math.round(amount * 100) / 100;
 const count = (n: number) => n.toLocaleString("en-US");
@@ -95,14 +95,13 @@ export function depositProblem(page: CashCountPage, depositText: string): string
   return `The deposit can't be more than the cash on hand. Enter ${money(page.cash_on_hand, page.currency_code)} or less.`;
 }
 
-/** A count as typed: digits only, at most 7 of them (a million is the limit). */
-export function sanitizeCount(raw: string): string {
-  return raw.replace(/\D/g, "").slice(0, MAX_COUNT_DIGITS);
-}
-
-/** A count's text as a number: empty is 0. */
+/**
+ * A count's text as a number - grouped as it is typed ("1,000"; @minty/shared/amountInput's
+ * `kind: "count"`, at most MAX_COUNT_DIGITS digits), empty is 0.
+ */
 export function parseCount(text: string): number {
-  return text === "" ? 0 : Number.parseInt(text, 10) || 0;
+  const digits = text.replace(/,/g, "");
+  return digits === "" ? 0 : Number.parseInt(digits, 10) || 0;
 }
 
 /** A count's problem, as typed: above the API's limit, naming it. */

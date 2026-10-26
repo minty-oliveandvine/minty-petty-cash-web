@@ -331,7 +331,8 @@ test("the count sheet: notes then coins, a 0.50 coin included, line totals and a
   await expect(count(page, "HKD 500 notes")).toBeFocused();
   await count(page, "HKD 500 notes").fill("2");
   await count(page, "HKD 100 notes").fill("3");
-  await count(page, "HKD 0.50 coins").fill("1a.");
+  // a stray key is refused as it is typed (@minty/shared/amountInput's count)
+  await count(page, "HKD 0.50 coins").pressSequentially("1a.");
   await expect(count(page, "HKD 0.50 coins")).toHaveValue("1");
   await expect(sheet(page)).toContainText("Total in the drawer");
   await expect(sheet(page)).toContainText("HKD 1,300.50");
@@ -467,6 +468,34 @@ test("Save & Exit saves before the count is done", async ({ page }) => {
   expect(saves).toMatchObject([
     { bank_deposit: 0, counts: { n500: 0, n100: 0, c5: 0, c050: 0 }, action: "exit" },
   ]);
+});
+
+test("a count is grouped as it is typed and still totals (a grouped count once read as 1)", async ({
+  page,
+}) => {
+  // owner 2026-10-26: commas as you type, counts too
+  await openWith(page, cashAnswer());
+  await openSheet(page);
+  await count(page, "HKD 5 coins").pressSequentially("1500");
+  await expect(count(page, "HKD 5 coins")).toHaveValue("1,500");
+  await expect(sheet(page)).toContainText("HKD 7,500.00");
+  await count(page, "HKD 5 coins").fill("1000001");
+  await expect(count(page, "HKD 5 coins")).toHaveValue("1,000,001");
+});
+
+test("at a phone's width a large total stays on one line; the label wraps instead", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "a phone-width layout check");
+  await openWith(page, cashAnswer({ cash_on_hand: 12345678.9, expected_cash: 12345678.9 }));
+  const total = page.getByText("HKD 12,345,678.90", { exact: true });
+  await expect(total).toBeVisible();
+  const { height, lineHeight } = await total.evaluate((el) => ({
+    height: el.getBoundingClientRect().height,
+    lineHeight: parseFloat(getComputedStyle(el).lineHeight),
+  }));
+  expect(height).toBeLessThan(lineHeight * 1.5);
+  await expectNoHorizontalScroll(page);
 });
 
 test("a count above a million says so as typed and keeps the sheet open; the API's 422 shows on the field it names", async ({

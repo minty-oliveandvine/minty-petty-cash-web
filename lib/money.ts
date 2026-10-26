@@ -5,7 +5,7 @@
  * amount says so, "1,234.50 (No currency selected)". Only old reports can show that: no report
  * starts without a currency (the dashboard's Setup Required; the API refuses the save).
  *
- * Display only - typing and reading amounts back stay on the shared acceptAmountInput/parseAmount.
+ * Display only - typing stays on @minty/shared/amountInput, reading amounts back on parseAmount.
  */
 
 import { formatAmount, formatMoney } from "@minty/shared/money";

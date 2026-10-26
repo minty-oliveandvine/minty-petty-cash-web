@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/apiClient";
 import { settingsHref, xeroSettingsHref } from "@/lib/companyPages";
 import {
+  ADD_NAME_MAX,
   addMethod,
   catalogueOptions,
   chooseCountry,
@@ -14,6 +15,7 @@ import {
   movedText,
   nameProblem,
   pendingOps,
+  RENAME_NAME_MAX,
   removeMethod,
   renameMethod,
   saveMethods,
@@ -188,13 +190,36 @@ describe("nameProblem, as typed", () => {
     );
   });
 
-  it("says a name over 100 characters at once, naming the limit", () => {
-    expect(
-      nameProblem("x".repeat(100), { draft, type: "electronic", purpose: "add", attempted: false }),
-    ).toBeNull();
-    expect(
-      nameProblem("x".repeat(101), { draft, type: "electronic", purpose: "add", attempted: false }),
-    ).toBe("The name is 101 characters. Shorten it to 100 characters or fewer.");
+  it("names the API's limits at once: 74 to add (room for _sales), 80 to rename", () => {
+    expect(ADD_NAME_MAX).toBe(74);
+    expect(RENAME_NAME_MAX).toBe(80);
+    const add = { draft, type: "electronic" as const, purpose: "add" as const, attempted: false };
+    expect(nameProblem("x".repeat(74), add)).toBeNull();
+    expect(nameProblem("x".repeat(75), add)).toBe(
+      "The name is 75 characters. Shorten it to 74 characters or fewer.",
+    );
+    const saved = draft.lists.electronic.find((r) => r.id !== null && !r.shared)!;
+    const rename = { ...add, purpose: "rename" as const, except: saved.key };
+    expect(nameProblem("x".repeat(80), rename)).toBeNull();
+    expect(nameProblem("x".repeat(81), rename)).toBe(
+      "The name is 81 characters. Shorten it to 80 characters or fewer.",
+    );
+  });
+
+  it("holds a renamed method not saved yet to the add limit: it is sent as an addition", () => {
+    const added = addMethod(draft, "electronic", "Tap & Go", []);
+    const row = added.lists.electronic.find((r) => r.id === null)!;
+    const rename = {
+      draft: added,
+      type: "electronic" as const,
+      purpose: "rename" as const,
+      attempted: false,
+      except: row.key,
+    };
+    expect(nameProblem("x".repeat(74), rename)).toBeNull();
+    expect(nameProblem("x".repeat(75), rename)).toBe(
+      "The name is 75 characters. Shorten it to 74 characters or fewer.",
+    );
   });
 
   it("says at once that a method other companies use can't take a new name, and lets its own name stand", () => {

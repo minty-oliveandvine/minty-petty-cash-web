@@ -126,6 +126,8 @@ describe("the supplier", () => {
     expect(newSupplierProblem("", SUPPLIERS, true)).toBe(
       "The supplier's name is still empty. Add the name to continue.",
     );
+    expect(newSupplierProblem("x".repeat(150), SUPPLIERS, false)).toBeNull();
+    expect(newSupplierProblem(` ${"x".repeat(150)} `, SUPPLIERS, false)).toBeNull();
     expect(newSupplierProblem("x".repeat(151), SUPPLIERS, false)).toBe(
       "The name is 151 characters. Keep it to 150 characters or fewer.",
     );

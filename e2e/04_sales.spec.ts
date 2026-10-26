@@ -275,9 +275,10 @@ test("typing moves the subtotals and the total live, and Save & Next sends every
 }) => {
   const saves = await openWith(page, salesAnswer());
   const visa = amount(page, "Visa");
-  // owner 2026-10-21: one money rule (@minty/shared/money) - a stray key is refused, not stripped
+  // owner 2026-10-21: one money rule (@minty/shared/money) - a stray key is refused, not stripped;
+  // owner 2026-10-26: commas as it is typed (@minty/shared/amountInput)
   await visa.pressSequentially("1a200.555");
-  await expect(visa).toHaveValue("1200.55");
+  await expect(visa).toHaveValue("1,200.55");
   await expect(row(page, "Electronic payments total")).toContainText("HKD 1,200.55");
   await visa.blur();
   await expect(visa).toHaveValue("1,200.55");

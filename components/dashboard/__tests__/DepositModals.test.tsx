@@ -46,6 +46,38 @@ describe("Deposit to Bank", () => {
     expect(onProceed).toHaveBeenCalledWith(250.5);
   });
 
+  // owner 2026-10-26: Flask read an empty field as 0 and reversed the deposit in Xero
+  const EMPTY = "The deposit amount is still empty. Add the amount to continue.";
+
+  it("refuses an empty amount on Proceed: says so, marks the field and focuses it", () => {
+    const { field, onProceed } = open("HKD");
+    expect(field).not.toHaveAttribute("aria-invalid");
+    fireEvent.click(screen.getByRole("button", { name: "Proceed" }));
+    expect(onProceed).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveTextContent(EMPTY);
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field.className).toContain("border-action-danger");
+    expect(field).toHaveFocus();
+  });
+
+  it("refuses an empty amount on Enter too", () => {
+    const { field, onProceed } = open("HKD");
+    fireEvent.submit(field.form!);
+    expect(onProceed).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveTextContent(EMPTY);
+    expect(field).toHaveFocus();
+  });
+
+  it("clears the message as soon as something is typed, and a typed 0 goes through", () => {
+    const { field, onProceed } = open("HKD");
+    fireEvent.click(screen.getByRole("button", { name: "Proceed" }));
+    type(field, "0");
+    expect(screen.getByRole("dialog")).not.toHaveTextContent(EMPTY);
+    expect(field).not.toHaveAttribute("aria-invalid");
+    fireEvent.click(screen.getByRole("button", { name: "Proceed" }));
+    expect(onProceed).toHaveBeenCalledWith(0);
+  });
+
   it("shows the company's currency before the amount", () => {
     const { field } = open("HKD");
     expect(field.previousElementSibling?.textContent).toBe("HKD");

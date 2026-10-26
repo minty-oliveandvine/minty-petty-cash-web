@@ -16,6 +16,7 @@ import {
   inputClass,
   PageBanner,
 } from "@minty/shared/ui";
+import { useAmountInput } from "@minty/shared/amountInput";
 import { parseAmount } from "@minty/shared/money";
 
 import {
@@ -48,12 +49,12 @@ import {
   initialTasks,
   initialValues,
   kindNoun,
+  MAX_COUNT_DIGITS,
   nextGate,
   openingCash,
   reasonHelper,
   reasonProblem,
   rowTotalText,
-  sanitizeCount,
   savePayload,
   sheetProblem,
   TASK_NEXT,
@@ -702,7 +703,11 @@ function TaskCard({
   );
 }
 
-/** A total band: a mint tint for a total (never on a warning or an error); white on the open task's mint. */
+/**
+ * A total band: a mint tint for a total (never on a warning or an error); white on the open task's
+ * mint. The amount never splits mid-number on a phone: the label wraps, and the band wraps the
+ * amount onto its own line when both can't fit.
+ */
 function TotalBand({
   label,
   amount,
@@ -718,7 +723,7 @@ function TotalBand({
     >
       <span className="min-w-0 text-body-m text-text-secondary">{label}</span>
       <span
-        className="ml-auto min-w-0 break-all text-right text-title-l font-bold text-text-primary"
+        className="ml-auto whitespace-nowrap text-right text-title-l font-bold text-text-primary"
         translate="no"
       >
         {amount}
@@ -824,8 +829,9 @@ function CountSheet({
 }
 
 /**
- * One sheet row (15.15: a label per denomination): "HKD 1,000", the count (whole numbers, the
- * numeric keypad), "=", and the row's amount. Its problem - above a million - shows as typed.
+ * One sheet row (15.15: a label per denomination): "HKD 1,000", the count (whole numbers with
+ * commas as typed, at most seven digits, the numeric keypad; 112 wide so "1,000,000" fits), "=",
+ * and the row's amount. Its problem - above a million - shows as typed.
  */
 function CountRow({
   denomination,
@@ -846,8 +852,14 @@ function CountRow({
 }) {
   const id = countId(denomination);
   const label = denominationLabel(denomination, code);
+  const countInput = useAmountInput({
+    value,
+    onValue: onChange,
+    kind: "count",
+    maxDigits: MAX_COUNT_DIGITS,
+  });
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(64px,1fr)_88px_16px_minmax(88px,1fr)] items-center gap-x-2 border-b border-border-subtle py-2 last:border-b-0">
+    <div className="grid min-w-0 grid-cols-[minmax(64px,1fr)_112px_16px_minmax(88px,1fr)] items-center gap-x-2 border-b border-border-subtle py-2 last:border-b-0">
       <label htmlFor={id} className="min-w-0 text-title-m text-text-primary" translate="no">
         <span className="sr-only">Number of </span>
         {label}
@@ -857,14 +869,11 @@ function CountRow({
         ref={inputRef}
         id={id}
         name={`count-${denomination.id}`}
-        type="text"
-        inputMode="numeric"
         autoComplete="off"
         placeholder="0"
-        value={value}
+        {...countInput}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-note` : undefined}
-        onChange={(e) => onChange(sanitizeCount(e.target.value))}
         onKeyDown={(e) => {
           if (e.key !== "Enter") return;
           e.preventDefault();

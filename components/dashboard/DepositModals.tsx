@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { formatDay } from "@minty/shared/dates";
 import { Button, buttonClass, Field, InlineAlert, inputClass, Modal } from "@minty/shared/ui";
-import { acceptAmountInput, parseAmount } from "@minty/shared/money";
+import { useAmountInput } from "@minty/shared/amountInput";
+import { parseAmount } from "@minty/shared/money";
 
 import type { SetupItem } from "@/lib/dashboard";
 import { money } from "@/lib/money";
@@ -162,7 +163,9 @@ export function BeforeYouStartModal({
 
 /**
  * Flask's "Deposit to Bank" (#depositModal), reached by "No, there was a change": the amount
- * that was really deposited, never more than the stated one. Checked as it is typed.
+ * that was really deposited, never more than the stated one. Checked as it is typed; commas go in
+ * as it is typed (@minty/shared/amountInput). An empty amount is refused, never read as 0: Flask
+ * reversed the deposit in Xero for a forgotten amount (owner, 2026-10-26). A typed 0 goes through.
  */
 export function DepositModal({
   open,
@@ -183,14 +186,31 @@ export function DepositModal({
 }) {
   const [value, setValue] = useState("");
   const [refused, setRefused] = useState(false);
+  const field = useRef<HTMLInputElement>(null);
+  const amountInput = useAmountInput({
+    value,
+    onValue: (next) => {
+      setValue(next);
+      setRefused(false);
+    },
+  });
   const amount = parseAmount(value) ?? 0;
   const tooHigh = amount > previousAmount;
   const empty = value === "";
   const error = tooHigh
     ? `The deposit can't be higher than the previous one. Enter ${money(previousAmount, currencyCode)} or less.`
     : refused && empty
-      ? "The deposit amount is still empty. Enter the amount deposited, or 0."
+      ? "The deposit amount is still empty. Add the amount to continue."
       : null;
+  const proceed = () => {
+    if (busy) return;
+    if (empty || tooHigh) {
+      setRefused(true);
+      field.current?.focus();
+      return;
+    }
+    onProceed(amount);
+  };
 
   return (
     <Modal
@@ -202,18 +222,7 @@ export function DepositModal({
           <Button kind="secondary" onClick={onBack} disabled={busy}>
             Back
           </Button>
-          <Button
-            kind="primary"
-            processing={busy}
-            processingLabel="Please wait…"
-            onClick={() => {
-              if (empty || tooHigh) {
-                setRefused(true);
-                return;
-              }
-              onProceed(amount);
-            }}
-          >
+          <Button kind="primary" processing={busy} processingLabel="Please wait…" onClick={proceed}>
             Proceed
           </Button>
         </>
@@ -222,8 +231,7 @@ export function DepositModal({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (empty || tooHigh) setRefused(true);
-          else onProceed(amount);
+          proceed();
         }}
       >
         <Field label="Deposit Amount" required error={error}>
@@ -236,15 +244,10 @@ export function DepositModal({
               ) : null}
               <input
                 {...a11y}
-                type="text"
-                inputMode="decimal"
+                ref={field}
                 autoComplete="off"
                 placeholder="Enter amount deposited to bank"
-                value={value}
-                onChange={(e) => {
-                  const next = acceptAmountInput(e.target.value);
-                  if (next !== null) setValue(next);
-                }}
+                {...amountInput}
                 className={`${inputClass(!!error)}${currencyCode ? " pl-14" : ""}`}
               />
             </div>

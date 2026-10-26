@@ -209,14 +209,15 @@ test("a draft brings its own values, and its done stages open where they were le
   await expect(stages(page).getByRole("link", { name: /Expenses/ })).toHaveCount(0);
 });
 
-test("the amount refuses stray keys as typed, is grouped on leaving, and moves the opening cash; Save & Next opens Sales in this app", async ({
+test("the amount refuses stray keys as typed, is grouped as typed, and moves the opening cash; Save & Next opens Sales in this app", async ({
   page,
 }) => {
   const saves = await openWith(page, openingAnswer());
   const field = amount(page);
-  // owner 2026-10-21: one money rule (@minty/shared/money) - a stray key is refused, not stripped
+  // owner 2026-10-21: one money rule (@minty/shared/money) - a stray key is refused, not stripped;
+  // owner 2026-10-26: commas as it is typed (@minty/shared/amountInput)
   await field.pressSequentially("12a50.555");
-  await expect(field).toHaveValue("1250.55");
+  await expect(field).toHaveValue("1,250.55");
   await expect(summary(page)).toContainText("HKD 2,450.55");
   await field.blur();
   await expect(field).toHaveValue("1,250.55");

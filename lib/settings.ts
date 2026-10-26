@@ -12,8 +12,12 @@
 export const METHOD_TYPES = ["electronic", "delivery"] as const;
 export type MethodType = (typeof METHOD_TYPES)[number];
 
-/** The API's limit on a method's name (`NAME_MAX`). */
-export const NAME_MAX = 100;
+/**
+ * The API's limits on a method's name: a new one leaves room for the "_sales" of its 80-character
+ * value name (`ADD_NAME_MAX`), a rename may use all 80 (`RENAME_NAME_MAX`).
+ */
+export const ADD_NAME_MAX = 80 - "_sales".length;
+export const RENAME_NAME_MAX = 80;
 
 export const TYPE_LABEL: Record<MethodType, string> = {
   electronic: "Electronic",
@@ -244,8 +248,10 @@ const EMPTY = {
 } as const;
 
 /**
- * What is wrong with a name, as it is typed (CLAUDE.md): over 100 characters, or already on the
- * list (any case - the API's 409), at once; empty only after a refused Add or Rename (`attempted`).
+ * What is wrong with a name, as it is typed (CLAUDE.md): over the API's limit (`ADD_NAME_MAX` for
+ * a method that will be sent as an addition - a new one, or a renamed one not saved yet -
+ * `RENAME_NAME_MAX` for a saved one's new name), or already on the list (any case - the API's
+ * 409), at once; empty only after a refused Add or Rename (`attempted`).
  * `except` is the row being renamed: a method other companies use too (`shared`) can't take a new
  * name at all, said as soon as the name differs from its saved one (the API's 409).
  */
@@ -271,8 +277,9 @@ export function nameProblem(
   if (renamed?.shared && renamed.savedName !== null && t !== renamed.savedName) {
     return `Other companies use ${renamed.savedName} too, so it can't be renamed here. Remove it and add a new method instead.`;
   }
-  if (t.length > NAME_MAX)
-    return `The name is ${t.length} characters. Shorten it to ${NAME_MAX} characters or fewer.`;
+  const max = purpose === "add" || renamed?.id === null ? ADD_NAME_MAX : RENAME_NAME_MAX;
+  if (t.length > max)
+    return `The name is ${t.length} characters. Shorten it to ${max} characters or fewer.`;
   if (draft.lists[type].some((r) => r.key !== except && fold(r.name) === fold(t)))
     return `${t} is already on the list. Type another name.`;
   return null;

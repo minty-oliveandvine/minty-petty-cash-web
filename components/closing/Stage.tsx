@@ -23,7 +23,7 @@ import {
   StatusPill,
   type StatusTone,
 } from "@minty/shared/ui";
-import { acceptAmountInput, formatAmount } from "@minty/shared/money";
+import { useAmountInput } from "@minty/shared/amountInput";
 
 import { AppBar } from "@/components/layout/AppBar";
 import { StepProgress, type StepProgressStep } from "@/components/ui/StepProgress";
@@ -380,9 +380,9 @@ export function refused(
 /**
  * Part 14 Amount input: the label (with the currency in its accessible name), the currency as a
  * prefix, the value right-aligned, `inputMode="decimal"`. A keystroke that is not digits and one
- * point, or goes past 11 whole digits or 2 decimals, is refused; blur groups and pads it
- * (@minty/shared/money - owner 2026-10-21: one money rule). With no company currency there is no
- * prefix and the number stands alone - never "$".
+ * point, or goes past 11 whole digits or 2 decimals, is refused; commas go in as it is typed and
+ * blur pads it (@minty/shared/amountInput - owner 2026-10-26). With no company currency there is
+ * no prefix and the number stands alone - never "$".
  */
 export function AmountInput({
   label,
@@ -415,6 +415,7 @@ export function AmountInput({
   /** After the value is grouped on blur. */
   onBlur?: () => void;
 }) {
+  const amountInput = useAmountInput({ value, onValue: onChange, onBlur: () => onBlur?.() });
   return (
     <Field
       id={id}
@@ -443,20 +444,10 @@ export function AmountInput({
             {...a11y}
             ref={inputRef}
             name={name}
-            type="text"
-            inputMode="decimal"
             autoComplete="off"
             placeholder="0.00"
-            value={value}
+            {...amountInput}
             disabled={disabled}
-            onChange={(e) => {
-              const next = acceptAmountInput(e.target.value);
-              if (next !== null) onChange(next);
-            }}
-            onBlur={() => {
-              onChange(formatAmount(value));
-              onBlur?.();
-            }}
             className={`${inputClass(Boolean(error))} ${code ? "pl-14 " : ""}text-right`}
           />
         </div>

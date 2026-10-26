@@ -29,7 +29,6 @@ import {
   reasonHelper,
   reasonProblem,
   rowTotal,
-  sanitizeCount,
   savePayload,
   type CashCountPage,
   type Denomination,
@@ -145,11 +144,17 @@ describe("the deposit limit", () => {
 });
 
 describe("the counts", () => {
-  it("take whole numbers only, at most seven digits", () => {
-    expect(sanitizeCount("1a2.5-")).toBe("125");
-    expect(sanitizeCount("123456789")).toBe("1234567");
+  it("read empty as 0", () => {
     expect(parseCount("")).toBe(0);
+    expect(parseCount("42")).toBe(42);
     expect(parseCount("007")).toBe(7);
+  });
+
+  it("read a grouped count - the field puts commas in as the person types", () => {
+    expect(parseCount("1,000")).toBe(1000);
+    expect(parseCount("1,000,000")).toBe(1000000);
+    expect(countProblem("1,000,000")).toBeNull();
+    expect(countProblem("1,000,001")).toBe("The count is 1,000,001. Enter 1,000,000 or fewer.");
   });
 
   it("refuse more than a million as typed, naming the limit", () => {

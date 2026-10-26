@@ -498,6 +498,32 @@ test("at a phone's width a large total stays on one line; the label wraps instea
   await expectNoHorizontalScroll(page);
 });
 
+test("at a phone's width the sheet's largest row total stays on one line, below its count", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "a phone-width layout check");
+  await openWith(
+    page,
+    cashAnswer({
+      denominations: [
+        { id: "n1000", value: 1000, kind: "note", name: "$1,000", count: 0 },
+        ...DENOMINATIONS,
+      ],
+    }),
+  );
+  await openSheet(page);
+  await count(page, "HKD 1,000 notes").fill("999999");
+  // the row's figure; the footer's "Total in the drawer" says the same amount
+  const total = sheet(page).getByText("HKD 999,999,000.00", { exact: true }).first();
+  await expect(total).toBeVisible();
+  const { height, lineHeight } = await total.evaluate((el) => ({
+    height: el.getBoundingClientRect().height,
+    lineHeight: parseFloat(getComputedStyle(el).lineHeight),
+  }));
+  expect(height).toBeLessThan(lineHeight * 1.5);
+  await expectNoHorizontalScroll(page);
+});
+
 test("a count above a million says so as typed and keeps the sheet open; the API's 422 shows on the field it names", async ({
   page,
 }) => {

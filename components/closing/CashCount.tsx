@@ -831,7 +831,10 @@ function CountSheet({
 /**
  * One sheet row (15.15: a label per denomination): "HKD 1,000", the count (whole numbers with
  * commas as typed, at most seven digits, the numeric keypad; 112 wide so "1,000,000" fits), "=",
- * and the row's amount. Its problem - above a million - shows as typed.
+ * and the row's amount. On a phone the "=" and amount take their own full-width line under the
+ * count; from sm up they sit beside it, the amount's column never narrower than its figure, so
+ * the largest (999,999 x HKD 1,000) is never split mid-number. Its problem - above a million -
+ * shows as typed.
  */
 function CountRow({
   denomination,
@@ -859,7 +862,7 @@ function CountRow({
     maxDigits: MAX_COUNT_DIGITS,
   });
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(64px,1fr)_112px_16px_minmax(88px,1fr)] items-center gap-x-2 border-b border-border-subtle py-2 last:border-b-0">
+    <div className="grid min-w-0 grid-cols-[minmax(64px,1fr)_112px] items-center gap-x-2 gap-y-1 border-b border-border-subtle py-2 last:border-b-0 sm:grid-cols-[minmax(64px,1fr)_112px_16px_minmax(max-content,1fr)] sm:gap-y-0">
       <label htmlFor={id} className="min-w-0 text-title-m text-text-primary" translate="no">
         <span className="sr-only">Number of </span>
         {label}
@@ -881,16 +884,18 @@ function CountRow({
         }}
         className={`${inputClass(Boolean(error))} text-right`}
       />
-      <span className="text-center text-text-muted" aria-hidden>
-        =
-      </span>
-      <span
-        className="min-w-0 break-all text-right text-body-m text-text-secondary"
-        translate="no"
-        aria-hidden
-      >
-        {rowTotalText(denomination, value, code)}
-      </span>
+      <div className="col-span-full flex items-center justify-end gap-2 sm:contents">
+        <span className="text-center text-text-muted" aria-hidden>
+          =
+        </span>
+        <span
+          className="whitespace-nowrap text-right text-body-m text-text-secondary"
+          translate="no"
+          aria-hidden
+        >
+          {rowTotalText(denomination, value, code)}
+        </span>
+      </div>
       {error ? (
         <p
           id={`${id}-note`}

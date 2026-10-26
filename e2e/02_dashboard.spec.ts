@@ -178,6 +178,40 @@ test("a deposit yesterday is confirmed before today's report, and a change is se
   expect(sent).toEqual({ kind: "change", date: "2026-10-13", amount: 250.5 });
 });
 
+test("an empty deposit amount is refused, never sent as 0", async ({ page }) => {
+  let sent: Json | null = null;
+  await enterWith(page, homeAnswer(), async (body, route) => {
+    sent = body;
+    await route.fulfill({
+      json: { status: "success", message: "ok", next_transaction_date: TODAY },
+    });
+  });
+  await page.getByRole("button", { name: "Start New Report" }).click();
+  const confirm = page.getByRole("dialog", { name: "Before You Start" });
+  await confirm.getByText("No, there was a change in the details").click();
+  await confirm.getByRole("button", { name: "Proceed" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Deposit to Bank" });
+  const field = dialog.getByRole("textbox", { name: /Deposit Amount/ });
+  // untouched, the field is not painted red
+  await expect(field).not.toHaveAttribute("aria-invalid", "true");
+  await dialog.getByRole("button", { name: "Proceed" }).click();
+  await expect(
+    dialog.getByText("The deposit amount is still empty. Add the amount to continue."),
+  ).toBeVisible();
+  await expect(field).toHaveAttribute("aria-invalid", "true");
+  await expect(field).toBeFocused();
+  expect(sent).toBeNull();
+
+  // typing clears the message at once; a 0 typed on purpose still goes through
+  await field.pressSequentially("0");
+  await expect(
+    dialog.getByText("The deposit amount is still empty. Add the amount to continue."),
+  ).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Proceed" }).click();
+  await expect.poll(() => sent).toEqual({ kind: "change", date: "2026-10-13", amount: 0 });
+});
+
 test("a deposit higher than the previous one is refused as Flask did", async ({ page }) => {
   await enterWith(page, homeAnswer(), async () => {
     throw new Error("must not be sent");

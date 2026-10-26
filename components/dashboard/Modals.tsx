@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { useAmountInput } from "@minty/shared/amountInput";
 
+import { FieldMessage } from "@/components/report/ReportChrome";
 import { parseMoney } from "@/lib/currencyInput";
 import { CHOOSE_CURRENCY } from "@/lib/dashboard";
 import { formatDay } from "@/lib/dates";
@@ -288,8 +289,28 @@ export function DepositModal({
   onProceed: (amount: number) => void;
 }) {
   const [value, setValue] = useState("");
-  const amountInput = useAmountInput({ value, onValue: setValue });
+  // An empty amount is refused, never read as 0: a forgotten amount would reverse the deposit in
+  // Xero (owner, 2026-10-26). A 0 typed on purpose still goes through.
+  const [emptyRefused, setEmptyRefused] = useState(false);
+  const field = useRef<HTMLInputElement>(null);
+  const amountInput = useAmountInput({
+    value,
+    onValue: (v) => {
+      setValue(v);
+      setEmptyRefused(false);
+    },
+  });
   const fieldId = useId();
+  const messageId = `${fieldId}-message`;
+  const proceed = () => {
+    if (busy) return;
+    if (value.trim() === "") {
+      setEmptyRefused(true);
+      field.current?.focus();
+      return;
+    }
+    onProceed(parseMoney(value));
+  };
   return (
     <Frame title="Deposit to Bank" z="z-50" onClose={busy ? undefined : onClose}>
       <div className="mb-6 flex items-center justify-between">
@@ -313,28 +334,34 @@ export function DepositModal({
               <span className="text-sm text-flask-gray-500">{currencyCode}</span>
             </div>
             <input
+              ref={field}
               id={fieldId}
               autoComplete="off"
               placeholder="Enter amount deposited to bank"
+              aria-required="true"
+              aria-invalid={emptyRefused || undefined}
+              aria-describedby={emptyRefused ? messageId : undefined}
               {...amountInput}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !busy) onProceed(parseMoney(value));
+                if (e.key === "Enter") proceed();
               }}
-              className="w-full rounded-flask-2xl border border-flask-gray-300 bg-flask-white py-3 pl-12 pr-3 text-flask-gray-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal"
+              className={`w-full rounded-flask-2xl border bg-flask-white py-3 pl-12 pr-3 text-flask-gray-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal ${
+                emptyRefused ? "border-flask-red-500" : "border-flask-gray-300"
+              }`}
             />
           </div>
+          {emptyRefused ? (
+            <FieldMessage id={messageId}>
+              The deposit amount is still empty. Add the amount to continue.
+            </FieldMessage>
+          ) : null}
         </div>
       </div>
       <div className="mt-6 flex gap-3">
         <button type="button" onClick={onBack} disabled={busy} className={BACK_BUTTON}>
           Back
         </button>
-        <button
-          type="button"
-          onClick={() => onProceed(parseMoney(value))}
-          disabled={busy}
-          className={PROCEED_BUTTON}
-        >
+        <button type="button" onClick={proceed} disabled={busy} className={PROCEED_BUTTON}>
           {busy ? (
             <>
               <span

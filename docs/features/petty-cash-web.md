@@ -165,6 +165,7 @@ Behaviour is Flask's, minus its bugs:
 - **No report without a currency** (owner, 2026-10-21). While `GET /home`'s `currency_code` is null, "Setup Required" lists "Choose your company's currency" first, as a link to Petty Cash Settings (whose first card is Country & currency), ahead of any missing Xero setting (`setupMissing` in `lib/dashboard.ts`), and Start New Report is refused with the API's sentence ("No currency is selected for this company. Choose one in Petty Cash Settings to start a report.", `startProblem`). The API refuses Opening's save the same way (409, `to: "dashboard"`), which Opening already answers by going to the dashboard and showing the sentence there. Flask let a report start and counted it in "$".
 - **The right day is corrected.** The deposit correction targets the day shown in the dialog.
 - **The amount field accepts small amounts.** "0.50" can be typed; Flask turned a zero into "-".
+- **An empty amount is refused** (owner, 2026-10-26). "Deposit to Bank" says "The deposit amount is still empty. Add the amount to continue." and sends nothing; Flask read an empty field as 0 and reversed the deposit in Xero. A 0 typed on purpose still goes through.
 - **Removed:**
   - Flask's always-hidden bank and date fields, and the live Xero read behind them;
   - the "1 user" count, which never counted;

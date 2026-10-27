@@ -234,6 +234,12 @@ describe("the balance shown for a day", () => {
     expect(balanceFor(h, TODAY)).toBe(120);
     expect(balanceFor(h, "2026-10-01")).toBe(0);
   });
+
+  it("before the first report, is the opening balance the API sends (2026-10-27)", () => {
+    const fresh = home();
+    fresh.latest = { ...fresh.latest, date: null, closing_balance: 5525 };
+    expect(balanceFor(fresh, TODAY)).toBe(5525);
+  });
 });
 
 describe("Last edit … ago", () => {

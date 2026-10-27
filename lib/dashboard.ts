@@ -182,13 +182,16 @@ export function depositToConfirm(
   return report && report.bank_deposit > 0 ? { day: before, report } : null;
 }
 
-/** "Current balance" for a day: its own closing balance, else the last one before it, else 0. */
+/** "Current balance" for a day: its own closing balance, else the last one before it. With no
+ * report at all, the API's `latest.closing_balance` is onboarding's opening balance (0 without
+ * one; 2026-10-27), so that is what the drawer holds; otherwise 0. */
 export function balanceFor(home: Home, day: string): number {
   if (home.published[day]) return home.published[day].closing_balance;
   const before = Object.keys(home.published)
     .filter((d) => d < day)
     .sort();
-  return before.length ? home.published[before[before.length - 1]].closing_balance : 0;
+  if (before.length) return home.published[before[before.length - 1]].closing_balance;
+  return home.latest.date === null ? home.latest.closing_balance : 0;
 }
 
 /** "5 mins" - the draft card's "Last edit … ago" (integer division, singular only for 1). */

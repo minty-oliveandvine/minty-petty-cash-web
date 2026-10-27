@@ -147,7 +147,7 @@ This is Flask's `entity/entity_dashboard_v2.html`, built from `components/dashbo
 The page is the same in every element:
 
 - Flask's header: the back chevron, the company's initials, the person's initials and the ≡. The two buttons open the shared sidebar.
-- The warning banner, "Today's report is submitted", and Report in Progress / Current balance.
+- The warning banner, "Today's report is submitted", and Report in Progress / Current balance. Before the company's first report the balance is onboarding's opening balance (`GET /home`'s `latest.closing_balance`, and `balanceFor` for a picked day), not 0 (2026-10-27).
 - "Pick up where you left off" with Flask's six-pill stepper. Its labels are 7.6px on a phone, as Flask draws them, which is below the workspace's 12px minimum, deliberately.
 - **Continue Report** opens the draft at its own wizard step in this app, by `GET /home`'s `draft.current_section` (Opening when it has none - `sectionStep` in `lib/wizardPages.ts`, the rule history's draft rows use). Flask's went through its resume page.
 - Start New Report / View Report.
@@ -237,7 +237,7 @@ What it keeps from Flask:
   - "Receipt/Document": the dashed box to click or drop on. A picture shows itself (borderless, 256 x 192). A PDF turns the box green with `"<name>" Uploaded` and "Click to change files". The corner button opens the picked file full screen.
   - "Expense Amount" (`@minty/shared/amountInput`), and "Description".
   - "Suppliers": A to Z, any part of the name in any case, "+ Add '<text>' as a new contact" and "No Xero contact found", with ↑/↓/Enter/Escape. The "New Contact" panel (Cancel / Create, "Creating Contact...") adds the supplier to the list and chooses it.
-  - "Account Code": the name with its code under it, filtered by name.
+  - "Account Code": the name with its code under it, filtered by name or code ("477" finds Wages and Salaries; Flask matched the name only - owner, 2026-10-27).
   - Cancel / Add. Add refuses an amount of 0, a supplier or account not chosen from its list, or no receipt, with red borders and "Please fill out the Required Fields".
   - Flask's file sentences: "I can take PDF, JPEG, or PNG files.", "Files need to be under 10MB." and, on a drop, "Only one file is allowed per expense." A drop names the file, as Flask's does.
 - **Expense Details** (a tap on a line): the receipt first, "Amount Paid", Contact Name, Description and Account (`<code> <account>`), and Close.

@@ -55,11 +55,15 @@ export function searchSuppliers(
   return { matches, offerNew: exact ? null : query };
 }
 
-/** The account dropdown for what is typed (Flask's `initializeAccountSearch`): by name, any case, in order. */
+/** The account dropdown for what is typed: by name or code, any case, in order. Each option
+ * shows its code ("Wages and Salaries 477"), so "477" finds it - Flask's
+ * `initializeAccountSearch` matched the name only (owner, 2026-10-27). */
 export function searchAccounts(accounts: Account[], typed: string): Account[] {
   const q = typed.trim().toLowerCase();
   if (!q) return accounts;
-  return accounts.filter((a) => a.name.toLowerCase().includes(q));
+  return accounts.filter(
+    (a) => a.name.toLowerCase().includes(q) || (a.code || "").toLowerCase().includes(q),
+  );
 }
 
 export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;

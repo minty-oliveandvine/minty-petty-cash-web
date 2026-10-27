@@ -57,10 +57,17 @@ describe("searchAccounts", () => {
     { id: "2", code: "400", name: "Advertising" },
     { id: "3", code: "461", name: "Printing & Stationery" },
   ];
-  it("keeps the API's order and matches by name only", () => {
+  it("keeps the API's order and matches by name or code (owner, 2026-10-27)", () => {
     expect(searchAccounts(ACCOUNTS, "")).toEqual(ACCOUNTS);
     expect(searchAccounts(ACCOUNTS, "IN").map((a) => a.id)).toEqual(["2", "3"]);
-    expect(searchAccounts(ACCOUNTS, "429")).toEqual([]);
+    expect(searchAccounts(ACCOUNTS, "429").map((a) => a.id)).toEqual(["1"]);
+    expect(searchAccounts(ACCOUNTS, " 46").map((a) => a.id)).toEqual(["3"]);
+  });
+
+  it("copes with an account that has no code", () => {
+    const noCode = [{ id: "9", code: "", name: "Suspense" }];
+    expect(searchAccounts(noCode, "sus").map((a) => a.id)).toEqual(["9"]);
+    expect(searchAccounts(noCode, "4")).toEqual([]);
   });
 });
 

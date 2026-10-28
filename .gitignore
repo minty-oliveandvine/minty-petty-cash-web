@@ -47,3 +47,8 @@ CLAUDE.md
 
 # Claude Code per-checkout scratch (settings.local.json holds one machine's permission rules)
 .claude/
+
+# Cloudflare trial: the Worker build (OpenNext) and wrangler's local state
+/.open-next/
+/.wrangler/
+.dev.vars*

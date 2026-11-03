@@ -240,6 +240,18 @@ What it keeps from Flask:
   - "Account Code": the name with its code under it, filtered by name or code ("477" finds Wages and Salaries; Flask matched the name only - owner, 2026-10-27).
   - Cancel / Add. Add refuses an amount of 0, a supplier or account not chosen from its list, or no receipt, with red borders and "Please fill out the Required Fields".
   - Flask's file sentences: "I can take PDF, JPEG, or PNG files.", "Files need to be under 10MB." and, on a drop, "Only one file is allowed per expense." A drop names the file, as Flask's does.
+- **The receipt reader** (Expense AI; Flask's classic `static/js/expense_ai.js`, Minty `351e942`; added to this track 2026-11-03 after QA found it missing). `components/report/ReceiptReader.tsx` draws it and `lib/expenseAi.ts` holds its rules. A picked receipt goes to `POST /reports/expenses/extract`. minty-petty-cash-api forwards it to Flask, the only place that calls the model (Minty `docs/features/expense-ai.md`).
+  - **While it reads:** Flask's teal "Reading the receipt…" box shows under the drop box. The card stays usable and Add never waits.
+  - **Filling:** a suggestion fills only an **empty** field.
+    - The field gets the teal ring and a line under it: "Amount suggested", or "Account code suggested — please check" for the medium band.
+    - Clear empties the field. Typing in it makes it the person's.
+    - A field that already holds something keeps it. The receipt's different reading is offered in a grey note with "Use the value from the receipt".
+    - The low band only ever offers.
+  - **Suppliers and accounts:** they are chosen by an id from the company's lists only. A supplier name that is not on the list is offered as 'Add "<name>" as a new supplier', and only to someone who may create one. That opens New Contact prefilled; Create stays the person's own press.
+  - **A new receipt** takes the old one's suggestions with it. Add sends the untouched original; the copy sent for reading is shrunk to 2000px.
+  - **What happens when it can't read:** every failure is silent. A `disabled`/`not_configured` answer switches the reader off for the tab's session (`sessionStorage` `minty.pc.receipt-reader`).
+  - **Announcements:** one polite live region says what was filled, what differs, and a receipt dated more than a week from the report.
+  - The rules match `redesign`'s reader (`1b5cf99`); the look and the words are the classic page's.
 - **Expense Details** (a tap on a line): the receipt first, "Amount Paid", Contact Name, Description and Account (`<code> <account>`), and Close.
 - **Delete Expense** (the bin): Flask's warning, Cancel / Delete, "Deleting Expense...".
 - **Flask's toasts and overlays**, word for word, and **Save & Next** (to Bank Deposit, in this app) / **Save & Exit**.
@@ -257,7 +269,8 @@ Where the app differs:
 - **Enter works.** Enter in the add card adds, and in New Contact it creates. Flask's Enter does nothing there.
 - **Lengths are checked as they are typed** (CLAUDE.md), in the API's words, under the field: a Description over 300 characters ("Keep the description to 300 characters or fewer.", `remarksProblem`) holds Add back and moves to the field; a New Contact name over 150 ("Keep the supplier's name to 150 characters or fewer.", `newContactProblem` in `lib/expenses.ts`) holds Create back. Flask said nothing and the server refused.
 - **Every name is text.** Flask writes supplier and account names into its dropdowns as HTML; React escapes them.
-- **Left out:** editing a saved line (Flask's page has no way into it), the dead "submit all" path, the receipt reader (`expense_ai.js`, behind a flag), and the read-only view of a submitted report.
+- **A suggested field is never red.** A refused Add's red border goes once the reader fills that field (it holds a value). Add checks everything again.
+- **Left out:** editing a saved line (Flask's page has no way into it), the dead "submit all" path, and the read-only view of a submitted report.
 - **Known, as in Flask:** Save & Next or Save & Exit with the add card still open leaves the typed expense unsaved, without a warning. Typing does not clear an open toast, which Flask does.
 
 ### Report wizard, Bank Deposit: `/entity/<shortid>/<name>/petty-cash/reports/new/deposit?transaction_date=`

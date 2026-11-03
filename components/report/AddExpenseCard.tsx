@@ -13,10 +13,29 @@ import {
 import { useAmountInput } from "@minty/shared/amountInput";
 
 import { useToast } from "@/components/flask/Toasts";
+import {
+  ReadingNotice,
+  ReceiptNote,
+  SUGGESTED_RING,
+  SuggestedLine,
+  useReceiptReader,
+} from "@/components/report/ReceiptReader";
 import { ReceiptViewer, type ShownReceipt } from "@/components/report/ReceiptViewer";
 import { FieldMessage } from "@/components/report/ReportChrome";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { parseMoney } from "@/lib/currencyInput";
+import {
+  cleared,
+  edited,
+  entryState,
+  usedNote,
+  withoutDetectedName,
+  withoutSuggestions,
+  withSuggestions,
+  type EntryState,
+  type EntryValues,
+  type SuggestedField,
+} from "@/lib/expenseAi";
 import {
   missingFields,
   newContactProblem,
@@ -79,6 +98,9 @@ export type AddExpenseProps = {
  * its "New Contact" panel, the Account Code dropdown, and Cancel / Add. Add checks the four
  * required fields as Flask does (red borders and one toast), then sends the line with its receipt
  * as one multipart `POST /reports/expenses/lines`; the server checks it all again.
+ *
+ * A picked receipt is also read (components/report/ReceiptReader.tsx, `POST /reports/expenses/extract`):
+ * its suggestions fill only empty fields, ringed and marked, and the card never waits for it.
  */
 export function AddExpenseCard(props: AddExpenseProps) {
   const {
@@ -95,21 +117,25 @@ export function AddExpenseCard(props: AddExpenseProps) {
   } = props;
   const toast = useToast();
   const card = useRef<HTMLFormElement>(null);
-  const [amount, setAmount] = useState("");
+  // the four typed fields, with the receipt reader's marks and notes on them (lib/expenseAi.ts)
+  const [entry, setEntry] = useState<EntryState>(() => entryState());
+  const { amount, remarks, supplierText, supplier, accountText, account } = entry.values;
+  const change = (field: SuggestedField, patch: Partial<EntryValues>) =>
+    setEntry((state) => edited(state, field, patch));
   const amountInput = useAmountInput({
     value: amount,
     onValue: (v) => {
-      setAmount(v);
+      change("amount", { amount: v });
       clearError("amount");
     },
   });
-  const [remarks, setRemarks] = useState("");
   const remarksField = useRef<HTMLInputElement>(null);
   const remarksMessage = remarksProblem(remarks);
-  const [supplierText, setSupplierText] = useState("");
-  const [supplier, setSupplier] = useState<Supplier | null>(null);
-  const [accountText, setAccountText] = useState("");
-  const [account, setAccount] = useState<Account | null>(null);
+  const reader = useReceiptReader((suggestions) =>
+    setEntry((state) =>
+      withSuggestions(state, suggestions, { suppliers, accounts, code, day, canCreateSupplier }),
+    ),
+  );
   // the receipt and an object URL of it, made when it is picked and let go when it is replaced
   const [picked, setPicked] = useState<Picked | null>(null);
   const pickedRef = useRef<Picked | null>(null);
@@ -139,16 +165,45 @@ export function AddExpenseCard(props: AddExpenseProps) {
     });
 
   function pickSupplier(s: Supplier) {
-    setSupplier(s);
-    setSupplierText(s.name);
+    change("supplier", { supplier: s, supplierText: s.name });
     clearError("supplier");
   }
 
   function pickAccount(a: Account) {
-    setAccount(a);
-    setAccountText(a.name);
+    change("account", { account: a, accountText: a.name });
     clearError("account");
   }
+
+  /** A field holding the reader's suggestion: its ring, the line under it, or the note offering another reading. */
+  function readerExtras(field: SuggestedField, inputId: string) {
+    const band = entry.marks[field];
+    const note = entry.notes[field];
+    return (
+      <>
+        {band ? (
+          <SuggestedLine
+            id={`${inputId}_suggested`}
+            field={field}
+            band={band}
+            onClear={() => {
+              setEntry((state) => cleared(state, field));
+              document.getElementById(inputId)?.focus();
+            }}
+          />
+        ) : null}
+        {note ? (
+          <ReceiptNote
+            text={note.text}
+            onAction={() => setEntry((state) => usedNote(state, field))}
+          />
+        ) : null}
+      </>
+    );
+  }
+  const suggested = (field: SuggestedField) => (entry.marks[field] ? SUGGESTED_RING : "");
+  const describedBy = (field: SuggestedField, inputId: string, ...others: (string | null)[]) =>
+    [entry.marks[field] ? `${inputId}_suggested` : null, ...others].filter(Boolean).join(" ") ||
+    undefined;
 
   async function createSupplier() {
     if (newContactMessage) {
@@ -189,6 +244,8 @@ export function AddExpenseCard(props: AddExpenseProps) {
       toast("Please fill out the Required Fields", "error");
       return;
     }
+    // what is on the card is what is sent: a reading still out is dropped
+    reader.cancel();
     const form = new FormData();
     form.append("transaction_date", day);
     form.append("amount", String(parseMoney(amount)));
@@ -219,8 +276,11 @@ export function AddExpenseCard(props: AddExpenseProps) {
     }
   }
 
+  // a field holding a suggestion has a value, so it is not red whatever a refused Add said before
+  const invalid = (field: RequiredField) =>
+    errors.has(field) && !(field !== "file" && entry.marks[field]);
   const border = (field: RequiredField) =>
-    errors.has(field) ? "border-flask-red-500" : "border-flask-gray-300";
+    invalid(field) ? "border-flask-red-500" : "border-flask-gray-300";
 
   return (
     <form
@@ -242,9 +302,19 @@ export function AddExpenseCard(props: AddExpenseProps) {
           const next = f ? { file: f, url: URL.createObjectURL(f) } : null;
           pickedRef.current = next;
           setPicked(next);
-          if (f) clearError("file");
+          // the old receipt's suggestions go with it; what the person typed stays
+          setEntry(withoutSuggestions);
+          if (f) {
+            clearError("file");
+            void reader.read(f);
+          } else reader.cancel();
         }}
-      />
+      >
+        {reader.reading ? <ReadingNotice /> : null}
+      </ReceiptDrop>
+      <div role="status" aria-live="polite" className="sr-only">
+        {entry.announcement}
+      </div>
 
       <div className="mb-4">
         <label htmlFor="expense_amount" className={LABEL}>
@@ -259,11 +329,13 @@ export function AddExpenseCard(props: AddExpenseProps) {
             autoComplete="off"
             placeholder="0.00"
             aria-required="true"
-            aria-invalid={errors.has("amount") || undefined}
+            aria-invalid={invalid("amount") || undefined}
+            aria-describedby={describedBy("amount", "expense_amount")}
             {...amountInput}
-            className={`${FIELD} ${border("amount")} pl-12 pr-3 text-flask-black`}
+            className={`${FIELD} ${border("amount")} ${suggested("amount")} pl-12 pr-3 text-flask-black`}
           />
         </div>
+        {readerExtras("amount", "expense_amount")}
       </div>
 
       <div className="mb-4">
@@ -278,13 +350,18 @@ export function AddExpenseCard(props: AddExpenseProps) {
           placeholder="Description (Optional)"
           value={remarks}
           aria-invalid={remarksMessage ? true : undefined}
-          aria-describedby={remarksMessage ? "expense_remarks_message" : undefined}
-          onChange={(e) => setRemarks(e.target.value)}
-          className={`${FIELD} ${remarksMessage ? "border-flask-red-500" : "border-flask-gray-300"} pl-3 pr-3 text-flask-gray-700`}
+          aria-describedby={describedBy(
+            "description",
+            "expense_remarks",
+            remarksMessage ? "expense_remarks_message" : null,
+          )}
+          onChange={(e) => change("description", { remarks: e.target.value })}
+          className={`${FIELD} ${remarksMessage ? "border-flask-red-500" : "border-flask-gray-300"} ${suggested("description")} pl-3 pr-3 text-flask-gray-700`}
         />
         {remarksMessage ? (
           <FieldMessage id="expense_remarks_message">{remarksMessage}</FieldMessage>
         ) : null}
+        {readerExtras("description", "expense_remarks")}
       </div>
 
       {newContact === null ? (
@@ -298,11 +375,15 @@ export function AddExpenseCard(props: AddExpenseProps) {
             }
             placeholder="Select a contact"
             text={supplierText}
-            invalid={errors.has("supplier")}
+            invalid={invalid("supplier")}
+            className={suggested("supplier")}
+            describedBy={describedBy("supplier", "expense_contact")}
             onText={(text) => {
-              setSupplierText(text);
+              change("supplier", {
+                supplierText: text,
+                ...(supplier && text.trim() !== supplier.name ? { supplier: null } : {}),
+              });
               clearError("supplier");
-              if (supplier && text.trim() !== supplier.name) setSupplier(null);
             }}
             listFor={(text, how) => {
               if (how === "click" || !text.trim()) {
@@ -322,6 +403,18 @@ export function AddExpenseCard(props: AddExpenseProps) {
               return noSupplierOptions(offer, setNewContact);
             }}
           />
+          {readerExtras("supplier", "expense_contact")}
+          {entry.detectedName ? (
+            <ReceiptNote
+              text={`Receipt says "${entry.detectedName}", which is not in your supplier list.`}
+              action={`Add "${entry.detectedName}" as a new supplier`}
+              onAction={() => {
+                // it fills the New Contact box; Create stays the person's own press
+                setNewContact(entry.detectedName);
+                setEntry(withoutDetectedName);
+              }}
+            />
+          ) : null}
         </div>
       ) : (
         <div className="mb-4 rounded-flask-xl border border-flask-gray-300 bg-flask-white p-6 shadow-flask-lg">
@@ -355,8 +448,7 @@ export function AddExpenseCard(props: AddExpenseProps) {
               type="button"
               onClick={() => {
                 setNewContact(null);
-                setSupplierText("");
-                setSupplier(null);
+                change("supplier", { supplierText: "", supplier: null });
               }}
               className="flex-1 rounded-flask-xl border-2 border-flask-teal px-4 py-2 text-sm font-medium text-flask-teal transition-colors hover:bg-flask-teal/10"
             >
@@ -383,21 +475,33 @@ export function AddExpenseCard(props: AddExpenseProps) {
           }
           placeholder="Select an account code"
           text={accountText}
-          invalid={errors.has("account")}
+          invalid={invalid("account")}
+          className={suggested("account")}
+          describedBy={describedBy("account", "expense_account_code")}
           onText={(text) => {
-            setAccountText(text);
+            change("account", {
+              accountText: text,
+              ...(account && text.trim() !== account.name ? { account: null } : {}),
+            });
             clearError("account");
-            if (account && text.trim() !== account.name) setAccount(null);
           }}
           listFor={(text, how) => {
             const list = how === "click" ? accounts : searchAccounts(accounts, text);
             return list.length > 0 ? accountOptions(list, pickAccount) : null;
           }}
         />
+        {readerExtras("account", "expense_account_code")}
       </div>
 
       <div className="flex gap-3">
-        <button type="button" onClick={onCancel} className={OUTLINE_BUTTON}>
+        <button
+          type="button"
+          onClick={() => {
+            reader.cancel();
+            onCancel();
+          }}
+          className={OUTLINE_BUTTON}
+        >
           <span>Cancel</span>
         </button>
         <button type="submit" disabled={sending} className={FILLED_BUTTON}>
@@ -491,6 +595,8 @@ function SearchField({
   placeholder,
   text,
   invalid,
+  className = "",
+  describedBy,
   onText,
   listFor,
 }: {
@@ -499,6 +605,9 @@ function SearchField({
   placeholder: string;
   text: string;
   invalid: boolean;
+  /** Extra classes on the input (the receipt reader's ring). */
+  className?: string;
+  describedBy?: string;
   onText: (text: string) => void;
   /** The rows for `text`, or null for a closed list. */
   listFor: (text: string, how: "click" | "typed") => Option[] | null;
@@ -550,6 +659,7 @@ function SearchField({
           aria-autocomplete="list"
           aria-required="true"
           aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
           aria-activedescendant={activeOption ? `${listId}_${activeOption.key}` : undefined}
           autoComplete="off"
           placeholder={placeholder}
@@ -567,7 +677,7 @@ function SearchField({
             blurTimer.current = window.setTimeout(() => show(null), 200);
           }}
           onKeyDown={onKeyDown}
-          className={`${FIELD} ${invalid ? "border-flask-red-500" : "border-flask-gray-300"} pl-3 pr-10 text-flask-gray-700 placeholder:text-flask-gray-700`}
+          className={`${FIELD} ${invalid ? "border-flask-red-500" : "border-flask-gray-300"} ${className} pl-3 pr-10 text-flask-gray-700 placeholder:text-flask-gray-700`}
         />
         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
           <svg
@@ -633,16 +743,19 @@ const DONE_ICON = "M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0
 /**
  * Flask's `#uploadArea`: a dashed box to click or drop a receipt on, PDF / JPEG / PNG up to 10MB.
  * With a picture it shows the picture (borderless, 256 x 192); with a PDF it turns green and names
- * it. The expand button in its corner opens the picked file full screen.
+ * it. The expand button in its corner opens the picked file full screen. `children` sit right
+ * under the box (the receipt reader's "Reading the receipt…", where Flask put it).
  */
 function ReceiptDrop({
   picked,
   invalid,
   onFile,
+  children,
 }: {
   picked: Picked | null;
   invalid: boolean;
   onFile: (file: File | null) => void;
+  children?: ReactNode;
 }) {
   const toast = useToast();
   const input = useRef<HTMLInputElement>(null);
@@ -809,6 +922,7 @@ function ReceiptDrop({
           }}
         />
       </div>
+      {children}
       {viewing ? <ReceiptViewer receipt={viewing} onClose={() => setViewing(null)} /> : null}
     </div>
   );

@@ -44,9 +44,10 @@ type SaveAnswer = { next: "deposit" | "dashboard"; transaction_date: string };
  * `GET`/`PUT /reports/expenses`, `POST /reports/expenses/lines`, `DELETE /expense-lines/<id>` and
  * `POST /suppliers` (Minty `petty_cash_api/routes/expenses.py`).
  *
+ * The add card also reads a picked receipt (components/report/ReceiptReader.tsx).
+ *
  * Left out on purpose: Flask's edit of a saved line (the page has no way into it), its dead
- * "submit all" path, the receipt reader (`expense_ai.js`, behind a flag) and the read-only view
- * of a submitted report.
+ * "submit all" path and the read-only view of a submitted report.
  */
 export function ExpensesStep({ day }: { day: string | null }) {
   const toast = useToast();

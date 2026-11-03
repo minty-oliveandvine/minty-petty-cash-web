@@ -5,7 +5,7 @@
 import { expect, test, type Page, type Request, type Route } from "@playwright/test";
 
 import { companyRef } from "./companyRef";
-import { mintModuleToken } from "./helpers";
+import { expectNoHorizontalScroll, mintModuleToken } from "./helpers";
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -116,11 +116,21 @@ type Handlers = {
   onSupplier?: (body: Json, route: Route) => Promise<void>;
   /** GET /reports/expenses, when not the answer */
   onRead?: (route: Route) => Promise<void>;
+  /** POST /reports/expenses/extract (the receipt reader); switched off when not given */
+  onExtract?: (req: Request, route: Route) => Promise<void>;
 };
+
+/** The receipt reader switched off - the API's answer with `EXPENSE_AI_ENABLED` unset. */
+const READER_OFF = { suggestions: null, reason: "disabled" };
 
 async function stub(page: Page, answer: Json, h: Handlers = {}) {
   await page.route(`${API}/reports/expenses**`, async (route) => {
     const req = route.request();
+    if (req.url().includes("/reports/expenses/extract")) {
+      if (h.onExtract) await h.onExtract(req, route);
+      else await route.fulfill({ json: READER_OFF });
+      return;
+    }
     if (req.url().includes("/reports/expenses/lines")) {
       if (h.onAdd) await h.onAdd(req, route);
       else
@@ -646,6 +656,170 @@ test("Sales' Save & Next lands here without leaving the app", async ({ page }) =
     new RegExp(`${BASE}/reports/new/expense\\?transaction_date=${DAY}$`),
   );
   await expect(page.getByRole("heading", { name: "Expenses", exact: true })).toBeVisible();
+});
+
+// ---------------------------------------------------------------------------------------------
+// The receipt reader (POST /reports/expenses/extract; components/report/ReceiptReader.tsx)
+
+const SUGGESTIONS = {
+  supplier: {
+    value: "Wellcome",
+    confidence: 0.93,
+    band: "high",
+    applied: true,
+    contact_id: "s-well",
+  },
+  account: {
+    value: "461 Printing & Stationery",
+    confidence: 0.7,
+    band: "medium",
+    applied: true,
+    account_id: "a-461",
+    code: "461",
+    name: "Printing & Stationery",
+  },
+  amount: { value: "48.80", confidence: 0.97, band: "high", applied: true },
+  description: { value: "Copy paper", confidence: 0.4, band: "low", applied: false },
+  document_date: { value: DAY, confidence: 0.9, band: "high", applied: true },
+  currency: "HKD",
+  entity_currency: "HKD",
+};
+
+const attachReceipt = (page: Page, name = "taxi.png") =>
+  page.getByTestId("expense_files").setInputFiles({ name, mimeType: "image/png", buffer: PNG });
+
+test("the receipt reader: Flask's reading box, then suggestions in the empty fields, marked - nothing saved until Add", async ({
+  page,
+}) => {
+  let answer: () => void = () => undefined;
+  const answered = new Promise<void>((resolve) => (answer = resolve));
+  const reads: string[] = [];
+  let sent: string | null = null;
+  await openWith(page, expensesAnswer(), {
+    onExtract: async (req, route) => {
+      reads.push(req.postData() ?? "");
+      await answered;
+      await route.fulfill({ json: { suggestions: SUGGESTIONS, reason: null } });
+    },
+    onAdd: async (req, route) => {
+      sent = req.postData();
+      await route.fulfill({ status: 201, json: { line: { ...LINE, id: "new" }, total: 1283.3 } });
+    },
+  });
+  await page.getByRole("button", { name: "Add New Expense" }).click();
+  await attachReceipt(page);
+  const notice = page.getByRole("status").filter({ hasText: "Reading the receipt…" });
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText("You can start typing now if you prefer.");
+  // the card stays usable meanwhile
+  await page.getByRole("textbox", { name: "Description" }).fill("Taxi");
+  answer();
+  await expect(notice).toHaveCount(0);
+  expect(reads).toHaveLength(1);
+  expect(reads[0]).toContain('name="receipt"; filename="taxi.png"');
+
+  const amount = page.getByRole("textbox", { name: /Expense Amount/ });
+  await expect(amount).toHaveValue("48.80");
+  await expect(amount).toHaveAccessibleDescription("Amount suggested");
+  await expect(page.getByRole("combobox", { name: /Suppliers/ })).toHaveValue("Wellcome");
+  const account = page.getByRole("combobox", { name: /Account Code/ });
+  await expect(account).toHaveValue("Printing & Stationery");
+  await expect(account).toHaveAccessibleDescription("Account code suggested — please check");
+  // the low band and the typed description: never overwritten
+  await expect(page.getByRole("textbox", { name: "Description" })).toHaveValue("Taxi");
+  await expect(
+    page.getByRole("button", { name: "Clear the suggested value for this field" }),
+  ).toHaveCount(3);
+  expect(sent).toBeNull();
+  await expectNoHorizontalScroll(page);
+
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(toast(page, "Expense added successfully!")).toBeVisible();
+  const body = sent ?? "";
+  for (const [field, value] of [
+    ["amount", "48.8"],
+    ["remarks", "Taxi"],
+    ["supplier_id", "s-well"],
+    ["account_id", "a-461"],
+  ])
+    expect(body).toContain(`name="${field}"\r\n\r\n${value}\r\n`);
+  expect(body).toContain('name="receipt"; filename="taxi.png"');
+});
+
+test("the reader offers a different reading and an unknown supplier, and changes nothing by itself", async ({
+  page,
+}) => {
+  let created = 0;
+  await openWith(page, expensesAnswer(), {
+    onExtract: (_req, route) =>
+      route.fulfill({
+        json: {
+          suggestions: {
+            ...SUGGESTIONS,
+            supplier: {
+              value: "",
+              confidence: 0,
+              band: "low",
+              applied: false,
+              contact_id: "",
+              detected_name: "Kwok Transport",
+            },
+          },
+          reason: null,
+        },
+      }),
+    onSupplier: async (_body, route) => {
+      created += 1;
+      await route.fulfill({ status: 201, json: { id: "s-kwok", name: "Kwok Transport" } });
+    },
+  });
+  await page.getByRole("button", { name: "Add New Expense" }).click();
+  const amount = page.getByRole("textbox", { name: /Expense Amount/ });
+  await amount.fill("45");
+  await attachReceipt(page);
+  await expect(page.getByText(/^The receipt reads HKD.48\.80, not HKD.45\.00\.$/)).toBeVisible();
+  await page.getByRole("button", { name: "Use the value from the receipt" }).click();
+  await expect(amount).toHaveValue("48.80");
+
+  await expect(
+    page.getByText('Receipt says "Kwok Transport", which is not in your supplier list.'),
+  ).toBeVisible();
+  await expectNoHorizontalScroll(page);
+  await page.getByRole("button", { name: 'Add "Kwok Transport" as a new supplier' }).click();
+  await expect(page.getByRole("textbox", { name: /New Contact/ })).toHaveValue("Kwok Transport");
+  expect(created).toBe(0);
+});
+
+test("the reader switched off says nothing and is not asked again", async ({ page }) => {
+  let reads = 0;
+  await openWith(page, expensesAnswer(), {
+    onExtract: async (_req, route) => {
+      reads += 1;
+      await route.fulfill({ json: READER_OFF });
+    },
+  });
+  await page.getByRole("button", { name: "Add New Expense" }).click();
+  await attachReceipt(page, "one.png");
+  await expect.poll(() => reads).toBe(1);
+  await expect(page.getByText("Reading the receipt…")).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: /Expense Amount/ })).toHaveValue("");
+  await attachReceipt(page, "two.png");
+  await expect(
+    page.getByText('"two.png" Uploaded').or(page.getByRole("img", { name: "Uploaded receipt" })),
+  ).toBeVisible();
+  expect(reads).toBe(1);
+});
+
+test("a reader that fails says nothing, and Add still works", async ({ page }) => {
+  await openWith(page, expensesAnswer(), {
+    onExtract: (_req, route) =>
+      route.fulfill({ status: 500, json: { error: "Something went wrong on our side." } }),
+  });
+  await fillAdd(page);
+  await expect(page.getByText("Reading the receipt…")).toHaveCount(0);
+  await expect(page.locator("[data-toast-type]")).toHaveCount(0);
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(toast(page, "Expense added successfully!")).toBeVisible();
 });
 
 test("the page reloads with no console error", async ({ page }) => {

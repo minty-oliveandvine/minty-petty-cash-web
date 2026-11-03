@@ -315,7 +315,7 @@ const rowMenu = async (page: Page, title: string, name: string) => {
   return card(page, title).getByRole("menu");
 };
 
-test("the read: Flask's header and tabs, the pointer to Entity & Integration, both lists in order", async ({
+test("the read: Flask's header and tabs, no country or currency, both lists in order", async ({
   page,
 }) => {
   await open(page);
@@ -348,11 +348,6 @@ test("the read: Flask's header and tabs, the pointer to Entity & Integration, bo
   // the country and currency are set on minty-web's Entity & Integration tab only (owner, 2026-11-03)
   await expect(page.getByRole("combobox", { name: "Select Country" })).toHaveCount(0);
   await expect(page.getByRole("combobox", { name: "Select Currency" })).toHaveCount(0);
-  await expectHubHandoff(
-    page.getByTestId("country-pointer").getByRole("link", { name: "Entity & Integration" }),
-    `${HUB_SETTINGS}/integration`,
-    ENTITY,
-  );
 
   await expect(rows(page, "Electronic")).toHaveText(["Visa", "AlipayHK"].map((n) => new RegExp(n)));
   await expect(rows(page, "Delivery")).toHaveText([/Foodpanda/]);

@@ -58,7 +58,7 @@ function refusal(err: unknown): string | null {
  * - Flask's chrome: Back and "Settings", the company, the person's initials and the ≡; then the
  *   settings tabs (the others are minty-web's and the payments app's, through Flask's hand-offs).
  * - No Country & currency card: those are set on minty-web's Entity & Integration tab (owner,
- *   2026-11-03), which a line above the cards links to.
+ *   2026-11-03).
  * - Xero account mapping and Petty Cash Account Code (`XeroCards.tsx`), read once per page load from
  *   `GET /settings/xero` (it asks Xero), each with its own Save; Flask's "Xero isn't connected"
  *   notice in both when the connection is not live.
@@ -418,17 +418,6 @@ function SettingsBody({
       ) : null}
 
       <div className="flex flex-col gap-3">
-        <p className="m-0 text-sm text-flask-set-gray-600" data-testid="country-pointer">
-          The country and currency are set in{" "}
-          <a
-            href={connectHref}
-            className="font-medium text-flask-set-link underline underline-offset-2"
-          >
-            Entity &amp; Integration
-          </a>
-          .
-        </p>
-
         <XeroMappingCard
           load={xero}
           busy={busy !== null}

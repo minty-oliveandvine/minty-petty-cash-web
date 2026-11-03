@@ -1,9 +1,10 @@
 /**
  * Petty Cash Settings' rules - the cards that need no Xero, ported from Flask's ORIGINAL
  * `entity/settings_entity.html` and `static/js/petty_cash_settings.js` (Minty `1c25b35^1`):
- * Country & currency and the Electronic / Delivery sales methods. What it reads and writes is
- * Minty's `petty_cash_api/routes/settings.py` (`GET /settings`, `PUT /settings/country`,
- * `/sales-methods...`). The Xero mapping and account codes are lib/xeroSettings.ts's.
+ * the Electronic / Delivery sales methods. What it reads and writes is minty-petty-cash-api's
+ * `routes/settings.py` (`GET /settings`, `/sales-methods...`). The Xero mapping and account codes
+ * are lib/xeroSettings.ts's. The country and currency are not set here: minty-web's Entity &
+ * Integration tab is their one place (owner, 2026-11-03).
  */
 
 import { companyRef } from "@minty/shared/companyRef";
@@ -18,7 +19,8 @@ export type SalesMethod = { id: string; name: string; value_name: string; shared
 export type CatalogueMethod = { id: string; name: string };
 
 export type SettingsPermissions = {
-  edit_country: boolean;
+  /** The Xero cards' saves (the API's `XERO_RIGHTS`). */
+  edit_xero: boolean;
   view_sales_methods: boolean;
   add_sales_method: boolean;
   rename_sales_method: boolean;
@@ -27,14 +29,6 @@ export type SettingsPermissions = {
 };
 
 export type SettingsRead = {
-  country: {
-    country_code: string | null;
-    currency_id: string | null;
-    countries: { code: string; name: string }[];
-    currencies: { id: string; name: string }[];
-    selected_country: string | null;
-    selected_currency: string | null;
-  };
   sales_methods: Record<MethodType, SalesMethod[]>;
   available: Record<MethodType, CatalogueMethod[]>;
   xero_connected: boolean;
@@ -91,34 +85,6 @@ export function settingsTabUrl(entityId: string, entityName: string, tab: Settin
   return hubUrl(`/entity/${companyRef(entityId, entityName)}/settings/${tab}`, entityId);
 }
 
-export type Option = { value: string; label: string };
-
-/**
- * A country or currency picker's rows (Flask's `wireRegistryPicker`): the whole list when the
- * box is empty or still shows the current choice, else every name containing what is typed.
- */
-export function registryOptions(all: Option[], query: string, currentLabel: string): Option[] {
-  const q = query.trim().toLowerCase();
-  if (!q || q === currentLabel.trim().toLowerCase()) return all;
-  return all.filter((row) => row.label.toLowerCase().includes(q));
-}
-
-/**
- * What Save sends for the pickers, or null when nothing changed. A country on its own brings its
- * currency (the API's rule), so the currency goes only when it was picked by hand.
- */
-export function countryChange(
-  read: SettingsRead,
-  picked: { country_code: string; currency_id: string },
-): { country_code?: string; currency_id?: string } | null {
-  const body: { country_code?: string; currency_id?: string } = {};
-  if (picked.country_code && picked.country_code !== (read.country.country_code ?? ""))
-    body.country_code = picked.country_code;
-  if (picked.currency_id && picked.currency_id !== (read.country.currency_id ?? ""))
-    body.currency_id = picked.currency_id;
-  return Object.keys(body).length ? body : null;
-}
-
 /** The catalogue picker's rows: the methods offered (`available`, never on the list), filtered. */
 export function catalogueOptions(available: CatalogueMethod[], query: string): CatalogueMethod[] {
   const q = query.trim().toLowerCase();
@@ -164,7 +130,7 @@ export function movedIds(ids: string[], index: number, step: -1 | 1): string[] |
 /** Nothing on the page is this person's to change (a cashier): Flask's view-only notice. */
 export function viewOnly(p: SettingsPermissions): boolean {
   return !(
-    p.edit_country ||
+    p.edit_xero ||
     p.add_sales_method ||
     p.rename_sales_method ||
     p.remove_sales_method ||

@@ -7,17 +7,7 @@ import { useViewer } from "@minty/shared/viewer";
 
 import { useToast } from "@/components/flask/Toasts";
 import { SalesMethodsCard, type MethodActions } from "@/components/settings/SalesMethodsCard";
-import {
-  BTN_OUTLINE,
-  BusyOverlay,
-  Combo,
-  ConfirmDialog,
-  Icon,
-  LABEL,
-  SAVE_BTN,
-  SettingsCard,
-  type ComboRow,
-} from "@/components/settings/SettingsParts";
+import { BTN_OUTLINE, BusyOverlay, ConfirmDialog, Icon } from "@/components/settings/SettingsParts";
 import {
   AccountCodesCard,
   XeroMappingCard,
@@ -33,13 +23,10 @@ import { setFlash } from "@/lib/flash";
 import {
   KIND,
   METHOD_TYPES,
-  countryChange,
   movedIds,
-  registryOptions,
   settingsTabUrl,
   viewOnly,
   type MethodType,
-  type Option,
   type SalesMethod,
   type SettingsAnswer,
   type SettingsRead,
@@ -50,7 +37,6 @@ import type { XeroRead } from "@/lib/xeroSettings";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const SAVING = "Saving changes…";
-const NO_RIGHT_TITLE = "That task is reserved for our Accountants and Admins.";
 
 type Load =
   | { kind: "loading" }
@@ -71,7 +57,8 @@ function refusal(err: unknown): string | null {
  *
  * - Flask's chrome: Back and "Settings", the company, the person's initials and the ≡; then the
  *   settings tabs (the others are minty-web's and the payments app's, through Flask's hand-offs).
- * - Country & currency: the two pickers and their Save (`PUT /settings/country`).
+ * - No Country & currency card: those are set on minty-web's Entity & Integration tab (owner,
+ *   2026-11-03), which a line above the cards links to.
  * - Xero account mapping and Petty Cash Account Code (`XeroCards.tsx`), read once per page load from
  *   `GET /settings/xero` (it asks Xero), each with its own Save; Flask's "Xero isn't connected"
  *   notice in both when the connection is not live.
@@ -431,12 +418,16 @@ function SettingsBody({
       ) : null}
 
       <div className="flex flex-col gap-3">
-        <CountryCard
-          key={`${read.country.country_code}|${read.country.currency_id}`}
-          read={read}
-          busy={busy !== null}
-          onSave={(body) => write("/settings/country", { method: "PUT", json: body })}
-        />
+        <p className="m-0 text-sm text-flask-set-gray-600" data-testid="country-pointer">
+          The country and currency are set in{" "}
+          <a
+            href={connectHref}
+            className="font-medium text-flask-set-link underline underline-offset-2"
+          >
+            Entity &amp; Integration
+          </a>
+          .
+        </p>
 
         <XeroMappingCard
           load={xero}
@@ -500,114 +491,5 @@ function SettingsBody({
         </ConfirmDialog>
       ) : null}
     </>
-  );
-}
-
-/** Flask's first card: the country and currency pickers, and Save Changes for them. */
-function CountryCard({
-  read,
-  busy,
-  onSave,
-}: {
-  read: SettingsRead;
-  busy: boolean;
-  onSave: (body: { country_code?: string; currency_id?: string }) => Promise<boolean>;
-}) {
-  const editable = read.permissions.edit_country;
-  const countries: Option[] = read.country.countries.map((c) => ({ value: c.code, label: c.name }));
-  const currencies: Option[] = read.country.currencies.map((c) => ({ value: c.id, label: c.name }));
-  const [picked, setPicked] = useState({
-    country_code: read.country.country_code ?? "",
-    currency_id: read.country.currency_id ?? "",
-  });
-  const labelOf = (all: Option[], value: string, fallback: string | null) =>
-    all.find((o) => o.value === value)?.label ?? fallback ?? "";
-  const countryLabel = labelOf(countries, picked.country_code, read.country.selected_country);
-  const currencyLabel = labelOf(currencies, picked.currency_id, read.country.selected_currency);
-  const [countryText, setCountryText] = useState(countryLabel);
-  const [currencyText, setCurrencyText] = useState(currencyLabel);
-  const change = countryChange(read, picked);
-  const [saving, setSaving] = useState(false);
-
-  const rows =
-    (all: Option[], selected: string, current: string) =>
-    (query: string): ComboRow[] => {
-      const out: ComboRow[] = registryOptions(all, query, current).map((o) => ({
-        key: o.value,
-        label: o.label,
-        selected: o.value === selected,
-      }));
-      const q = query.toLowerCase();
-      if (q && !all.some((o) => o.label.toLowerCase().includes(q)))
-        out.push({ key: "none", label: "No matches", info: true });
-      return out;
-    };
-
-  return (
-    <SettingsCard
-      title="Country & currency"
-      sub="Where this entity reports from, and the currency its petty cash is counted in."
-      readOnly={!editable}
-      testId="country"
-    >
-      <form
-        noValidate
-        className="flex flex-col gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!editable || !change || busy) return;
-          setSaving(true);
-          // a save that went through draws the new read, which remounts this card
-          void onSave(change).finally(() => setSaving(false));
-        }}
-      >
-        <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="ci_country_display">
-            Select Country
-          </label>
-          <Combo
-            id="ci_country_display"
-            value={countryText}
-            placeholder="Select a country"
-            disabled={!editable}
-            rows={rows(countries, picked.country_code, countryLabel)}
-            onText={setCountryText}
-            onPick={(code) => {
-              setPicked((p) => ({ ...p, country_code: code }));
-              setCountryText(labelOf(countries, code, null));
-            }}
-            onBlur={() => setCountryText(countryLabel)}
-          />
-        </div>
-        <div className="flex flex-col gap-2 border-t border-flask-gray-100 pt-4">
-          <label className={LABEL} htmlFor="ci_currency_display">
-            Select Currency
-          </label>
-          <Combo
-            id="ci_currency_display"
-            value={currencyText}
-            placeholder="Select a currency"
-            disabled={!editable}
-            rows={rows(currencies, picked.currency_id, currencyLabel)}
-            onText={setCurrencyText}
-            onPick={(id) => {
-              setPicked((p) => ({ ...p, currency_id: id }));
-              setCurrencyText(labelOf(currencies, id, null));
-            }}
-            onBlur={() => setCurrencyText(currencyLabel)}
-          />
-        </div>
-        <div className="mt-3 flex flex-col gap-3">
-          <button
-            type="submit"
-            disabled={!editable || !change || busy}
-            title={editable ? undefined : NO_RIGHT_TITLE}
-            className={SAVE_BTN}
-          >
-            {saving ? "Saving…" : "Save Changes"}
-          </button>
-        </div>
-      </form>
-    </SettingsCard>
   );
 }

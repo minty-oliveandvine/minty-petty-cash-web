@@ -6,7 +6,7 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 import { companyRef } from "./companyRef";
-import { mintModuleToken } from "./helpers";
+import { expectHubHandoff, mintModuleToken } from "./helpers";
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -426,10 +426,12 @@ test('a company with no currency is asked to choose one before any report, and n
   const dialog = page.getByRole("dialog", { name: "Setup Required" });
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
-  // Petty Cash Settings, whose first card is Country & currency
-  await expect(
+  // minty-web's Entity & Integration tab, the one place the currency is set (owner, 2026-11-03)
+  await expectHubHandoff(
     dialog.getByRole("link", { name: "Choose your company's currency" }),
-  ).toHaveAttribute("href", /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/);
+    `/entity/${companyRef(ENTITY, NAME)}/settings/integration`,
+    ENTITY,
+  );
   await expect(page.getByText("(No currency selected)").first()).toBeVisible();
   await expect(page.getByText(/\$\d/)).toHaveCount(0);
 });

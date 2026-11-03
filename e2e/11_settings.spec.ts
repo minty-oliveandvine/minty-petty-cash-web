@@ -17,7 +17,7 @@ const NAME = "E2E Petty Cash Shop";
 const BASE = `/entity/${companyRef(ENTITY, NAME)}/petty-cash`;
 const SETTINGS = `/entity/${companyRef(ENTITY, NAME)}/settings/petty-cash`;
 const API =
-  /\/api\/petty-cash\/v1\/companies\/[^/]+\/(settings(?:\/country|\/xero(?:\/mapping|\/account-codes)?)?|sales-methods(?:\/[^/?]+)?|suppliers)$/;
+  /\/api\/petty-cash\/v1\/companies\/[^/]+\/(settings(?:\/xero(?:\/mapping|\/account-codes)?)?|sales-methods(?:\/[^/?]+)?|suppliers)$/;
 /** minty-web's pages for the other tabs, in the company's address (`next` of Flask's hand-off). */
 const HUB_SETTINGS = `/entity/${companyRef(ENTITY, NAME)}/settings`;
 
@@ -32,7 +32,7 @@ type Method = { id: string; name: string; value_name: string; shared: boolean };
 type Perms = Record<string, boolean>;
 
 const ALL: Perms = {
-  edit_country: true,
+  edit_xero: true,
   view_sales_methods: true,
   add_sales_method: true,
   rename_sales_method: true,
@@ -41,7 +41,7 @@ const ALL: Perms = {
 };
 const CASHIER: Perms = {
   ...ALL,
-  edit_country: false,
+  edit_xero: false,
   add_sales_method: false,
   rename_sales_method: false,
   remove_sales_method: false,
@@ -133,7 +133,6 @@ function xeroState(
 /** What the stubbed API holds; each write changes it and answers the read again. */
 function initialState(over: { perms?: Perms; xero?: ReturnType<typeof xeroState> } = {}) {
   return {
-    country: { code: "HK", currency: "c-hkd" },
     electronic: [m(VISA, "Visa"), m(ALIPAY, "AlipayHK")],
     delivery: [m(FOODPANDA, "Foodpanda", true)],
     available: {
@@ -146,25 +145,8 @@ function initialState(over: { perms?: Perms; xero?: ReturnType<typeof xeroState>
 }
 type State = ReturnType<typeof initialState>;
 
-const COUNTRIES = [
-  { code: "HK", name: "Hong Kong", currency: "c-hkd" },
-  { code: "SG", name: "Singapore", currency: "c-sgd" },
-];
-const CURRENCIES = [
-  { id: "c-hkd", name: "HKD" },
-  { id: "c-sgd", name: "SGD" },
-];
-
 function read(s: State): Json {
   return {
-    country: {
-      country_code: s.country.code,
-      currency_id: s.country.currency,
-      countries: COUNTRIES.map(({ code, name }) => ({ code, name })),
-      currencies: CURRENCIES,
-      selected_country: COUNTRIES.find((c) => c.code === s.country.code)?.name ?? null,
-      selected_currency: CURRENCIES.find((c) => c.id === s.country.currency)?.name ?? null,
-    },
     sales_methods: { electronic: s.electronic, delivery: s.delivery },
     available: s.available,
     xero_connected: s.xero.live,
@@ -229,12 +211,7 @@ async function stub(page: Page, state: State, refuse: Refuse = () => null) {
     }
     let message = "";
     let status = 200;
-    if (path === "/settings/country") {
-      const country = COUNTRIES.find((c) => c.code === body?.country_code);
-      if (country) state.country = { code: country.code, currency: country.currency };
-      if (typeof body?.currency_id === "string") state.country.currency = body.currency_id;
-      message = "Country and currency saved.";
-    } else if (path === "/sales-methods" && call.method === "POST") {
+    if (path === "/sales-methods" && call.method === "POST") {
       const type = body?.type as "electronic" | "delivery";
       const fromCatalogue = state.available[type].find((a) => a.id === body?.sale_info_id);
       const added = fromCatalogue
@@ -338,7 +315,7 @@ const rowMenu = async (page: Page, title: string, name: string) => {
   return card(page, title).getByRole("menu");
 };
 
-test("the read: Flask's header and tabs, the country and currency, both lists in order", async ({
+test("the read: Flask's header and tabs, the pointer to Entity & Integration, both lists in order", async ({
   page,
 }) => {
   await open(page);
@@ -368,9 +345,14 @@ test("the read: Flask's header and tabs, the country and currency, both lists in
     `/entity/${ENTITY}/settings/payment-request`,
   );
 
-  await expect(page.getByRole("combobox", { name: "Select Country" })).toHaveValue("Hong Kong");
-  await expect(page.getByRole("combobox", { name: "Select Currency" })).toHaveValue("HKD");
-  await expect(page.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+  // the country and currency are set on minty-web's Entity & Integration tab only (owner, 2026-11-03)
+  await expect(page.getByRole("combobox", { name: "Select Country" })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "Select Currency" })).toHaveCount(0);
+  await expectHubHandoff(
+    page.getByTestId("country-pointer").getByRole("link", { name: "Entity & Integration" }),
+    `${HUB_SETTINGS}/integration`,
+    ENTITY,
+  );
 
   await expect(rows(page, "Electronic")).toHaveText(["Visa", "AlipayHK"].map((n) => new RegExp(n)));
   await expect(rows(page, "Delivery")).toHaveText([/Foodpanda/]);
@@ -381,52 +363,6 @@ test("the read: Flask's header and tabs, the country and currency, both lists in
   await expect(page.getByText("Xero isn't connected.", { exact: false })).toHaveCount(2);
   await expect(page.getByText(/view-only access/)).toHaveCount(0);
   await expectNoHorizontalScroll(page);
-});
-
-test("saving the country: picked from the list, the country alone sent, the API's sentence", async ({
-  page,
-}) => {
-  const sent = await open(page);
-  const country = page.getByRole("combobox", { name: "Select Country" });
-  await country.click();
-  await expect(page.getByRole("option")).toHaveCount(2);
-  await country.fill("sing");
-  await expect(page.getByRole("option")).toHaveText(["Singapore"]);
-  await page.getByRole("option", { name: "Singapore" }).click();
-  await expect(country).toHaveValue("Singapore");
-  // a name that matches nothing says so, and leaving the box puts the choice back
-  await country.fill("zz");
-  await expect(page.getByText("No matches")).toBeVisible();
-  await country.blur();
-  await expect(country).toHaveValue("Singapore");
-
-  await page.getByRole("button", { name: "Save Changes" }).click();
-  await expect(toast(page, "Country and currency saved.")).toBeVisible();
-  expect(sent).toEqual([
-    { method: "PUT", path: "/settings/country", body: { country_code: "SG" } },
-  ]);
-  // the country brought its currency
-  await expect(page.getByRole("combobox", { name: "Select Currency" })).toHaveValue("SGD");
-  await expect(page.getByRole("button", { name: "Save Changes" })).toBeDisabled();
-});
-
-test("a refused country save says the API's sentence and keeps the choice", async ({ page }) => {
-  const sent = await open(page, initialState(), (s) =>
-    s.path === "/settings/country"
-      ? { status: 422, error: "Pick one of the currencies offered." }
-      : null,
-  );
-  const currency = page.getByRole("combobox", { name: "Select Currency" });
-  await currency.click();
-  await page.getByRole("option", { name: "SGD" }).click();
-  await currency.press("Enter"); // Enter with the list closed submits
-  await expect(toast(page, "Pick one of the currencies offered.")).toBeVisible();
-  expect(sent).toEqual([
-    { method: "PUT", path: "/settings/country", body: { currency_id: "c-sgd" } },
-  ]);
-  await expect(currency).toHaveValue("SGD");
-  await expect(page.getByRole("button", { name: "Save Changes" })).toBeEnabled();
-  await expect(toast(page, "Country and currency saved.")).toHaveCount(0);
 });
 
 test("adding from the catalogue: the methods offered, picked, sent by id, drawn from the answer", async ({
@@ -658,16 +594,14 @@ test("a reorder refused because the list changed (409) keeps the order and says 
   await expect(rows(page, "Electronic")).toHaveText([/Visa/, /AlipayHK/]);
 });
 
-test("a cashier sees it all read-only: the notice, no controls, Save off", async ({ page }) => {
+test("a cashier sees it all read-only: the notice, no controls, no Save", async ({ page }) => {
   const sent = await open(page, initialState({ perms: CASHIER }));
   await expect(
     page.getByText(
       "You have view-only access to these settings. Ask an Accountant or Admin to make changes.",
     ),
   ).toBeVisible();
-  await expect(page.getByRole("combobox", { name: "Select Country" })).toBeDisabled();
-  await expect(page.getByRole("combobox", { name: "Select Currency" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Save Changes" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add New Method" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Actions for/ })).toHaveCount(0);
   // the names are text, not buttons
@@ -718,7 +652,7 @@ test("the way in: the dashboard's Entity Settings and the sidebar's Settings", a
   await expect(settings).toHaveAttribute("href", SETTINGS);
   await settings.click();
   await expect(page).toHaveURL(new RegExp(`${SETTINGS}$`));
-  await expect(page.getByRole("combobox", { name: "Select Country" })).toHaveValue("Hong Kong");
+  await expect(rows(page, "Electronic")).toHaveText([/Visa/, /AlipayHK/]);
 });
 
 // ---- the Xero cards ----
@@ -757,7 +691,7 @@ test("Xero not connected: both cards keep their headings and show Flask's notice
   }
   await expect(card(page, MAPPING).getByRole("combobox")).toHaveCount(0);
   await expect(card(page, CODES).getByRole("checkbox")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Save Changes" })).toHaveCount(1); // the country's only
+  await expect(page.getByRole("button", { name: "Save Changes" })).toHaveCount(0);
   const link = card(page, MAPPING).getByRole("link", { name: "Entity & Integration" });
   await expectHubHandoff(link, `${HUB_SETTINGS}/integration`, ENTITY);
   expect(sent).toEqual([]);
@@ -1087,7 +1021,7 @@ test("a Xero read that fails says so in both cards, and Try again asks once more
     card(page, CODES).getByText("I couldn't reach Xero just now. Try again in a minute."),
   ).toBeVisible();
   // the cards that need no Xero are there all the same
-  await expect(page.getByRole("combobox", { name: "Select Country" })).toHaveValue("Hong Kong");
+  await expect(rows(page, "Electronic")).toHaveText([/Visa/, /AlipayHK/]);
   fail = false;
   await card(page, MAPPING).getByRole("button", { name: "Try again" }).click();
   await expect(picker(page, PICKERS[0][0])).toHaveValue("Petty Cash - 090");

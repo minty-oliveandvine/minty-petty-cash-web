@@ -5,50 +5,25 @@ import {
   NAME_EMPTY,
   RENAME_NAME_MAX,
   catalogueOptions,
-  countryChange,
   methodNameProblem,
   movedIds,
-  registryOptions,
   settingsHref,
   settingsTabUrl,
   sharedRenameMessage,
   viewOnly,
   type SettingsPermissions,
-  type SettingsRead,
 } from "@/lib/settings";
 
 const ENTITY = "360812e1-9f94-46a3-aa31-347e21afde8e";
 
 const NONE: SettingsPermissions = {
-  edit_country: false,
+  edit_xero: false,
   view_sales_methods: true,
   add_sales_method: false,
   rename_sales_method: false,
   remove_sales_method: false,
   reorder_sales_methods: false,
 };
-
-const read = (over: Partial<SettingsRead["country"]> = {}): SettingsRead => ({
-  country: {
-    country_code: "HK",
-    currency_id: "c-hkd",
-    countries: [
-      { code: "HK", name: "Hong Kong" },
-      { code: "SG", name: "Singapore" },
-    ],
-    currencies: [
-      { id: "c-hkd", name: "HKD" },
-      { id: "c-sgd", name: "SGD" },
-    ],
-    selected_country: "Hong Kong",
-    selected_currency: "HKD",
-    ...over,
-  },
-  sales_methods: { electronic: [], delivery: [] },
-  available: { electronic: [], delivery: [] },
-  xero_connected: false,
-  permissions: NONE,
-});
 
 describe("the page's address", () => {
   it("is Flask's own: /entity/<shortid>/<name>/settings/petty-cash", () => {
@@ -73,59 +48,6 @@ describe("the other settings tabs - never a Flask page", () => {
     expect(new URL(settingsTabUrl(ENTITY, "Olive & Vine", "payment-request")).pathname).toBe(
       `/entity/${ENTITY}/settings/payment-request`,
     );
-  });
-});
-
-describe("the country and currency pickers (Flask's wireRegistryPicker)", () => {
-  const rows = [
-    { value: "HK", label: "Hong Kong" },
-    { value: "SG", label: "Singapore" },
-    { value: "GB", label: "United Kingdom" },
-  ];
-
-  it("lists everything when empty, or when the box still shows the current choice", () => {
-    expect(registryOptions(rows, "", "Hong Kong")).toEqual(rows);
-    expect(registryOptions(rows, "hong kong", "Hong Kong")).toEqual(rows);
-  });
-
-  it("filters by any part of the name, in any case", () => {
-    expect(registryOptions(rows, "king", "Hong Kong").map((r) => r.value)).toEqual(["GB"]);
-    expect(registryOptions(rows, "ON", "")).toEqual([rows[0]]);
-  });
-
-  it("gives nothing for a name that matches none", () => {
-    expect(registryOptions(rows, "zz", "Hong Kong")).toEqual([]);
-  });
-});
-
-describe("what the country Save sends", () => {
-  it("nothing when nothing changed", () => {
-    expect(countryChange(read(), { country_code: "HK", currency_id: "c-hkd" })).toBeNull();
-  });
-
-  it("a country alone, so it brings its own currency", () => {
-    expect(countryChange(read(), { country_code: "SG", currency_id: "c-hkd" })).toEqual({
-      country_code: "SG",
-    });
-  });
-
-  it("a currency picked by hand, with the country when that changed too", () => {
-    expect(countryChange(read(), { country_code: "HK", currency_id: "c-sgd" })).toEqual({
-      currency_id: "c-sgd",
-    });
-    expect(countryChange(read(), { country_code: "SG", currency_id: "c-sgd" })).toEqual({
-      country_code: "SG",
-      currency_id: "c-sgd",
-    });
-  });
-
-  it("a first choice for a company that has none", () => {
-    expect(
-      countryChange(read({ country_code: null, currency_id: null }), {
-        country_code: "SG",
-        currency_id: "",
-      }),
-    ).toEqual({ country_code: "SG" });
   });
 });
 
@@ -204,6 +126,6 @@ describe("view-only", () => {
   it("is a person who may change nothing on the page (a cashier)", () => {
     expect(viewOnly(NONE)).toBe(true);
     expect(viewOnly({ ...NONE, reorder_sales_methods: true })).toBe(false);
-    expect(viewOnly({ ...NONE, edit_country: true })).toBe(false);
+    expect(viewOnly({ ...NONE, edit_xero: true })).toBe(false);
   });
 });

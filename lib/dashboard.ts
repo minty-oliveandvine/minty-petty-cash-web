@@ -130,7 +130,7 @@ export const PREVIOUS_DAY_FIRST =
 
 /** The petty-cash API's own refusal (409, `to: "dashboard"`) of a report for a company with no currency. */
 export const NO_CURRENCY =
-  "No currency is selected for this company. Choose one in Petty Cash Settings to start a report.";
+  "No currency is selected for this company. Choose one in Entity & Integration to start a report.";
 
 /** Setup Required's line for a company with no currency; it links to Petty Cash Settings' Country & currency. */
 export const CHOOSE_CURRENCY = "Choose your company's currency";

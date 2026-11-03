@@ -34,7 +34,7 @@ import { takeFlash, takeNextDay } from "@/lib/flash";
 import { leaveTo } from "@/lib/handoff";
 import { historyHref } from "@/lib/history";
 import { formatMoney } from "@/lib/money";
-import { settingsHref } from "@/lib/settings";
+import { settingsHref, settingsTabUrl } from "@/lib/settings";
 import { useAuth } from "@/lib/useAuth";
 import { sectionStep, stepHref } from "@/lib/wizardPages";
 
@@ -256,6 +256,7 @@ function DashboardBody({
         <SetupRequiredModal
           missing={setupNeeded}
           settingsHref={settingsHref(entityId, entityName)}
+          currencyHref={settingsTabUrl(entityId, entityName, "integration")}
         />
       ) : null}
     </>

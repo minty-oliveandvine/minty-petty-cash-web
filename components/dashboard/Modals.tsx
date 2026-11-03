@@ -381,15 +381,18 @@ export function DepositModal({
 
 /**
  * Flask's "Setup Required" (#setupSettingsModal), exactly: it cannot be dismissed - the only way on is the settings.
- * `missing` is lib/dashboard.ts `setupMissing`; its currency line links to Petty Cash Settings, whose first card is
- * Country & currency.
+ * `missing` is lib/dashboard.ts `setupMissing`; its currency line links to minty-web's Entity & Integration tab
+ * (`currencyHref`), the one place the country and currency are set (owner, 2026-11-03), and Set Up Settings to
+ * Petty Cash Settings for the rest.
  */
 export function SetupRequiredModal({
   missing,
   settingsHref,
+  currencyHref,
 }: {
   missing: string[];
   settingsHref: string;
+  currencyHref: string;
 }) {
   return (
     <Frame title="Setup Required" z="z-50">
@@ -409,7 +412,7 @@ export function SetupRequiredModal({
                 {missing.map((m) => (
                   <li key={m}>
                     {m === CHOOSE_CURRENCY ? (
-                      <a href={settingsHref} className="underline">
+                      <a href={currencyHref} className="underline">
                         {m}
                       </a>
                     ) : (

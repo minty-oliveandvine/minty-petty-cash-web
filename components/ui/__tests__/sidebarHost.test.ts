@@ -30,11 +30,8 @@ describe("the menu's links", () => {
       "/subscription",
     );
     expect(new URL(sidebarHost.links.bills()).pathname).toBe(`/entity/${ENTITY}/payment-request`);
-    // straight to minty-web's My Profile through the hand-off, scoped to the company it was opened from
-    const profile = new URL(sidebarHost.links.profile());
-    expect(profile.origin + profile.pathname).toBe("http://localhost:8000/handoff/minty-web");
-    expect(profile.searchParams.get("next")).toBe("/profile");
-    expect(profile.searchParams.get("entity_id")).toBe(ENTITY);
+    // no profile link: My Profile opens only in the sidebar (@minty/shared v0.12)
+    expect("profile" in sidebarHost.links).toBe(false);
   });
 
   it("marks only its own settings page as current", () => {

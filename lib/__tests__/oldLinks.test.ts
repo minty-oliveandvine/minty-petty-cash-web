@@ -99,7 +99,8 @@ describe("Flask's other Petty Cash addresses, mapped to this app's page for them
 
 describe("Flask's other pages -> minty-web through the hand-off", () => {
   it.each([
-    ["/profile", "/profile"],
+    // minty-web has no My Profile page (owner, 2026-11-03): the list, where it opens in the sidebar.
+    ["/profile", "/entities"],
     ["/subscription", "/subscription"],
     ["/subscription/entities/360812e1/olive-and-vine/modules", "/subscription"],
     ["/entity", "/entities"],

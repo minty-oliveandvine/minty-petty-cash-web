@@ -103,7 +103,7 @@ describe("My Profile in Petty Cash", () => {
       (u) => u.pathname === "/api/me/profile" && u.searchParams.get("entity") === ENTITY,
     );
     expect(read?.origin).toBe("http://localhost:8000");
-    // over the page: nothing navigated, and no hand-off to minty-web's /profile
+    // over the page: nothing navigated, and no hand-off to minty-web
     expect(window.location.pathname).toBe("/entity/360812e1/olive-and-vine/petty-cash");
     expect(urls.some((u) => u.pathname.startsWith("/handoff/"))).toBe(false);
   });
@@ -129,5 +129,20 @@ describe("My Profile in Petty Cash", () => {
     ).toBeInTheDocument();
     expect(initials).toHaveAttribute("aria-expanded", "true");
     expect(window.location.pathname).toBe("/entity/360812e1/olive-and-vine/petty-cash");
+  });
+
+  it("without a sidebar the initials link to the entity list, and say so - not My Profile", async () => {
+    render(
+      <ToastProvider>
+        <PhoneCard acronym="OV" backHref="/entities">
+          <p>The dashboard</p>
+        </PhoneCard>
+      </ToastProvider>,
+    );
+    // minty-web has no profile page (owner, 2026-11-03): the fallback is the entity list
+    const link = await screen.findByRole("link", { name: "Select Entity" });
+    await waitFor(() => expect(link).toHaveAttribute("href"));
+    expect(new URL(link.getAttribute("href") ?? "").searchParams.get("next")).toBe("/entities");
+    expect(screen.queryByRole("link", { name: /My Profile/ })).toBeNull();
   });
 });

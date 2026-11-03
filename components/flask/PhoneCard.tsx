@@ -10,7 +10,7 @@ import { sidebarHost } from "@/components/ui/sidebarHost";
 /**
  * Flask's two header buttons, drawn as Flask draws them (28px initials on #FFE6B1, the 40px ≡ in
  * #656565) and wired to the shared sidebar: the initials open My Profile as the sidebar's sheet,
- * over the page (the owner, 2026-10-20) - minty-web's page only where no sidebar can hold it - and
+ * over the page (the owner, 2026-10-20) - the entity list only where no sidebar can hold it - and
  * the ≡ opens the menu.
  */
 function HeaderButtons() {
@@ -42,10 +42,12 @@ function HeaderButtons() {
           {initials}
         </button>
       ) : (
+        // No sheet to open here: the entity list (minty-web has no profile page since 2026-11-03),
+        // named for where it goes.
         <a
-          href={mounted ? sidebarHost.links.profile() : undefined}
+          href={mounted ? sidebarHost.links.entities() : undefined}
           className={BADGE}
-          aria-label="My Profile"
+          aria-label="Select Entity"
           title={viewer?.name ?? ""}
         >
           {initials}

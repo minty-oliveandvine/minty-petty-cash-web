@@ -40,7 +40,7 @@ export const sidebarHost: SidebarHost = {
 
   /**
    * Petty Cash's dashboard, Reports (report history) and Settings are this app's own pages. The
-   * entity list, Subscriptions and My Profile are minty-web's, reached through Flask's
+   * entity list and Subscriptions are minty-web's (My Profile is the sheet), reached through Flask's
    * `/handoff/minty-web`; Bills is the payments app, through Flask's `/entity/<id>/payment-request`
    * (a hand-off that mints that app's own token). No link is a Flask page (lib/handoff.ts).
    */
@@ -57,8 +57,6 @@ export const sidebarHost: SidebarHost = {
       return `${siblingUrl(env.PAYMENT_REQUEST_WEB_URL, "payment-request", typeof window === "undefined" ? null : window.location.host)}/`;
     },
     settings: () => settingsHref(getAuth()?.entityId ?? "", getAuth()?.entityName ?? ""),
-    // scoped to the company it was opened from, as Flask's `/profile` did
-    profile: () => hubUrl("/profile", getAuth()?.entityId || undefined),
   },
 
   /**

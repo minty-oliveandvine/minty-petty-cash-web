@@ -160,9 +160,10 @@ describe("old links after the host switch", () => {
       expect(to.searchParams.get("return_origin")).toBe("http://localhost:3010");
     });
 
-    it("sends /profile and /login to minty-web's pages", () => {
+    it("sends /profile and /login to minty-web's entity list", () => {
+      // minty-web has no My Profile page (owner, 2026-11-03); it opens in the sidebar there.
       const profile = new URL(proxy(request("/profile", cookies)).headers.get("location") ?? "");
-      expect(profile.searchParams.get("next")).toBe("/profile");
+      expect(profile.searchParams.get("next")).toBe("/entities");
       const login = new URL(proxy(request("/login", cookies)).headers.get("location") ?? "");
       expect(login.pathname).toBe("/handoff/minty-web");
       expect(login.searchParams.get("next")).toBe("/entities");

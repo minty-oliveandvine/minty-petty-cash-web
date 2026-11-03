@@ -101,7 +101,7 @@ for (const signedIn of [false, true]) {
 
       const profile = await handoffReached(page, "/profile");
       expect(profile.pathname).toBe("/handoff/minty-web");
-      expect(profile.searchParams.get("next")).toBe("/profile");
+      expect(profile.searchParams.get("next")).toBe("/entities");
     });
 
     test("the redirects themselves, not followed", async ({ page }) => {

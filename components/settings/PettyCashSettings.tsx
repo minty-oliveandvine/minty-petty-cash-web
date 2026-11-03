@@ -191,8 +191,8 @@ function SettingsHeader({ entityId, entityName }: { entityId: string; entityName
             {entityName}
           </span>
           <div className="flex shrink-0 items-center gap-1.5 pl-0.5 sm:gap-2 sm:pl-2">
-            {/* My Profile is the sidebar's sheet, over the page (the owner, 2026-10-20); minty-web's
-                page only where no sidebar can hold it. 44px for a finger without moving Flask's
+            {/* My Profile is the sidebar's sheet, over the page (the owner, 2026-10-20); where no
+                sidebar can hold it, the entity list. 44px for a finger without moving Flask's
                 28px badge. */}
             {sidebar?.canOpenProfile ? (
               <button
@@ -208,9 +208,11 @@ function SettingsHeader({ entityId, entityName }: { entityId: string; entityName
                 <span aria-hidden="true">{viewer?.initials || "?"}</span>
               </button>
             ) : (
+              // No sheet to open here: the entity list (minty-web has no profile page since
+              // 2026-11-03), named for where it goes.
               <a
-                href={mounted ? sidebarHost.links.profile() : undefined}
-                aria-label={`${viewer?.name ?? ""}, My Profile`.replace(/^, /, "")}
+                href={mounted ? sidebarHost.links.entities() : undefined}
+                aria-label="Select Entity"
                 title={viewer?.name ?? ""}
                 className={`no-underline ${PROFILE_BADGE}`}
               >

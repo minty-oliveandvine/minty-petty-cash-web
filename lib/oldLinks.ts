@@ -51,7 +51,8 @@ const ENTITY_LIST = "/entities";
 
 /** minty-web's own page for a Flask page outside a company. */
 const HUB_PAGES: [RegExp, string][] = [
-  [/^\/profile$/, "/profile"],
+  // minty-web has no My Profile page (owner, 2026-11-03): it opens in the sidebar, from the list.
+  [/^\/profile$/, ENTITY_LIST],
   [/^\/subscription(?:\/.*)?$/, "/subscription"],
   [
     /^\/(?:entity|entities(?:\/.*)?|entity\/create|entity\/success|index|login|register|reset_password(?:\/[^/]+)?|no-permission|admin(?:\/.*)?|admin_dashboard|find_user|create|report\/.+|payment[-_]request(?:\/.*)?)$/,

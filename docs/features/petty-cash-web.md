@@ -240,7 +240,7 @@ What it keeps from Flask:
   - "Account Code": the name with its code under it, filtered by name or code ("477" finds Wages and Salaries; Flask matched the name only - owner, 2026-10-27).
   - Cancel / Add. Add refuses an amount of 0, a supplier or account not chosen from its list, or no receipt, with red borders and "Please fill out the Required Fields".
   - Flask's file sentences: "I can take PDF, JPEG, or PNG files.", "Files need to be under 10MB." and, on a drop, "Only one file is allowed per expense." A drop names the file, as Flask's does.
-- **The receipt reader** (Expense AI; Flask's classic `static/js/expense_ai.js`, Minty `351e942`; added to this track 2026-11-03 after QA found it missing). `components/report/ReceiptReader.tsx` draws it and `lib/expenseAi.ts` holds its rules. A picked receipt goes to `POST /reports/expenses/extract`. minty-petty-cash-api forwards it to Flask, the only place that calls the model (Minty `docs/features/expense-ai.md`).
+- **The receipt reader** (Expense AI; Flask's classic `static/js/expense_ai.js`, Minty `351e942`; added to this track 2026-11-03 after QA found it missing). `components/report/ReceiptReader.tsx` draws it and `lib/expenseAi.ts` holds its rules. A picked receipt goes to `POST /reports/expenses/extract`. minty-petty-cash-api reads it itself since 2026-11-04 (its `docs/features/expense-ai.md`; it used to forward to Flask). The read and the pieces are `@minty/shared/reader`, shared with Payment Request's invoice reader; this app keeps the card's field rules and words.
   - **While it reads:** Flask's teal "Reading the receipt…" box shows under the drop box. The card stays usable and Add never waits.
   - **Filling:** a suggestion fills only an **empty** field.
     - The field gets the teal ring and a line under it: "Amount suggested", or "Account code suggested — please check" for the medium band.
@@ -249,7 +249,7 @@ What it keeps from Flask:
     - The low band only ever offers.
   - **Suppliers and accounts:** they are chosen by an id from the company's lists only. A supplier name that is not on the list is offered as 'Add "<name>" as a new supplier', and only to someone who may create one. That opens New Contact prefilled; Create stays the person's own press.
   - **A new receipt** takes the old one's suggestions with it. Add sends the untouched original; the copy sent for reading is shrunk to 2000px.
-  - **What happens when it can't read:** every failure is silent. A `disabled`/`not_configured` answer switches the reader off for the tab's session (`sessionStorage` `minty.pc.receipt-reader`).
+  - **What happens when it can't read** (owner, 2026-11-04): a started read that comes back with nothing to show - a failure reason, a cut connection, or no field filled, noted or offered - says so in one quiet line under the drop box, "I couldn't read this receipt. Enter the details yourself." (`role="status"`); a new receipt takes it away. A low-band reading offered as a note is not a failure. A `disabled`/`not_configured` answer stays silent and switches the reader off for the tab's session (`sessionStorage` `minty.pc.receipt-reader`).
   - **Announcements:** one polite live region says what was filled, what differs, and a receipt dated more than a week from the report.
   - The rules match `redesign`'s reader (`1b5cf99`); the look and the words are the classic page's.
 - **Expense Details** (a tap on a line): the receipt first, "Amount Paid", Contact Name, Description and Account (`<code> <account>`), and Close.

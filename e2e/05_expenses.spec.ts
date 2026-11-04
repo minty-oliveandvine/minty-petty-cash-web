@@ -810,13 +810,17 @@ test("the reader switched off says nothing and is not asked again", async ({ pag
   expect(reads).toBe(1);
 });
 
-test("a reader that fails says nothing, and Add still works", async ({ page }) => {
+// Owner, 2026-11-04: a started read that fails says so in one quiet line (it used to say nothing).
+test("a reader that fails says so in one quiet line, and Add still works", async ({ page }) => {
   await openWith(page, expensesAnswer(), {
     onExtract: (_req, route) =>
       route.fulfill({ status: 500, json: { error: "Something went wrong on our side." } }),
   });
   await fillAdd(page);
   await expect(page.getByText("Reading the receipt…")).toHaveCount(0);
+  await expect(
+    page.getByText("I couldn't read this receipt. Enter the details yourself."),
+  ).toBeVisible();
   await expect(page.locator("[data-toast-type]")).toHaveCount(0);
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(toast(page, "Expense added successfully!")).toBeVisible();

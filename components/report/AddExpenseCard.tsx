@@ -14,6 +14,7 @@ import { useAmountInput } from "@minty/shared/amountInput";
 
 import { useToast } from "@/components/flask/Toasts";
 import {
+  ReadFailed,
   ReadingNotice,
   ReceiptNote,
   SUGGESTED_RING,
@@ -30,6 +31,7 @@ import {
   entryState,
   usedNote,
   withoutDetectedName,
+  showedAnything,
   withoutSuggestions,
   withSuggestions,
   type EntryState,
@@ -131,11 +133,23 @@ export function AddExpenseCard(props: AddExpenseProps) {
   });
   const remarksField = useRef<HTMLInputElement>(null);
   const remarksMessage = remarksProblem(remarks);
-  const reader = useReceiptReader((suggestions) =>
-    setEntry((state) =>
-      withSuggestions(state, suggestions, { suppliers, accounts, code, day, canCreateSupplier }),
-    ),
-  );
+  // The card's latest state, for the answer that arrives seconds after the read started.
+  const entryRef = useRef(entry);
+  useEffect(() => {
+    entryRef.current = entry;
+  }, [entry]);
+  const reader = useReceiptReader((suggestions) => {
+    const next = withSuggestions(entryRef.current, suggestions, {
+      suppliers,
+      accounts,
+      code,
+      day,
+      canCreateSupplier,
+    });
+    entryRef.current = next;
+    setEntry(next);
+    return showedAnything(next);
+  });
   // the receipt and an object URL of it, made when it is picked and let go when it is replaced
   const [picked, setPicked] = useState<Picked | null>(null);
   const pickedRef = useRef<Picked | null>(null);
@@ -311,6 +325,7 @@ export function AddExpenseCard(props: AddExpenseProps) {
         }}
       >
         {reader.reading ? <ReadingNotice /> : null}
+        {reader.failed && !reader.reading ? <ReadFailed /> : null}
       </ReceiptDrop>
       <div role="status" aria-live="polite" className="sr-only">
         {entry.announcement}

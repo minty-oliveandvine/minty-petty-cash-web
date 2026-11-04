@@ -19,17 +19,38 @@
  * A supplier and an account are chosen only by an id from the company's lists; a name read off the
  * receipt that is not a supplier is only offered for New Contact - never created. The banding is
  * the server's (`EXPENSE_AI_CONF_*`); this side follows `band` and `applied` as they come.
+ *
+ * The generic half - the latch, the answer, Confirmed/Clear/Use/another receipt, the reading copy -
+ * is `@minty/shared/reader` (2026-11-04), shared with Payment Request's invoice reader; what stays
+ * here is this card's fields, its rules for them and its words.
  */
 
 import { formatAmount, parseAmount } from "@minty/shared/money";
+import {
+  cleared as sharedCleared,
+  createReaderLatch,
+  edited as sharedEdited,
+  readerState,
+  usedNote as sharedUsedNote,
+  withoutDetectedName as sharedWithoutDetectedName,
+  withoutSuggestions as sharedWithoutSuggestions,
+  type Band,
+  type ReaderSpec,
+  type ReaderState,
+  type ReadField,
+  type ReadNote as SharedReadNote,
+} from "@minty/shared/reader";
 
 import type { Account, Supplier } from "@/lib/expenses";
 import { formatMoney } from "@/lib/money";
 
-export type Band = "high" | "medium" | "low";
-
-/** One read field: the value, the model's confidence (0-1), its band, and whether to prefill. */
-export type ReadField = { value: string; confidence: number; band: Band; applied: boolean };
+export type { Band, ReadField };
+export {
+  FAILURE_REASONS,
+  READER_OFF_REASONS,
+  readingCopy,
+  suggestionsOf,
+} from "@minty/shared/reader";
 
 export type Suggestions = {
   supplier?: ReadField & { contact_id?: string; detected_name?: string };
@@ -58,18 +79,10 @@ export type EntryValues = {
 };
 
 /** A note under a field: the receipt reads something else (or, low band, might). Nothing moves without its button. */
-export type ReadNote = { text: string; fill: Partial<EntryValues>; band: Band };
+export type ReadNote = SharedReadNote<EntryValues>;
 
-export type EntryState = {
-  values: EntryValues;
-  /** Fields holding an untouched suggestion, by band. */
-  marks: Partial<Record<SuggestedField, Band>>;
-  notes: Partial<Record<SuggestedField, ReadNote>>;
-  /** A supplier name read off the receipt that is not on the list - offered for New Contact. */
-  detectedName: string | null;
-  /** The one polite announcement of what the reading did ("" for nothing). */
-  announcement: string;
-};
+/** The card's values with the reader's marks, notes, touched fields and offered supplier name. */
+export type EntryState = ReaderState<EntryValues, SuggestedField>;
 
 export const EMPTY_VALUES: EntryValues = {
   amount: "",
@@ -81,7 +94,7 @@ export const EMPTY_VALUES: EntryValues = {
 };
 
 export function entryState(values: EntryValues = EMPTY_VALUES): EntryState {
-  return { values, marks: {}, notes: {}, detectedName: null, announcement: "" };
+  return readerState<EntryValues, SuggestedField>(values);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -92,44 +105,17 @@ export function entryState(values: EntryValues = EMPTY_VALUES): EntryState {
  * API's): it learns from a `disabled` answer, and then gets out of the way for the rest of the
  * session - no further reads, nothing shown. `not_configured` means the same thing.
  */
-export const READER_OFF_REASONS: readonly string[] = ["disabled", "not_configured"];
-
-const LATCH_KEY = "minty.pc.receipt-reader";
-let latched = false;
+export const RECEIPT_LATCH = createReaderLatch("minty.pc.receipt-reader");
 
 /** Whether the reader has said it is off in this browser session (tab). */
-export function readerOff(): boolean {
-  if (latched) return true;
-  try {
-    return sessionStorage.getItem(LATCH_KEY) === "off";
-  } catch {
-    // Storage can be blocked (private mode, site data off): the in-memory latch still holds.
-    return false;
-  }
-}
+export const readerOff = () => RECEIPT_LATCH.readerOff();
 
 /** Notes an answer: an off reason switches the reader off for the session. */
-export function noteAnswer(answer: Pick<ExtractAnswer, "reason"> | null): void {
-  if (!answer?.reason || !READER_OFF_REASONS.includes(answer.reason)) return;
-  latched = true;
-  try {
-    sessionStorage.setItem(LATCH_KEY, "off");
-  } catch {
-    // As above: the in-memory latch is enough for this page's life.
-  }
-}
+export const noteAnswer = (answer: { reason?: string | null } | null) =>
+  RECEIPT_LATCH.noteAnswer(answer);
 
-/** Tests only: forget the in-memory latch. */
-export function resetReaderLatch(): void {
-  latched = false;
-}
-
-/** The answer as data this side trusts the shape of, or null (anything else is "no suggestions"). */
-export function suggestionsOf(answer: unknown): Suggestions | null {
-  if (!answer || typeof answer !== "object") return null;
-  const s = (answer as { suggestions?: unknown }).suggestions;
-  return s && typeof s === "object" ? (s as Suggestions) : null;
-}
+/** Tests only: forget the latch. */
+export const resetReaderLatch = () => RECEIPT_LATCH.reset();
 
 // ---------------------------------------------------------------------------------------------
 // The words (Flask's)
@@ -160,6 +146,14 @@ export const CLEAR_LABEL = "Clear the suggested value for this field";
 
 /** The note's button. */
 export const USE_LABEL = "Use the value from the receipt";
+
+/** The reading notice (Flask's words). */
+export const READING_TITLE = "Reading the receipt…";
+export const READING_DETAIL =
+  "This can take a few seconds. You can start typing now if you prefer.";
+
+/** The one quiet failure line (owner, 2026-11-04; Part 11: the issue, then the action). */
+export const READ_FAILED = "I couldn't read this receipt. Enter the details yourself.";
 
 const hedge = (band: Band) => (band === "low" ? "might read" : "reads");
 
@@ -321,44 +315,7 @@ export function withSuggestions(
   const date = dateNote(s.document_date, day);
   if (date && parts.length) parts.push(date);
 
-  return { values, marks, notes, detectedName, announcement: parts.join(" ") };
-}
-
-/**
- * The person changed a field: it is theirs now (Confirmed) - its marking and its note go, and for
- * the supplier the offered name too. A change to the same value (the amount grouped on blur) is no change.
- */
-export function edited(
-  state: EntryState,
-  field: SuggestedField,
-  patch: Partial<EntryValues>,
-): EntryState {
-  const values = { ...state.values, ...patch };
-  const changed = (Object.keys(patch) as (keyof EntryValues)[]).some(
-    (k) => patch[k] !== state.values[k],
-  );
-  if (!changed) return state;
-  // The amount grouped on blur ("45" -> "45.00") is the same amount: the field keeps its marking
-  // and its note - leaving the field to press "Use the value from the receipt" must not withdraw it.
-  if (
-    field === "amount" &&
-    patch.amount !== undefined &&
-    !emptyText(patch.amount) &&
-    !emptyText(state.values.amount) &&
-    sameAmount(patch.amount, state.values.amount)
-  )
-    return { ...state, values };
-  const marks = { ...state.marks };
-  const notes = { ...state.notes };
-  delete marks[field];
-  delete notes[field];
-  return {
-    ...state,
-    values,
-    marks,
-    notes,
-    detectedName: field === "supplier" ? null : state.detectedName,
-  };
+  return { ...state, values, marks, notes, detectedName, announcement: parts.join(" ") };
 }
 
 const CLEARED: Record<SuggestedField, Partial<EntryValues>> = {
@@ -368,84 +325,43 @@ const CLEARED: Record<SuggestedField, Partial<EntryValues>> = {
   description: { remarks: "" },
 };
 
+const SPEC: ReaderSpec<EntryValues, SuggestedField> = {
+  cleared: (field) => CLEARED[field],
+  // The amount grouped on blur ("45" -> "45.00") is the same amount: the field keeps its marking
+  // and its note - leaving the field to press "Use the value from the receipt" must not withdraw it.
+  same: (field, before, after) =>
+    field === "amount" &&
+    !emptyText(after.amount) &&
+    !emptyText(before.amount) &&
+    sameAmount(after.amount, before.amount),
+};
+
+/**
+ * The person changed a field: it is theirs now (Confirmed) - its marking and its note go, and for
+ * the supplier the offered name too. A change to the same value (the amount grouped on blur) is no change.
+ */
+export const edited = (state: EntryState, field: SuggestedField, patch: Partial<EntryValues>) =>
+  sharedEdited(state, field, patch, SPEC, "supplier");
+
 /** Clear: a suggested field's value goes with its marking (only ever for a field still marked). */
-export function cleared(state: EntryState, field: SuggestedField): EntryState {
-  if (!state.marks[field]) return state;
-  const marks = { ...state.marks };
-  delete marks[field];
-  return { ...state, values: { ...state.values, ...CLEARED[field] }, marks };
-}
+export const cleared = (state: EntryState, field: SuggestedField) =>
+  sharedCleared(state, field, SPEC);
 
 /** "Use the value from the receipt": the note's value goes in, marked as suggested. */
-export function usedNote(state: EntryState, field: SuggestedField): EntryState {
-  const note = state.notes[field];
-  if (!note) return state;
-  const notes = { ...state.notes };
-  delete notes[field];
-  return {
-    ...state,
-    values: { ...state.values, ...note.fill },
-    marks: { ...state.marks, [field]: note.band },
-    notes,
-  };
-}
+export const usedNote = (state: EntryState, field: SuggestedField) => sharedUsedNote(state, field);
 
 /** The offered supplier name was taken to New Contact (or set aside): the offer goes. */
-export function withoutDetectedName(state: EntryState): EntryState {
-  return state.detectedName === null ? state : { ...state, detectedName: null };
-}
+export const withoutDetectedName = (state: EntryState) => sharedWithoutDetectedName(state);
 
 /**
  * Another receipt (or none): the old one's suggestions go entirely - the VALUES of fields still
  * marked too, or the never-overwrite rule would protect stale suggestions as if typed. Fields the
  * person changed are unmarked already and stay as they are.
  */
-export function withoutSuggestions(state: EntryState): EntryState {
-  let values = { ...state.values };
-  for (const field of Object.keys(state.marks) as SuggestedField[])
-    values = { ...values, ...CLEARED[field] };
-  return { values, marks: {}, notes: {}, detectedName: null, announcement: "" };
-}
+export const withoutSuggestions = (state: EntryState) => sharedWithoutSuggestions(state, SPEC);
 
-// ---------------------------------------------------------------------------------------------
-// The copy that is sent
-
-const MAX_EDGE = 2000;
-const JPEG_QUALITY = 0.85;
-
-/**
- * A photo resized in the browser before it is read (Flask's `shrinkForUpload`): a phone photo is
- * 8-12 MB, and 2000px on the long edge is plenty to read a receipt. THIS COPY IS FOR READING ONLY -
- * Add still sends the untouched original. A PDF, a small photo, or a browser without the canvas
- * APIs gets the file itself back; so does any failure.
- */
-export async function readingCopy(file: File): Promise<Blob> {
-  if (!/^image\/(jpe?g|png)$/i.test(file.type)) return file;
-  if (typeof createImageBitmap !== "function" || typeof document === "undefined") return file;
-  try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
-    if (scale === 1) {
-      bitmap.close();
-      return file;
-    }
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    const context = canvas.getContext("2d");
-    if (!context) {
-      bitmap.close();
-      return file;
-    }
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
-    );
-    // Only when it is actually smaller: a tiny detailed image can re-encode larger.
-    return blob && blob.size < file.size ? blob : file;
-  } catch {
-    // Unsupported, out of memory, a browser quirk: the original goes, and the server shrinks it.
-    return file;
-  }
-}
+/** Whether an answer showed the person anything (a filled field, a note, an offered supplier). */
+export const showedAnything = (state: EntryState) =>
+  Object.keys(state.marks).length > 0 ||
+  Object.keys(state.notes).length > 0 ||
+  state.detectedName !== null;

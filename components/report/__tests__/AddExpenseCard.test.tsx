@@ -126,7 +126,7 @@ describe("the receipt reader in Add New Expense", () => {
     expect(account()).toHaveValue("Printing & Stationery");
     expect(amount()).toHaveAccessibleDescription("Amount suggested");
     expect(account()).toHaveAccessibleDescription("Account code suggested — please check");
-    expect(amount()).toHaveClass("ring-flask-teal");
+    expect(amount()).toHaveClass("ring-[#54D3DA]");
     expect(
       screen.getByText(
         "Suggestions from the receipt filled 4 fields: amount, description, supplier, account. Please check them before adding.",
@@ -160,7 +160,7 @@ describe("the receipt reader in Add New Expense", () => {
     await userEvent.click(clears[0]);
     expect(amount()).toHaveValue("");
     expect(amount()).toHaveFocus();
-    expect(amount()).not.toHaveClass("ring-flask-teal");
+    expect(amount()).not.toHaveClass("ring-[#54D3DA]");
 
     await userEvent.type(description(), "!");
     expect(description()).toHaveValue("Copy paper!");
@@ -238,16 +238,58 @@ describe("the receipt reader in Add New Expense", () => {
     expect(screen.queryByText("Reading the receipt…")).toBeNull();
     expect(amount()).toHaveValue("");
     expect(sessionStorage.getItem("minty.pc.receipt-reader")).toBe("off");
+    expect(
+      screen.queryByText("I couldn't read this receipt. Enter the details yourself."),
+    ).toBeNull();
   });
 
-  it("a failed read shows nothing at all", async () => {
+  // Owner, 2026-11-04: a started read that fails says so in one quiet line (it used to say nothing).
+  const FAILED = "I couldn't read this receipt. Enter the details yourself.";
+
+  it("a failed read says so in one quiet line, and nothing else changes", async () => {
     const calls = api(() => Promise.reject(new Error("500")));
     show();
     await attach(png());
     await waitFor(() => expect(calls.reads).toHaveLength(1));
-    await waitFor(() => expect(screen.queryByText("Reading the receipt…")).toBeNull());
+    expect(await screen.findByText(FAILED)).toHaveAttribute("role", "status");
+    expect(screen.queryByText("Reading the receipt…")).toBeNull();
     expect(document.querySelector("[data-toast-type]")).toBeNull();
     expect(amount()).toHaveValue("");
+  });
+
+  it("a failure reason shows the line; another receipt takes it away", async () => {
+    const calls = api(
+      { suggestions: null, reason: "timeout" },
+      { suggestions: SUGGESTIONS, reason: null },
+    );
+    show();
+    await attach(png("one.png"));
+    expect(await screen.findByText(FAILED)).toBeInTheDocument();
+    await attach(png("two.png"));
+    await waitFor(() => expect(amount()).toHaveValue("48.80"));
+    expect(screen.queryByText(FAILED)).toBeNull();
+    expect(calls.reads).toHaveLength(2);
+  });
+
+  it("a low-band reading offered as a note is not a failure", async () => {
+    api({
+      suggestions: { amount: { value: "12.00", confidence: 0.3, band: "low", applied: false } },
+      reason: "no_usable_field",
+    });
+    show();
+    await attach(png());
+    expect(await screen.findByText("The receipt might read HKD 12.00.")).toBeInTheDocument();
+    expect(screen.queryByText(FAILED)).toBeNull();
+  });
+
+  it("nothing at all to show is the quiet line", async () => {
+    api({
+      suggestions: { amount: { value: "", confidence: 0.1, band: "low", applied: false } },
+      reason: "no_usable_field",
+    });
+    show();
+    await attach(png());
+    expect(await screen.findByText(FAILED)).toBeInTheDocument();
   });
 
   it("Add sends the suggested values with the original receipt", async () => {

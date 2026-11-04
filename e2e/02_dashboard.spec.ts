@@ -6,7 +6,7 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 import { companyRef } from "./companyRef";
-import { expectHubHandoff, mintModuleToken } from "./helpers";
+import { expectHubHandoff, expectNoHorizontalScroll, mintModuleToken } from "./helpers";
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -399,6 +399,32 @@ test("a submitted day shows its balance and opens its report, in this app", asyn
   await page.getByRole("button", { name: "View Report" }).click();
   await expect(page).toHaveURL(new RegExp(`${HOME_PATH}/reports/a/summary$`));
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
+});
+
+// 2026-11-03 walk: "Today's report is submitted" stood above "Report in Progress" - nothing was.
+test("once today's report is in, the summary names the last submitted report", async ({ page }) => {
+  await enterWith(
+    page,
+    homeAnswer({
+      latest: { ...(homeAnswer().latest as Json), date: TODAY, closing_balance: 1500 },
+      published: {
+        ...(homeAnswer().published as Json),
+        [TODAY]: {
+          id: "c",
+          closing_balance: 1500,
+          bank_deposit: 0,
+          xero_integrated: false,
+          submitter_first_name: "Olive",
+        },
+      },
+      today_has_report: true,
+      today_is_latest_report: true,
+    }),
+  );
+  await expect(page.getByText("Today's report is submitted")).toBeVisible();
+  await expect(page.getByText("Last Submitted Report")).toBeVisible();
+  await expect(page.getByText("Report in Progress")).toHaveCount(0);
+  await expectNoHorizontalScroll(page);
 });
 
 test("missing Xero settings hold the page with the way to set them up", async ({ page }) => {

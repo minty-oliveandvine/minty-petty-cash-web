@@ -147,7 +147,7 @@ This is Flask's `entity/entity_dashboard_v2.html`, built from `components/dashbo
 The page is the same in every element:
 
 - Flask's header: the back chevron, the company's initials, the person's initials and the ≡. The two buttons open the shared sidebar.
-- The warning banner, "Today's report is submitted", and Report in Progress / Current balance. Before the company's first report the balance is onboarding's opening balance (`GET /home`'s `latest.closing_balance`, and `balanceFor` for a picked day), not 0 (2026-10-27).
+- The warning banner, "Today's report is submitted", and Report in Progress / Current balance - "Last Submitted Report" in place of "Report in Progress" once today's report is submitted (2026-11-03; both used to show at once). On the Submitted page, "Continue to next day report" on today's report stays and says "Transaction date cannot be in the future. You can only create reports for dates up to <today>." (`futureDayProblem`) instead of going to a dashboard that cannot start tomorrow. Before the company's first report the balance is onboarding's opening balance (`GET /home`'s `latest.closing_balance`, and `balanceFor` for a picked day), not 0 (2026-10-27).
 - "Pick up where you left off" with Flask's six-pill stepper. Its labels are 7.6px on a phone, as Flask draws them, which is below the workspace's 12px minimum, deliberately.
 - **Continue Report** opens the draft at its own wizard step in this app, by `GET /home`'s `draft.current_section` (Opening when it has none - `sectionStep` in `lib/wizardPages.ts`, the rule history's draft rows use). Flask's went through its resume page.
 - Start New Report / View Report.

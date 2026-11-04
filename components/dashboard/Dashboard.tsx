@@ -327,7 +327,10 @@ function DashboardBody({
         {!draft ? (
           <div className="mb-6 flex flex-row items-center justify-between gap-4">
             <div>
-              <span className="mb-1 block text-sm text-flask-gray-500">Report in Progress</span>
+              {/* nothing is in progress once today's is in (2026-11-03) */}
+              <span className="mb-1 block text-sm text-flask-gray-500">
+                {todaySubmitted ? "Last Submitted Report" : "Report in Progress"}
+              </span>
               <div className="text-lg font-semibold text-flask-gray-900">
                 {summaryDay ? formatDay(summaryDay) : "Today"}
               </div>

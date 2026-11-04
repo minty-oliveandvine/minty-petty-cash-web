@@ -342,6 +342,22 @@ test("Submitted: Continue to next day report starts the next day from the dashbo
   await expect(page.getByRole("heading", { name: "Opening" })).toBeVisible();
 });
 
+// 2026-11-03 walk: on today's report it went to a dashboard that could not start tomorrow.
+test("Submitted: on today's report, Continue to next day report says why and stays", async ({
+  page,
+}) => {
+  await openSubmitted(page, { outcome: outcomeAnswer({ is_today: true }) });
+  await page.getByRole("button", { name: "Continue to next day report" }).click();
+  await expect(
+    toast(
+      page,
+      `Transaction date cannot be in the future. You can only create reports for dates up to ${DAY}.`,
+    ),
+  ).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`${SUBMITTED}$`));
+  await expectNoHorizontalScroll(page);
+});
+
 test("Submitted: Share makes the link, Copy copies it; a refusal says the API's sentence", async ({
   page,
   context,

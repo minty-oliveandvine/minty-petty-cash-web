@@ -11,6 +11,7 @@ import { LoadingOverlay } from "@/components/report/ReportChrome";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { getAuth } from "@/lib/auth";
 import { pettyCashHome } from "@/lib/companyPages";
+import { futureDayProblem } from "@/lib/dashboard";
 import { setNextDay } from "@/lib/flash";
 import { publishLabel, submittedHeading, type ReportOutcome } from "@/lib/report";
 import { useAuth } from "@/lib/useAuth";
@@ -119,6 +120,7 @@ function Submitted({
   entityName: string;
   onPublished: () => void;
 }) {
+  const toast = useToast();
   const router = useRouter();
   const share = useShareLink(outcome.report_id);
   const publish = usePublish({ place: "submitted", entityId, entityName, onChanged: onPublished });
@@ -132,6 +134,12 @@ function Submitted({
   }
 
   function nextDay() {
+    // Today's report has no next day yet: say so here rather than send the person to a dashboard
+    // that cannot start it (2026-11-03: it failed there with nothing on screen).
+    if (outcome.is_today) {
+      toast(futureDayProblem(outcome.transaction_date), "warning");
+      return;
+    }
     setBusy("Starting next day report...");
     setNextDay(outcome.next_day);
     router.push(home);

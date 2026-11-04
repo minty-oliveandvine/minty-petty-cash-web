@@ -148,6 +148,11 @@ export function setupMissing(home: Home): string[] {
   return [...currency, ...xero];
 }
 
+/** Flask's sentence for a day after today; the Submitted page says it too (2026-11-03). */
+export function futureDayProblem(today: string): string {
+  return `Transaction date cannot be in the future. You can only create reports for dates up to ${today}.`;
+}
+
 /**
  * Whether a new report may start on `day`, and if not, why - Flask's
  * `showStartNewReportMessage`, wording kept; and never while the company has no currency.
@@ -157,9 +162,7 @@ export function startProblem(home: Home, day: string): string | null {
   const span = reportSpan(home);
   if (span) {
     const expected = addDays(span.latest, 1);
-    if (expected > home.server_today) {
-      return `Transaction date cannot be in the future. You can only create reports for dates up to ${home.server_today}.`;
-    }
+    if (expected > home.server_today) return futureDayProblem(home.server_today);
     if (day !== expected) {
       return `Transaction date must be ${expected}, the day after your last submitted report (${span.latest}).`;
     }

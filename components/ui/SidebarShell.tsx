@@ -1,11 +1,13 @@
 "use client";
 
+import { ContactLauncher, type ContactMessage, type ContactReceipt } from "@minty/shared/contact";
 import { ProfilePanel, SubscriptionsOverviewCard } from "@minty/shared/profile";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { useToast } from "@/components/flask/Toasts";
 import { SidebarProvider } from "@/components/ui/Sidebar";
+import { mintyFetch } from "@/lib/apiClient";
 import { profileApi } from "@/lib/profileApi";
 import { loadSubscriptions } from "@/lib/subscriptionsApi";
 import { isSharePage } from "@/lib/share";
@@ -18,7 +20,14 @@ import { isSharePage } from "@/lib/share";
  * My Profile is the sidebar's second view - the shared panel, over the page, never minty-web's
  * page (the owner, 2026-10-20): this app hands it its Flask calls, its toast and the Subscriptions
  * Overview (subscription-api's list, every page).
+ *
+ * The Minty cat at the bottom right (`@minty/shared/contact`, owner 2026-11-05) sits in the same
+ * shell, so the share page carries none either: its "Talk to Minty" chat posts to Flask's
+ * `POST /api/me/contact` (`mintyFetch`), which mails the team with the person as Reply-To.
  */
+const sendContact = (message: ContactMessage) =>
+  mintyFetch<ContactReceipt>("/api/me/contact", { method: "POST", json: message });
+
 export function SidebarShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const toast = useToast();
@@ -34,6 +43,7 @@ export function SidebarShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider look="classic" profile={profile}>
       {children}
+      <ContactLauncher send={sendContact} notify={toast} />
     </SidebarProvider>
   );
 }

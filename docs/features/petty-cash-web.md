@@ -527,3 +527,12 @@ Where the app differs:
 
 - **Connecting Xero** stays on Entity & Integration (Flask's address, which hands over to the app that holds it).
 - **PR previews and the Vercel project** belong to the infra step (Step 5), which is being re-planned. That is why there is no `preview.yml` yet.
+
+## The Minty cat (`@minty/shared/contact`, v0.14)
+
+The cat at the bottom right of every signed-in page (owner, 2026-11-05), mounted in
+`components/ui/SidebarShell.tsx` - so the public share page (`/share/...`) carries none, as it
+carries no sidebar. Its "Talk to Minty" chat posts to Flask's `POST /api/me/contact`
+(`mintyFetch`, `ACCOUNTS_API_URL`); Flask mails `CONTACT_EMAIL` with the person as Reply-To.
+Tested in `components/ui/__tests__/ContactLauncher.test.tsx`; `/contact/minty-cat.webp` is in
+`public/`.

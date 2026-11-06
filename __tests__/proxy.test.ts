@@ -177,6 +177,12 @@ describe("old links after the host switch", () => {
       expect(api.headers.get("location")).toBe("http://localhost:8000/api/me/profile");
     });
 
+    it("passes a POST to /logout on with a 308, which keeps the method (a GET answers 405 there)", () => {
+      const res = proxy(new NextRequest("http://localhost:3010/logout", { method: "POST" }));
+      expect(res.status).toBe(308);
+      expect(res.headers.get("location")).toBe("http://localhost:8000/logout");
+    });
+
     it("leaves an unknown path to the gate and then Next's 404", () => {
       const res = proxy(request("/nothing-here", cookies));
       expect(res.headers.get("location")?.includes("/Minty_Report") ?? false).toBe(false);

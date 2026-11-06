@@ -17,7 +17,7 @@ import { mintyFetch } from "@/lib/apiClient";
 import { clearAuth, getAuth, moduleClaims } from "@/lib/auth";
 import { pettyCashHome } from "@/lib/companyPages";
 import { env } from "@/lib/env";
-import { hubUrl, leaveTo, logoutUrl, paymentsUrl } from "@/lib/handoff";
+import { hubUrl, logoutUrl, paymentsUrl, postNavigate } from "@/lib/handoff";
 import { historyHref } from "@/lib/history";
 import { siblingUrl } from "@/lib/previewSibling";
 import { settingsHref } from "@/lib/settings";
@@ -79,15 +79,15 @@ export const sidebarHost: SidebarHost = {
   },
 
   /**
-   * Every app's Logout ends the session everywhere: forget this app's token, then Flask's
-   * `/logout`. A page with unsaved changes asks first (`@minty/shared/leaveGuard`); nothing here
+   * Every app's Logout ends the session everywhere: forget this app's token, then a form POST to
+   * Flask's `/logout` (a GET answers 405). A page with unsaved changes asks first (`@minty/shared/leaveGuard`); nothing here
    * runs until the person picks "Discard changes".
    */
   logOut: (onLeaving) =>
     guardLeave(() => {
       onLeaving?.();
       clearAuth();
-      leaveTo(logoutUrl());
+      postNavigate(logoutUrl());
     }),
 
   currentToken: () => getAuth()?.token ?? "",

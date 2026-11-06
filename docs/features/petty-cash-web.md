@@ -135,7 +135,7 @@ The same pages drawn in minty-payment-request-web's design are on the **`port/pr
 - `/handoff/petty-cash-web` - this app's own token (`handoffUrl`);
 - `/handoff/minty-web?next=<minty-web path>&entity_id=` - minty-web's pages: the entity list, Subscriptions and the settings tabs Users, Entity & Integration and Modules (`hubUrl`);
 - `/entity/<id>/payment-request` and `/entity/<id>/settings/payment-request` - hand-offs that mint the payments app's token and redirect to its home or its settings page (`paymentsUrl`);
-- `/logout` (`logoutUrl`);
+- `/logout` (`logoutUrl`), left by a top-level form POST (`postNavigate`: a GET answers 405, and a `strict-origin` referrer meta keeps the `Origin` it checks - this app's `Referrer-Policy: same-origin` would send `null`);
 - an old caller's backend path, passed on unchanged after the host switch (`flaskBackendUrl`, re-checked against `isFlaskBackendPath`; see _Old links after the host switch_).
 
 `__tests__/no_flask_pages.test.ts` fails on any other Flask address in the source. The person is already signed in to Flask, because this app's token came from Flask's login-gated hand-off, so each hand-off is a silent round trip.

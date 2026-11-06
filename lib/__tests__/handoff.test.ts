@@ -11,6 +11,7 @@ import {
   hubUrl,
   logoutUrl,
   paymentsUrl,
+  postNavigate,
   redirectToHandoff,
   safeNext,
 } from "@/lib/handoff";
@@ -72,6 +73,31 @@ describe("the other hand-offs (Flask as a backend only - no Flask page)", () => 
 
   it("ends the session at Flask's /logout", () => {
     expect(logoutUrl()).toBe("http://localhost:8000/logout");
+  });
+});
+
+// Minty's /logout takes a POST only (a GET answers 405), from a front end's Origin: a top-level
+// form POST, never fetch and never location.
+describe("postNavigate", () => {
+  it("submits a hidden, empty POST form to the address, with a referrer policy that keeps Origin", () => {
+    const submitted: HTMLFormElement[] = [];
+    vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(function (
+      this: HTMLFormElement,
+    ) {
+      submitted.push(this);
+    });
+
+    postNavigate(logoutUrl());
+
+    expect(submitted).toHaveLength(1);
+    const [form] = submitted;
+    expect(form.getAttribute("method")).toBe("POST");
+    expect(form.getAttribute("action")).toBe("http://localhost:8000/logout");
+    expect(form.hidden).toBe(true);
+    expect(form.elements).toHaveLength(0);
+    expect(form.isConnected).toBe(true);
+    const meta = document.head.querySelector('meta[name="referrer"]');
+    expect(meta?.getAttribute("content")).toBe("strict-origin");
   });
 });
 

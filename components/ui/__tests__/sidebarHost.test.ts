@@ -44,12 +44,17 @@ describe("the menu's links", () => {
 });
 
 describe("logging out", () => {
-  it("forgets the token and ends the session at Flask", () => {
+  it("forgets the token and ends the session at Flask with a POST (a GET answers 405)", () => {
     setAuth("tok", ENTITY, "Olive & Vine");
     const go = vi.fn();
     _resetHandoffForTests(go);
+    const submit = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => {});
     sidebarHost.logOut();
     expect(document.cookie).not.toContain("petty_cash_token=tok");
-    expect(go).toHaveBeenCalledWith("http://localhost:8000/logout");
+    expect(submit).toHaveBeenCalledTimes(1);
+    const form = submit.mock.contexts[0] as HTMLFormElement;
+    expect(form.getAttribute("method")).toBe("POST");
+    expect(form.getAttribute("action")).toBe("http://localhost:8000/logout");
+    expect(go).not.toHaveBeenCalled();
   });
 });

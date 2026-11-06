@@ -110,7 +110,7 @@ export function flaskBackendUrl(backendPath: string, search: string): string | n
   return isFlaskBackendPath(backendPath) ? `${env.ACCOUNTS_API_URL}${backendPath}${search}` : null;
 }
 
-/** Flask's `/logout`: ends the session everywhere. */
+/** Flask's `/logout`: ends the session everywhere - POST only (`postNavigate`). */
 export function logoutUrl(): string {
   return `${env.ACCOUNTS_API_URL}/logout`;
 }
@@ -150,6 +150,26 @@ export function redirectToHandoff(next?: string, company?: string) {
 /** Leave the app for another Minty address through the same seam (tests capture it). */
 export function leaveTo(url: string) {
   navigate(url);
+}
+
+/**
+ * Leave by a top-level form POST (no body) - Minty's `/logout` answers a GET with 405 and takes a
+ * POST only from a front end's `Origin`. Never `fetch` (the session cookie and the 302 belong to
+ * the browser's navigation). The meta first: this app's `Referrer-Policy: same-origin` makes the
+ * browser send `Origin: null` on a cross-origin POST, and `strict-origin` names only the origin -
+ * what `Origin` says anyway, never a path or query. The page is leaving, so it stays.
+ */
+export function postNavigate(url: string) {
+  const meta = document.createElement("meta");
+  meta.name = "referrer";
+  meta.content = "strict-origin";
+  document.head.appendChild(meta);
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = url;
+  form.hidden = true;
+  document.body.appendChild(form);
+  form.submit();
 }
 
 /** Test seam: forget that a redirect is under way, and optionally capture the navigation

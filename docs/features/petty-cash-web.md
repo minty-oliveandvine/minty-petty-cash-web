@@ -69,7 +69,7 @@ The variable names follow the owner's 2026-10-14 decision: Flask is becoming `ac
 
 | Variable                  | What                                                               | Default (decided ports) | Today on a workstation |
 | ------------------------- | ------------------------------------------------------------------ | ----------------------- | ---------------------- |
-| `ACCOUNTS_API_URL`        | Flask: the hand-off, `/api/me/profile`, logout                     | `http://localhost:8000` | same                   |
+| `ACCOUNTS_API_URL`        | minty-accounts-api: the hand-off, `/api/me/profile`, logout        | `http://localhost:8002` | same                   |
 | `PETTY_CASH_API_URL`      | Petty Cash's API (Django `minty-petty-cash-api`): `pettyCashFetch` | `http://localhost:8010` | same                   |
 | `SUBSCRIPTION_API_URL`    | the sidebar's Subscriptions                                        | `http://localhost:8001` | same                   |
 | `PAYMENT_REQUEST_WEB_URL` | the sidebar's Bills (fallback)                                     | `http://localhost:3020` | same                   |

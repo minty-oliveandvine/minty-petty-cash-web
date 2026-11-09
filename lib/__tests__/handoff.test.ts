@@ -25,7 +25,7 @@ describe("handoffUrl", () => {
     const url = new URL(
       handoffUrl("/entity/360812e1/olive-and-vine/petty-cash", ENTITY, "http://localhost:3010"),
     );
-    expect(url.origin).toBe("http://localhost:8000");
+    expect(url.origin).toBe("http://localhost:8002");
     expect(url.pathname).toBe("/handoff/petty-cash-web");
     expect(url.searchParams.get("next")).toBe("/entity/360812e1/olive-and-vine/petty-cash");
     expect(url.searchParams.get("entity_id")).toBe(ENTITY);
@@ -49,7 +49,7 @@ describe("handoffUrl", () => {
 describe("the other hand-offs (Flask as a backend only - no Flask page)", () => {
   it("reaches a minty-web page through /handoff/minty-web, scoped to the company when given", () => {
     const url = new URL(hubUrl("/entity/360812e1/olive-and-vine/settings/integration", ENTITY));
-    expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
+    expect(url.origin + url.pathname).toBe("http://localhost:8002/handoff/minty-web");
     expect(url.searchParams.get("next")).toBe(
       "/entity/360812e1/olive-and-vine/settings/integration",
     );
@@ -72,7 +72,7 @@ describe("the other hand-offs (Flask as a backend only - no Flask page)", () => 
   });
 
   it("ends the session at Flask's /logout", () => {
-    expect(logoutUrl()).toBe("http://localhost:8000/logout");
+    expect(logoutUrl()).toBe("http://localhost:8002/logout");
   });
 });
 
@@ -92,7 +92,7 @@ describe("postNavigate", () => {
     expect(submitted).toHaveLength(1);
     const [form] = submitted;
     expect(form.getAttribute("method")).toBe("POST");
-    expect(form.getAttribute("action")).toBe("http://localhost:8000/logout");
+    expect(form.getAttribute("action")).toBe("http://localhost:8002/logout");
     expect(form.hidden).toBe(true);
     expect(form.elements).toHaveLength(0);
     expect(form.isConnected).toBe(true);
@@ -119,9 +119,9 @@ describe("redirectToHandoff", () => {
 describe("flaskBackendUrl", () => {
   it("is the same path and query on accounts-api, for a backend path only", () => {
     expect(flaskBackendUrl("/callback", "?code=c&state=s")).toBe(
-      "http://localhost:8000/callback?code=c&state=s",
+      "http://localhost:8002/callback?code=c&state=s",
     );
-    expect(flaskBackendUrl("/api/me/profile", "")).toBe("http://localhost:8000/api/me/profile");
+    expect(flaskBackendUrl("/api/me/profile", "")).toBe("http://localhost:8002/api/me/profile");
   });
 
   it("refuses a page: Flask is a backend only", () => {

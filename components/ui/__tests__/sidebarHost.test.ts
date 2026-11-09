@@ -24,7 +24,7 @@ describe("the menu's links", () => {
   it("reaches minty-web's pages and the payments app through Flask", () => {
     setAuth("tok", ENTITY, "Olive & Vine");
     const entities = new URL(sidebarHost.links.entities());
-    expect(entities.origin + entities.pathname).toBe("http://localhost:8000/handoff/minty-web");
+    expect(entities.origin + entities.pathname).toBe("http://localhost:8002/handoff/minty-web");
     expect(entities.searchParams.get("next")).toBe("/entities");
     expect(new URL(sidebarHost.links.subscriptions()).searchParams.get("next")).toBe(
       "/subscription",
@@ -54,7 +54,7 @@ describe("logging out", () => {
     expect(submit).toHaveBeenCalledTimes(1);
     const form = submit.mock.contexts[0] as HTMLFormElement;
     expect(form.getAttribute("method")).toBe("POST");
-    expect(form.getAttribute("action")).toBe("http://localhost:8000/logout");
+    expect(form.getAttribute("action")).toBe("http://localhost:8002/logout");
     expect(go).not.toHaveBeenCalled();
   });
 });

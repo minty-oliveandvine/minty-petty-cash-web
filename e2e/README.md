@@ -3,7 +3,7 @@
 Playwright, against a stack that is **already up** - nothing is started here:
 
 - this app: `npm run dev` (port 3010), with `.env.local` from `.env.example`;
-- Minty (the Flask app) on 8000, which serves the hand-off (and still publishes to Xero);
+- minty-accounts-api on 8002, which serves the hand-off;
 - minty-petty-cash-api on 8010, which serves the Petty Cash API (`/api/petty-cash/v1/...`).
 
 Every spec runs twice: the `desktop` project and the 360 px `phone` project (Petty Cash is used on a

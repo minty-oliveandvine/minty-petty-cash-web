@@ -227,7 +227,7 @@ describe("mintyFetch", () => {
     await expect(mintyFetch("/api/me/profile", { onUnauthorized: "reject" })).rejects.toMatchObject(
       { status: 401 },
     );
-    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8000/api/me/profile");
+    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8002/api/me/profile");
     expect(go).not.toHaveBeenCalled();
   });
 });

@@ -107,7 +107,7 @@ describe("the guard itself", () => {
       "return isFlaskBackendPath(backendPath) ? `${env.ACCOUNTS_API_URL}${backendPath}${search}` : null;",
     ],
     ["lib/apiClient.ts", "return requestJson<T>(env.ACCOUNTS_API_URL, path, init);"],
-    ["lib/env.ts", 'ACCOUNTS_API_URL: url(process.env.ACCOUNTS_API_URL, "http://localhost:8000"),'],
+    ["lib/env.ts", 'ACCOUNTS_API_URL: url(process.env.ACCOUNTS_API_URL, "http://localhost:8002"),'],
   ])("lets the backend address in %s through", (rel, sample) => {
     expect(offences(rel, sample)).toEqual([]);
   });

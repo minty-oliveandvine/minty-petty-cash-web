@@ -110,6 +110,9 @@ export function flaskBackendUrl(backendPath: string, search: string): string | n
   return isFlaskBackendPath(backendPath) ? `${env.ACCOUNTS_API_URL}${backendPath}${search}` : null;
 }
 
+/** accounts-api's base: where `/landing` swaps the one-time code for this app's token (gap 4). */
+export const accountsApiUrl = (): string => env.ACCOUNTS_API_URL;
+
 /** Flask's `/logout`: ends the session everywhere - POST only (`postNavigate`). */
 export function logoutUrl(): string {
   return `${env.ACCOUNTS_API_URL}/logout`;

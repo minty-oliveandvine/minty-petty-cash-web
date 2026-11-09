@@ -53,7 +53,11 @@ At the hosting switch (Step 5), `pettycash.dailyminty.com` stops being Flask and
 Flask is the only thing that mints tokens. This app has no login and no refresh, the same model as minty-web.
 
 1. Flask's login-gated `GET /handoff/petty-cash-web?next=<path>&entity_id=<company>` (Minty `blueprints/entity/routes/modules.py`) mints a 30-minute module token for **one** company. It does so only if the person belongs to that company, the company is past onboarding and Petty Cash is on for it.
-2. Flask sends the browser to `/landing?token=…&next=…&entity_id=…&entity_name=…`.
+2. accounts-api sends the browser to `/landing?code=…&next=…&entity_id=…&entity_name=…` - a
+   one-time code, never the token (gap 4, 2026-11-09). The page (the shared
+   `@minty/shared/landing` hook) swaps it at accounts-api's `POST /api/handoff/redeem` (once,
+   2 minutes, from this origin only); a used or lapsed code says so, with a Continue through the
+   re-handoff. A legacy `?token=` is still taken until accounts-api stops sending it.
 3. `/landing` stores the token in the `petty_cash_token`, `petty_cash_entity_id` and `petty_cash_entity_name` cookies (`lib/auth.ts`). Their names are this app's own, because every localhost port shares one cookie jar. The cookies live exactly as long as the token's `exp`.
 4. `proxy.ts` (Next 16's middleware) gates every page:
    - **No cookie:** back through the hand-off, naming the company from the address. Flask accepts a uuid or `<shortid>/<name>`.

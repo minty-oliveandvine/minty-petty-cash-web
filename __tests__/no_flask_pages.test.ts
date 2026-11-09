@@ -39,6 +39,10 @@ const ALLOWED: Record<string, { pattern: RegExp; why: string }[]> = {
     },
     { pattern: /^ACCOUNTS_API_URL\}\/logout`/, why: "ends the session" },
     {
+      pattern: /^ACCOUNTS_API_URL;$/,
+      why: "accounts-api's base, where /landing swaps its one-time code (gap 4) - a JSON API",
+    },
+    {
       // flaskBackendUrl: after the host switch `pettycash.` is this app, so an old caller of one of
       // Flask's BACKEND paths there (Xero's `/callback`, `/handoff/*`, `/api/*`, `/logout`, an email's
       // sign-in or invitation link) is sent on to the same path on accounts-api. The function

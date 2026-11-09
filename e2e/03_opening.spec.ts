@@ -5,7 +5,7 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 import { companyRef } from "./companyRef";
-import { mintModuleToken } from "./helpers";
+import { landingAddress, mintModuleToken } from "./helpers";
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -104,7 +104,7 @@ async function openWith(
   });
   const next = `${BASE}/reports/new/opening?transaction_date=${DAY}`;
   await page.goto(
-    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next })}`,
+    await landingAddress(page, token, { entity_id: ENTITY, entity_name: NAME, next }),
   );
   await expect(page.getByRole("heading", { name: "Opening" })).toBeVisible();
 }

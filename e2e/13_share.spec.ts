@@ -5,7 +5,7 @@
 import { expect, test, type Page, type Request } from "@playwright/test";
 
 import { companyRef } from "./companyRef";
-import { expectNoHorizontalScroll, mintModuleToken } from "./helpers";
+import { expectNoHorizontalScroll, landingAddress, mintModuleToken } from "./helpers";
 
 const ENTITY = "3d65f186-5ba1-4bf7-a1b0-cc64a113eb5c";
 const NAME = "E2E Petty Cash Shop";
@@ -177,7 +177,7 @@ test("a signed-in person opening a share link still sends no bearer", async ({ p
   });
   // the landing stores the token cookie; `next` is the share page itself
   await page.goto(
-    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next: PAGE })}`,
+    await landingAddress(page, token, { entity_id: ENTITY, entity_name: NAME, next: PAGE }),
   );
   await page.goto(PAGE);
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();

@@ -9,6 +9,7 @@ import {
   catchHandoffs,
   expectHubHandoff,
   expectNoHorizontalScroll,
+  landingAddress,
   mintModuleToken,
 } from "./helpers";
 
@@ -198,7 +199,7 @@ async function enter(page: Page, next: string) {
     entityName: NAME,
   });
   await page.goto(
-    `/landing?${new URLSearchParams({ token, entity_id: ENTITY, entity_name: NAME, next })}`,
+    await landingAddress(page, token, { entity_id: ENTITY, entity_name: NAME, next }),
   );
 }
 

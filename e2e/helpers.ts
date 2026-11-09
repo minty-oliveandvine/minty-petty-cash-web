@@ -51,15 +51,15 @@ export function mintModuleToken(
   return `${header}.${payload}.${signature}`;
 }
 
-/** Arrive as Flask's hand-off sends a person: /landing with the token, on to `next`. */
+/** Arrive as accounts-api's hand-off sends a person: /landing with a one-time code, on to `next`. */
 export async function enter(page: Page, creds: Credentials, next: string) {
-  const qs = new URLSearchParams({
-    token: mintModuleToken(creds),
-    entity_id: creds.entityId,
-    entity_name: creds.entityName,
-    next,
-  });
-  await page.goto(`/landing?${qs.toString()}`);
+  await page.goto(
+    await landingAddress(page, mintModuleToken(creds), {
+      entity_id: creds.entityId,
+      entity_name: creds.entityName,
+      next,
+    }),
+  );
 }
 
 /** No page may scroll sideways at any width (CLAUDE.md, Responsive UI rules). */
@@ -89,4 +89,53 @@ export async function catchHandoffs(page: Page) {
   await page.route(/\/handoff\/minty-web\?/, (route) =>
     route.fulfill({ contentType: "text/html", body: "<title>Hand-off</title><p>Hand-off</p>" }),
   );
+}
+
+/** accounts-api, where the landing swaps its one-time code (`codeFor` answers it here). */
+export const ACCOUNTS_API_URL = process.env.E2E_ACCOUNTS_API_URL || "http://localhost:8002";
+
+/**
+ * Gap 4 (2026-11-09): accounts-api hands an app a one-time code, which the landing swaps for the
+ * token at `POST /api/handoff/redeem`. Here the test is accounts-api: a fresh code for `token`,
+ * answered once by its own route (with CORS and its preflight, as accounts-api does). Each code
+ * brings its own handler, so a test's `page.unrouteAll()` between landings is harmless; a code a
+ * handler does not own falls back to the next one, and in the end to the real accounts-api (the
+ * stack e2e's own hand-offs).
+ */
+let codeCount = 0;
+
+export async function codeFor(page: Page, token: string): Promise<string> {
+  codeCount += 1;
+  const code = `e2e-${codeCount}-${Date.now().toString(36)}`;
+  let spent = false;
+  await page.route(`${ACCOUNTS_API_URL}/api/handoff/redeem`, (route) => {
+    const request = route.request();
+    const headers = {
+      "Access-Control-Allow-Origin": request.headers()["origin"] ?? "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      Vary: "Origin",
+    };
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
+    const asked = (request.postDataJSON() as { code?: unknown } | null)?.code;
+    if (asked !== code || spent) return route.fallback();
+    spent = true;
+    return route.fulfill({
+      status: 200,
+      headers,
+      contentType: "application/json",
+      body: JSON.stringify({ token }),
+    });
+  });
+  return code;
+}
+
+/** `/landing?…&code=` for `token` - the address accounts-api sends people to, with no token in it. */
+export async function landingAddress(
+  page: Page,
+  token: string,
+  params: Record<string, string>,
+): Promise<string> {
+  const qs = new URLSearchParams({ ...params, code: await codeFor(page, token) });
+  return `/landing?${qs.toString()}`;
 }

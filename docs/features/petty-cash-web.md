@@ -57,7 +57,7 @@ Flask is the only thing that mints tokens. This app has no login and no refresh,
    one-time code, never the token (gap 4, 2026-11-09). The page (the shared
    `@minty/shared/landing` hook) swaps it at accounts-api's `POST /api/handoff/redeem` (once,
    2 minutes, from this origin only); a used or lapsed code says so, with a Continue through the
-   re-handoff. A legacy `?token=` is still taken until accounts-api stops sending it.
+   re-handoff. A `?token=` in the address is never stored.
 3. `/landing` stores the token in the `petty_cash_token`, `petty_cash_entity_id` and `petty_cash_entity_name` cookies (`lib/auth.ts`). Their names are this app's own, because every localhost port shares one cookie jar. The cookies live exactly as long as the token's `exp`.
 4. `proxy.ts` (Next 16's middleware) gates every page:
    - **No cookie:** back through the hand-off, naming the company from the address. Flask accepts a uuid or `<shortid>/<name>`.

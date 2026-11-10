@@ -36,6 +36,8 @@ export type MappingField = {
   kind: "account" | "contact";
   options: XeroOption[];
   selected: string | null;
+  /** May stay empty: the cash-sale pair, for a company that banks all its sales (2026-11-10). */
+  optional?: boolean;
 };
 export type AccountCode = { code: string; name: string; selected: boolean };
 
@@ -212,7 +214,7 @@ export function mappingProblems(
   const out: Partial<Record<MappingKey, string>> = {};
   if (refused) {
     for (const field of mapping)
-      if (!picked[field.key]) out[field.key] = `Choose the ${field.label}.`;
+      if (!picked[field.key] && !field.optional) out[field.key] = `Choose the ${field.label}.`;
   }
   if (picked.main_bank && picked.main_bank === picked.deposit_bank) {
     out.main_bank = SAME_BANK;

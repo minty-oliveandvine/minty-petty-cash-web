@@ -446,14 +446,18 @@ function MappingForm({
               <div key={key} className="flex flex-col gap-2">
                 <label className={LABEL} htmlFor={id}>
                   {sub}
-                  <span className="sr-only"> (required)</span>
+                  {field.optional ? (
+                    <span className="text-flask-set-gray-500"> (optional)</span>
+                  ) : (
+                    <span className="sr-only"> (required)</span>
+                  )}
                 </label>
                 <Combo
                   id={id}
                   value={texts[key]}
                   placeholder={placeholder}
                   disabled={!editable}
-                  required
+                  required={!field.optional}
                   rotateChevron
                   invalid={Boolean(problem) || marked.has(key)}
                   describedBy={problem ? problemId : undefined}

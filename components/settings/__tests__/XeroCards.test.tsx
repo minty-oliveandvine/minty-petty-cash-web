@@ -6,7 +6,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AccountCodesCard, XeroMappingCard } from "@/components/settings/XeroCards";
-import type { XeroRead } from "@/lib/xeroSettings";
+import { mappingProblems, type XeroRead } from "@/lib/xeroSettings";
 
 const account = (id: string, name: string, code: string) => ({ id, name, code });
 
@@ -86,5 +86,36 @@ describe("Minty on its own", () => {
     );
     expect(screen.getByText("Xero account mapping")).toBeInTheDocument();
     expect(screen.getByText(/Xero isn.t connected/)).toBeInTheDocument();
+  });
+});
+
+describe("a company that banks all its sales (2026-11-10)", () => {
+  it("labels the cash-sale account optional and never asks for it", () => {
+    const base = read();
+    const mapping = base.mapping!.map((f) =>
+      f.key === "cashsale_account" ? { ...f, optional: true } : f,
+    );
+    render(
+      <XeroMappingCard
+        {...props}
+        onAdded={vi.fn()}
+        load={{ kind: "ready", read: read({ mapping }) }}
+      />,
+    );
+    expect(screen.getByText("(optional)")).toBeInTheDocument();
+    const picked = {
+      main_bank: "a1",
+      deposit_bank: "a2",
+      cashsale_account: "",
+      cashsale_contact: "",
+      owners_account: "x",
+      owners_contact: "",
+      discrepancy_account: "y",
+      discrepancy_contact: "",
+    };
+    expect(mappingProblems(mapping, picked, true)).toEqual({});
+    expect(mappingProblems(base.mapping!, picked, true)).toEqual({
+      cashsale_account: "Choose the Cash Sales account code.",
+    });
   });
 });

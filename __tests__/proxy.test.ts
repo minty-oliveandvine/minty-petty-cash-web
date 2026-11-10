@@ -155,7 +155,7 @@ describe("old links after the host switch", () => {
       const res = proxy(request("/entity/360812e1/olive-and-vine/settings/users?x=1", cookies));
       expect(res.status).toBe(307);
       const to = new URL(res.headers.get("location") ?? "");
-      expect(to.origin + to.pathname).toBe("http://localhost:8002/handoff/minty-web");
+      expect(to.origin + to.pathname).toBe("http://localhost:8000/handoff/minty-web");
       expect(to.searchParams.get("next")).toBe("/entity/360812e1/olive-and-vine/settings/users");
       expect(to.searchParams.get("return_origin")).toBe("http://localhost:3010");
     });
@@ -172,15 +172,15 @@ describe("old links after the host switch", () => {
     it("sends Flask's backend paths to the same path on accounts-api with a 308, query kept", () => {
       const res = proxy(request("/callback?code=c&state=s", cookies));
       expect(res.status).toBe(308);
-      expect(res.headers.get("location")).toBe("http://localhost:8002/callback?code=c&state=s");
+      expect(res.headers.get("location")).toBe("http://localhost:8000/callback?code=c&state=s");
       const api = proxy(request("/api/me/profile", cookies));
-      expect(api.headers.get("location")).toBe("http://localhost:8002/api/me/profile");
+      expect(api.headers.get("location")).toBe("http://localhost:8000/api/me/profile");
     });
 
     it("passes a POST to /logout on with a 308, which keeps the method (a GET answers 405 there)", () => {
       const res = proxy(new NextRequest("http://localhost:3010/logout", { method: "POST" }));
       expect(res.status).toBe(308);
-      expect(res.headers.get("location")).toBe("http://localhost:8002/logout");
+      expect(res.headers.get("location")).toBe("http://localhost:8000/logout");
     });
 
     it("leaves an unknown path to the gate and then Next's 404", () => {

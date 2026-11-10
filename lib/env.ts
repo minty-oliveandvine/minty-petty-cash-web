@@ -21,7 +21,7 @@ function url(raw: string | undefined, fallback: string): string {
 
 export const env = {
   /** minty-accounts-api: the hand-off that mints this app's token, My Profile's read. */
-  ACCOUNTS_API_URL: url(process.env.ACCOUNTS_API_URL, "http://localhost:8002"),
+  ACCOUNTS_API_URL: url(process.env.ACCOUNTS_API_URL, "http://localhost:8000"),
   /** Petty Cash's API - every read and write of reports, expenses, cash counts and settings. */
   PETTY_CASH_API_URL: url(process.env.PETTY_CASH_API_URL, "http://localhost:8010"),
   /** minty-subscription-api - the sidebar's Subscriptions. */

@@ -102,7 +102,7 @@ describe("My Profile in Petty Cash", () => {
     const read = urls.find(
       (u) => u.pathname === "/api/me/profile" && u.searchParams.get("entity") === ENTITY,
     );
-    expect(read?.origin).toBe("http://localhost:8002");
+    expect(read?.origin).toBe("http://localhost:8000");
     // over the page: nothing navigated, and no hand-off to minty-web
     expect(window.location.pathname).toBe("/entity/360812e1/olive-and-vine/petty-cash");
     expect(urls.some((u) => u.pathname.startsWith("/handoff/"))).toBe(false);

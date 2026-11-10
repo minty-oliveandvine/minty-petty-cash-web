@@ -92,7 +92,7 @@ export async function catchHandoffs(page: Page) {
 }
 
 /** accounts-api, where the landing swaps its one-time code (`codeFor` answers it here). */
-export const ACCOUNTS_API_URL = process.env.E2E_ACCOUNTS_API_URL || "http://localhost:8002";
+export const ACCOUNTS_API_URL = process.env.E2E_ACCOUNTS_API_URL || "http://localhost:8000";
 
 /**
  * Gap 4 (2026-11-09): accounts-api hands an app a one-time code, which the landing swaps for the

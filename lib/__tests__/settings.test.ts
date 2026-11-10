@@ -38,7 +38,7 @@ describe("the other settings tabs - never a Flask page", () => {
     "%s is minty-web's page, through Flask's /handoff/minty-web",
     (tab) => {
       const url = new URL(settingsTabUrl(ENTITY, "Olive & Vine", tab));
-      expect(url.origin + url.pathname).toBe("http://localhost:8002/handoff/minty-web");
+      expect(url.origin + url.pathname).toBe("http://localhost:8000/handoff/minty-web");
       expect(url.searchParams.get("next")).toBe(`/entity/360812e1/olive-and-vine/settings/${tab}`);
       expect(url.searchParams.get("entity_id")).toBe(ENTITY);
     },

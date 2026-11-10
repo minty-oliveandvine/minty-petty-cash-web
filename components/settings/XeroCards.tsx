@@ -155,22 +155,28 @@ export function XeroMappingCard({
   onAdded: (message: string) => void;
 }) {
   const editable = load.kind === "ready" && load.read.permissions.edit_mapping;
+  const minty = load.kind === "ready" && !!load.read.minty;
   return (
     <SettingsCard
-      title="Xero account mapping"
-      sub="The Xero accounts and contacts a petty cash report posts to."
+      title={minty ? "Account mapping" : "Xero account mapping"}
+      sub={
+        minty
+          ? "The accounts daily closing uses."
+          : "The Xero accounts and contacts a petty cash report posts to."
+      }
       readOnly={load.kind === "ready" && !editable}
       testId="xero-mapping"
     >
       {load.kind !== "ready" ? (
         <NotReady load={load} onRetry={onRetry} />
-      ) : !load.read.live || !load.read.mapping ? (
+      ) : !(load.read.live || minty) || !load.read.mapping ? (
         <NotConnected connectHref={connectHref} />
       ) : (
         // a new read (a save) starts the form again from what the API holds
         <MappingForm
           key={JSON.stringify(load.read.mapping)}
           fields={load.read.mapping}
+          minty={minty}
           editable={editable}
           busy={busy}
           call={call}
@@ -184,6 +190,7 @@ export function XeroMappingCard({
 
 function MappingForm({
   fields: initial,
+  minty = false,
   editable,
   busy,
   call,
@@ -191,6 +198,8 @@ function MappingForm({
   onAdded,
 }: {
   fields: MappingField[];
+  /** Minty's own accounts: the field lines don't say "from Xero". */
+  minty?: boolean;
   editable: boolean;
   busy: boolean;
   call: Call;
@@ -365,9 +374,10 @@ function MappingForm({
           <h3 className="m-0 text-[15px] font-semibold leading-[1.375rem] text-flask-set-gray-800">
             {group.title}
           </h3>
-          {group.fields.map(({ key, sub, placeholder }) => {
+          {group.fields.map(({ key, sub: line, placeholder }) => {
             const field = byKey.get(key);
             if (!field) return null;
+            const sub = minty ? line.replace(" from Xero", "") : line;
             const id = idOf(key);
             const problem = problems[key];
             const problemId = `${id}-problem`;
@@ -511,7 +521,7 @@ export function AccountCodesCard({
     >
       {load.kind !== "ready" ? (
         <NotReady load={load} onRetry={onRetry} />
-      ) : !load.read.live || !load.read.account_codes ? (
+      ) : !(load.read.live || load.read.minty) || !load.read.account_codes ? (
         <NotConnected connectHref={connectHref} />
       ) : (
         <CodesForm

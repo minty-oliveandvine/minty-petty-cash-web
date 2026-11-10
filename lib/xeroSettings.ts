@@ -41,6 +41,9 @@ export type AccountCode = { code: string; name: string; selected: boolean };
 
 export type XeroRead = {
   live: boolean;
+  /** A company keeping its books in Minty with no Xero (Xero optional, 2026-11-10): the mapping is
+   * its own five accounts (no contacts) and the account codes are its own, with Xero never asked. */
+  minty?: boolean;
   organisation: string | null;
   mapping: MappingField[] | null;
   mapping_saved: boolean;

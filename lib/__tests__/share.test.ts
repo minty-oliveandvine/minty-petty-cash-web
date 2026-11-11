@@ -176,6 +176,10 @@ describe("parseSharedReport", () => {
     expect(r?.sales.methods.map((m) => m.value_name)).toEqual(["visa_sales", "keeta_sales"]);
     expect(r?.sales.cash).toBe(600);
     expect(r?.sales.total).toBe(1234.5);
+    expect(r?.sales.groups).toBe("electronic_delivery");
+    const nonCash = full();
+    nonCash.sales = { ...(nonCash.sales as object), groups: "non_cash" };
+    expect(parseSharedReport(nonCash)?.sales.groups).toBe("non_cash");
     expect(r?.yesterday).toBe(1000);
     expect(r?.history).toEqual([{ date: "2026-10-13", total: 1234.5 }]);
     expect(r?.lines).toEqual([{ item: "Food & Drink", amount: 78.5 }]);

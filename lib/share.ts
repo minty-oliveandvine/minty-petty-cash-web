@@ -177,7 +177,12 @@ export function parseSharedReport(body: unknown): SharedReport | null {
     code: str(body.currency_code),
     statusLabel: str(body.status_label) ?? "Submitted",
     statusTone: str(body.status_tone) ?? "info",
-    sales: { methods, cash: num(body.sales.cash) ?? 0, total },
+    sales: {
+      methods,
+      cash: num(body.sales.cash) ?? 0,
+      total,
+      groups: body.sales.groups === "non_cash" ? "non_cash" : "electronic_delivery",
+    },
     yesterday: num(body.sales.yesterday_total),
     history,
     lines,

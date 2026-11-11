@@ -217,7 +217,7 @@ function TotalSales({ sales, yesterday }: { sales: SummarySales; yesterday: numb
   const [open, setOpen] = useState(false);
   const split = salesSplit(sales);
   const compare = versusYesterday(sales.total, yesterday);
-  const { electronic, delivery } = sections(sales.methods);
+  const { electronic, delivery } = sections(sales.methods, sales.groups);
   const arrow = (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -229,11 +229,18 @@ function TotalSales({ sales, yesterday }: { sales: SummarySales; yesterday: numb
       <path d={UP_ARROW} className={compare.up ? "fill-flask-green" : "fill-flask-red-500"} />
     </svg>
   );
-  const totals: [string, number][] = [
-    ["Electronic Sales", split.electronic],
-    ["Delivery Sales", split.delivery],
-    ["Cash Sales", split.cash],
-  ];
+  // A retail shop, a service or a general business: Non-cash and Cash (owner, 2026-11-11)
+  const totals: [string, number][] =
+    sales.groups === "non_cash"
+      ? [
+          ["Non-cash Sales", split.electronic],
+          ["Cash Sales", split.cash],
+        ]
+      : [
+          ["Electronic Sales", split.electronic],
+          ["Delivery Sales", split.delivery],
+          ["Cash Sales", split.cash],
+        ];
   return (
     <div className={CARD}>
       <div className="flex flex-col">

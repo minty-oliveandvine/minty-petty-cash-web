@@ -63,6 +63,43 @@ describe("the sections and their totals", () => {
   });
 });
 
+describe("a Non-cash company (owner, 2026-11-11: retail, service, general)", () => {
+  const methods = [
+    method("visa_sales", "electronic"),
+    method("foodpanda_sales", "delivery"),
+    method("deliveroo_sales", "delivery"),
+    method("fps_sales", "electronic"),
+  ];
+
+  it("lists every method in one Non-cash section, Settings order, Deliveroo still left out", () => {
+    const { electronic, delivery } = sections(methods, "non_cash");
+    expect(electronic.map((m) => m.value_name)).toEqual([
+      "visa_sales",
+      "foodpanda_sales",
+      "fps_sales",
+    ]);
+    expect(delivery).toEqual([]);
+  });
+
+  it("adds them up as one Non-cash total", () => {
+    expect(
+      salesTotals(
+        methods,
+        { visa_sales: "100", foodpanda_sales: "20", fps_sales: "3" },
+        "5",
+        "non_cash",
+      ),
+    ).toEqual({ electronic: 123, delivery: 0, cash: 5 });
+  });
+
+  it("Electronic and Delivery stay apart for Restaurant & Food and an older company", () => {
+    expect(sections(methods, "electronic_delivery").delivery.map((m) => m.value_name)).toEqual([
+      "foodpanda_sales",
+    ]);
+    expect(sections(methods).delivery).toHaveLength(1);
+  });
+});
+
 describe("unsaved changes (Flask's hasUnsavedChanges)", () => {
   it.each([
     ["5", "", true],

@@ -6,7 +6,7 @@
 
 import type { OpeningPage } from "@/lib/opening";
 import type { DifferenceKind } from "@/lib/cash";
-import type { SalesMethod } from "@/lib/sales";
+import type { SalesGroups, SalesMethod } from "@/lib/sales";
 
 export type CloseLine = {
   id: string;
@@ -33,6 +33,8 @@ export type ClosePage = {
     yesterday_total: number | null;
     /** The 30 days up to the day, the day last. */
     history: { date: string; total: number }[];
+    /** One Non-cash section, or Electronic and Delivery (owner, 2026-11-11). */
+    groups?: SalesGroups;
   };
   expenses: { lines: CloseLine[]; total: number };
   cash: {
@@ -50,7 +52,7 @@ export type ClosePage = {
 };
 
 /** What the summary's Total Sales card draws - the Ending step's sales, or a submitted report's. */
-export type SummarySales = Pick<ClosePage["sales"], "methods" | "cash" | "total">;
+export type SummarySales = Pick<ClosePage["sales"], "methods" | "cash" | "total" | "groups">;
 
 /** Flask's `"{:,.2f}"`: two decimals, thousands grouped, no currency. */
 export function plain(amount: number): string {
@@ -79,8 +81,9 @@ export function versusYesterday(
   return { up: change > 0, percent: `${Math.abs((change / yesterday) * 100).toFixed(1)}%` };
 }
 
-/** The Total Sales card's three figures: electronic and delivery from the method rows, cash its own. */
-export function salesSplit(page: Pick<SummarySales, "methods" | "cash">): {
+/** The Total Sales card's three figures: electronic and delivery from the method rows, cash its own.
+ * A Non-cash company's delivery methods count in `electronic` (its one Non-cash figure). */
+export function salesSplit(page: Pick<SummarySales, "methods" | "cash" | "groups">): {
   electronic: number;
   delivery: number;
   cash: number;
@@ -88,7 +91,7 @@ export function salesSplit(page: Pick<SummarySales, "methods" | "cash">): {
   let electronic = 0;
   let delivery = 0;
   for (const m of page.methods) {
-    if (m.type === "delivery") delivery += m.amount || 0;
+    if (m.type === "delivery" && page.groups !== "non_cash") delivery += m.amount || 0;
     else electronic += m.amount || 0;
   }
   return { electronic, delivery, cash: page.cash || 0 };

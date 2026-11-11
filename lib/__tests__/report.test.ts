@@ -41,6 +41,13 @@ describe("a submitted report's Total Sales (GET /reports/<id>)", () => {
     expect(shown.cash).toBe(600);
     expect(shown.total).toBe(1234.5);
     expect(salesSplit(shown)).toEqual({ electronic: 400, delivery: 234.5, cash: 600 });
+    expect(shown.groups).toBe("electronic_delivery");
+  });
+
+  it("a Non-cash company's split puts delivery inside Non-cash", () => {
+    const shown = summarySales({ ...sales, groups: "non_cash" });
+    expect(shown.groups).toBe("non_cash");
+    expect(salesSplit(shown)).toEqual({ electronic: 634.5, delivery: 0, cash: 600 });
   });
 });
 

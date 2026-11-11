@@ -117,8 +117,10 @@ function SalesForm({
   const code = page.currency_code;
   const day = page.transaction_date;
   const progress = page.draft ?? { current_section: null, completed_sections: [] };
-  const { electronic, delivery } = sections(page.methods);
-  const totals = salesTotals(page.methods, values, cash);
+  // One Non-cash section for a retail shop, a service or a general business (owner, 2026-11-11)
+  const nonCash = page.groups === "non_cash";
+  const { electronic, delivery } = sections(page.methods, page.groups);
+  const totals = salesTotals(page.methods, values, cash, page.groups);
 
   function dirty(): boolean {
     return (
@@ -209,20 +211,28 @@ function SalesForm({
         }}
       >
         <div className="mb-6 rounded-flask-lg bg-flask-white p-6 shadow-flask-sm">
-          <Section icon={<CardIcon />} title="Electronic Payments" smallTitle>
+          <Section
+            icon={<CardIcon />}
+            title={nonCash ? "Non-cash Sales" : "Electronic Payments"}
+            smallTitle
+          >
             <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {electronic.map(field)}
             </div>
             <Total
-              label="Total Electronic Payment Sales"
+              label={nonCash ? "Total Non-cash Sales" : "Total Electronic Payment Sales"}
               amount={formatMoney(totals.electronic, code)}
             />
           </Section>
 
-          <Section icon={<TruckIcon />} title="Delivery Sales">
-            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">{delivery.map(field)}</div>
-            <Total label="Total Delivery Sales" amount={formatMoney(totals.delivery, code)} />
-          </Section>
+          {nonCash ? null : (
+            <Section icon={<TruckIcon />} title="Delivery Sales">
+              <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {delivery.map(field)}
+              </div>
+              <Total label="Total Delivery Sales" amount={formatMoney(totals.delivery, code)} />
+            </Section>
+          )}
 
           <Section icon={<CashIcon />} title="Cash Sales">
             <div className="mb-3">

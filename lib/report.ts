@@ -40,6 +40,7 @@ export type DailyReport = {
     yesterday_total: ClosePage["sales"]["yesterday_total"];
     /** The 30 days up to the day, the day last. As on `GET /reports/close`. */
     history: ClosePage["sales"]["history"];
+    groups?: ClosePage["sales"]["groups"];
   };
   expenses: { lines: ReportLine[]; total: number };
   cash: {
@@ -106,7 +107,12 @@ export function summarySales(sales: DailyReport["sales"]): SummarySales {
     (m): m is typeof m & { type: SalesMethod["type"] } =>
       m.type === "electronic" || m.type === "delivery",
   );
-  return { methods, cash: sales.cash, total: sales.total };
+  return {
+    methods,
+    cash: sales.cash,
+    total: sales.total,
+    groups: sales.groups ?? "electronic_delivery",
+  };
 }
 
 /** The Submitted page's heading, two lines (Flask's `is_published_to_xero`). */

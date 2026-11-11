@@ -217,6 +217,7 @@ What it keeps from Flask:
   - **Electronic Payments** and **Delivery Sales**: a field per method the company switched on, two to a row, in Settings order. Deliveroo is left out of delivery.
   - **Cash Sales**: one full-width field with no label.
   - each section ends in its running total ("Total Electronic Payment Sales", "Total Delivery Sales", "Total Cash Sales").
+  - **A Non-cash company (owner, 2026-11-11):** when the API's `groups` is `non_cash` (a retail shop, a service or a general business - onboarding's step 5 asks the same), Electronic and Delivery become one **Non-cash Sales** section holding every method, delivery ones included, with "Total Non-cash Sales"; then Cash Sales. Restaurant & Food and a company from before onboarding asked (`electronic_delivery`, or no `groups`) keep both sections (`lib/sales.ts` `sections`/`salesTotals`).
 - **Flask's labels:** Python's `.title()` of each name, so "WeChat Pay" shows as "Wechat Pay" and "OpenRice" as "Openrice" (`flaskLabel`).
 - **The money fields** (`@minty/shared/amountInput`). A zero shows as an empty field with the "0.00" placeholder.
 - **Save & Next** (to Expenses, in this app) and **Save & Exit**.
@@ -332,7 +333,7 @@ What it keeps from Flask:
 
 - **The report header and the stepper.**
 - **The slate "Draft report" callout**, word for word, then **"Summary"** with the currency code on the right.
-- **Total Sales:** the day's total, then "{x.x}%" with a green up or red down arrow and "Compared to Yesterday" (no sales the day before: the green arrow alone; an unchanged day is a red 0.0%, as in Flask). Then Electronic Sales | Delivery Sales | Cash Sales. "Show more" lists each method (electronic on the left; delivery and Cash Sales on the right), "-" for nothing, labelled as on Sales (`flaskLabel`).
+- **Total Sales:** the day's total, then "{x.x}%" with a green up or red down arrow and "Compared to Yesterday" (no sales the day before: the green arrow alone; an unchanged day is a red 0.0%, as in Flask). Then Electronic Sales | Delivery Sales | Cash Sales (a Non-cash company: Non-cash Sales | Cash Sales, its delivery methods counted in Non-cash - `salesSplit`; the Daily Report and the shared page read `sales.groups` the same way). "Show more" lists each method (electronic on the left; delivery and Cash Sales on the right), "-" for nothing, labelled as on Sales (`flaskLabel`).
 - **Sales History:** the 30 days up to the day as bars, seven to a view, scrolled to the day, which is red; each bar's figure ("1.2k" from a thousand) and its date ("13 OCT" / "TUE"). Nothing is drawn when every day is zero. The bars are measured from the box, as Flask's `bar_chart.html` does, including its phone sizes (under 640px).
 - **Total Expenses:** the day's lines summed by account, largest first. Flask's donut of the top seven and "Other expenses" (the rest, in yellow), with its gaps and minimum slice sizes; the total in the hole, or the slice under the pointer (on the chart or its name). The names beside it, truncated as in Flask, "&" written "and". "Show more" lists every account with its amount. "No expenses recorded" when there are none.
 - **Cash Balance:** what was counted (till + safebox); "Show more" splits it into "Cash Till Balance" and "Safebox".

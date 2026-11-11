@@ -1,139 +1,26 @@
 /**
- * Petty Cash Settings' rules - the cards that need no Xero, ported from Flask's ORIGINAL
- * `entity/settings_entity.html` and `static/js/petty_cash_settings.js` (Minty `1c25b35^1`):
- * the Electronic / Delivery sales methods. What it reads and writes is minty-petty-cash-api's
- * `routes/settings.py` (`GET /settings`, `/sales-methods...`). The Xero mapping and account codes
- * are lib/xeroSettings.ts's. The country and currency are not set here: minty-web's Entity &
- * Integration tab is their one place (owner, 2026-11-03).
+ * Where this app's links to a company's settings go. Every settings tab is minty-web's (the hub)
+ * since 2026-11-10 (owner) - Petty Cash Settings and Payment Settings moved there from this app and
+ * the payments app - so each link goes through accounts-api's `/handoff/minty-web`, which mints
+ * the hub's token for the company. This app's old address for the page,
+ * `/entity/<shortid>/<name>/settings/petty-cash`, only sends people on
+ * (`app/entity/[ref]/[slug]/settings/petty-cash/page.tsx`).
  */
 
 import { companyRef } from "@minty/shared/companyRef";
 
-import { hubUrl, paymentsUrl } from "@/lib/handoff";
+import { hubUrl } from "@/lib/handoff";
 
-export type MethodType = "electronic" | "delivery";
-export const METHOD_TYPES: readonly MethodType[] = ["electronic", "delivery"];
+/** The hub's settings tabs (minty-web `lib/hubPaths.ts`'s `CompanySettingsTab`). */
+export type SettingsTab =
+  "users" | "general" | "integration" | "petty-cash" | "payment" | "modules";
 
-/** `shared`: another company has it too, so the API refuses a rename (409). */
-export type SalesMethod = { id: string; name: string; value_name: string; shared: boolean };
-export type CatalogueMethod = { id: string; name: string };
-
-export type SettingsPermissions = {
-  /** The Xero cards' saves (the API's `XERO_RIGHTS`). */
-  edit_xero: boolean;
-  view_sales_methods: boolean;
-  add_sales_method: boolean;
-  rename_sales_method: boolean;
-  remove_sales_method: boolean;
-  reorder_sales_methods: boolean;
-};
-
-export type SettingsRead = {
-  sales_methods: Record<MethodType, SalesMethod[]>;
-  available: Record<MethodType, CatalogueMethod[]>;
-  xero_connected: boolean;
-  permissions: SettingsPermissions;
-};
-
-/** Every write answers the whole read again, with the sentence to show. */
-export type SettingsAnswer = SettingsRead & { message: string };
-
-/**
- * The API's limits on a method's name: a new one leaves room for the "_sales" of its 80-character
- * value name (`ADD_NAME_MAX`), a rename may use all 80 (`RENAME_NAME_MAX`).
- */
-export const ADD_NAME_MAX = 80 - "_sales".length;
-export const RENAME_NAME_MAX = 80;
-export const NAME_EMPTY = "The method's name is still empty. Type a name to add it.";
-
-/** Flask's wording for each card (`partials/electronic_delivery_section.html`, the script's KINDS). */
-export const KIND: Record<
-  MethodType,
-  { title: string; sub: string; noun: string; pick: string; enter: string }
-> = {
-  electronic: {
-    title: "Electronic",
-    sub: "Card and wallet payments a sales report can record.",
-    noun: "payment method",
-    pick: "Select a payment method",
-    enter: "Enter payment method name",
-  },
-  delivery: {
-    title: "Delivery",
-    sub: "Delivery platforms a sales report can record.",
-    noun: "delivery method",
-    pick: "Select a delivery method",
-    enter: "Enter delivery method name",
-  },
-};
-
-/** The page, at Flask's own address for it: `/entity/<shortid>/<name>/settings/petty-cash`. */
-export function settingsHref(entityId: string, entityName: string): string {
-  return `/entity/${companyRef(entityId, entityName)}/settings/petty-cash`;
-}
-
-/** The settings page's other tabs: minty-web's Users, Entity & Integration and Modules, and the payments app's own. */
-export type SettingsTab = "users" | "integration" | "payment-request" | "modules";
-
-/**
- * Another settings tab, never a Flask page: minty-web's (`/entity/<shortid>/<name>/settings/<tab>`)
- * through Flask's `/handoff/minty-web`, or the payments app's settings through Flask's hand-off
- * that mints its token.
- */
+/** A settings tab in the hub, through the hand-off that mints its token for the company. */
 export function settingsTabUrl(entityId: string, entityName: string, tab: SettingsTab): string {
-  if (tab === "payment-request") return paymentsUrl(entityId, "settings");
   return hubUrl(`/entity/${companyRef(entityId, entityName)}/settings/${tab}`, entityId);
 }
 
-/** The catalogue picker's rows: the methods offered (`available`, never on the list), filtered. */
-export function catalogueOptions(available: CatalogueMethod[], query: string): CatalogueMethod[] {
-  const q = query.trim().toLowerCase();
-  return q ? available.filter((m) => m.name.toLowerCase().includes(q)) : available;
-}
-
-/**
- * A new or renamed method's name, checked as it is typed: longer than `max` (`ADD_NAME_MAX` or
- * `RENAME_NAME_MAX`), or already on this type's list (any case, as the API's 409) - null when
- * fine. An empty name is only "not finished", so it says nothing here; the Add that is refused for
- * it says `NAME_EMPTY`. `except` is the method being renamed, which may keep its own name.
- */
-export function methodNameProblem(
-  name: string,
-  listed: SalesMethod[],
-  max: number,
-  except?: string,
-): string | null {
-  const wanted = name.trim();
-  if (!wanted) return null;
-  if (wanted.length > max) return `That name is too long. Keep it to ${max} characters or fewer.`;
-  const folded = wanted.toLowerCase();
-  if (listed.some((m) => m.id !== except && m.name.trim().toLowerCase() === folded))
-    return `${wanted} is already on the list.`;
-  return null;
-}
-
-/** Said at once when a shared method's name is clicked, instead of a rename box the API would refuse. */
-export function sharedRenameMessage(name: string): string {
-  return `Other companies use ${name} too, so it can't be renamed here. Delete it and add a new method instead.`;
-}
-
-/** The type's ids after moving `index` one place (`step` -1 up, +1 down); null past either end. */
-export function movedIds(ids: string[], index: number, step: -1 | 1): string[] | null {
-  const to = index + step;
-  if (index < 0 || index >= ids.length || to < 0 || to >= ids.length) return null;
-  const next = ids.slice();
-  const [moved] = next.splice(index, 1);
-  next.splice(to, 0, moved);
-  return next;
-}
-
-/** Nothing on the page is this person's to change (a cashier): Flask's view-only notice. */
-export function viewOnly(p: SettingsPermissions): boolean {
-  return !(
-    p.edit_xero ||
-    p.add_sales_method ||
-    p.rename_sales_method ||
-    p.remove_sales_method ||
-    p.reorder_sales_methods
-  );
+/** Petty Cash Settings - the menu's Settings and the Setup Required gate's way to it. */
+export function settingsHref(entityId: string, entityName: string): string {
+  return settingsTabUrl(entityId, entityName, "petty-cash");
 }

@@ -256,7 +256,7 @@ function DashboardBody({
         <SetupRequiredModal
           missing={setupNeeded}
           settingsHref={settingsHref(entityId, entityName)}
-          currencyHref={settingsTabUrl(entityId, entityName, "integration")}
+          currencyHref={settingsTabUrl(entityId, entityName, "general")}
         />
       ) : null}
     </>

@@ -183,7 +183,7 @@ describe("starting a report", () => {
       startProblem(home({ currency_code: null, published: { "2026-10-12": day() } }), "2026-10-20"),
     ).toBe(NO_CURRENCY);
     expect(NO_CURRENCY).toBe(
-      "No currency is selected for this company. Choose one in Entity & Integration to start a report.",
+      "No currency is selected for this company. Choose one in Settings, under General, to start a report.",
     );
   });
 });

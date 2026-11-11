@@ -381,9 +381,9 @@ export function DepositModal({
 
 /**
  * Flask's "Setup Required" (#setupSettingsModal), exactly: it cannot be dismissed - the only way on is the settings.
- * `missing` is lib/dashboard.ts `setupMissing`; its currency line links to minty-web's Entity & Integration tab
+ * `missing` is lib/dashboard.ts `setupMissing`; its currency line links to minty-web's General tab
  * (`currencyHref`), the one place the country and currency are set (owner, 2026-11-03), and Set Up Settings to
- * Petty Cash Settings for the rest.
+ * the hub's Petty Cash Settings tab for the rest (both in the hub since 2026-11-10).
  */
 export function SetupRequiredModal({
   missing,

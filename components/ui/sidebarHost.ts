@@ -22,9 +22,6 @@ import { historyHref } from "@/lib/history";
 import { siblingUrl } from "@/lib/previewSibling";
 import { settingsHref } from "@/lib/settings";
 
-/** This app's settings page, at Flask's address for it: `/entity/<shortid>/<name>/settings/petty-cash`. */
-const SETTINGS_PAGE = /^\/entity\/[^/]+\/[^/]+\/settings\/petty-cash\/?$/;
-
 function home(): string {
   const auth = getAuth();
   return auth?.entityId ? pettyCashHome(auth.entityId, auth.entityName) : "/";
@@ -66,8 +63,8 @@ export const sidebarHost: SidebarHost = {
    */
   usePathname: () => usePathname() ?? "",
 
-  /** Settings is the one menu item that is this app's own page; the rest are minty-web's. */
-  currentOf: (pathname) => (SETTINGS_PAGE.test(pathname) ? "settings" : null),
+  /** No menu item is this app's own page: Settings is the hub's tab since 2026-11-10 (owner). */
+  currentOf: () => null,
 
   /** `body`, because this app scrolls the document, as minty-web does. */
   lockScroll: () => {

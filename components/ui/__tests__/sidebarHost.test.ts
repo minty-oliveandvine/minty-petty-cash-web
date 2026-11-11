@@ -12,11 +12,13 @@ const HOME = "/entity/360812e1/olive-and-vine/petty-cash";
 afterEach(() => _resetHandoffForTests());
 
 describe("the menu's links", () => {
-  it("keeps the dashboard, Reports and Settings in this app", () => {
+  it("keeps the dashboard and Reports in this app; Settings is the hub's Petty Cash Settings tab", () => {
     setAuth("tok", ENTITY, "Olive & Vine");
     expect(sidebarHost.links.pettyCashDashboard()).toBe(HOME);
     expect(sidebarHost.links.pettyCashReports(ENTITY)).toBe(`${HOME}/reports`);
-    expect(sidebarHost.links.settings()).toBe(
+    const settings = new URL(sidebarHost.links.settings());
+    expect(settings.origin + settings.pathname).toBe("http://localhost:8000/handoff/minty-web");
+    expect(settings.searchParams.get("next")).toBe(
       "/entity/360812e1/olive-and-vine/settings/petty-cash",
     );
   });
@@ -34,10 +36,8 @@ describe("the menu's links", () => {
     expect("profile" in sidebarHost.links).toBe(false);
   });
 
-  it("marks only its own settings page as current", () => {
-    expect(sidebarHost.currentOf("/entity/360812e1/olive-and-vine/settings/petty-cash")).toBe(
-      "settings",
-    );
+  it("marks nothing current: no menu item is this app's own page since Settings moved (2026-11-10)", () => {
+    expect(sidebarHost.currentOf("/entity/360812e1/olive-and-vine/settings/petty-cash")).toBeNull();
     expect(sidebarHost.currentOf(`${HOME}/settings`)).toBeNull();
     expect(sidebarHost.currentOf(HOME)).toBeNull();
   });

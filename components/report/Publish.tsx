@@ -228,8 +228,8 @@ function PublishingOverlay({
 
 /**
  * A refusal because Xero must be connected again (`reconnect: true`). Connecting happens on
- * minty-web's Entity & Integration, so the API's sentence comes with a full-page link there,
- * through Flask's hand-off. Flask only toasted it.
+ * minty-web's Integration tab, so the API's sentence comes with a full-page link there,
+ * through accounts-api's hand-off. Flask only toasted it.
  */
 function ReconnectModal({
   message,
@@ -275,7 +275,7 @@ function ReconnectModal({
           href={settingsTabUrl(entityId, entityName, "integration")}
           className={`${CONFIRM} text-center`}
         >
-          Reconnect Xero in Entity &amp; Integration
+          Reconnect Xero in Integration
         </a>
       </div>
     </Modal>

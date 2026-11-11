@@ -35,7 +35,12 @@ const ALLOWED: Record<string, { pattern: RegExp; why: string }[]> = {
     },
     {
       pattern: /^ACCOUNTS_API_URL\}\/entity\/\$\{id\}\/settings\/payment-request`/,
-      why: "mints the payments app's token and redirects to its settings",
+      why: "mints the hub's token and redirects to its Payment Settings tab (since 2026-11-10)",
+    },
+    {
+      pattern:
+        /^ACCOUNTS_API_URL\}\/entity\/\$\{encodeURIComponent\(ref\)\}\/\$\{encodeURIComponent\(slug\)\}\/settings\/petty-cash`;$/,
+      why: "mints the hub's token and redirects to its Petty Cash Settings tab (since 2026-11-10)",
     },
     { pattern: /^ACCOUNTS_API_URL\}\/logout`/, why: "ends the session" },
     {

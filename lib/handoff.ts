@@ -61,9 +61,18 @@ export function hubUrl(next: string, entityId?: string, origin?: string): string
 }
 
 /**
- * The payments app (minty-payment-request-web) through Flask's hand-offs that mint its token and
- * redirect: its home (`/entity/<id>/payment-request`) or its settings page
- * (`/entity/<id>/settings/payment-request`). Neither is a Flask page.
+ * Petty Cash Settings at accounts-api's company address (`/entity/<shortid>/<name>/settings/
+ * petty-cash`), whose gated hand-off (the CoA permission, Petty Cash on) opens the hub's tab - the
+ * page is minty-web's since 2026-11-10 (owner). Where this app's old address for it sends people.
+ */
+export function hubPettyCashSettingsUrl(ref: string, slug: string): string {
+  return `${env.ACCOUNTS_API_URL}/entity/${encodeURIComponent(ref)}/${encodeURIComponent(slug)}/settings/petty-cash`;
+}
+
+/**
+ * The payments app's home (`/entity/<id>/payment-request`), through accounts-api's hand-off that
+ * mints its token - or its old settings address (`/entity/<id>/settings/payment-request`), which
+ * accounts-api now sends to the hub's Payment Settings tab (2026-11-10). Neither is a Flask page.
  */
 export function paymentsUrl(entityId: string, page: "home" | "settings"): string {
   const id = encodeURIComponent(entityId);

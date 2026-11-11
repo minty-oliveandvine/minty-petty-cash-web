@@ -260,9 +260,11 @@ test("a deposit the company cannot correct offers only 'as stated'", async ({ pa
   await page.getByRole("button", { name: "Start New Report" }).click();
   const dialog = page.getByRole("dialog", { name: "Before You Start" });
   await expect(dialog).toContainText("Deposit cannot be corrected");
-  await expect(dialog.getByRole("link", { name: "Settings → Petty Cash" })).toHaveAttribute(
-    "href",
-    /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/,
+  // the hub's Petty Cash Settings tab (in minty-web since 2026-11-10)
+  await expectHubHandoff(
+    dialog.getByRole("link", { name: "Settings → Petty Cash" }),
+    `/entity/${companyRef(ENTITY, NAME)}/settings/petty-cash`,
+    ENTITY,
   );
   await expect(dialog.getByRole("radio", { name: "No, there was no deposit" })).toBeDisabled();
   await dialog.getByText("Yes, amount deposited as stated").click();
@@ -443,10 +445,11 @@ test("missing Xero settings hold the page with the way to set them up", async ({
   await expect(dialog).toContainText("Main Bank Account");
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
-  // this app's settings page, whose Xero card leads on to Flask's
-  await expect(dialog.getByRole("link", { name: "Set Up Settings" })).toHaveAttribute(
-    "href",
-    /^\/entity\/[0-9a-f]{8}\/[^/]+\/settings\/petty-cash$/,
+  // the hub's Petty Cash Settings tab (in minty-web since 2026-11-10)
+  await expectHubHandoff(
+    dialog.getByRole("link", { name: "Set Up Settings" }),
+    `/entity/${companyRef(ENTITY, NAME)}/settings/petty-cash`,
+    ENTITY,
   );
 });
 
@@ -457,10 +460,10 @@ test('a company with no currency is asked to choose one before any report, and n
   const dialog = page.getByRole("dialog", { name: "Setup Required" });
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
-  // minty-web's Entity & Integration tab, the one place the currency is set (owner, 2026-11-03)
+  // minty-web's General tab, the one place the currency is set (owner, 2026-11-03; General 2026-11-10)
   await expectHubHandoff(
     dialog.getByRole("link", { name: "Choose your company's currency" }),
-    `/entity/${companyRef(ENTITY, NAME)}/settings/integration`,
+    `/entity/${companyRef(ENTITY, NAME)}/settings/general`,
     ENTITY,
   );
   await expect(page.getByText("(No currency selected)").first()).toBeVisible();

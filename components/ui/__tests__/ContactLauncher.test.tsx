@@ -35,6 +35,8 @@ function show() {
 }
 
 beforeEach(() => {
+  // a fresh browser: the cat starts tucked (a test that brings it back stores "0")
+  localStorage.clear();
   vi.stubGlobal("fetch", fetchMock);
   fetchMock.mockImplementation((input) =>
     String(input).includes("/api/me/contact")
@@ -54,7 +56,8 @@ afterEach(() => {
 describe("the Minty cat in Petty Cash", () => {
   it("sends the chat's message to Flask with the bearer and this company, then toasts", async () => {
     show();
-    await userEvent.click(await screen.findByRole("button", { name: "Talk to Minty" }));
+    // the cat starts tucked; its tab brings it back with the pop-up open (@minty/shared v0.18)
+    await userEvent.click(await screen.findByRole("button", { name: "Bring Minty back" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Talk to Minty" }));
     const chat = within(screen.getByRole("dialog", { name: "Talk to Minty" }));
     expect(chat.getByText("Hi John! What can I help you with?")).toBeInTheDocument();
@@ -96,5 +99,6 @@ describe("the Minty cat in Petty Cash", () => {
     expect(await screen.findByText("The page")).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 30));
     expect(screen.queryByRole("button", { name: "Talk to Minty" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Bring Minty back" })).toBeNull();
   });
 });

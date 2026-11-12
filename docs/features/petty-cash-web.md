@@ -178,12 +178,12 @@ Behaviour is Flask's, minus its bugs:
 - **View Report opens the report's own view in this app** (by the day's `id` in `published`), no longer Flask's summary.
 - **"Continue to next day report" starts the day here.** The Submitted page leaves the next day for the dashboard (Flask's `autoStartNextDay`, `takeNextDay` in `lib/flash.ts`). The dashboard selects it and runs Start New Report for it, date rules and deposit check included.
 
-- **Every settings link opens the hub's Petty Cash Settings tab** (Entity Settings, Setup Required's Set Up Settings, Before You Start's "Settings → Petty Cash"; in minty-web since 2026-11-10), whose Xero account mapping card is what Setup Required's bank lines are about (its currency line goes to General), and the Xero card what the deposit check is about.
+- **Every settings link opens the hub's Petty Cash Settings tab** (Entity Settings, Setup Required's Set Up Settings, Before You Start's "Settings → Petty Cash"; in minty-web since 2026-11-10), whose Account mapping card is what Setup Required's bank lines are about (its currency line goes to General), and the Xero card what the deposit check is about.
 
 Not ported yet:
 
 - **The subscription notice.**
-- **The "Congratulations!" modal.** Flask shows it after the first Xero mapping save (its `?success=true`). This app's first save lands on the dashboard with "Xero account mapping saved." as a toast instead.
+- **The "Congratulations!" modal.** Flask shows it after the first Xero mapping save (its `?success=true`). The hub's first save stays on its Petty Cash Settings tab and says "Account mapping saved." (owner, 2026-11-11 and 2026-11-12); there is no modal.
 
 ### Report wizard, Opening: `/entity/<shortid>/<name>/petty-cash/reports/new/opening?transaction_date=`
 

@@ -402,14 +402,16 @@ export function AddExpenseCard(props: AddExpenseProps) {
             }}
             listFor={(text, how) => {
               if (how === "click" || !text.trim()) {
-                return suppliers.length > 0
-                  ? supplierOptions(
-                      searchSuppliers(suppliers, "").matches,
-                      null,
-                      pickSupplier,
-                      setNewContact,
-                    )
-                  : null;
+                // the note from the moment the list opens (owner, 2026-11-12; onboarding's wording),
+                // so it opens even before the company has a supplier
+                const all = supplierOptions(
+                  searchSuppliers(suppliers, "").matches,
+                  null,
+                  pickSupplier,
+                  setNewContact,
+                );
+                const list = canCreateSupplier ? [CONTACT_HINT_ROW, ...all] : all;
+                return list.length > 0 ? list : null;
               }
               const { matches, offerNew } = searchSuppliers(suppliers, text);
               const offer = canCreateSupplier ? offerNew : null;
@@ -533,6 +535,13 @@ type Option = { key: string; content: ReactNode; className: string; pick?: () =>
 
 const ITEM = "cursor-pointer px-4 py-2 hover:bg-flask-gray-100";
 
+/** A supplier list's note, shown as it opens (onboarding's "Type a contact name..."). */
+const CONTACT_HINT_ROW: Option = {
+  key: "hint",
+  className: "border-b border-flask-gray-100 px-4 py-2 text-xs text-flask-gray-500",
+  content: <div>Type a contact name to add a new contact</div>,
+};
+
 function supplierOptions(
   matches: Supplier[],
   offerNew: string | null,
@@ -566,7 +575,7 @@ function noSupplierOptions(offerNew: string | null, offer: (name: string) => voi
     {
       key: "none",
       className: `px-4 py-2 text-flask-gray-600 ${offerNew ? "border-b border-flask-gray-100" : ""}`,
-      content: <div className="text-sm">No Xero contact found</div>,
+      content: <div className="text-sm">No contact found</div>,
     },
   ];
   if (offerNew) {

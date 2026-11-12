@@ -453,7 +453,7 @@ test("suppliers are searched A to Z, and a new one is created and chosen", async
   await expect(page.getByRole("listbox")).toHaveCount(0);
 
   await supplier.fill("Kee Wah");
-  await expect(page.getByText("No Xero contact found")).toBeVisible();
+  await expect(page.getByText("No contact found")).toBeVisible();
   await page.getByRole("option", { name: "+ Add 'Kee Wah' as a new contact" }).click();
   const newContact = page.getByRole("textbox", { name: /New Contact/ });
   await expect(newContact).toHaveValue("Kee Wah");

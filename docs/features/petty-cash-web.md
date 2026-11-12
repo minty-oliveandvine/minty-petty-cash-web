@@ -241,7 +241,7 @@ What it keeps from Flask:
 - **The add card, inline below the list:**
   - "Receipt/Document": the dashed box to click or drop on. A picture shows itself (borderless, 256 x 192). A PDF turns the box green with `"<name>" Uploaded` and "Click to change files". The corner button opens the picked file full screen.
   - "Expense Amount" (`@minty/shared/amountInput`), and "Description".
-  - "Suppliers": A to Z, any part of the name in any case, "+ Add '<text>' as a new contact" and "No Xero contact found", with ↑/↓/Enter/Escape. The "New Contact" panel (Cancel / Create, "Creating Contact...") adds the supplier to the list and chooses it.
+  - "Suppliers": A to Z, any part of the name in any case, "Type a contact name to add a new contact" on top as the list opens (only for someone who may add; owner, 2026-11-12), "+ Add '<text>' as a new contact" and "No contact found", with ↑/↓/Enter/Escape. The "New Contact" panel (Cancel / Create, "Creating Contact...") adds the supplier to the list and chooses it.
   - "Account Code": the name with its code under it, filtered by name or code ("477" finds Wages and Salaries; Flask matched the name only - owner, 2026-10-27).
   - Cancel / Add. Add refuses an amount of 0, a supplier or account not chosen from its list, or no receipt, with red borders and "Please fill out the Required Fields".
   - Flask's file sentences: "I can take PDF, JPEG, or PNG files.", "Files need to be under 10MB." and, on a drop, "Only one file is allowed per expense." A drop names the file, as Flask's does.

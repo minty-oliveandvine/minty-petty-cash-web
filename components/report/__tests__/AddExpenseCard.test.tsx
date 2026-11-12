@@ -322,3 +322,34 @@ describe("the receipt reader in Add New Expense", () => {
     expect(within(supplier().parentElement!).queryByText("*")).toBeNull();
   });
 });
+
+describe("the supplier picker tells the person they can type to add (owner, 2026-11-12)", () => {
+  const NOTE = "Type a contact name to add a new contact";
+
+  it("shows the note as soon as the list opens; typing a new name brings the add row instead", async () => {
+    api();
+    show();
+    await userEvent.click(supplier());
+    expect(screen.getByText(NOTE)).toBeInTheDocument();
+    await userEvent.type(supplier(), "Kee Wah");
+    expect(screen.queryByText(NOTE)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "+ Add 'Kee Wah' as a new contact" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No contact found")).toBeInTheDocument();
+  });
+
+  it("opens with the note even before the company has any supplier", async () => {
+    api();
+    show({ suppliers: [] });
+    await userEvent.click(supplier());
+    expect(screen.getByText(NOTE)).toBeInTheDocument();
+  });
+
+  it("someone who may not add a supplier sees no note", async () => {
+    api();
+    show({ canCreateSupplier: false });
+    await userEvent.click(supplier());
+    expect(screen.queryByText(NOTE)).not.toBeInTheDocument();
+  });
+});

@@ -43,7 +43,7 @@ import { formatMoney } from "@/lib/money";
 import { datePill } from "@/lib/opening";
 import { changed } from "@/lib/sales";
 import { useAuth } from "@/lib/useAuth";
-import { stepHref, type WizardStep } from "@/lib/wizardPages";
+import { stepHref, WIZARD_BACK_SKIP, type WizardStep } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const UNSAVED = "You have unsaved changes. Please save your changes first.";
@@ -332,6 +332,7 @@ function CashCountForm({
       datePill={datePill(day)}
       badge={<ReportBadge draft={page.draft} />}
       backHref={home}
+      backSkip={WIZARD_BACK_SKIP}
       stepper={
         <Stepper
           draft={progress}
@@ -518,7 +519,7 @@ function CashCountForm({
 }
 
 /** Flask's #discrepancyAlert: red "Cash Shortage" or green "Cash Surplus", and what to do. */
-function DiscrepancyAlert({
+export function DiscrepancyAlert({
   kind,
   amount,
   code,

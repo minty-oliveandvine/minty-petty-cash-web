@@ -25,7 +25,7 @@ import {
   type SalesPage,
 } from "@/lib/sales";
 import { useAuth } from "@/lib/useAuth";
-import { stepHref } from "@/lib/wizardPages";
+import { stepHref, WIZARD_BACK_SKIP } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const UNSAVED = "You have unsaved changes. Please save your changes first.";
@@ -190,6 +190,7 @@ function SalesForm({
       datePill={datePill(day)}
       badge={<ReportBadge draft={page.draft} />}
       backHref={home}
+      backSkip={WIZARD_BACK_SKIP}
       stepper={
         <Stepper
           draft={progress}
@@ -286,7 +287,7 @@ function SalesForm({
 }
 
 /** A section of the card: its icon and heading (Electronic Payments' heading has no `sm:text-xl` in Flask). */
-function Section({
+export function Section({
   icon,
   title,
   smallTitle,
@@ -312,7 +313,7 @@ function Section({
   );
 }
 
-function Total({ label, amount }: { label: string; amount: string }) {
+export function Total({ label, amount }: { label: string; amount: string }) {
   return (
     <div className="flex items-center justify-between rounded-flask-2xl bg-flask-teal-soft/50 p-3 py-2">
       <span className="text-sm font-medium text-flask-teal-pill">{label}</span>
@@ -385,7 +386,7 @@ function MoneyInput({
   );
 }
 
-function CardIcon() {
+export function CardIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -404,7 +405,7 @@ function CardIcon() {
   );
 }
 
-function TruckIcon() {
+export function TruckIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -420,7 +421,7 @@ function TruckIcon() {
   );
 }
 
-function CashIcon() {
+export function CashIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

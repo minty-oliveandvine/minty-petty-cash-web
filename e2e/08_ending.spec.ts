@@ -280,7 +280,7 @@ test("Flask's page: the draft callout, the four cards, the figures and the short
 
   await expect(page.getByText("Cash Shortage: HKD 11.00")).toBeVisible();
   await expect(page.getByText("Paid a courier")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back", exact: true })).toBeVisible();
   await expect(finish(page)).toHaveText("Finish Daily Report");
   await expectNoHorizontalScroll(page);
 });
@@ -581,7 +581,7 @@ test("Back goes to Cash Count, and Cash Count's Save & Next comes back here, all
   });
   await enter(page);
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Back" }).click();
+  await page.getByRole("button", { name: "Back", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Cash Count", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Save & Next" }).click();
   await expect(page).toHaveURL(new RegExp(`${BASE}/reports/new/ending\\?transaction_date=${DAY}$`));

@@ -89,7 +89,8 @@ function pettyCashTail(rest: string[]): string | null {
   }
   if (NOT_AN_ID.has(c)) return null;
   if (d === "summary" || d === "submitted") return `/petty-cash/reports/${c}/${d}`;
-  if (STEPS.has(d)) return `/petty-cash/reports/${c}/summary`;
+  // a submitted report's step: its read-only view; Ending is the summary
+  if (STEPS.has(d)) return `/petty-cash/reports/${c}/${d === "ending" ? "summary" : d}`;
   return null;
 }
 

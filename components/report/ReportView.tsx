@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { goBack } from "@minty/shared/backLink";
+
 import { PhoneCard } from "@/components/flask/PhoneCard";
+import { Stepper } from "@/components/flask/Stepper";
 import { useToast } from "@/components/flask/Toasts";
 import {
   DeleteReportModal,
@@ -23,7 +26,8 @@ import { ReportSummary } from "@/components/report/ReportSummary";
 import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashFetch } from "@/lib/apiClient";
 import { getAuth } from "@/lib/auth";
-import { pettyCashHome } from "@/lib/companyPages";
+import { pettyCashHome, REPORT_STEP_VIEW_SKIP, reportStepHref } from "@/lib/companyPages";
+import { ALL_DONE } from "@/lib/dashboard";
 import { setFlash } from "@/lib/flash";
 import { historyHref } from "@/lib/history";
 import { datePill } from "@/lib/opening";
@@ -51,7 +55,9 @@ const ICON_GROW = "transition-transform duration-300 group-hover:scale-[1.2]";
  * - Delete: Flask's modal (warning first that the report is in Xero, the owner's rule of 2026-10-15),
  *   `DELETE /reports/<id>`, then the dashboard with "That report's deleted.".
  * - Share: `POST /reports/<id>/share-link` into Flask's Share Report modal.
- * - Close: report history, as Flask's did.
+ * - Close and the header's Back: back to the page the person came from - the report list with its
+ *   dates and page, the dashboard (`@minty/shared/backLink`); with nothing before it in this app,
+ *   report history (Close, as Flask's did) or the dashboard (Back).
  *
  * - Edit Details (`permissions.edit_details`): Flask's constrained report_edit mode, in place on
  *   this page (ReportEdits.tsx) - the difference reason in its box, "Addition to Cash Drawer"'s
@@ -213,6 +219,15 @@ function ReportViewBody({
         />
       }
       backHref={home}
+      backSkip={REPORT_STEP_VIEW_SKIP}
+      stepper={
+        // every step done, each opening its read-only view; Ending is this page
+        <Stepper
+          draft={ALL_DONE}
+          page="ending"
+          stepHref={(step) => reportStepHref(entityId, entityName, report.report_id, step)}
+        />
+      }
       overlays={overlays}
     >
       <ReportSummary
@@ -342,7 +357,7 @@ function ReportViewBody({
       {!details ? (
         <button
           type="button"
-          onClick={() => router.push(historyHref(entityId, entityName))}
+          onClick={() => goBack(historyHref(entityId, entityName), { skip: REPORT_STEP_VIEW_SKIP })}
           className={`${ACTION} bg-flask-teal hover:bg-flask-teal/80`}
         >
           <svg

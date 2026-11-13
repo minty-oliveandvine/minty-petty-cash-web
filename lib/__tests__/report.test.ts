@@ -8,6 +8,7 @@ import {
   lineChanges,
   publishLabel,
   descriptionProblem,
+  stepViewFigures,
   submittedHeading,
   summarySales,
   type DailyReport,
@@ -149,5 +150,37 @@ describe("editing a submitted report's details (Flask's Edit Details)", () => {
     expect(editReceiptProblem(file("image/jpeg", 10 * 1024 * 1024 + 1))).toBe(
       "Files need to be under 10MB.",
     );
+  });
+});
+
+describe("a submitted report's read-only steps", () => {
+  const cash: DailyReport["cash"] = {
+    opening_balance: 100,
+    cash_addition: 20.1,
+    cash_addition_type: "company",
+    cash_sales: 50.2,
+    expenses: 15.3,
+    bank_deposit: 100,
+    expected: 55,
+    counted: 25.1,
+    safe_box: 30,
+    difference: { amount: 0.1, kind: "over", reason: "Found a coin" },
+    opening_safe_box: 30.4,
+    denominations: [],
+  };
+
+  it("works out what each step showed, to the cent", () => {
+    expect(stepViewFigures(cash)).toEqual({
+      openingTill: 69.6,
+      openingCash: 120.1,
+      cashOnHand: 155,
+      totalCount: 55.1,
+    });
+  });
+
+  it("a day that opened below zero keeps its sign", () => {
+    expect(
+      stepViewFigures({ ...cash, opening_balance: -10, opening_safe_box: 0 }).openingTill,
+    ).toBe(-10);
   });
 });

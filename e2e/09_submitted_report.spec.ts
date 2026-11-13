@@ -480,7 +480,7 @@ for (const [badge, over] of [
   });
 }
 
-test("View: an older report shows only what the person may do - Share and Close (to report history)", async ({
+test("View: an older report shows only what the person may do - Share and Close (to report history when nothing came before)", async ({
   page,
 }) => {
   await openView(page, {
@@ -512,6 +512,84 @@ test("View: an older report shows only what the person may do - Share and Close 
   await page.getByRole("button", { name: "Close" }).click();
   await expect(page).toHaveURL(new RegExp(`${BASE}/reports$`));
   await expect(page.getByRole("heading", { name: "Report Results" })).toBeVisible();
+});
+
+/** The report list, on page 2 of a date range, with the 13th on it: where a View can come from. */
+const LIST_API = /\/api\/petty-cash\/v1\/companies\/[^/]+\/reports(\?.*)?$/;
+const FILTERED_LIST = `${BASE}/reports?start_date=2026-10-01&end_date=2026-10-13&page=2`;
+const listWithTheReport = {
+  reports: [
+    {
+      id: REPORT,
+      transaction_date: DAY,
+      status: "submitted",
+      status_label: "Submitted",
+      status_tone: "info",
+      current_section: null,
+      total_sales: 1234.5,
+      total_expenses: 128.5,
+      submitted_by: "Tess",
+      published_by: null,
+      submitted_at: "2026-10-13T12:05:00+00:00",
+      published_at: null,
+      created_at: "2026-10-13T01:30:00+00:00",
+      was_published: false,
+      publish_reasons: [],
+      permissions: { edit: false, delete: false },
+    },
+  ],
+  page: 2,
+  per_page: 10,
+  total_pages: 2,
+  total_count: 11,
+  latest_report_id: null,
+  currency_code: "HKD",
+  can_publish: true,
+};
+const atAddress = (address: string) => (url: URL) => url.pathname + url.search === address;
+
+test("View: Back and Close return to the report list it was opened from, its dates and page kept", async ({
+  page,
+}) => {
+  await stub(page);
+  await page.route(LIST_API, (route) => route.fulfill({ json: listWithTheReport }));
+  await enter(page, FILTERED_LIST);
+  const view = page.getByRole("link", { name: "View the 13 OCT 2026 report" });
+  const summary = page.getByRole("heading", { name: "Summary", exact: true });
+  const results = page.getByRole("heading", { name: "Report Results" });
+
+  await view.click();
+  await expect(summary).toBeVisible();
+  await page.getByRole("link", { name: "Back" }).click();
+  await expect(page).toHaveURL(atAddress(FILTERED_LIST));
+  await expect(results).toBeVisible();
+
+  await view.click();
+  await expect(summary).toBeVisible();
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(page).toHaveURL(atAddress(FILTERED_LIST));
+  await expect(results).toBeVisible();
+});
+
+test("View: opened from the dashboard, Back returns to the dashboard", async ({ page }) => {
+  await stub(page);
+  await enter(page, BASE);
+  await expect(page).toHaveURL(new RegExp(`${BASE}$`));
+  await page.goto(SUMMARY); // the dashboard's View Report is a full page load
+  await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Back" }).click();
+  await expect(page).toHaveURL(new RegExp(`${BASE}$`));
+});
+
+test("View: with nothing before it in this app (a link, a new tab), Back goes to the dashboard", async ({
+  page,
+}) => {
+  await openView(page);
+  const back = page.getByRole("link", { name: "Back" });
+  // a real link to the fallback: what a middle-click or a new tab opens
+  await expect(back).toHaveAttribute("href", BASE);
+  await back.click();
+  await expect(page).toHaveURL(new RegExp(`${BASE}$`));
 });
 
 test("View: Edit Report reopens the day and opens its Opening step, in this app", async ({

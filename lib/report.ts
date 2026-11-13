@@ -4,7 +4,7 @@
  * `report/submitted.html` and `report/ending.html` choose by the report's state.
  */
 
-import { reasonProblem, type DifferenceKind } from "@/lib/cash";
+import { cents, reasonProblem, type Denomination, type DifferenceKind } from "@/lib/cash";
 import type { ClosePage, SummarySales } from "@/lib/ending";
 import { receiptProblem, type Account, type ExpenseLine, type Supplier } from "@/lib/expenses";
 import type { SalesMethod } from "@/lib/sales";
@@ -55,6 +55,10 @@ export type DailyReport = {
     counted: number;
     safe_box: number;
     difference: { amount: number; kind: DifferenceKind; reason: string };
+    /** The safebox the day opened with (the report before's; 0 with none) - the Opening view's split. */
+    opening_safe_box: number;
+    /** The Cash Count step's rows with the report's counts - the Cash Count view's calculator. */
+    denominations: Denomination[];
   };
   closing_balance: number;
   /**
@@ -112,6 +116,26 @@ export function summarySales(sales: DailyReport["sales"]): SummarySales {
     cash: sales.cash,
     total: sales.total,
     groups: sales.groups ?? "electronic_delivery",
+  };
+}
+
+/**
+ * The figures a submitted report's read-only steps show that the read does not name, worked out as
+ * each wizard step works them out: Opening's split of the starting balance (till and safebox) and
+ * its Opening Cash Balance, Deposit's Current Balance (the cash on hand before the deposit) and
+ * Cash Count's Total Cash Count (till and safebox).
+ */
+export function stepViewFigures(cash: DailyReport["cash"]): {
+  openingTill: number;
+  openingCash: number;
+  cashOnHand: number;
+  totalCount: number;
+} {
+  return {
+    openingTill: cents(cash.opening_balance - cash.opening_safe_box),
+    openingCash: cents(cash.opening_balance + cash.cash_addition),
+    cashOnHand: cents(cash.opening_balance + cash.cash_addition + cash.cash_sales - cash.expenses),
+    totalCount: cents(cash.counted + cash.safe_box),
   };
 }
 

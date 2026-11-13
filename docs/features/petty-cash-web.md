@@ -189,6 +189,8 @@ Not ported yet:
 
 This is Flask's `report/opening.html`, at Flask's own address for it. It is built from `components/report/OpeningStep.tsx` and `ReportChrome.tsx` (the report header badge and the "Saving..." overlay), and reads and saves through `GET`/`PUT /reports/opening`.
 
+**Every step's header chevron** (all six, 2026-11-13) goes back to where the wizard was entered - the dashboard, or the report list with its dates and page - past the wizard's own steps and a report's own pages (`WIZARD_BACK_SKIP` in `lib/wizardPages.ts`, `@minty/shared/backLink`); with nothing in this app before it, the dashboard. Flask's chevron always went to the dashboard. Ending's "Back" button is the step before (Cash Count), unchanged.
+
 What it keeps from Flask:
 
 - **The report header:** the "14 OCT" date pill, the initials and the Draft badge.
@@ -380,7 +382,7 @@ This is the submitted-report mode of Flask's ORIGINAL `report/ending.html` (Mint
 
 What it keeps from Flask:
 
-- **The report header:** the date pill, the initials and the Submitted / Published badge. The chevron goes to the dashboard.
+- **The report header:** the date pill, the initials and the Submitted / Published badge. The chevron goes back to the page the person came from (see "Back" below).
 - **The summary**, as on Ending: "Summary" with the currency, Total Sales (against yesterday, the three totals, Show more for each method), Sales History (30 days, the day in red), Total Expenses (the donut and every account), Cash Balance (the till and the safebox), and the shortage or surplus box with its reason. No "Draft report" callout.
 - **Share**, then **Delete Report** (red), **Edit Report** (olive) and **Close** (teal). Each shows only when the API's `permissions` allow it (`share`, `delete`, `edit`; Close always), so an older report shows Share and Close, as Flask's did.
 - **Edit Report:** `POST /reports/<id>/reopen`, with Flask's toasts ("Converting report to draft...", "Back to draft — opening it for you now."), then this app's Opening step for the day. For a report that has been to Xero, Flask's confirm comes first.
@@ -397,17 +399,39 @@ What it keeps from Flask:
 Where the app differs:
 
 - **Every refusal keeps the page and says the API's sentence** (400 not the latest, 403, 404, 409 while publishing or a draft). Flask's delete went to the dashboard as if it had worked ("Failed, Redirecting to Dashboard...").
-- **Close goes to report history**, as Flask's did.
+- **Back (the chevron) and Close return to the page the person came from** (2026-11-13; `@minty/shared/backLink` v0.20, `PhoneCard`'s `backHref` is the fallback): the report list with its dates and page, or the dashboard. With nothing in this app before the page (a link, a new tab, a hand-off), the chevron goes to the dashboard and Close to report history, as Flask's did. Flask's chevron always went to the dashboard.
 - **A draft opens its Ending step:** a draft's summary is the wizard's.
-- **No stepper.** Flask drew the six steps, all done, each leading to that step's read-only view of the submitted report. Those views are not ported (the steps here open only a draft); Edit Report is the way back into the wizard.
+- **The stepper** (owner, 2026-11-13; it was left out until then): Flask's six pills, all done, Ending current - each step opens its read-only view (below), Ending is this page. Edit Report stays the way back into the wizard. Back and Close step over the read-only views (`REPORT_STEP_VIEW_SKIP`, `lib/companyPages.ts`), so a walk through the steps never lengthens the way out.
 - **Edit Details, where it differs from Flask:**
-  - It is on the report's own view. Flask's mode lived on the step pages (Opening, Expenses, Cash Count, reached through the stepper with `?report_edit=true`), and only older reports offered it.
+  - It is on the report's own view. Flask's mode lived on the step pages (Opening, Expenses, Cash Count, reached through the stepper with `?report_edit=true`), and only older reports offered it. The read-only step views here never edit.
   - "Done editing" stays on the page; Flask's went to report history.
   - The withdrawal shows only when there was an addition; Flask's Opening always drew the radios.
   - Save changes with nothing changed says "Nothing has changed yet. Change a detail to save it." and sends nothing; Flask sent every field each time.
   - The selects offer no empty choice: the API cannot clear a supplier or an account. A line's own supplier or account stays in its list even when it is no longer among the options.
   - There is no Xero warning before editing, as in Flask (its warning was on Edit Report only).
 - **Known, shared with every report page:** at 360px the header's centred group (date, initials, badge) runs about 6px under the person's initials with a four-letter company acronym and the longer Submitted / Published badge. Flask's header has the same geometry; `PhoneCard` needs a narrower centre to fix it.
+
+### A submitted report's steps, read-only: `/entity/<shortid>/<name>/petty-cash/reports/<report id>/<opening|sale|expense|deposit|cash-count>`
+
+The submitted-report mode of Flask's ORIGINAL step templates (Minty `1c25b35^1`), at Flask's id addresses for them, reached from the stepper on a report's view. Built from `app/.../reports/[reportId]/[step]/page.tsx` (any other segment is a 404) and `components/report/view/ReportStepView.tsx`, with the figures the read does not name in `lib/report.ts` (`stepViewFigures`). It reads only `GET /reports/<id>` - the view's own read, which carries `cash.opening_safe_box` and `cash.denominations` for these pages (minty-petty-cash-api, 2026-11-13) - so nothing here can change the report. The wizard's reads open only a draft, which is why the steps are not reused as they are.
+
+What it keeps from Flask:
+
+- **The report header and the stepper**, every step done and the one shown current; each pill opens its view, Ending the report's view.
+- **Each step's card, every field locked** (grey, read-only) and no Save & Next / Save & Exit:
+  - **Opening:** the illustration, Starting Cash Balance split into Cash Till Balance and Safebox (the safebox the day opened with), Addition to Cash Drawer, Withdrawal from (Company Bank / Personal, disabled; Personal when none was saved, as Flask checked it) and Opening Cash Balance.
+  - **Sales Entry:** each method (a switched-off method that holds an amount still shows), Cash Sales and the three totals; a Non-cash company's one Non-cash section.
+  - **Expenses:** the lines with no bin and no Add New Expense, Total Expense; a line opens Expense Details (its receipt full screen), as on the step.
+  - **Deposit to Bank:** Current Balance (the cash on hand before the deposit: opening + addition + cash sales - expenses) and the Deposit Amount.
+  - **Cash Count:** Expected Cash Count Balance, Cash Box Balance, Safebox, Total Cash Count, the shortage or surplus box and its reason. The calculator button opens the counts, read-only (each denomination of the company's catalogue today with the report's count, its row's total, Total Cash Till Balance) and Close.
+- **Close** in place of Save & Next.
+
+Where the app differs:
+
+- **Back goes to the report's view** the stepper came from, stepping over the other step views; with nothing before it in this app, the report's view.
+- **Close closes the report** (the owner, 2026-11-13: never back to Ending): past its step views, its view and its Submitted page to where the report was opened from - the report list with its dates and page, or the dashboard; with nothing before it in this app, report history, as the view's Close. Flask's Close went to the dashboard.
+- **A draft opens that step of the wizard** for its day, as the report's view opens Ending.
+- **Edit mode is not here:** Flask's `report_edit` on these pages is Edit Details on the report's view.
 
 ### The public share page: `/share/<initials>/<date>/<secret>`
 
@@ -441,7 +465,7 @@ This is Flask's ORIGINAL `report_history/report_history.html` (Minty `1c25b35^1`
 
 What it keeps from Flask:
 
-- **The header:** the chevron (to the dashboard), the company's initials, the person's initials and the ≡.
+- **The header:** the chevron (back to the page the person came from; the dashboard with nothing before it), the company's initials, the person's initials and the ≡.
 - **The date filter**, fixed under the header: Start Date and End Date ("DD/MMM/YYYY", read-only) open Flask's range calendar - one month on a phone, two side by side from 640px across both fields; a click picks the start, the next the end (in order), the next starts again; one day picked is that day at both ends; the range in teal, the days between in pale teal, today ringed. Its footer: **Clear** (back to every report) and **Search Report** ("Please choose or enter a valid date range" / "Start date cannot be after end date"). Enter in a field searches too. A page with dates says Flask's "Filter applied".
 - **CSV**: `GET /reports/export.csv?start_date=&end_date=` with the bearer (`pettyCashDownload` in `lib/apiClient.ts`, `csvQuery` in `lib/history.ts`), for the dates in the fields; greyed until both are chosen, the start on or before the end (Flask's gate). "Exporting..." while it runs, then the file is saved under the name its `Content-Disposition` gives (a blob on a temporary `<a download>`) and "Your CSV export is on its way!"; a refusal (422 `{error}`) shows its sentence as a toast and saves nothing. Cross-origin, the browser shows `Content-Disposition` only when the API lists it in `Access-Control-Expose-Headers`; without it the file falls back to the API's own pattern, `reports_<start>_to_<end>.csv` (`csvFileName`).
 - **"Report Results":** a card per day, newest first - the date and the weekday in its circle (yellow on a weekend), Sales (green) and Expenses (red) as Flask's `amount()` writes them ("-" for nothing, smaller as the figure grows; with no currency the figure alone sets the size and "(No currency selected)" wraps under it), the badge (Published, Publish failed, Draft, Submitted - a publish under way reads Submitted, as the original drew it), the time in Hong Kong by Flask's rule (when it went to Xero; else when it was submitted; for a draft, when the day was started, which is also the fallback when either time is missing - the API's `created_at`), then who (`historyPeople`, 2026-11-13): "Submitted by <first name>", plus "Published by <first name>" on a report in Xero when the API names the publisher; a draft keeps "by <first name>" (who started it).

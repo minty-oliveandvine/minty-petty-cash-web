@@ -2,10 +2,27 @@
 
 import { useRef, type ReactNode } from "react";
 
+import { BackLink } from "@minty/shared/backLink";
 import { useViewer } from "@minty/shared/viewer";
 
 import { useMounted, useSidebar } from "@/components/ui/Sidebar";
 import { sidebarHost } from "@/components/ui/sidebarHost";
+
+/** The header's back chevron, Flask's. */
+function Chevron() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-6 w-6"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 19l-7-7 7-7" />
+    </svg>
+  );
+}
 
 /**
  * Flask's two header buttons, drawn as Flask draws them (28px initials on #FFE6B1, the 40px ≡ in
@@ -104,6 +121,7 @@ export function PhoneCard({
   toolbar,
   flush = false,
   backHref,
+  backSkip,
   publicView = false,
 }: {
   acronym: string;
@@ -118,8 +136,14 @@ export function PhoneCard({
   toolbar?: ReactNode;
   /** The content pads itself: only Flask's room at the bottom (`pb-40`). */
   flush?: boolean;
-  /** Where the chevron goes; the company list by default (the dashboard's). */
+  /**
+   * Where the chevron goes when nothing in this app came before the page (a link, a new tab): it
+   * goes back to the page the person came from (`@minty/shared/backLink`). Without it, the
+   * company list, always (the dashboard's).
+   */
   backHref?: string;
+  /** Pages the chevron's Back steps over (the wizard's own steps - `WIZARD_BACK_SKIP`). */
+  backSkip?: RegExp[];
   /** A shared report: no chevron, no person's initials, no menu. */
   publicView?: boolean;
 }) {
@@ -141,27 +165,24 @@ export function PhoneCard({
                   : "flex min-w-0 flex-1 justify-start"
               }
             >
-              <a
-                href={backHref ?? (mounted ? sidebarHost.links.entities() : undefined)}
-                className="text-flask-header transition-colors"
-                aria-label={backHref ? "Back" : "Back to your companies"}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
+              {backHref ? (
+                <BackLink
+                  href={backHref}
+                  skip={backSkip}
+                  className="text-flask-header transition-colors"
+                  ariaLabel="Back"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.5"
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </a>
+                  <Chevron />
+                </BackLink>
+              ) : (
+                <a
+                  href={mounted ? sidebarHost.links.entities() : undefined}
+                  className="text-flask-header transition-colors"
+                  aria-label="Back to your companies"
+                >
+                  <Chevron />
+                </a>
+              )}
             </div>
           )}
           {publicView ? (

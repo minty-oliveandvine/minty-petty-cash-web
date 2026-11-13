@@ -221,6 +221,12 @@ export type StepState = "current" | "completed" | "next" | "locked";
 /** A report's progress, as a draft carries it (a new report: no section, nothing completed). */
 export type Progress = { current_section: string | null; completed_sections: string[] };
 
+/** A submitted report's progress: every step done, so its stepper opens all six. */
+export const ALL_DONE: Progress = {
+  current_section: null,
+  completed_sections: STEPS.map((s) => s.key),
+};
+
 /**
  * Each step's state and whether it opens - Flask's `stepper.html`. On the dashboard the current
  * step is the draft's own; on a wizard page it is that page (`page`), while what opens still

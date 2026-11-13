@@ -19,6 +19,16 @@ export const WIZARD_STEP_PATH = {
 export type WizardStep = keyof typeof WIZARD_STEP_PATH;
 
 /**
+ * What a step's Back steps over (`@minty/shared/backLink`'s `skip`), so it returns to where the
+ * wizard was entered - the dashboard, the report list - never the step before: the wizard's own
+ * steps, and a report's own pages (its view, its read-only steps, Submitted), which send a
+ * reopened (draft) report straight back into the wizard.
+ */
+export const WIZARD_BACK_SKIP = [
+  /\/petty-cash\/reports\/(new\/[^/]+|[^/]+\/(summary|submitted|opening|sale|expense|deposit|cash-count))$/,
+];
+
+/**
  * The step a draft is on, from the API's `current_section`: that step when it is one of the six,
  * else Opening (a draft with no section yet, or one the app does not know).
  */

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { companyRefFromPath, pettyCashHome, reportHref } from "@/lib/companyPages";
+import {
+  companyRefFromPath,
+  isReportStepView,
+  pettyCashHome,
+  reportHref,
+  reportStepHref,
+} from "@/lib/companyPages";
 
 describe("companyRefFromPath", () => {
   it.each([
@@ -38,4 +44,31 @@ describe("reportHref", () => {
       "/entity/360812e1/olive-and-vine/petty-cash/reports/r%2F1/submitted",
     );
   });
+});
+
+describe("reportStepHref", () => {
+  const id = "360812e1-9f94-46a3-aa31-347e21afde8e";
+  const base = "/entity/360812e1/olive-and-vine/petty-cash/reports/r1";
+
+  it.each([
+    ["opening", "opening"],
+    ["sales", "sale"],
+    ["expenses", "expense"],
+    ["deposit", "deposit"],
+    ["cash_count", "cash-count"],
+  ] as const)("leads %s to its read-only view at /%s", (step, segment) => {
+    expect(reportStepHref(id, "Olive & Vine", "r1", step)).toBe(`${base}/${segment}`);
+    expect(isReportStepView(segment)).toBe(true);
+  });
+
+  it("leads Ending back to the summary", () => {
+    expect(reportStepHref(id, "Olive & Vine", "r1", "ending")).toBe(`${base}/summary`);
+  });
+
+  it.each(["ending", "summary", "sales", "cash_count", "toString", ""])(
+    "knows %s is no step view",
+    (segment) => {
+      expect(isReportStepView(segment)).toBe(false);
+    },
+  );
 });

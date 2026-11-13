@@ -27,7 +27,7 @@ import {
 import { formatMoney } from "@/lib/money";
 import { datePill } from "@/lib/opening";
 import { useAuth } from "@/lib/useAuth";
-import { stepHref } from "@/lib/wizardPages";
+import { stepHref, WIZARD_BACK_SKIP } from "@/lib/wizardPages";
 
 const UNREACHABLE = "We couldn't reach Petty Cash. Check your connection, then reload the page.";
 const UNSAVED = "You have an unsaved expense. Please save before navigating.";
@@ -193,6 +193,7 @@ function ExpensesForm({
       datePill={datePill(day)}
       badge={<ReportBadge draft={page.draft} />}
       backHref={home}
+      backSkip={WIZARD_BACK_SKIP}
       stepper={
         <Stepper
           draft={progress}

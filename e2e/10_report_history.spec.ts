@@ -526,6 +526,40 @@ test("Publish; Republish for one in Xero or failed; a draft's is greyed; none wi
   await expect(items.getByRole("menuitem")).toHaveText(["Edit", "Delete", "View"]);
 });
 
+test("a draft opened from the list: its step's Back returns to the list, dates kept", async ({
+  page,
+}) => {
+  const filtered = `${HISTORY}?start_date=2026-10-01&end_date=2026-10-13`;
+  await open(
+    page,
+    {
+      list: () =>
+        listAnswer({
+          reports: [
+            row({
+              id: DRAFT,
+              status: "draft",
+              status_label: "Draft",
+              status_tone: "neutral",
+              current_section: "opening",
+              submitted_at: null,
+              permissions: { edit: false, delete: false },
+            }),
+            ...ROWS,
+          ],
+        }),
+    },
+    filtered,
+  );
+  await entry(page, DRAFT)
+    .getByRole("link", { name: /^View the/ })
+    .click();
+  await expect(page.getByRole("heading", { name: "Opening" })).toBeVisible();
+  await page.getByRole("link", { name: "Back" }).click();
+  await expect(page).toHaveURL((url) => url.pathname + url.search === filtered);
+  await expect(page.getByRole("heading", { name: "Report Results" })).toBeVisible();
+});
+
 test("Edit reopens the latest report and opens its Opening step, in this app", async ({ page }) => {
   const sent = await open(page);
   await (await menu(page, LATEST)).getByRole("menuitem", { name: "Edit" }).click();

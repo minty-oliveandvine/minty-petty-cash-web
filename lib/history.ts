@@ -58,6 +58,27 @@ export const PER_PAGE = 10;
 /** The CSV export: `GET /reports/export.csv` (Minty `petty_cash_api/routes/history.py`). */
 export const CSV_EXPORT_PATH = "/reports/export.csv";
 
+/** The Petty Cash Report: `GET /reports/petty-cash-report.csv` (petty-cash-api, 2026-11-13). */
+export const PETTY_CASH_REPORT_PATH = "/reports/petty-cash-report.csv";
+
+/** The CSV button's two choices (owner, 2026-11-13), in the menu's order. */
+export type CsvKind = "movements" | "report";
+export const CSV_CHOICES: readonly { kind: CsvKind; label: string; path: string; file: string }[] =
+  [
+    {
+      kind: "movements",
+      label: "Cash Movement Report",
+      path: CSV_EXPORT_PATH,
+      file: "reports",
+    },
+    {
+      kind: "report",
+      label: "Petty Cash Report",
+      path: PETTY_CASH_REPORT_PATH,
+      file: "petty-cash-report",
+    },
+  ];
+
 /** Flask's success toast for the export, kept as it was. */
 export const CSV_EXPORTED = "Your CSV export is on its way!";
 
@@ -73,9 +94,29 @@ export function csvQuery(
   return { start_date: start, end_date: end };
 }
 
-/** The file's name when the answer names none: the API's own pattern (`reports_<start>_to_<end>.csv`). */
-export function csvFileName(start: string, end: string): string {
-  return `reports_${start}_to_${end}.csv`;
+/**
+ * The file's name when the answer names none: the API's own pattern - `reports_<start>_to_<end>.csv`
+ * for the Cash Movement Report, `petty-cash-report_<start>_to_<end>.csv` for the Petty Cash Report.
+ */
+export function csvFileName(start: string, end: string, kind: CsvKind = "movements"): string {
+  const file = CSV_CHOICES.find((c) => c.kind === kind)?.file ?? "reports";
+  return start && end ? `${file}_${start}_to_${end}.csv` : `${file}.csv`;
+}
+
+/**
+ * What a CSV choice sends, or why it is held. With both dates, that range (`csvQuery`). With none,
+ * the whole history - both files (owner, 2026-11-13: they download without a picker, as the bills
+ * do); the API names that file by its first and last day.
+ */
+export function csvRequest(
+  kind: CsvKind,
+  start: string,
+  end: string,
+): { query: Record<string, string> } | { reason: string } {
+  const range = csvQuery(start, end);
+  if (range) return { query: range };
+  if (!start && !end) return { query: {} };
+  return { reason: "Choose a start on or before the end." };
 }
 
 export function filtersFromAddress(params: { get(name: string): string | null }): HistoryFilters {

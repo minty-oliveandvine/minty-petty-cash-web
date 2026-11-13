@@ -13,13 +13,14 @@ import { entityAcronym } from "@/lib/acronym";
 import { ApiError, pettyCashDownload, pettyCashFetch } from "@/lib/apiClient";
 import { pettyCashHome, reportHref } from "@/lib/companyPages";
 import {
+  CSV_CHOICES,
   CSV_EXPORTED,
-  CSV_EXPORT_PATH,
   HISTORY_DELETED,
   csvFileName,
-  csvQuery,
+  csvRequest,
   dayParts,
   draftStep,
+  type CsvKind,
   fieldDate,
   historyAmount,
   historyBadge,
@@ -92,8 +93,11 @@ const MENU_ITEM =
  * `petty_cash_api/routes/history.py`) with the address's dates and page, ten a page.
  *
  * - The header (back to the dashboard), the Start / End Date fields over Flask's range calendar
- *   (Clear, Search Report) and the CSV export - `GET /reports/export.csv` for both dates, saved
- *   under the name the API gives; Flask's "Exporting..." and toast, a refusal's sentence as a toast.
+ *   (Clear, Search Report) and the CSV export for both dates. The button opens two choices
+ *   (owner, 2026-11-13): the Cash Movement Report (`GET /reports/export.csv`, the bank-statement
+ *   file) and the Petty Cash Report (`GET /reports/petty-cash-report.csv`, each day's report and its
+ *   expenses). Either is saved under the name the API gives; Flask's "Exporting..." and toast, a
+ *   refusal's sentence as a toast. With no dates picked either file is the whole history (`csvRequest`).
  * - "Report Results": a row per day, newest first - the date and its weekday circle, Sales and
  *   Expenses, the badge (a failed publish's reasons on hover or a tap), when and by whom, the ⋮
  *   menu (Edit, Delete, View, Publish / Republish) and the chevron (View). Then the pager.
@@ -190,6 +194,7 @@ function HistoryBody({
   );
   const [calendar, setCalendar] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [csvMenu, setCsvMenu] = useState(false);
   const [menu, setMenu] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<HistoryRow | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -204,7 +209,6 @@ function HistoryBody({
   });
   const closeCalendar = useCallback(() => setCalendar(false), []);
   const range = pickedRange(picked);
-  const csv = csvQuery(range.start, range.end);
 
   useEffect(() => {
     if (menu === null) return;
@@ -221,6 +225,22 @@ function HistoryBody({
       document.removeEventListener("keydown", onKey);
     };
   }, [menu]);
+
+  useEffect(() => {
+    if (!csvMenu) return;
+    const onDown = (e: globalThis.MouseEvent) => {
+      if (!(e.target as Element).closest?.("[data-csv-menu]")) setCsvMenu(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCsvMenu(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [csvMenu]);
 
   /** A link inside this app goes there without a reload. */
   function inApp(e: MouseEvent<HTMLAnchorElement>, href: string) {
@@ -248,13 +268,19 @@ function HistoryBody({
     if (filters.start || filters.end) router.push(historyHref(entityId, entityName));
   }
 
-  /** The API's CSV for both dates, saved under the name it gives; a refusal shows its sentence. */
-  async function exportCsv() {
-    if (!csv || exporting) return;
+  /** The chosen CSV for both dates, saved under the name the API gives; a refusal shows its sentence. */
+  async function exportCsv(kind: CsvKind) {
+    setCsvMenu(false);
+    const choice = CSV_CHOICES.find((c) => c.kind === kind);
+    const ask = csvRequest(kind, range.start, range.end);
+    if (!choice || "reason" in ask || exporting) return;
     setExporting(true);
     try {
-      const file = await pettyCashDownload(CSV_EXPORT_PATH, { query: csv });
-      saveFile(file.blob, file.filename ?? csvFileName(csv.start_date, csv.end_date));
+      const file = await pettyCashDownload(choice.path, { query: ask.query });
+      saveFile(
+        file.blob,
+        file.filename ?? csvFileName(ask.query.start_date ?? "", ask.query.end_date ?? "", kind),
+      );
       toast(CSV_EXPORTED, "success");
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 401))
@@ -330,13 +356,15 @@ function HistoryBody({
           ) : null}
         </div>
 
-        <div className="flex space-x-2">
+        <div className="relative flex space-x-2" data-csv-menu>
           <button
             type="button"
-            onClick={() => void exportCsv()}
-            // without both dates there is nothing to export
-            disabled={!csv || exporting}
-            className={`flex flex-1 items-center justify-center rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white transition-colors ${csv && !exporting ? "hover:bg-flask-teal/80" : "cursor-not-allowed opacity-50"}`}
+            onClick={() => setCsvMenu((open) => !open)}
+            // no dates is the whole history; a choice that is held says why under it
+            disabled={exporting}
+            aria-haspopup="menu"
+            aria-expanded={csvMenu}
+            className={`flex flex-1 items-center justify-center rounded-flask-xl bg-flask-teal px-4 py-3 font-medium text-flask-white transition-colors ${!exporting ? "hover:bg-flask-teal/80" : "cursor-not-allowed opacity-50"}`}
           >
             {exporting ? (
               <>
@@ -381,6 +409,37 @@ function HistoryBody({
               </>
             )}
           </button>
+          {csvMenu && !exporting ? (
+            <div
+              role="menu"
+              aria-label="Choose a CSV"
+              className="absolute left-0 right-0 top-full z-40 mt-2 rounded-flask-xl border border-flask-gray-200 bg-flask-white py-2 shadow-flask-xl"
+            >
+              {CSV_CHOICES.map((choice) => {
+                const ask = csvRequest(choice.kind, range.start, range.end);
+                const held = "reason" in ask ? ask.reason : null;
+                const reasonId = `csv-held-${choice.kind}`;
+                return (
+                  <button
+                    key={choice.kind}
+                    type="button"
+                    role="menuitem"
+                    disabled={held !== null}
+                    aria-describedby={held ? reasonId : undefined}
+                    onClick={() => void exportCsv(choice.kind)}
+                    className={`${MENU_ITEM} min-h-11 flex-col !items-start ${held ? "cursor-not-allowed opacity-60 hover:bg-transparent" : ""}`}
+                  >
+                    <span className="text-sm font-medium">{choice.label}</span>
+                    {held ? (
+                      <span id={reasonId} className="text-xs text-flask-gray-500">
+                        {held}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

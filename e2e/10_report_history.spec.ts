@@ -18,6 +18,9 @@ const PUBLISHED = "1b2c3d4e-0000-4000-8000-000000000002";
 const FAILED = "1b2c3d4e-0000-4000-8000-000000000003";
 const DRAFT = "1b2c3d4e-0000-4000-8000-000000000004";
 const CSV = /\/api\/petty-cash\/v1\/companies\/[^/]+\/reports\/export\.csv(\?.*)?$/;
+const REPORT_CSV =
+  /\/api\/petty-cash\/v1\/companies\/[^/]+\/reports\/petty-cash-report\.csv(\?.*)?$/;
+const REPORT_CSV_NAME = "petty-cash_petty-cash-report_2026-10-01_to_2026-10-13.csv";
 const CSV_NAME = "petty-cash_2026-10-01_to_2026-10-13.csv";
 
 /** The export's answer: CSV, named by its Content-Disposition, which the API exposes to the page. */
@@ -229,8 +232,11 @@ test("the header, the date filter and the list: each day, its figures, badge, ti
     "DD/MMM/YYYY",
   );
   await expect(page.getByRole("textbox", { name: "End Date" })).toHaveValue("");
-  // the CSV needs both dates
-  await expect(page.getByRole("button", { name: "CSV" })).toBeDisabled();
+  // with no dates the CSV still opens: both files are the whole history
+  await page.getByRole("button", { name: "CSV" }).click();
+  await expect(page.getByRole("menuitem", { name: "Petty Cash Report" })).toBeEnabled();
+  await expect(page.getByRole("menuitem", { name: "Cash Movement Report" })).toBeEnabled();
+  await page.keyboard.press("Escape");
 
   await expect(entries(page)).toHaveCount(3);
   const latest = entry(page, LATEST);
@@ -375,7 +381,7 @@ test("Clear empties the dates and goes back to every report; Escape closes the c
   await calendar.getByRole("button", { name: "Clear" }).click();
   await expect(page).toHaveURL(new RegExp(`${HISTORY}$`));
   await expect(page.getByRole("textbox", { name: "Start Date" })).toHaveValue("");
-  await expect(page.getByRole("button", { name: "CSV" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "CSV" })).toBeEnabled();
 });
 
 test("paging: Flask's pager, ten a page, the page and the dates in the address", async ({
@@ -706,6 +712,8 @@ test("the CSV: the API's export for both dates, saved under its name, then Flask
   await expect(csv).toBeEnabled();
   const download = page.waitForEvent("download");
   await csv.click();
+  await expect(csv).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("menuitem", { name: "Cash Movement Report" }).click();
   await expect(page.getByRole("button", { name: "Exporting..." })).toBeDisabled();
   release();
   const file = await download;
@@ -731,11 +739,79 @@ test("the CSV: a refusal shows the API's sentence and saves nothing", async ({ p
   let downloads = 0;
   page.on("download", () => (downloads += 1));
   await page.getByRole("button", { name: "CSV" }).click();
+  await page.getByRole("menuitem", { name: "Cash Movement Report" }).click();
   await expect(toast(page, sentence)).toBeVisible();
   await expect(toast(page, "Your CSV export is on its way!")).toHaveCount(0);
   expect(sent.csv).toHaveLength(1);
   expect(downloads).toBe(0);
   await expect(page.getByRole("button", { name: "CSV" })).toBeEnabled();
+});
+
+test("the CSV: two choices - the Petty Cash Report is its own file; Escape closes the menu", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  const sent = await open(page, {}, `${HISTORY}?start_date=2026-10-01&end_date=2026-10-13`);
+  const asked: string[] = [];
+  await page.route(REPORT_CSV, async (route) => {
+    asked.push(new URL(route.request().url()).search);
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": `attachment; filename=${REPORT_CSV_NAME}`,
+        "access-control-expose-headers": "Content-Disposition",
+      },
+      body: "Date,Line\n2026-10-13,Daily report\n",
+    });
+  });
+  const csv = page.getByRole("button", { name: "CSV" });
+
+  // the menu offers both, each a finger-sized row; Escape closes it with nothing asked
+  await csv.click();
+  const items = page.getByRole("menuitem");
+  await expect(items).toHaveText(["Cash Movement Report", "Petty Cash Report"]);
+  for (const box of [await items.nth(0).boundingBox(), await items.nth(1).boundingBox()])
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  expect(sent.csv).toHaveLength(0);
+
+  const download = page.waitForEvent("download");
+  await csv.click();
+  await page.getByRole("menuitem", { name: "Petty Cash Report" }).click();
+  const file = await download;
+  expect(asked).toEqual(["?start_date=2026-10-01&end_date=2026-10-13"]);
+  expect(sent.csv).toHaveLength(0); // never the movements file
+  expect(file.suggestedFilename()).toBe(REPORT_CSV_NAME);
+  await expect(toast(page, "Your CSV export is on its way!")).toBeVisible();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+});
+
+test("the CSV: with no dates the Petty Cash Report is the whole history", async ({ page }) => {
+  await open(page);
+  const asked: string[] = [];
+  await page.route(REPORT_CSV, async (route) => {
+    asked.push(new URL(route.request().url()).search);
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition":
+          "attachment; filename=petty-cash_petty-cash-report_2026-10-11_to_2026-10-13.csv",
+        "access-control-expose-headers": "Content-Disposition",
+      },
+      body: "Date,Line\n",
+    });
+  });
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "CSV" }).click();
+  await page.getByRole("menuitem", { name: "Petty Cash Report" }).click();
+  const file = await download;
+  expect(asked).toEqual([""]); // no dates sent
+  expect(file.suggestedFilename()).toBe(
+    "petty-cash_petty-cash-report_2026-10-11_to_2026-10-13.csv",
+  );
 });
 
 test("the way in: the dashboard's View History and the sidebar's Reports", async ({ page }) => {

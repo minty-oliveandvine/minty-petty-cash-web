@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CSV_CHOICES,
   csvFileName,
+  csvRequest,
   csvQuery,
   dayParts,
   draftStep,
@@ -149,6 +151,35 @@ describe("the CSV export (the API's GET /reports/export.csv)", () => {
 
   it("names the file as the API does when its answer names none", () => {
     expect(csvFileName("2026-10-01", "2026-10-13")).toBe("reports_2026-10-01_to_2026-10-13.csv");
+    expect(csvFileName("2026-10-01", "2026-10-13", "movements")).toBe(
+      "reports_2026-10-01_to_2026-10-13.csv",
+    );
+    expect(csvFileName("2026-10-01", "2026-10-13", "report")).toBe(
+      "petty-cash-report_2026-10-01_to_2026-10-13.csv",
+    );
+  });
+
+  it("names the whole history without dates when the answer names none", () => {
+    expect(csvFileName("", "", "report")).toBe("petty-cash-report.csv");
+    expect(csvFileName("", "", "movements")).toBe("reports.csv");
+  });
+
+  it("neither file needs dates: none is the whole history", () => {
+    const range = { query: { start_date: "2026-10-01", end_date: "2026-10-13" } };
+    expect(csvRequest("report", "2026-10-01", "2026-10-13")).toEqual(range);
+    expect(csvRequest("movements", "2026-10-01", "2026-10-13")).toEqual(range);
+    expect(csvRequest("report", "", "")).toEqual({ query: {} }); // the whole history
+    expect(csvRequest("movements", "", "")).toEqual({ query: {} });
+    expect(csvRequest("report", "2026-10-13", "2026-10-01")).toEqual({
+      reason: "Choose a start on or before the end.",
+    });
+  });
+
+  it("offers two files: the Cash Movement Report, then the Petty Cash Report", () => {
+    expect(CSV_CHOICES.map((c) => [c.label, c.path])).toEqual([
+      ["Cash Movement Report", "/reports/export.csv"],
+      ["Petty Cash Report", "/reports/petty-cash-report.csv"],
+    ]);
   });
 });
 

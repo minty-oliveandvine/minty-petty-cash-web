@@ -43,6 +43,7 @@ function row(over: Json = {}): Json {
     total_sales: 1234.5,
     total_expenses: 128.5,
     submitted_by: "Tess",
+    published_by: null,
     submitted_at: "2026-10-13T12:05:00+00:00",
     published_at: null,
     created_at: "2026-10-13T01:30:00+00:00",
@@ -64,6 +65,7 @@ const ROWS = [
     total_sales: 0,
     total_expenses: 40,
     published_at: "2026-10-11T16:30:00+00:00",
+    published_by: "Sam",
     was_published: true,
     permissions: { edit: false, delete: false },
   }),
@@ -202,6 +204,19 @@ const menu = async (page: Page, id: string) => {
   return entry(page, id).getByRole("menu");
 };
 
+for (const width of [360, 768, 1440]) {
+  test(`at ${width}px a published row names who submitted and who published it, inside the page`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page);
+    const published = entry(page, PUBLISHED);
+    await expect(published.getByText("Submitted by Tess")).toBeVisible();
+    await expect(published.getByText("Published by Sam")).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+}
+
 test("the header, the date filter and the list: each day, its figures, badge, time and author", async ({
   page,
 }) => {
@@ -225,7 +240,8 @@ test("the header, the date filter and the list: each day, its figures, badge, ti
   await expect(latest.getByText("HKD 128.50")).toBeVisible();
   await expect(latest.getByText("Submitted", { exact: true })).toBeVisible();
   await expect(latest.getByText("13 Oct 2026 20:05")).toBeVisible();
-  await expect(latest.getByText("by Tess")).toBeVisible();
+  await expect(latest.getByText("Submitted by Tess")).toBeVisible();
+  await expect(latest.getByText(/Published by/)).toHaveCount(0);
 
   const published = entry(page, PUBLISHED);
   await expect(published.getByText("SUN", { exact: true })).toBeVisible();
@@ -233,6 +249,8 @@ test("the header, the date filter and the list: each day, its figures, badge, ti
   await expect(published.getByText("Published", { exact: true })).toBeVisible();
   // published: the time it went to Xero, in Hong Kong
   await expect(published.getByText("12 Oct 2026 00:30")).toBeVisible();
+  await expect(published.getByText("Submitted by Tess")).toBeVisible();
+  await expect(published.getByText("Published by Sam")).toBeVisible();
 
   const failed = entry(page, FAILED);
   await expect(failed.getByText("SAT", { exact: true })).toBeVisible();

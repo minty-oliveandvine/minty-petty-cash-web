@@ -25,6 +25,7 @@ import {
   historyBadge,
   historyHref,
   historyQuery,
+  historyPeople,
   historyStamp,
   pagerItems,
   pickDay,
@@ -676,7 +677,9 @@ function HistoryEntry({
               </div>
               <div className="mt-0.5 flex flex-col text-[8px] text-flask-gray-600 min-[414px]:mt-1 min-[414px]:text-[9px] min-[640px]:text-[10px] min-[1024px]:text-sm">
                 <span>{historyStamp(row)}</span>
-                <span>by {row.submitted_by ?? ""}</span>
+                {historyPeople(row).map((line) => (
+                  <span key={line}>{line}</span>
+                ))}
               </div>
             </div>
             <div className="flex flex-col items-center space-y-2" data-row-menu>

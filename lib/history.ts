@@ -20,8 +20,10 @@ export type HistoryRow = {
   current_section: string | null;
   total_sales: number;
   total_expenses: number;
-  /** The first name of who made it, or null. */
+  /** The first name of who submitted it (a draft: who started it), or null. */
   submitted_by: string | null;
+  /** The first name of who published it last, while it is in Xero; else null. */
+  published_by: string | null;
   submitted_at: string | null;
   published_at: string | null;
   /** When the day was started (Flask's `report.date`): a draft's time, and the fallback for the others. */
@@ -166,6 +168,18 @@ export function historyStamp(row: HistoryRow): string {
   if (Number.isNaN(moment.getTime())) return "";
   const p = Object.fromEntries(HK_STAMP.formatToParts(moment).map((x) => [x.type, x.value]));
   return `${p.day} ${p.month} ${p.year} ${p.hour}:${p.minute}`;
+}
+
+/**
+ * The names under the time: "Submitted by Tess", then "Published by Sam" once it is in Xero; a
+ * draft keeps "by Tess" (who started it). A name the API does not know is left out.
+ */
+export function historyPeople(row: HistoryRow): string[] {
+  if (row.status === "draft") return row.submitted_by ? [`by ${row.submitted_by}`] : [];
+  const lines = row.submitted_by ? [`Submitted by ${row.submitted_by}`] : [];
+  if (historyBadge(row) === "Published" && row.published_by)
+    lines.push(`Published by ${row.published_by}`);
+  return lines;
 }
 
 /**

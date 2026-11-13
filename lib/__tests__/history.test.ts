@@ -10,6 +10,7 @@ import {
   historyAmount,
   historyBadge,
   historyHref,
+  historyPeople,
   historyQuery,
   historyStamp,
   pagerItems,
@@ -32,6 +33,7 @@ const row = (over: Partial<HistoryRow> = {}): HistoryRow => ({
   total_sales: 0,
   total_expenses: 0,
   submitted_by: "Tess",
+  published_by: null,
   submitted_at: "2026-10-13T12:05:00+00:00",
   published_at: null,
   created_at: "2026-10-13T01:30:00+00:00",
@@ -39,6 +41,25 @@ const row = (over: Partial<HistoryRow> = {}): HistoryRow => ({
   publish_reasons: [],
   permissions: { edit: false, delete: false },
   ...over,
+});
+
+describe("who submitted and who published a row", () => {
+  it("names the submitter, and the publisher once it is in Xero", () => {
+    expect(historyPeople(row())).toEqual(["Submitted by Tess"]);
+    expect(historyPeople(row({ status_label: "Published to Xero", published_by: "Sam" }))).toEqual([
+      "Submitted by Tess",
+      "Published by Sam",
+    ]);
+  });
+
+  it("names a draft's starter as before, and leaves out a name it does not know", () => {
+    expect(historyPeople(row({ status: "draft", status_label: "Draft" }))).toEqual(["by Tess"]);
+    expect(historyPeople(row({ submitted_by: null }))).toEqual([]);
+    // published, but no one recorded (a report loaded from the old system)
+    expect(historyPeople(row({ status_label: "Published to Xero" }))).toEqual([
+      "Submitted by Tess",
+    ]);
+  });
 });
 
 describe("the filters in the address", () => {

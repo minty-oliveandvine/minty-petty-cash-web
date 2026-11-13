@@ -44,7 +44,7 @@ const LINE = {
   id: "l1",
   item: "General Expenses",
   amount: 1200.5,
-  remarks: "Milk and <b>tea</b>",
+  description: "Milk and <b>tea</b>",
   supplier: { id: "s-well", name: "Wellcome" },
   account: { id: "a-429", code: "429", name: "General Expenses" },
   receipts: [{ id: "r1", name: "milk.png", mime_type: "image/png" }],
@@ -53,7 +53,7 @@ const BARE_LINE = {
   id: "l2",
   item: "",
   amount: 34,
-  remarks: "",
+  description: "",
   supplier: null,
   account: null,
   receipts: [],
@@ -270,7 +270,7 @@ test("Add checks the required fields, then sends the line with its receipt", asy
             id: "new",
             item: "Printing & Stationery",
             amount: 1200.5,
-            remarks: "Toner",
+            description: "Toner",
           },
           total: 2435,
         },
@@ -329,7 +329,7 @@ test("Add checks the required fields, then sends the line with its receipt", asy
   for (const [field, value] of [
     ["transaction_date", DAY],
     ["amount", "1200.5"],
-    ["remarks", "Toner"],
+    ["description", "Toner"],
     ["supplier_id", "s-well"],
     ["account_id", "a-461"],
   ]) {
@@ -738,7 +738,7 @@ test("the receipt reader: Flask's reading box, then suggestions in the empty fie
   const body = sent ?? "";
   for (const [field, value] of [
     ["amount", "48.8"],
-    ["remarks", "Taxi"],
+    ["description", "Taxi"],
     ["supplier_id", "s-well"],
     ["account_id", "a-461"],
   ])

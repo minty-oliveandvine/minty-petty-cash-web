@@ -7,7 +7,7 @@ import {
   editReceiptProblem,
   lineChanges,
   publishLabel,
-  remarksProblem,
+  descriptionProblem,
   submittedHeading,
   summarySales,
   type DailyReport,
@@ -100,9 +100,9 @@ describe("editing a submitted report's details (Flask's Edit Details)", () => {
   });
 
   it("checks a description as it is typed: at most 300 characters", () => {
-    expect(remarksProblem("")).toBeNull();
-    expect(remarksProblem("y".repeat(300))).toBeNull();
-    expect(remarksProblem("y".repeat(301))).toBe(
+    expect(descriptionProblem("")).toBeNull();
+    expect(descriptionProblem("y".repeat(300))).toBeNull();
+    expect(descriptionProblem("y".repeat(301))).toBe(
       "Keep the description to 300 characters or fewer.",
     );
   });
@@ -111,20 +111,20 @@ describe("editing a submitted report's details (Flask's Edit Details)", () => {
     id: "e1",
     item: "Food & Drink",
     amount: 78.5,
-    remarks: "Lunch",
+    description: "Lunch",
     supplier: { id: "s1", name: "Acme" },
     account: { id: "a1", code: "420", name: "Food & Drink" },
     receipts: [],
   };
-  const same = { remarks: "Lunch", supplierId: "s1", accountId: "a1", receipt: null };
+  const same = { description: "Lunch", supplierId: "s1", accountId: "a1", receipt: null };
 
   it("sends only what changed - nothing when nothing did", () => {
     expect(lineChanges(saved, same)).toEqual({});
-    expect(lineChanges(saved, { ...same, remarks: "  Lunch  " })).toEqual({});
-    expect(lineChanges(saved, { ...same, remarks: "Team lunch" })).toEqual({
-      remarks: "Team lunch",
+    expect(lineChanges(saved, { ...same, description: "  Lunch  " })).toEqual({});
+    expect(lineChanges(saved, { ...same, description: "Team lunch" })).toEqual({
+      description: "Team lunch",
     });
-    expect(lineChanges(saved, { ...same, remarks: "" })).toEqual({ remarks: "" });
+    expect(lineChanges(saved, { ...same, description: "" })).toEqual({ description: "" });
     expect(lineChanges(saved, { ...same, supplierId: "s2" })).toEqual({ supplier_id: "s2" });
     expect(lineChanges(saved, { ...same, accountId: "a2" })).toEqual({ account_id: "a2" });
     const receipt = new File(["%PDF"], "r.pdf", { type: "application/pdf" });
@@ -134,10 +134,10 @@ describe("editing a submitted report's details (Flask's Edit Details)", () => {
   it("never sends an empty supplier or account (the API cannot clear one)", () => {
     const bare: ReportLine = { ...saved, supplier: null, account: null };
     expect(
-      lineChanges(bare, { remarks: "Lunch", supplierId: "", accountId: "", receipt: null }),
+      lineChanges(bare, { description: "Lunch", supplierId: "", accountId: "", receipt: null }),
     ).toEqual({});
     expect(
-      lineChanges(bare, { remarks: "Lunch", supplierId: "s1", accountId: "a1", receipt: null }),
+      lineChanges(bare, { description: "Lunch", supplierId: "s1", accountId: "a1", receipt: null }),
     ).toEqual({ supplier_id: "s1", account_id: "a1" });
   });
 

@@ -156,7 +156,7 @@ describe("detailRows", () => {
     id: "l",
     item: "General Expenses",
     amount: 5,
-    remarks: "",
+    description: "",
     supplier: null,
     account: null,
     receipts: [],
@@ -172,7 +172,7 @@ describe("detailRows", () => {
     expect(
       detailRows({
         ...line,
-        remarks: "Milk",
+        description: "Milk",
         supplier: S("Wellcome"),
         account: { id: "1", code: "429", name: "General Expenses" },
       }),

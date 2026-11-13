@@ -39,7 +39,7 @@ const line = (id: string, item: string, amount: number) => ({
   id,
   item,
   supplier: { id: "s", name: "Acme" },
-  remarks: "",
+  description: "",
   amount,
   receipts: [],
 });
@@ -691,7 +691,7 @@ const OPTIONS = {
 };
 const editLine = (id: string, item: string, amount: number, account: Json) => ({
   ...line(id, item, amount),
-  remarks: "Lunch",
+  description: "Lunch",
   account,
 });
 
@@ -889,7 +889,7 @@ test("Edit Details: a line sends only what changed; a new account renames it", a
   const answer = edited({
     expenses: {
       lines: [
-        { ...editLine("e1", "Cleaning", 78.5, OPTIONS.accounts[1]), remarks: "Team lunch" },
+        { ...editLine("e1", "Cleaning", 78.5, OPTIONS.accounts[1]), description: "Team lunch" },
         editLine("e2", "Cleaning", 50, OPTIONS.accounts[1]),
       ],
       total: 128.5,
@@ -914,7 +914,7 @@ test("Edit Details: a line sends only what changed; a new account renames it", a
   expect(sent.edits).toHaveLength(1);
   const { method: verb, path, form } = sent.edits[0];
   expect([verb, path]).toEqual(["PATCH", "expense-lines/e1"]);
-  expect(form).toMatch(/name="remarks"\r\n\r\nTeam lunch\r\n/);
+  expect(form).toMatch(/name="description"\r\n\r\nTeam lunch\r\n/);
   expect(form).toMatch(/name="account_id"\r\n\r\na2\r\n/);
   expect(form).not.toContain('name="supplier_id"');
   expect(form).not.toContain('name="receipt"');
@@ -960,7 +960,7 @@ test("Edit Details: a receipt is checked before it is sent - one PDF, JPEG or PN
   await expect(toast(page, "Expense updated successfully!")).toBeVisible();
   const form = sent.edits[0].form ?? "";
   expect(form).toMatch(/name="receipt"; filename="receipt.pdf"/);
-  expect(form).not.toContain('name="remarks"');
+  expect(form).not.toContain('name="description"');
   expect(form).not.toContain('name="account_id"');
 });
 

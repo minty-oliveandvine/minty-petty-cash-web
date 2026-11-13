@@ -47,11 +47,11 @@ function shared(over: Json = {}): Json {
         {
           item: "Food & Drink",
           supplier: "Acme",
-          remarks: "",
+          description: "",
           amount: 78.5,
           receipts: [{ name: "receipt.pdf" }],
         },
-        { item: "Cleaning", supplier: "Acme", remarks: "", amount: 50 },
+        { item: "Cleaning", supplier: "Acme", description: "", amount: 50 },
       ],
       total: 128.5,
     },

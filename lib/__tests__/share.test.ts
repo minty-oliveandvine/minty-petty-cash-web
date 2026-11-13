@@ -140,7 +140,7 @@ function full(): Record<string, unknown> {
         {
           item: "Food & Drink",
           supplier: "Acme",
-          remarks: "",
+          description: "",
           amount: 78.5,
           receipts: [{ name: "r.pdf" }],
         },

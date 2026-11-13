@@ -71,7 +71,7 @@ export type SuggestedField = "amount" | "supplier" | "account" | "description";
 /** The card's own values (the receipt is kept apart). A supplier or account counts once picked. */
 export type EntryValues = {
   amount: string;
-  remarks: string;
+  description: string;
   supplierText: string;
   supplier: Supplier | null;
   accountText: string;
@@ -86,7 +86,7 @@ export type EntryState = ReaderState<EntryValues, SuggestedField>;
 
 export const EMPTY_VALUES: EntryValues = {
   amount: "",
-  remarks: "",
+  description: "",
   supplierText: "",
   supplier: null,
   accountText: "",
@@ -241,8 +241,8 @@ export function withSuggestions(
 
   // The description: filled only, never argued with (Flask's rule).
   const description = s.description;
-  if (description?.applied && description.value && emptyText(values.remarks))
-    fill("description", { remarks: description.value }, description.band);
+  if (description?.applied && description.value && emptyText(values.description))
+    fill("description", { description: description.value }, description.band);
 
   // The supplier: by its id from the company's list only.
   const supplier = s.supplier;
@@ -322,7 +322,7 @@ const CLEARED: Record<SuggestedField, Partial<EntryValues>> = {
   amount: { amount: "" },
   supplier: { supplier: null, supplierText: "" },
   account: { account: null, accountText: "" },
-  description: { remarks: "" },
+  description: { description: "" },
 };
 
 const SPEC: ReaderSpec<EntryValues, SuggestedField> = {

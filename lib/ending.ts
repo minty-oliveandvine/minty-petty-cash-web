@@ -13,7 +13,7 @@ export type CloseLine = {
   /** The account's name. */
   item: string;
   supplier: string;
-  remarks: string;
+  description: string;
   amount: number;
   receipts: unknown[];
 };

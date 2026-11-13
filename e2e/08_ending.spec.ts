@@ -36,7 +36,7 @@ const line = (id: string, item: string, amount: number) => ({
   id,
   item,
   supplier: "Acme",
-  remarks: "",
+  description: "",
   amount,
   receipts: [],
 });

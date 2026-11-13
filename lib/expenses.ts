@@ -17,7 +17,7 @@ export type ExpenseLine = {
   /** The account's name, as the line was saved ("" when none). */
   item: string;
   amount: number;
-  remarks: string;
+  description: string;
   supplier: Supplier | null;
   account: Account | null;
   receipts: Receipt[];
@@ -150,7 +150,7 @@ export function detailRows(line: ExpenseLine): {
 } {
   return {
     contact: line.supplier?.name || "N/A",
-    description: line.remarks || "-",
+    description: line.description || "-",
     account: `${line.account?.code || "N/A"} ${line.item}`,
   };
 }

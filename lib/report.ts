@@ -145,8 +145,8 @@ export const EDIT_PUBLISHED_CONFIRM =
   "the originals are not removed automatically and must be voided in Xero by hand.\n\n" +
   "Continue?";
 
-/** The API's limit on a line's description (`MAX_REMARKS` in `report_edits.py`). */
-export const MAX_REMARKS = 300;
+/** The API's limit on a line's description (`MAX_DESCRIPTION` in `report_edits.py`). */
+export const MAX_DESCRIPTION = 300;
 
 /**
  * The difference reason as it is typed on a submitted report, in the API's words: at most 300
@@ -161,9 +161,9 @@ export function editReasonProblem(reason: string, kind: DifferenceKind): string 
 }
 
 /** A line's description as it is typed, in the API's words; null when it fits. */
-export function remarksProblem(remarks: string): string | null {
-  return remarks.trim().length > MAX_REMARKS
-    ? `Keep the description to ${MAX_REMARKS} characters or fewer.`
+export function descriptionProblem(description: string): string | null {
+  return description.trim().length > MAX_DESCRIPTION
+    ? `Keep the description to ${MAX_DESCRIPTION} characters or fewer.`
     : null;
 }
 
@@ -174,7 +174,7 @@ export function editReceiptProblem(file: File): string | null {
 
 /** What the line editor holds: the description, the chosen ids ("" for none) and a new receipt. */
 export type LineEdit = {
-  remarks: string;
+  description: string;
   supplierId: string;
   accountId: string;
   receipt: File | null;
@@ -182,7 +182,7 @@ export type LineEdit = {
 
 /** The fields of `PATCH /reports/<id>/expense-lines/<line id>`. */
 export type LineChanges = {
-  remarks?: string;
+  description?: string;
   supplier_id?: string;
   account_id?: string;
   receipt?: File;
@@ -194,8 +194,8 @@ export type LineChanges = {
  */
 export function lineChanges(line: ReportLine, edit: LineEdit): LineChanges {
   const changes: LineChanges = {};
-  const remarks = edit.remarks.trim();
-  if (remarks !== line.remarks.trim()) changes.remarks = remarks;
+  const description = edit.description.trim();
+  if (description !== line.description.trim()) changes.description = description;
   if (edit.supplierId && edit.supplierId !== (line.supplier?.id ?? ""))
     changes.supplier_id = edit.supplierId;
   if (edit.accountId && edit.accountId !== (line.account?.id ?? ""))

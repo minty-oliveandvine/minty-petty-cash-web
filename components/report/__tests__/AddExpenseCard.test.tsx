@@ -302,7 +302,7 @@ describe("the receipt reader in Add New Expense", () => {
     await waitFor(() => expect(props.onAdded).toHaveBeenCalled());
     const sent = calls.adds[0];
     expect(sent.get("amount")).toBe("48.8");
-    expect(sent.get("remarks")).toBe("Copy paper");
+    expect(sent.get("description")).toBe("Copy paper");
     expect(sent.get("supplier_id")).toBe("s-well");
     expect(sent.get("account_id")).toBe("a-461");
     expect((sent.get("receipt") as File).name).toBe("taxi.png");

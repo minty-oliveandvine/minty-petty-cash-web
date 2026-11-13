@@ -51,7 +51,7 @@ import {
   type RequiredField,
   type Supplier,
 } from "@/lib/expenses";
-import { remarksProblem } from "@/lib/report";
+import { descriptionProblem } from "@/lib/report";
 
 const FIELD =
   "w-full rounded-flask-2xl border bg-flask-white py-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-flask-teal cursor-pointer";
@@ -121,7 +121,7 @@ export function AddExpenseCard(props: AddExpenseProps) {
   const card = useRef<HTMLFormElement>(null);
   // the four typed fields, with the receipt reader's marks and notes on them (lib/expenseAi.ts)
   const [entry, setEntry] = useState<EntryState>(() => entryState());
-  const { amount, remarks, supplierText, supplier, accountText, account } = entry.values;
+  const { amount, description, supplierText, supplier, accountText, account } = entry.values;
   const change = (field: SuggestedField, patch: Partial<EntryValues>) =>
     setEntry((state) => edited(state, field, patch));
   const amountInput = useAmountInput({
@@ -131,8 +131,8 @@ export function AddExpenseCard(props: AddExpenseProps) {
       clearError("amount");
     },
   });
-  const remarksField = useRef<HTMLInputElement>(null);
-  const remarksMessage = remarksProblem(remarks);
+  const descriptionField = useRef<HTMLInputElement>(null);
+  const descriptionMessage = descriptionProblem(description);
   // The card's latest state, for the answer that arrives seconds after the read started.
   const entryRef = useRef(entry);
   useEffect(() => {
@@ -248,8 +248,8 @@ export function AddExpenseCard(props: AddExpenseProps) {
   async function add(event: FormEvent) {
     event.preventDefault();
     if (sending) return;
-    if (remarksMessage) {
-      remarksField.current?.focus();
+    if (descriptionMessage) {
+      descriptionField.current?.focus();
       return;
     }
     const missing = missingFields({ amount, supplierText, supplier, accountText, account, file });
@@ -263,7 +263,7 @@ export function AddExpenseCard(props: AddExpenseProps) {
     const form = new FormData();
     form.append("transaction_date", day);
     form.append("amount", String(parseMoney(amount)));
-    form.append("remarks", remarks);
+    form.append("description", description);
     form.append("supplier_id", supplier.id);
     form.append("account_id", account.id);
     form.append("receipt", file, file.name);
@@ -354,29 +354,29 @@ export function AddExpenseCard(props: AddExpenseProps) {
       </div>
 
       <div className="mb-4">
-        <label htmlFor="expense_remarks" className={LABEL}>
+        <label htmlFor="expense_description" className={LABEL}>
           Description
         </label>
         <input
-          ref={remarksField}
-          id="expense_remarks"
+          ref={descriptionField}
+          id="expense_description"
           type="text"
           autoComplete="off"
           placeholder="Description (Optional)"
-          value={remarks}
-          aria-invalid={remarksMessage ? true : undefined}
+          value={description}
+          aria-invalid={descriptionMessage ? true : undefined}
           aria-describedby={describedBy(
             "description",
-            "expense_remarks",
-            remarksMessage ? "expense_remarks_message" : null,
+            "expense_description",
+            descriptionMessage ? "expense_description_message" : null,
           )}
-          onChange={(e) => change("description", { remarks: e.target.value })}
-          className={`${FIELD} ${remarksMessage ? "border-flask-red-500" : "border-flask-gray-300"} ${suggested("description")} pl-3 pr-3 text-flask-gray-700`}
+          onChange={(e) => change("description", { description: e.target.value })}
+          className={`${FIELD} ${descriptionMessage ? "border-flask-red-500" : "border-flask-gray-300"} ${suggested("description")} pl-3 pr-3 text-flask-gray-700`}
         />
-        {remarksMessage ? (
-          <FieldMessage id="expense_remarks_message">{remarksMessage}</FieldMessage>
+        {descriptionMessage ? (
+          <FieldMessage id="expense_description_message">{descriptionMessage}</FieldMessage>
         ) : null}
-        {readerExtras("description", "expense_remarks")}
+        {readerExtras("description", "expense_description")}
       </div>
 
       {newContact === null ? (

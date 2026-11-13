@@ -363,8 +363,8 @@ export function ExpenseRow({
           {line.supplier?.name ? (
             <p className="mt-1 break-words text-sm text-flask-gray-700">{line.supplier.name}</p>
           ) : null}
-          {line.remarks ? (
-            <p className="mt-1 break-words text-sm text-flask-gray-500">{line.remarks}</p>
+          {line.description ? (
+            <p className="mt-1 break-words text-sm text-flask-gray-500">{line.description}</p>
           ) : null}
         </div>
         <div className="text-right">

@@ -14,7 +14,7 @@ import {
   editReasonProblem,
   editReceiptProblem,
   lineChanges,
-  remarksProblem,
+  descriptionProblem,
   type DailyReport,
   type ReportLine,
 } from "@/lib/report";
@@ -227,13 +227,13 @@ export function EditLinesCard({
   );
 }
 
-type LineField = "remarks" | "supplier" | "account" | "receipt" | "form";
+type LineField = "description" | "supplier" | "account" | "receipt" | "form";
 
 /** Which field an API refusal belongs to, by its sentence (`report_edits.py`, `checked_receipt`). */
 function fieldOf(sentence: string): LineField {
   if (sentence.startsWith("Choose a supplier")) return "supplier";
   if (sentence.startsWith("Choose an account")) return "account";
-  if (sentence.startsWith("Keep the description")) return "remarks";
+  if (sentence.startsWith("Keep the description")) return "description";
   if (sentence.startsWith("Attach") || sentence.startsWith("That file is empty")) return "receipt";
   return "form";
 }
@@ -266,9 +266,9 @@ export function LineEditor({
   const suppliers = withCurrent<Supplier>(options.suppliers, line.supplier);
   const accounts = withCurrent<Account>(options.accounts, line.account);
   const fileInput = useRef<HTMLInputElement>(null);
-  const remarksField = useRef<HTMLTextAreaElement>(null);
+  const descriptionField = useRef<HTMLTextAreaElement>(null);
   const receiptBox = useRef<HTMLButtonElement>(null);
-  const [remarks, setRemarks] = useState(line.remarks);
+  const [description, setDescription] = useState(line.description);
   const [supplierId, setSupplierId] = useState(line.supplier?.id ?? "");
   const [accountId, setAccountId] = useState(line.account?.id ?? "");
   const [receipt, setReceipt] = useState<File | null>(null);
@@ -276,7 +276,7 @@ export function LineEditor({
   const [refused, setRefused] = useState<{ field: LineField; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const changes = lineChanges(line, { remarks, supplierId, accountId, receipt });
+  const changes = lineChanges(line, { description, supplierId, accountId, receipt });
   const dirty = Object.keys(changes).length > 0;
   // read when Escape or a click outside asks: the modal's handler must keep one identity, or it
   // takes the focus back from the field being typed in
@@ -289,7 +289,7 @@ export function LineEditor({
     else onClose();
   }, [toast, onClose]);
   const say = (field: LineField) => (refused?.field === field ? refused.message : null);
-  const remarksMessage = say("remarks") ?? remarksProblem(remarks);
+  const descriptionMessage = say("description") ?? descriptionProblem(description);
   const receiptMessage = say("receipt") ?? receiptRefused;
   const supplierMessage = say("supplier");
   const accountMessage = say("account");
@@ -307,8 +307,8 @@ export function LineEditor({
   async function save(event: FormEvent) {
     event.preventDefault();
     if (saving) return;
-    if (remarksProblem(remarks)) {
-      remarksField.current?.focus();
+    if (descriptionProblem(description)) {
+      descriptionField.current?.focus();
       return;
     }
     if (!dirty) {
@@ -316,7 +316,7 @@ export function LineEditor({
       return;
     }
     const form = new FormData();
-    if (changes.remarks !== undefined) form.append("remarks", changes.remarks);
+    if (changes.description !== undefined) form.append("description", changes.description);
     if (changes.supplier_id) form.append("supplier_id", changes.supplier_id);
     if (changes.account_id) form.append("account_id", changes.account_id);
     if (changes.receipt) form.append("receipt", changes.receipt, changes.receipt.name);
@@ -335,7 +335,7 @@ export function LineEditor({
       const message = refusalOf(err);
       const field = err instanceof ApiError ? fieldOf(message) : "form";
       setRefused({ field, message });
-      if (field === "remarks") remarksField.current?.focus();
+      if (field === "description") descriptionField.current?.focus();
       if (field === "receipt") receiptBox.current?.focus();
     } finally {
       setSaving(false);
@@ -349,20 +349,20 @@ export function LineEditor({
           Description
         </label>
         <textarea
-          ref={remarksField}
+          ref={descriptionField}
           id="editExpDescription"
           rows={2}
-          value={remarks}
-          aria-invalid={remarksMessage ? true : undefined}
-          aria-describedby={remarksMessage ? "editExpDescription_message" : undefined}
+          value={description}
+          aria-invalid={descriptionMessage ? true : undefined}
+          aria-describedby={descriptionMessage ? "editExpDescription_message" : undefined}
           onChange={(e) => {
-            setRemarks(e.target.value);
-            if (refused?.field === "remarks" || refused?.field === "form") setRefused(null);
+            setDescription(e.target.value);
+            if (refused?.field === "description" || refused?.field === "form") setRefused(null);
           }}
-          className={`${EDIT_FIELD} ${remarksMessage ? "border-flask-red-500" : "border-flask-gray-300"}`}
+          className={`${EDIT_FIELD} ${descriptionMessage ? "border-flask-red-500" : "border-flask-gray-300"}`}
         />
-        {remarksMessage ? (
-          <FieldMessage id="editExpDescription_message">{remarksMessage}</FieldMessage>
+        {descriptionMessage ? (
+          <FieldMessage id="editExpDescription_message">{descriptionMessage}</FieldMessage>
         ) : null}
       </div>
       <div>

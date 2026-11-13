@@ -65,7 +65,7 @@ describe("an answer on an empty card", () => {
     const next = withSuggestions(entryState(), answer("high"), CTX);
     expect(next.values).toEqual({
       amount: "448.80",
-      remarks: "Courier delivery",
+      description: "Courier delivery",
       supplierText: "Wellcome",
       supplier: { id: "c3", name: "Wellcome" },
       accountText: "Printing & Stationery",
@@ -179,7 +179,7 @@ describe("an answer on an empty card", () => {
 describe("never overwriting the person", () => {
   const typed = entryState({
     amount: "44.80",
-    remarks: "Taxi",
+    description: "Taxi",
     supplierText: "ParknShop",
     supplier: SUPPLIERS[0],
     accountText: "General Expenses",
@@ -212,7 +212,7 @@ describe("never overwriting the person", () => {
   it("says nothing where the receipt agrees", () => {
     const same = entryState({
       amount: "448.80",
-      remarks: "",
+      description: "",
       supplierText: "wellcome",
       supplier: SUPPLIERS[1],
       accountText: "Printing & Stationery",
@@ -275,9 +275,9 @@ describe("after the answer", () => {
   });
 
   it("another receipt takes the old suggestions' values with them - and leaves what the person typed", () => {
-    const state = edited(filled(), "description", { remarks: "Mine" });
+    const state = edited(filled(), "description", { description: "Mine" });
     const next = withoutSuggestions(state);
-    expect(next.values).toEqual({ ...entryState().values, remarks: "Mine" });
+    expect(next.values).toEqual({ ...entryState().values, description: "Mine" });
     expect(next).toMatchObject({ marks: {}, notes: {}, detectedName: null, announcement: "" });
   });
 
